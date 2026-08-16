@@ -16,11 +16,11 @@
     --font-mono:"Consolas",ui-monospace,monospace;
 
     --bg:oklch(13% 0.008 350); --card:oklch(19% 0.013 350); --card2:oklch(24% 0.017 350);
-    --crimson:oklch(52% 0.20 22); --crimson2:oklch(64% 0.205 20);
-    --toxic:oklch(80% 0.17 132); --toxic2:oklch(89% 0.17 130);
-    --gold:oklch(83% 0.13 87); --ink:oklch(96% 0.005 350); --muted:oklch(71% 0.018 350);
-    --line:oklch(29% 0.015 348); --line2:oklch(38% 0.02 348); --ok:oklch(72% 0.15 155);
-    --blue:oklch(72% 0.11 250);
+    --crimson:oklch(52% 0.17 22); --crimson2:oklch(66% 0.175 20);
+    --toxic:oklch(80% 0.06 150); --toxic2:oklch(86% 0.05 150);
+    --gold:oklch(83% 0.06 85); --ink:oklch(96% 0.005 350); --muted:oklch(71% 0.018 350);
+    --line:oklch(29% 0.015 348); --line2:oklch(38% 0.02 348); --ok:oklch(72% 0.11 155);
+    --blue:oklch(72% 0.055 250);
 
     --space-xs:8px; --space-sm:12px; --space-md:20px; --space-lg:32px; --space-xl:56px;
     --r-sm:8px; --r-md:12px; --r-lg:16px;
@@ -31,8 +31,8 @@
   html{scroll-behavior:smooth}
   body{margin:0;color:var(--ink);font:16px/1.65 var(--font-body);
     background:
-      radial-gradient(920px 560px at 84% -12%, oklch(38% 0.13 22 / .30), transparent 60%),
-      radial-gradient(760px 520px at -6% 108%, oklch(46% 0.10 140 / .10), transparent 55%),
+      radial-gradient(920px 560px at 84% -12%, oklch(38% 0.10 22 / .16), transparent 60%),
+      radial-gradient(760px 520px at -6% 108%, oklch(42% 0.04 350 / .07), transparent 55%),
       var(--bg);
     background-attachment:fixed}
   a{color:var(--toxic2);text-decoration:none}
@@ -118,7 +118,7 @@
   /* Roadmap */
   .roadmap{position:relative;margin:22px 0}
   .rline{position:absolute;left:26px;top:10px;bottom:10px;width:3px;
-    background:linear-gradient(180deg,var(--crimson),var(--gold),var(--toxic))}
+    background:linear-gradient(180deg,var(--crimson2),var(--line2))}
   .phase{position:relative;padding:0 0 20px 66px}
   .dot{position:absolute;left:12px;top:2px;width:31px;height:31px;border-radius:50%;background:var(--card2);
     border:3px solid var(--crimson2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;z-index:2}
