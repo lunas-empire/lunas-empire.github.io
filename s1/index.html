@@ -1,0 +1,2652 @@
+<!DOCTYPE html>
+<html lang="de" data-lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Master-Guide: Season 1 „Crimson Plague", Last War</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Hallmark · genre: atmospheric · macrostructure: Long Document (field briefing) · theme: custom Crimson-Plague (OKLCH) · nav: sticky index · footer: Ft5 statement */
+  /* Hallmark · pre-emit critique: P5 H4 E4 S5 R4 V4 */
+  :root{
+    --font-display:"Oswald",system-ui,sans-serif;
+    --font-body:"Inter","Segoe UI",system-ui,-apple-system,sans-serif;
+    --font-mono:"Consolas",ui-monospace,monospace;
+
+    --bg:oklch(13% 0.008 350); --card:oklch(19% 0.013 350); --card2:oklch(24% 0.017 350);
+    --crimson:oklch(52% 0.20 22); --crimson2:oklch(64% 0.205 20);
+    --toxic:oklch(80% 0.17 132); --toxic2:oklch(89% 0.17 130);
+    --gold:oklch(83% 0.13 87); --ink:oklch(96% 0.005 350); --muted:oklch(71% 0.018 350);
+    --line:oklch(29% 0.015 348); --line2:oklch(38% 0.02 348); --ok:oklch(72% 0.15 155);
+    --blue:oklch(72% 0.11 250);
+
+    --space-xs:8px; --space-sm:12px; --space-md:20px; --space-lg:32px; --space-xl:56px;
+    --r-sm:8px; --r-md:12px; --r-lg:16px;
+    --ease-out:cubic-bezier(0.16,1,0.3,1); --dur:200ms;
+  }
+  *{box-sizing:border-box}
+  html,body{overflow-x:clip}
+  html{scroll-behavior:smooth}
+  body{margin:0;color:var(--ink);font:16px/1.65 var(--font-body);
+    background:
+      radial-gradient(920px 560px at 84% -12%, oklch(38% 0.13 22 / .30), transparent 60%),
+      radial-gradient(760px 520px at -6% 108%, oklch(46% 0.10 140 / .10), transparent 55%),
+      var(--bg);
+    background-attachment:fixed}
+  a{color:var(--toxic2);text-decoration:none}
+  :focus-visible{outline:2px solid var(--crimson2);outline-offset:2px;border-radius:3px}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 22px}
+
+  header.hero{padding:clamp(48px,8vw,76px) 0 clamp(30px,5vw,44px);border-bottom:1px solid var(--line)}
+  .badge{display:inline-block;font-family:var(--font-display);font-weight:600;font-size:12px;
+    letter-spacing:.22em;text-transform:uppercase;color:var(--crimson2);
+    border:1px solid var(--crimson);border-radius:999px;padding:6px 16px;margin-bottom:18px}
+  h1{font-family:var(--font-display);font-weight:700;text-transform:uppercase;
+    font-size:clamp(30px,5.6vw,54px);margin:0 0 10px;line-height:1.02;letter-spacing:-.005em;
+    overflow-wrap:anywhere;min-width:0}
+  h1 .virus{color:var(--crimson2)}
+  .sub{color:var(--muted);font-size:18px;max-width:760px}
+  .note{margin-top:22px;background:var(--card);border:1px solid var(--line);
+    border-radius:var(--r-md);padding:14px 18px;font-size:14px;color:var(--ink)}
+  .note b{color:var(--gold)}
+  .credit{margin-top:14px;font-size:13.5px;color:var(--muted);line-height:1.55}
+  .credit b{color:var(--toxic2)}
+  .byline{margin:6px 0 0;font-family:var(--font-display);font-weight:600;text-transform:uppercase;
+    letter-spacing:.14em;font-size:12.5px;color:var(--muted)}
+  .byline b{color:var(--toxic2);font-weight:700}
+  code.tag{background:oklch(30% 0.05 85);color:var(--gold);padding:2px 7px;border-radius:5px;
+    font-family:var(--font-mono);font-size:12.5px;white-space:nowrap}
+
+  nav.toc{position:sticky;top:0;z-index:50;background:oklch(13% 0.008 350 / .82);
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--line);padding:9px 0}
+  nav.toc .wrap{display:flex;gap:6px;flex-wrap:wrap}
+  nav.toc a{font-family:var(--font-display);font-weight:500;letter-spacing:.02em;
+    font-size:13px;color:var(--muted);padding:6px 11px;border-radius:var(--r-sm);border:1px solid transparent;
+    transition:color var(--dur) var(--ease-out),background var(--dur) var(--ease-out),border-color var(--dur) var(--ease-out)}
+  nav.toc a:hover{color:var(--ink);background:var(--card);border-color:var(--line2)}
+
+  section{padding:clamp(38px,6vw,64px) 0 clamp(28px,4vw,44px);border-bottom:1px solid var(--line);scroll-margin-top:58px}
+  section:nth-of-type(even){background:oklch(16% 0.01 350 / .35)}
+  h2{font-family:var(--font-display);font-weight:600;text-transform:uppercase;letter-spacing:.005em;
+    font-size:clamp(21px,3.2vw,27px);margin:0 0 6px;line-height:1.12;
+    display:flex;align-items:center;gap:13px;flex-wrap:wrap;overflow-wrap:anywhere;min-width:0}
+  h2 .num{display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:38px;
+    color:var(--crimson2);font-size:16px;font-weight:700;border:1px solid var(--crimson);
+    border-radius:var(--r-sm);padding:0 9px;background:oklch(52% 0.20 22 / .12);white-space:nowrap}
+  .when-badge{font-family:var(--font-body);font-weight:600;font-size:11.5px;
+    background:oklch(72% 0.11 250 / .15);border:1px solid oklch(72% 0.11 250 / .55);color:var(--blue);
+    padding:4px 11px;border-radius:999px;letter-spacing:.02em;text-transform:none}
+  h3{font-family:var(--font-display);font-weight:600;font-size:19px;margin:28px 0 10px;color:var(--toxic2);letter-spacing:.01em}
+  h4{font-family:var(--font-display);font-weight:600;font-size:14px;margin:16px 0 6px;color:var(--gold);text-transform:uppercase;letter-spacing:.06em}
+  p{margin:10px 0}.lead{color:var(--muted);font-size:16px;max-width:70ch}
+
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;font-variant-numeric:tabular-nums;
+    background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden}
+  th,td{text-align:left;padding:11px 13px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:var(--card2);color:var(--toxic2);font-family:var(--font-display);font-weight:600;
+    font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+  tr:last-child td{border-bottom:none}
+  td b{color:var(--ink)}
+  .prio{color:var(--crimson2);font-weight:700;text-align:center;white-space:nowrap}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:14px;margin:16px 0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);padding:16px 18px;
+    transition:border-color var(--dur) var(--ease-out),background var(--dur) var(--ease-out)}
+  .card:hover{border-color:var(--line2);background:var(--card2)}
+  .card h4{margin-top:0;display:flex;align-items:center;gap:9px}
+  .card h4::before{content:"";width:9px;height:9px;border-radius:2px;background:var(--muted);flex:none}
+  .card.crimson h4::before{background:var(--crimson2)}
+  .card.toxic h4::before{background:var(--toxic)}
+  .card.gold h4::before{background:var(--gold)}
+  .card.blue h4::before{background:var(--blue)}
+
+  ul.check{list-style:none;padding:0;margin:10px 0}
+  ul.check li{padding:6px 0 6px 28px;position:relative;border-bottom:1px dashed var(--line);font-size:14px}
+  ul.check li:before{content:"☐";position:absolute;left:2px;top:5px;color:var(--toxic2);font-size:15px}
+  ul.check li:last-child{border-bottom:none}
+  ul.plain{margin:8px 0;padding-left:20px}ul.plain li{margin:4px 0;font-size:14px}
+
+  .callout{border-radius:var(--r-md);padding:13px 16px;margin:16px 0;font-size:14.5px;border:1px solid var(--line)}
+  .callout.warn{background:oklch(52% 0.20 22 / .12);border-color:oklch(52% 0.20 22 / .5)}
+  .callout.tip{background:oklch(80% 0.17 132 / .09);border-color:oklch(80% 0.17 132 / .4)}
+  .callout.gold{background:oklch(83% 0.13 87 / .10);border-color:oklch(83% 0.13 87 / .4)}
+  .callout b{color:var(--ink)}
+
+  /* Roadmap */
+  .roadmap{position:relative;margin:22px 0}
+  .rline{position:absolute;left:26px;top:10px;bottom:10px;width:3px;
+    background:linear-gradient(180deg,var(--crimson),var(--gold),var(--toxic))}
+  .phase{position:relative;padding:0 0 20px 66px}
+  .dot{position:absolute;left:12px;top:2px;width:31px;height:31px;border-radius:50%;background:var(--card2);
+    border:3px solid var(--crimson2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;z-index:2}
+  .phase .pc{background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);padding:14px 16px;
+    cursor:pointer;transition:border-color var(--dur) var(--ease-out),background var(--dur) var(--ease-out)}
+  .phase .pc:hover,.phase .pc:active{border-color:var(--line2);background:var(--card2)}
+  .phase .pc .when{font-family:var(--font-display);font-size:11.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);font-weight:600}
+  .phase .pc h4{font-family:var(--font-display);font-weight:600;margin:3px 0 7px;color:var(--ink);font-size:17px;text-transform:none;letter-spacing:0}
+  .phase .pc h4::before{content:none}
+  .phase .pc ul{margin:4px 0 0;padding-left:16px;font-size:13.5px;color:var(--muted)}
+  .pclinks{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .pclinks a{font-family:var(--font-display);font-weight:600;font-size:12.5px;color:var(--toxic2);
+    background:oklch(80% 0.17 132 / .10);border:1px solid oklch(80% 0.17 132 / .5);
+    border-radius:var(--r-sm);padding:7px 13px;line-height:1.2;white-space:nowrap;
+    transition:background var(--dur) var(--ease-out),color var(--dur) var(--ease-out)}
+  .pclinks a:hover,.pclinks a:active{background:var(--toxic);color:var(--bg)}
+  .phase .pc .tmpl{cursor:auto;margin:12px 0 0}
+  .phase .pc .tmpl h4{margin:0}
+  /* Roadmap einklappbar (halb offen beim Start) */
+  .roadmap.collapsed{max-height:560px;overflow:hidden}
+  .roadmap.collapsed::after{content:"";position:absolute;left:0;right:0;bottom:0;height:120px;
+    background:linear-gradient(transparent,var(--bg));pointer-events:none}
+  .morebtn{display:block;margin:14px auto 0;cursor:pointer;font-family:var(--font-display);font-weight:600;
+    letter-spacing:.03em;font-size:13.5px;color:var(--toxic2);background:var(--card2);border:1px solid var(--line2);
+    border-radius:999px;padding:10px 22px;transition:background var(--dur) var(--ease-out),color var(--dur) var(--ease-out)}
+  .morebtn:hover{background:var(--card);color:var(--ink)}
+  /* Grundlagen-Karten (Basics-Overview) */
+  .basics{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(210px,100%),1fr));gap:12px;margin:16px 0}
+  .basics a{display:block;text-decoration:none;color:inherit;background:var(--card);
+    border:1px solid var(--line);border-radius:var(--r-md);
+    padding:15px 17px;transition:border-color var(--dur) var(--ease-out),background var(--dur) var(--ease-out)}
+  .basics a:hover,.basics a:active{border-color:var(--line2);background:var(--card2)}
+  .basics a b{display:flex;align-items:center;gap:9px;color:var(--ink);font-family:var(--font-display);font-weight:600;font-size:15px;margin-bottom:4px}
+  .basics a b::before{content:"";width:9px;height:9px;border-radius:2px;background:var(--blue);flex:none}
+  .basics a span{color:var(--muted);font-size:13px}
+  /* aktiver Nav-Link */
+  nav.toc a.active{color:var(--crimson2);background:var(--card);border-color:var(--crimson)}
+
+  /* Images */
+  .imgs{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0}
+  .imgs figure{margin:0;background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);
+    overflow:hidden;max-width:340px;flex:1 1 260px}
+  .imgs img{display:block;width:100%;height:auto;cursor:zoom-in}
+  .imgs figcaption{font-size:12px;color:var(--muted);padding:7px 11px;border-top:1px solid var(--line)}
+  .imgs figcaption b{color:var(--toxic2)}
+
+  /* Copy templates */
+  .tmpl{background:var(--card2);border:1px solid var(--line);border-top:2px solid var(--line2);
+    border-radius:var(--r-md);margin:16px 0;overflow:hidden}
+  .tmpl.announce{border-top-color:var(--blue)}
+  .tmpl.mail{border-top-color:var(--gold)}
+  .tmpl .bar{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 15px;
+    background:oklch(52% 0.20 22 / .10);border-bottom:1px solid var(--line)}
+  .tmpl .bar .t{font-family:var(--font-display);font-weight:600;font-size:14px;letter-spacing:.02em}
+  .tmpl .bar .t .kind{font-family:var(--font-body);font-size:11px;color:var(--muted);font-weight:400;margin-left:6px}
+  .tmpl pre{margin:0;padding:15px 16px;white-space:pre-wrap;word-break:break-word;
+    font:13.5px/1.55 var(--font-mono);color:var(--ink)}
+  .copybtn{cursor:pointer;border:1px solid var(--crimson);background:oklch(52% 0.20 22 / .12);color:var(--crimson2);
+    font-family:var(--font-display);font-size:12.5px;font-weight:600;letter-spacing:.03em;
+    padding:9px 15px;border-radius:999px;white-space:nowrap;
+    transition:background var(--dur) var(--ease-out),color var(--dur) var(--ease-out),border-color var(--dur) var(--ease-out)}
+  .copybtn:hover{background:oklch(52% 0.20 22 / .22)}
+  .copybtn:active{transform:translateY(1px)}
+  .copybtn.done{background:var(--ok);border-color:var(--ok);color:var(--bg)}
+  .charcount{font-size:11px;color:var(--muted);padding:0 16px 10px}
+
+  .cheat{display:grid;grid-template-columns:1fr 2fr;background:var(--card);border:1px solid var(--line);
+    border-radius:var(--r-md);overflow:hidden;margin:16px 0}
+  .cheat div{padding:12px 15px;border-bottom:1px solid var(--line);font-size:14px}
+  .cheat div:nth-child(odd){background:var(--card2);color:var(--crimson2);font-family:var(--font-display);font-weight:600;letter-spacing:.02em}
+  .cheat div:nth-last-child(-n+2){border-bottom:none}
+
+  footer{padding:clamp(36px,6vw,56px) 0 clamp(56px,8vw,80px);color:var(--muted);font-size:13.5px;border-top:1px solid var(--line)}
+  .top{position:fixed;right:18px;bottom:18px;background:var(--crimson);color:oklch(97% 0 0);border:none;width:46px;height:46px;
+    border-radius:999px;font-size:20px;cursor:pointer;z-index:60;box-shadow:0 4px 14px oklch(52% 0.20 22 / .35);
+    transition:background var(--dur) var(--ease-out),transform var(--dur) var(--ease-out)}
+  .top:hover{background:var(--crimson2)}
+  .top:active{transform:translateY(1px)}
+  /* Lightbox */
+  #lb{display:none;position:fixed;inset:0;background:oklch(6% 0.01 350 / .93);z-index:200;cursor:zoom-out;
+    align-items:center;justify-content:center;padding:20px}
+  #lb img{max-width:96%;max-height:96%;border-radius:var(--r-sm)}
+  /* Language toggle */
+  html[data-lang="de"] .only-en{display:none}
+  html[data-lang="en"] .only-de{display:none}
+  .langsw{display:flex;gap:6px;position:fixed;top:10px;right:12px;z-index:90}
+  .langsw button{cursor:pointer;font-family:var(--font-display);font-weight:600;font-size:12px;letter-spacing:.04em;
+    padding:7px 12px;border-radius:999px;border:1px solid var(--line2);background:var(--card2);
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:var(--muted);
+    transition:color var(--dur) var(--ease-out),border-color var(--dur) var(--ease-out),background var(--dur) var(--ease-out)}
+  .langsw button:hover{color:var(--ink);border-color:var(--muted)}
+  .langsw button.active{border-color:var(--crimson);color:var(--crimson2);background:var(--card)}
+  /* First-visit language overlay */
+  #langpick{position:fixed;inset:0;z-index:300;background:rgba(8,6,9,.96);display:none;
+    align-items:center;justify-content:center;padding:24px}
+  #langpick .box{max-width:440px;width:100%;text-align:center;background:var(--card);border:1px solid var(--line2);
+    border-radius:var(--r-lg);padding:34px 28px;box-shadow:0 24px 70px oklch(0% 0 0 / .6)}
+  #langpick h2{justify-content:center;font-size:24px;margin-bottom:6px}
+  #langpick p{color:var(--muted);margin:0 0 22px}
+  #langpick .opts{display:grid;gap:12px}
+  #langpick .opts button{cursor:pointer;font-family:var(--font-display);font-size:17px;font-weight:600;letter-spacing:.02em;
+    padding:15px;border-radius:var(--r-md);border:1px solid var(--line2);background:var(--card2);color:var(--ink);
+    transition:border-color var(--dur) var(--ease-out),background var(--dur) var(--ease-out)}
+  #langpick .opts button:hover{border-color:var(--crimson);background:oklch(52% 0.20 22 / .1)}
+  #langpick .luna-note{margin-top:18px;font-size:12px;color:var(--muted)}
+  /* Mobile optimisation */
+  @media(max-width:760px){
+    .wrap{padding:0 14px}
+    header.hero{padding:64px 0 26px}
+    h1{font-size:26px}.sub{font-size:15px}
+    h2{font-size:20px}h3{font-size:16px}
+    nav.toc{overflow-x:auto;-webkit-overflow-scrolling:touch;padding:6px 0}
+    nav.toc .wrap{flex-wrap:nowrap;width:max-content;gap:4px}
+    nav.toc a{white-space:nowrap;padding:9px 13px;font-size:13px}
+    section{padding:28px 0;scroll-margin-top:52px}
+    table{display:block;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}
+    .imgs figure{max-width:100%;flex:1 1 100%}
+    .grid{grid-template-columns:1fr}
+    .tmpl .bar{flex-wrap:wrap}
+    .tmpl .bar .t{flex:1 1 100%}
+    .tmpl pre{font-size:13px;padding:14px}
+    .copybtn{width:100%;padding:13px;font-size:14px;text-align:center}
+    .charcount{padding:8px 14px 12px;font-size:12px}
+    .langsw{top:8px;right:8px}
+    .langsw button{padding:8px 14px;font-size:14px}
+    .phase{padding-left:50px}
+    .rline{left:19px}
+    .dot{left:5px;width:29px;height:29px}
+    .pclinks a{padding:9px 14px;font-size:13px}
+    .top{width:52px;height:52px;font-size:22px;right:14px;bottom:14px}
+    #langpick .opts button{padding:17px;font-size:18px}
+    footer{padding:26px 0 90px}
+  }
+  @media(max-width:640px){.cheat{grid-template-columns:1fr}}
+
+  /* ===== Heller Ingame-Mode (Farbpalette aus rzsn / Last War) ===== */
+  html[data-theme="light"]{
+    --bg:#b3bccd; --card:#e6ebf3; --card2:#d3dbe8;
+    --crimson:#d96c0f; --crimson2:#e23b3b; --toxic:#2c7fb8; --toxic2:#1f6a9a;
+    --gold:#a9760c; --ink:#232c42; --muted:#5c6678; --line:#9fabc1; --line2:#8592ab; --ok:#2f9e44; --blue:#2c7fb8;
+  }
+  html[data-theme="light"] body{background:linear-gradient(#c9d1de,#a7b3c6) fixed;}
+  html[data-theme="light"] section:nth-of-type(even){background:oklch(90% 0.012 250 / .5);}
+  html[data-theme="light"] header.hero{background:linear-gradient(180deg,rgba(245,130,31,.12),transparent);}
+  html[data-theme="light"] nav.toc{background:rgba(230,235,243,.95);}
+  html[data-theme="light"] .note{color:#4a3f22;}
+  html[data-theme="light"] .when-badge{color:var(--blue);background:rgba(44,127,184,.12);}
+  html[data-theme="light"] code.tag{background:#f2e6c6;color:#8a6410;}
+  html[data-theme="light"] .tmpl pre{color:#232c42;}
+  html[data-theme="light"] .tmpl .bar{background:linear-gradient(90deg,rgba(245,130,31,.14),transparent);}
+  html[data-theme="light"] .callout.tip{background:rgba(44,127,184,.09);}
+  html[data-theme="light"] .pclinks a{background:rgba(44,127,184,.10);}
+  html[data-theme="light"] #langpick{background:rgba(220,226,236,.96);}
+</style>
+</head>
+<body>
+
+<div class="langsw">
+  <button id="themeBtn" title="Hell / Dunkel" aria-label="Theme wechseln">🌙</button>
+  <button data-l="de">DE</button>
+  <button data-l="en">EN</button>
+</div>
+
+<div id="langpick">
+  <div class="box">
+    <h2>🦠 Last War · Season 1</h2>
+    <p>Sprache wählen · Choose your language</p>
+    <div class="opts">
+      <button onclick="pickLang('de')">🇩🇪 Deutsch</button>
+      <button onclick="pickLang('en')">🇬🇧 English</button>
+    </div>
+    <div class="luna-note">Umschalten jederzeit oben rechts · Switch anytime top-right</div>
+  </div>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="only-de">
+      <span class="badge">🦠 Allianz-Admin-Handbuch · datenbasiert</span>
+      <h1>Master-Guide: Season 1 <span class="virus">„Crimson Plague"</span></h1>
+      <div class="byline">Ein Guide von <b>Luna</b></div>
+      <p class="sub">Strategie-, Timing- und Kommunikations-Anleitung für <b>Last War: Survival</b>. Pro Thema: Fakten, die passenden Guide-Grafiken, ein Ankündigungstext (ohne Emoji) und eine Allianz-Mail (mit Emoji) zum Kopieren, plus <b>eine Sammel-Mail pro Woche</b>.</p>
+      <div class="note">
+        <b>Nutzung:</b> Für jedes Thema den <b>Ankündigungstext</b> (öffentlich, sachlich, dazu die angezeigten Bilder mitposten) oder die <b>Allianz-Mail</b> (chatig, mit Emoji, keine Bilder) per Klick kopieren. Platzhalter in <b>[Klammern]</b> vor dem Senden ausfüllen. Zahlen stammen aus den Guide-Grafiken und können je Server minimal abweichen, im Zweifel <code class="tag">IN-GAME PRÜFEN</code>.
+      </div>
+      <p class="credit">Guide erstellt von <b>Luna</b> · Stand August 2026 · dient als Guide für die <b>[RZSN] Rising Sun</b> Allianz auf <b>Server 2261</b>.</p>
+    </div>
+    <div class="only-en">
+      <span class="badge">🦠 Alliance Admin Handbook · data-based</span>
+      <h1>Master Guide: Season 1 <span class="virus">"Crimson Plague"</span></h1>
+      <div class="byline">A guide by <b>Luna</b></div>
+      <p class="sub">Strategy, timing and communication guide for <b>Last War: Survival</b>. Per topic: facts, the matching guide graphics, an announcement text (no emoji) and an alliance mail (with emoji) to copy, plus <b>one roundup mail per week</b>.</p>
+      <div class="note">
+        <b>How to use:</b> For each topic, copy the <b>announcement</b> (public, factual, post the shown images with it) or the <b>alliance mail</b> (chatty, with emoji, no images) with one click. Fill in the placeholders in <b>[brackets]</b> before sending. Numbers come from the guide graphics and may vary slightly per server, when in doubt <code class="tag">CHECK IN-GAME</code>.
+      </div>
+      <p class="credit">Guide created by <b>Luna</b> · as of August 2026 · serves as the guide for the <b>[RZSN] Rising Sun</b> alliance on <b>server 2261</b>.</p>
+    </div>
+  </div>
+</header>
+
+<div class="only-de">
+
+<nav class="toc">
+  <div class="wrap">
+    <a href="#roadmap">🗺️ Roadmap</a>
+    <a href="#basics">🧭 Grundlagen</a>
+    <a href="#features">Features</a>
+    <a href="#virus">RA-Virus</a>
+    <a href="#weather">Wetter</a>
+    <a href="#protein">Protein/VRI</a>
+    <a href="#purge">Purge</a>
+    <a href="#serum">Serum</a>
+    <a href="#cityclash">City Clash</a>
+    <a href="#weapons">Waffen</a>
+    <a href="#wish">Wish Hero</a>
+    <a href="#promotion">Mason</a>
+    <a href="#legion">Crimson Legion</a>
+    <a href="#troopboost">Troop Boost</a>
+    <a href="#outposts">Outposts</a>
+    <a href="#wardec">War Decl.</a>
+    <a href="#octagon">Octagon/Duel</a>
+    <a href="#builder">Builder</a>
+    <a href="#profession">Berufe/Skills</a>
+    <a href="#endseason">Season-Ende</a>
+    <a href="#weekly">📬 Wochen-Mails</a>
+  </div>
+</nav>
+
+<!-- ROADMAP -->
+<section id="roadmap">
+  <div class="wrap">
+    <h2><span class="num">🗺️</span> Season-Roadmap (Week 1–8)</h2>
+    <p class="lead">Freischalt-Reihenfolge der Season-Events laut Guide-Grafiken.</p>
+    <div class="roadmap collapsed"><div class="rline"></div>
+
+      <div class="phase"><div class="dot">D1</div><div class="pc" data-t="#protein"><div class="when">Woche 1 · Tag 1 · zum Thema →</div>
+        <h4>Start: Basis-Aufbau &amp; erste Events</h4>
+        <ul><li><b>Protein-Farmen + Virus Research Institute</b> freischalten (Resistenz-Motor)</li>
+        <li><b>The Purge</b> (7 Tage): Infizierte töten &amp; Strongholds sichern</li>
+        <li>Militär-Strongholds ab Tag 1 einnehmbar (max 2/Tag, anfangs max 3)</li></ul>
+        <div class="pclinks"><a href="#protein">Protein/VRI</a><a href="#purge">Purge</a><a href="#cityclash">City Clash</a></div>
+      </div></div>
+
+      <div class="phase"><div class="dot">W1</div><div class="pc" data-t="#serum"><div class="when">Woche 1 · Tag 2–4 · zum Thema →</div>
+        <h4>Serum, Städte &amp; erste Exklusivwaffe</h4>
+        <ul><li><b>Serum Collection</b> (Tag 2): Puzzle-Event + Serum-Shop</li>
+        <li><b>City Clash</b>: ab Tag 3 Lv.1-Städte (nur neben eigenem Stronghold), max 2 Eroberungen/Tag bis Woche 4</li>
+        <li><b>Kimberly „Rocket Shadow"</b> Exklusivwaffe (Tag 4)</li></ul>
+        <div class="pclinks"><a href="#serum">Serum</a><a href="#cityclash">City Clash</a><a href="#weapons">Waffen</a></div></div></div>
+
+      <div class="phase"><div class="dot">D11</div><div class="pc" data-t="#wish"><div class="when">Ab Tag 11 · zum Thema →</div>
+        <h4>Wish Hero</h4>
+        <ul><li>Pro 200 Rekrutierungen einen freigeschalteten UR-Helden als Wunsch-Held wählen, jederzeit wechselbar.</li></ul>
+        <div class="pclinks"><a href="#wish">Wish Hero</a></div></div></div>
+
+      <div class="phase"><div class="dot">W2</div><div class="pc" data-t="#promotion"><div class="when">Woche 2 · zum Thema →</div>
+        <h4>Mason-Aufstieg &amp; Crimson Legion</h4>
+        <ul><li><b>Hero Promotion</b>: Mason SSR→UR (Dauer 42 Tage), am Donnerstag/VS zünden</li>
+        <li><b>Crimson Legion</b>: verteidigt Städte, Angriffe Di &amp; Fr, 30 Wellen (~90 Min)</li></ul>
+        <div class="pclinks"><a href="#promotion">Mason</a><a href="#legion">Crimson Legion</a></div>
+      </div></div>
+
+      <div class="phase"><div class="dot">W3</div><div class="pc" data-t="#troopboost"><div class="when">Woche 3 · zum Thema →</div>
+        <h4>Truppen-Boost, Outposts &amp; Cross-Server</h4>
+        <ul><li><b>Troop Type Boost</b>: Tank/Aircraft/Missile-Center bauen (bis Lv.30)</li>
+        <li><b>Outposts</b> (Dauer 35 Tage): in andere War Zones, Cross-Server-Angriffe</li>
+        <li><b>DVA</b>-Exklusivwaffe verfügbar</li></ul>
+        <div class="pclinks"><a href="#troopboost">Troop Boost</a><a href="#outposts">Outposts</a><a href="#weapons">Waffen</a></div>
+      </div></div>
+
+      <div class="phase"><div class="dot">W4</div><div class="pc" data-t="#wardec"><div class="when">Woche 4 · zum Thema →</div>
+        <h4>Kriegserklärungen &amp; Weichenstellung</h4>
+        <ul><li><b>War Declaration</b>: Städte in anderen War Zones (nur Mi &amp; Sa)</li>
+        <li><b>Infinite Octagon</b>: Warzone-Duell-Turnier (Ranking Sonntag Mitternacht W4)</li>
+        <li><b>Builder Alliances</b>: Wahl W4–W7 (permanent, kein City War mehr)</li></ul>
+        <div class="pclinks"><a href="#wardec">War Decl.</a><a href="#octagon">Octagon</a><a href="#builder">Builder</a></div>
+      </div></div>
+
+      <div class="phase"><div class="dot">W5-7</div><div class="pc" data-t="#octagon"><div class="when">Woche 5–7 · zum Thema →</div>
+        <h4>Warzone-Duell-Serie</h4>
+        <ul><li><b>Warzone Duel</b> (Infinite Octagon), 1 Runde/Woche, Kampf ums Capitol</li>
+        <li><b>Tesla</b>-Exklusivwaffe (Woche 6)</li>
+        <li>Capitol-Eroberung ab 28 Tage nach Start der City-Battles</li></ul>
+        <div class="pclinks"><a href="#octagon">Octagon/Duel</a><a href="#weapons">Waffen</a></div>
+      </div></div>
+
+      <div class="phase"><div class="dot">🏁</div><div class="pc" data-t="#endseason"><div class="when">Woche 8 · Tag 7 · zum Thema →</div>
+        <h4>Rewards &amp; Season-Ende</h4>
+        <ul><li>Belohnungsverteilung nach Beitrag (RS/Majordomos, per Mail)</li>
+        <li>Season-Ressourcen → Profession-EXP; Season-Gebäude &amp; Boni verschwinden</li>
+        <li><b style="color:var(--crimson2)">Exklusivwaffen bleiben; Season-Shop &amp; Medaillen bleiben nutzbar</b></li></ul>
+        <div class="pclinks"><a href="#endseason">Season-Ende</a></div>
+      </div></div>
+
+    </div>
+    <button class="morebtn" onclick="toggleRoadmap(this)">Mehr anzeigen &#9662;</button>
+  </div>
+</section>
+
+
+
+<!-- BASICS DE -->
+<section id="basics">
+  <div class="wrap">
+    <h2><span class="num">🧭</span> Grundlagen, immer im Blick <span class="when-badge">Durchgängig</span></h2>
+    <p class="lead">Die Dauer-Mechaniken, die die ganze Season über zählen. Antippen führt zum Detail-Abschnitt.</p>
+    <div class="basics">
+      <a href="#features"><b>🗺️ Karte &amp; Ziel</b><span>Neue Map, Städte der Legion, Capitol, Strongholds zuerst.</span></a>
+      <a href="#virus"><b>🦠 RA-Virus &amp; Resistenz</b><span>Virus Stacks 0–100, Debuffs, vor jedem Angriff Resistenz prüfen.</span></a>
+      <a href="#weather"><b>🌦️ Wetter = Timing</b><span>Sunny farmen, Light Rain riskante Elites, Acid Rain keine Rally.</span></a>
+      <a href="#protein"><b>💉 Resistenz-Motor</b><span>Protein-Farmen → Immune Proteins → Virus Research Institute.</span></a>
+    </div>
+  </div>
+</section>
+
+<!-- 1 FEATURES -->
+<section id="features">
+  <div class="wrap">
+    <h2><span class="num">1</span> Neue Features &amp; Season-Grundlagen <span class="when-badge">Grundlagen</span></h2>
+    <div class="grid">
+      <div class="card blue"><h4>🌍 Welt &amp; Karte</h4><ul class="plain" style="color:var(--muted)">
+        <li>Server-Map komplett neu, größer, voller neuer Kreaturen</li>
+        <li>Infizierte Dörfer, Strongholds &amp; das Capitol als <b>City of Apocalypse</b></li></ul></div>
+      <div class="card gold"><h4>🏙️ City Control</h4><ul class="plain" style="color:var(--muted)">
+        <li>Alle Städte gehören der <b>Lady in Red Legion</b></li>
+        <li>Start am Kartenrand in Allianz-Hives, kein Stadtbesitz</li>
+        <li>Ziel: Städte zurückerobern, zuerst die <b>Strongholds neben den Städten</b></li></ul></div>
+      <div class="card crimson"><h4>⚠️ Capitol</h4><ul class="plain" style="color:var(--muted)">
+        <li>Wer das Capitol vor der Season hält, behält es</li>
+        <li>Capitol-Eroberung erst <b>28 Tage nach</b> Start der City-Battles</li>
+        <li>Ministries bleiben zugänglich</li></ul></div>
+      <div class="card toxic"><h4>🧟 Neue Gegner</h4><ul class="plain" style="color:var(--muted)">
+        <li>Doom-Elite-Zombies → aggressive <b>Infecting Scorpions</b></li>
+        <li>Die meisten Zombies sind jetzt <b>infektiös</b></li></ul></div>
+    </div>
+    <div class="imgs">
+      <figure><img src="images/image.png" alt="New Features"><figcaption><b>Bild 1</b> · New Features</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Ankündigung<span class="kind">öffentlich · ohne Emoji · Bild 1</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>Season 1 „Crimson Plague" startet. Die Server-Karte ist komplett neu: größer, mit infizierten Dörfern, Strongholds und dem Capitol als City of Apocalypse. Alle Städte gehören zu Beginn der Lady in Red Legion. Wir starten am Kartenrand in unserem Hive, ganz ohne Stadtbesitz. Ziel ist es, Städte zurückzuerobern. Der Weg dorthin führt immer über die Strongholds direkt neben den Städten. Achtung: Die meisten Zombies sind jetzt infektiös und können unsere Truppen anstecken. Vorbereitung entscheidet.</pre></div>
+    <div class="charcount">Zeichen: ~500 · beim Kopieren wird Bild 1 als Anhang empfohlen</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Allianz-Mail<span class="kind">Chat · mit Emoji · kein Bild</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>🦠 SEASON 1 IST DA – „CRIMSON PLAGUE"! 🦠
+
+Leute, alles ist anders! 🗺️ Die Karte ist komplett neu, größer und voller neuer Viecher. Städte, infizierte Dörfer, Strongholds – und das Capitol ist jetzt die „City of Apocalypse". 😱
+
+👉 Wichtig zum Start:
+🔴 Alle Städte gehören der Lady in Red Legion – wir starten mit NULL Stadtbesitz am Rand, in unserem Hive.
+🏰 Um eine Stadt zu holen, brauchen wir IMMER zuerst den Stronghold direkt daneben.
+🏛️ Das Capitol kann erst 28 Tage nach Start der City-Battles erobert werden – Geduld!
+🧟 Fast alle Zombies stecken jetzt an. Ohne Resistenz verlieren wir Truppen.
+
+Macht euch bereit, wir ziehen das gemeinsam durch! 💪🔥</pre></div>
+  </div>
+</section>
+
+<!-- 2 VIRUS -->
+<section id="virus">
+  <div class="wrap">
+    <h2><span class="num">2</span> RA-Virus: Infektion, Resistenz &amp; Virus Stacks <span class="when-badge">Kernmechanik</span></h2>
+    <p class="lead">Das Herzstück der Season. Kämpfe gegen bestimmte Gegner infizieren deine Truppen. Ist das <b>Virus Research Institute</b> nicht hoch genug, sammeln sich <b>Virus Stacks (0–100)</b> an, je mehr, desto härter die Debuffs.</p>
+
+    <h3>Die zwei großen Risiken</h3>
+    <div class="grid">
+      <div class="card crimson"><h4>1 · Schadensreduktion</h4><p style="color:var(--muted);margin:0;font-size:14px">Ist das Zombie-Level höher als deine Virus-Resistenz, sinkt dein Schaden massiv. Beispiel aus dem Guide: benötigt <b>6.800</b> Resistenz, du hast <b>4.200</b> → <b>−96 % Schaden</b>. Vor jedem Angriff die geforderte Resistenz prüfen.</p></div>
+      <div class="card blue"><h4>2 · Neue Zombie-Typen</h4><p style="color:var(--muted);margin:0;font-size:14px">Zombies haben jetzt Typen: <b>Tank / Aircraft / Missile</b>. Truppenzusammensetzung anpassen, um Schaden zu maximieren und Verluste zu senken.</p></div>
+    </div>
+
+    <h3>Virus Stacks &amp; Debuffs</h3>
+    <table>
+      <tr><th>Schwelle</th><th>Debuff</th><th>Effekt</th></tr>
+      <tr><td class="prio">1</td><td><b>Hospital Stay</b></td><td>1 schwer verwundete Einheit alle 300–200s</td></tr>
+      <tr><td class="prio">20</td><td><b>Morale is Low</b></td><td>−4 % bis −20 % ausgeteilter Schaden</td></tr>
+      <tr><td class="prio">40</td><td><b>Fatal Virus</b></td><td>+4 % bis +10 % eigene Verluste</td></tr>
+      <tr><td class="prio">60</td><td><b>Virus Plague</b></td><td>6–10 % Chance, den Gegner selbst bei Sieg zu verlieren</td></tr>
+      <tr><td class="prio">100</td><td><b>Virus Blast</b></td><td>Nach 30s-Countdown explodiert die Basis, infiziert zufällig, auch Nachbarbasen. Max 100 Stacks = alle Debuffs zugleich.</td></tr>
+    </table>
+
+    <h3>Heilung &amp; Hilfe</h3>
+    <div class="grid">
+      <div class="card toxic"><h4>💉 Kuren</h4><ul class="plain" style="color:var(--muted)">
+        <li><b>Manual Cure:</b> Ally schickt Flugzeug → entfernt 1 Virus Stack</li>
+        <li><b>Auto Cure:</b> Stacks sinken langsam, wenn keine neue Infektion</li>
+        <li>Kuren schnell über Allianz-Chat anfordern</li></ul></div>
+      <div class="card gold"><h4>🆘 Bei niedriger Resistenz</h4><ul class="plain" style="color:var(--muted)">
+        <li>Verbündete mit höherer Resistenz um Hilfe bitten</li>
+        <li>Squad mit <b>Low-Command-Held (z.B. Loki)</b> + Rally auf Elite starten und Allys erledigen lassen</li>
+        <li>In Rallies zählt die Resistenz des Rally-Leaders für alle Teams</li></ul></div>
+    </div>
+    <div class="callout warn"><b>Auto-Rally-Warnung:</b> In Offline-Rallies eingebunden zu werden bedeutet Truppenverlust + Virus-Akkumulation. Lösung: Truppen zu Basen schicken, um Auto-Infektion zu vermeiden. Beim Angriff auf eine infizierte Basis werden Virus Stacks übertragen.</div>
+
+    <div class="imgs">
+      <figure><img src="images/2.png" alt="RA Virus"><figcaption><b>Bild 2</b> · RA Virus (Infektion &amp; Debuffs)</figcaption></figure>
+      <figure><img src="images/6.png" alt="Resistance Rally & PvE"><figcaption><b>Bild 6</b> · Rally- &amp; PvE-Resistenz</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Ankündigung<span class="kind">öffentlich · ohne Emoji · Bilder 2 &amp; 6</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>Das RA-Virus ist die Kernmechanik der Season. Kämpfe gegen bestimmte Gegner infizieren eure Truppen. Ist euer Virus Research Institute zu niedrig, sammeln sich Virus Stacks von 0 bis 100 an, und die Debuffs werden härter: ab Stufe 20 sinkt euer Schaden, ab 40 steigen Verluste, ab 60 könnt ihr Gegner trotz Sieg verlieren, bei 100 explodiert die Basis. Prüft vor jedem Angriff die geforderte Resistenz. Ist sie zu niedrig, greift nicht allein an, sondern fordert Kuren im Chat an oder startet eine Rally mit einem Ally, der höhere Resistenz hat.</pre></div>
+    <div class="charcount">Zeichen: ~540 · Bilder 2 und 6 mitposten</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Allianz-Mail<span class="kind">Chat · mit Emoji · kein Bild</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>🦠 DAS RA-VIRUS – LEST DAS, SONST VERLIERT IHR TRUPPEN! 🦠
+
+Kämpfe gegen infizierte Gegner stecken eure Truppen an. 🧟 Wenn euer Virus Research Institute zu niedrig ist, sammeln sich VIRUS STACKS (0–100) – und die machen euch fertig:
+🔸 Ab 20 → weniger Schaden 📉
+🔸 Ab 40 → mehr eigene Verluste 💀
+🔸 Ab 60 → ihr verliert Gegner sogar bei Sieg 😵
+🔸 Bei 100 → BOOM, Basis explodiert und steckt Nachbarn an! 💥
+
+✅ SO ÜBERLEBT IHR:
+🔍 IMMER erst die geforderte Resistenz checken, bevor ihr angreift!
+🆘 Zu niedrig? NICHT allein angreifen – Kur im Chat anfordern! ✈️
+🤝 Rally mit Ally starten, der mehr Resistenz hat – seine Resistenz gilt für die ganze Rally!
+🧑‍✈️ Trick: Squad mit Low-Command-Held (z.B. Loki) + Rally auf Elite, Allys erledigen ihn = kaum Verluste!
+
+⚠️ Vorsicht Auto-Rally: Schickt Truppen auf Basen, damit ihr nicht in fremde Offline-Rallies gezogen werdet!
+
+Fragt lieber einmal zu viel als einmal zu wenig! 💪</pre></div>
+  </div>
+</section>
+
+<!-- 3 WEATHER -->
+<section id="weather">
+  <div class="wrap">
+    <h2><span class="num">3</span> Wetter-System <span class="when-badge">Durchgängig</span></h2>
+    <p class="lead">Erste 2 Tage immer <b>Cloudy</b>, ab Tag 3 zufälliges Wetter, Wechsel alle 30 Min bis 8 h. <b>Monica</b> sagt 3 mögliche Wetter mit Wahrscheinlichkeit voraus.</p>
+    <table>
+      <tr><th>Wetter</th><th>Effekt</th></tr>
+      <tr><td><b>Acid Rain</b></td><td>Fügt periodisch Virus Stacks bei allen Basen der War Zone hinzu, Angriffe &amp; PvP möglichst vermeiden</td></tr>
+      <tr><td><b>Sunny</b></td><td>+30 % Profession-EXP beim Töten von Monstern</td></tr>
+      <tr><td><b>Foggy / Brumeux</b></td><td>Monster starten mit +2 Virus Stacks</td></tr>
+      <tr><td><b>Rainbow</b></td><td>Alle Commander erhalten reguläre Profession-EXP</td></tr>
+      <tr><td><b>Windy</b></td><td>Marschgeschwindigkeit −30 % (Rallies/Verstärkungen einplanen)</td></tr>
+      <tr><td><b>Light Rain</b></td><td>Truppen nehmen <b>keine</b> Virus Stacks auf → ideal für riskante Elite-/Zombie-Angriffe</td></tr>
+      <tr><td><b>Cloudy</b></td><td>Neutral, kein Effekt</td></tr>
+    </table>
+    <div class="callout tip"><b>Permeate:</b> Ist eine Basis infiziert, tragen ausgehende Teams 25 % ihrer Virus Stacks mit. <b>Strategie:</b> Bei <b>Sunny</b> Monster farmen (EXP), bei <b>Light Rain</b> gefährliche Elites angreifen, bei <b>Acid Rain</b> Rallies/Märsche vermeiden. Monicas Vorhersage nutzen, um Angriffe zu timen.</div>
+    <div class="imgs">
+      <figure><img src="images/3.png" alt="RA Virus continued / Weather"><figcaption><b>Bild 3</b> · Wetter, Permeate &amp; Tipps</figcaption></figure>
+      <figure><img src="images/4.png" alt="Weather"><figcaption><b>Bild 4</b> · Wetter-Regeln im Detail</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Ankündigung<span class="kind">öffentlich · ohne Emoji · Bilder 3 &amp; 4</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>Das Wetter steuert diese Season eure Taktik. Die ersten zwei Tage ist es bewölkt, ab Tag 3 wechselt es zufällig alle 30 Minuten bis 8 Stunden. Monica sagt drei mögliche Wetterlagen mit Wahrscheinlichkeit voraus, nutzt das zum Planen. Merkt euch: Bei Sunny gibt es plus 30 Prozent Profession-EXP durch Monster, also dann farmen. Bei Light Rain nehmen Truppen keine Virus Stacks auf, ideal für gefährliche Elite-Angriffe. Bei Acid Rain sammeln alle Basen Virus Stacks an, dann keine Rallies und keinen PvP. Bei Windy sinkt die Marschgeschwindigkeit um 30 Prozent.</pre></div>
+    <div class="charcount">Zeichen: ~560 · Bilder 3 und 4 mitposten</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Allianz-Mail<span class="kind">Chat · mit Emoji · kein Bild</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>🌦️ WETTER = TAKTIK! Timing ist alles diese Season! 🌦️
+
+Ab Tag 3 wechselt das Wetter zufällig (alle 30 Min – 8 Std). Monica 🔮 sagt euch 3 mögliche Wetter mit % voraus – schaut da REIN, bevor ihr plant!
+
+☀️ SUNNY → +30% Profession-EXP durch Monster → FARMEN!
+🌧️ LIGHT RAIN → Truppen kriegen KEINE Virus Stacks → jetzt gefährliche Elites angreifen! 💪
+☢️ ACID RAIN → alle Basen sammeln Virus Stacks → KEINE Rally, KEIN PvP! ⛔
+🌫️ FOGGY → Monster starten mit +2 Stacks 😬
+💨 WINDY → Marsch −30% → mehr Zeit für Rallies einplanen!
+☁️ CLOUDY → neutral, egal
+
+⚠️ Merkt euch: Ist eure Basis infiziert, schleppen eure Truppen 25% der Stacks mit raus (Permeate)!
+
+Kurz aufs Wetter schauen, dann angreifen – spart euch Truppen! 🧠🔥</pre></div>
+  </div>
+</section>
+
+<!-- 4 PROTEIN -->
+<section id="protein">
+  <div class="wrap">
+    <h2><span class="num">4</span> Protein-Farmen &amp; Virus Research Institute <span class="when-badge">Woche 1 · Tag 1</span></h2>
+    <p class="lead">Der Resistenz-Motor der Season. <b>Obj 01–02, Tag 1.</b> Freischalten und hochziehen, um Virus-Resistenz zu steigern.</p>
+    <h3>Der Aktions-Kreislauf</h3>
+    <table>
+      <tr><th>#</th><th>Schritt</th></tr>
+      <tr><td class="prio">1</td><td>Immer höhere Zombies töten (Lupe auf der Karte) → <b>Mutant Crystals</b> erhalten</td></tr>
+      <tr><td class="prio">2</td><td><b>Protein-Farm</b> upgraden → produziert <b>Immune Proteins</b></td></tr>
+      <tr><td class="prio">3</td><td>Proteine nutzen, um das <b>Virus Research Institute</b> zu upgraden</td></tr>
+      <tr><td class="prio">4</td><td>Zurück zu Schritt 1 (höhere Zombies möglich)</td></tr>
+    </table>
+    <div class="callout warn"><b>Tipp &amp; Vorsicht:</b> Niedrige Resistenz = hohe Truppenverluste. Ist der Debuff zu hoch (% ausgeteilter Schaden sehr niedrig), <b>nicht allein angreifen</b>. Sichere Alternative: Squad mit 1 Low-Command-Held (z.B. Loki), Rally auf einen Doom-Elite starten und Allys erledigen lassen → Mutant Crystals bei minimalem Verlust.</div>
+    <div class="callout tip"><b>Reward Chests:</b> Insgesamt 2.000 Virus Research Institutes reparieren (alle Commander der War Zone) · insgesamt 2.000 Protein-Farmen reparieren.</div>
+    <div class="imgs">
+      <figure><img src="images/11.png" alt="Protein Farms / Virus Research Institute"><figcaption><b>Bild 11</b> · Protein-Farmen &amp; Virus Research Institute</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Ankündigung<span class="kind">öffentlich · ohne Emoji · Bild 11</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>Ab Tag 1 gilt: Resistenz vor allem. Der Kreislauf ist einfach. Tötet immer höhere Zombies über das Lupen-Symbol auf der Karte und sammelt Mutant Crystals. Nutzt diese, um eure Protein-Farm zu upgraden, die dann Immune Proteins produziert. Mit den Proteinen levelt ihr das Virus Research Institute, das eure Resistenz erhöht. Danach könnt ihr stärkere Zombies angreifen, und der Kreislauf beginnt von vorne. Wichtig: Ist eure Resistenz zu niedrig, greift nicht allein an. Startet stattdessen eine Rally mit einem Low-Command-Helden wie Loki und lasst Verbündete den Elite erledigen.</pre></div>
+    <div class="charcount">Zeichen: ~580 · Bild 11 mitposten</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Allianz-Mail<span class="kind">Chat · mit Emoji · kein Bild</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>💉 TAG 1: RESISTENZ HOCHZIEHEN – DER WICHTIGSTE KREISLAUF! 💉
+
+Merkt euch diese 4 Schritte, das ist die ganze Season: 🔁
+1️⃣ Höhere Zombies töten (Lupe 🔍 auf der Karte) → Mutant Crystals 💎
+2️⃣ Protein-Farm upgraden → macht Immune Proteins 🥩
+3️⃣ Proteine rein ins Virus Research Institute → Resistenz steigt 🧪
+4️⃣ Jetzt stärkere Zombies möglich → zurück zu Schritt 1! ♻️
+
+⚠️ ACHTUNG: Ist eure Resistenz zu niedrig, verliert ihr HAUFENWEISE Truppen!
+🆘 Dann NICHT allein angreifen! Squad mit Loki (Low-Command) + Rally auf einen Doom-Elite → Allys machen ihn platt → ihr kriegt Crystals fast ohne Verluste! 🤝
+
+🎁 Gemeinsames Ziel: 2.000 Virus Research Institutes + 2.000 Protein-Farmen reparieren = Belohnungen für alle!
+
+Wer hier zuerst hochkommt, farmt zuerst die dicken Sachen! 🚀</pre></div>
+  </div>
+</section>
+
+<!-- 5 PURGE -->
+<section id="purge">
+  <div class="wrap">
+    <h2><span class="num">5</span> The Purge <span class="when-badge">Woche 1 · Tag 1 · 7 Tage</span></h2>
+    <p class="lead">Infizierte Zombies eliminieren und Strongholds sichern für bestes Einzel- und Allianz-Ranking.</p>
+    <div class="grid">
+      <div class="card crimson"><h4>⚔️ Purge Action (Einzel)</h4><ul class="plain" style="color:var(--muted)">
+        <li>Dauer 7 Tage, individuelles Event</li>
+        <li>Höchststufigen Zombie während des Events töten</li>
+        <li>Bei gleichem Level entscheidet die <b>Tötungsgeschwindigkeit</b></li>
+        <li>Belohnung: besser für höhere Ränge</li></ul></div>
+      <div class="card gold"><h4>🏰 Purge the Polluted Area (Allianz)</h4><ul class="plain" style="color:var(--muted)">
+        <li>Dauer 7 Tage, Allianz-Ranking</li>
+        <li>Basierend auf dem <b>höchststufigen eroberten Militär-Stronghold</b></li>
+        <li>Bei Gleichstand entscheidet die <b>Eroberungsgeschwindigkeit</b></li>
+        <li>Belohnung: besser für höher platzierte Allianzen</li></ul></div>
+    </div>
+    <div class="callout tip"><b>Settlement:</b> Tägliche Belohnungen kommen per Mail.</div>
+    <div class="imgs">
+      <figure><img src="images/13.png" alt="The Purge"><figcaption><b>Bild 13</b> · The Purge</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Ankündigung<span class="kind">öffentlich · ohne Emoji · Bild 13</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>The Purge läuft ab Tag 1 über 7 Tage und hat zwei Teile. Im Einzel-Teil zählt der höchststufige Zombie, den ihr tötet. Bei gleichem Level entscheidet, wer schneller tötet, also nutzt eure Ausdauer gezielt. Im Allianz-Teil geht es um den höchststufigen Militär-Stronghold, den wir gemeinsam erobern. Bei Gleichstand gewinnt die Allianz, die schneller erobert. Bessere Ränge bringen bessere Belohnungen. Konzentriert euch also auf hohe Zombie-Level und koordinierte Stronghold-Einnahmen. Die Belohnungen kommen täglich per Mail.</pre></div>
+    <div class="charcount">Zeichen: ~560 · Bild 13 mitposten</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Allianz-Mail<span class="kind">Chat · mit Emoji · kein Bild</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>🧟 THE PURGE – 7 TAGE, ZWEI RANKINGS, DICKE BELOHNUNGEN! 🧟
+
+Läuft ab Tag 1 – hier holen wir uns Ränge! 🏆
+
+👤 EINZEL (Purge Action):
+🔹 Zählt: der höchststufige Zombie, den DU tötest!
+🔹 Gleiches Level? → wer schneller tötet, gewinnt ⏱️ → Ausdauer clever einsetzen!
+
+🏰 ALLIANZ (Purge the Polluted Area):
+🔹 Zählt: unser höchststufiger eroberter Militär-Stronghold!
+🔹 Gleichstand? → wer schneller erobert, gewinnt! → also KOORDINIERT ran! 🤝
+
+🎁 Bessere Ränge = bessere Belohnungen (kommen täglich per Mail 📬)
+
+👉 Fokus: höchste Zombies knacken + bei den Stronghold-Rallies mitfahren! Sagt Bescheid, wenn ihr einen Elite nicht allein schafft! 💪🔥</pre></div>
+  </div>
+</section>
+
+<!-- 6 SERUM -->
+<section id="serum">
+  <div class="wrap">
+    <h2><span class="num">6</span> Serum Collection <span class="when-badge">Woche 1 · Tag 2</span></h2>
+    <p class="lead">Genetic Research Project, Vorspiel zur Serum-Collection-Mission. <b>Obj 03, Tag 2.</b></p>
+    <ul class="check">
+      <li><b>Reward Chest:</b> Alle War Zones spenden 3.000.000 Food (zählt wie Alliance-Tech-Spenden), die Woche über wiederholen für Allianz-Beiträge</li>
+      <li><b>So funktioniert's:</b> Täglich ein Puzzle-Rätsel (ähnlich Tetris), alle Serum-Fragmente in möglichst wenigen Zügen einsammeln, Blöcke zu Linien legen</li>
+      <li><b>Serum-Shop:</b> Fragmente im speziellen Season-1-Serum-Shop eintauschen. Serum gibt's auch über den Season-Skill beim Zombie-Töten</li>
+      <li><b>Priorität:</b> UR-Items zuerst, manche SSR-Items lohnen auch. Shop refresht wöchentlich → nicht alles auf einmal ausgeben</li>
+    </ul>
+    <div class="imgs">
+      <figure><img src="images/12.png" alt="Serum Collection"><figcaption><b>Bild 12</b> · Serum Collection &amp; Serum-Shop</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Ankündigung<span class="kind">öffentlich · ohne Emoji · Bild 12</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>Ab Tag 2 läuft die Serum Collection. Als Allianz spenden alle War Zones 3 Millionen Food, das zählt wie Alliance-Tech-Spenden, also spendet die Woche über fleißig für unsere Beiträge. Täglich gibt es ein Puzzle ähnlich Tetris, bei dem ihr Serum-Fragmente in möglichst wenigen Zügen einsammelt, indem ihr Blöcke zu Linien legt. Die Fragmente tauscht ihr im speziellen Season-1-Serum-Shop ein. Serum bekommt ihr auch über den Season-Skill beim Zombie-Töten. Kauft zuerst UR-Items, manche SSR lohnen auch. Der Shop wird wöchentlich aufgefrischt.</pre></div>
+    <div class="charcount">Zeichen: ~600 · Bild 12 mitposten</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Allianz-Mail<span class="kind">Chat · mit Emoji · kein Bild</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>🧬 SERUM COLLECTION – ab Tag 2! Gratis Beute + Allianz-Punkte! 🧬
+
+So läuft's:
+🍞 Allianz-Ziel: Alle War Zones spenden 3 Mio. Food → zählt wie Tech-Spenden! Also SPENDET die ganze Woche über! 🙌
+🧩 Täglich ein Tetris-Puzzle: sammelt die Serum-Fragmente in möglichst WENIGEN Zügen ein (Blöcke zu Linien legen)!
+🛒 Fragmente im Season-1-Serum-Shop eintauschen 💊
+🧟 Bonus: Serum gibt's auch über den Season-Skill beim Zombie-Töten!
+
+💡 TIPP: Zuerst UR-Items kaufen (manche SSR lohnen auch)! Der Shop refresht JEDE Woche 🔄 – nicht alles auf einmal raushauen, plant eure Käufe!
+
+Macht das Puzzle täglich – kostet nix und bringt richtig was! ✅💪</pre></div>
+  </div>
+</section>
+
+<!-- 7 CITY CLASH -->
+<section id="cityclash">
+  <div class="wrap">
+    <h2><span class="num">7</span> City Clash: Strongholds &amp; Städte <span class="when-badge">Woche 1–4</span></h2>
+    <p class="lead">Der PvP-Kern. Städte gehören der Legion, erobert werden sie nur über angrenzende Strongholds.</p>
+    <div class="callout warn"><b>Grundregeln:</b> Ab Tag 1 Militär-Strongholds einnehmbar · Stadt nur erobern, wenn angrenzender Stronghold gehört · max 2 Strongholds/Tag, anfangs max 3 · ab Tag 3 Lv.1-Städte · nur <b>2 Stadt-Eroberungen (War Declarations) pro Tag bis Woche 4</b> · eine Allianz kann max 7 Städte halten (8 bei Lv.6-Stadt).</div>
+    <h3>Wochen-Ziele &amp; Reward Chests (Server-Zeit)</h3>
+    <table>
+      <tr><th>Zeit</th><th>Ziel-Objekt</th><th>Collective Goal</th></tr>
+      <tr><td><b>W1 Tag 1–3</b></td><td>Lv.1-Städte ab Mi 12:00</td><td>80 Strongholds</td></tr>
+      <tr><td><b>W1 Tag 3–7</b></td><td>Lv.2-Städte ab So 12:00</td><td>80 Lv.1-Städte</td></tr>
+      <tr><td><b>W2 Tag 1–3</b></td><td>Lv.3-Städte ab Mi</td><td>64 Lv.2-Städte</td></tr>
+      <tr><td><b>W2 Tag 3–7</b></td><td>Lv.4-Städte ab So</td><td>48 Lv.3-Städte</td></tr>
+      <tr><td><b>W3 Tag 1–3</b></td><td>Lv.5-Städte ab Mi</td><td>32 Lv.4-Städte</td></tr>
+      <tr><td><b>W3 Tag 3–7</b></td><td>Lv.6-Städte ab So</td><td>16 Lv.5-Städte</td></tr>
+      <tr><td><b>W4 Tag 5–7</b></td><td>Lv.7-Städte ab So</td><td>10 Strongholds in anderen War Zones</td></tr>
+    </table>
+    <div class="callout tip"><b>City Fighting (Capture-Tipps aus Bild 5):</b> Stadt zum gewählten Zeitpunkt eng umzingeln &amp; zusammenbleiben · verteidigte Stadt → mit den 5–10 stärksten Spielern als Rammbock durchbrechen &amp; Durability angreifen · leere Stadt → alle Squads reinschicken zum Durability-Test · in Wellen à 300–950 heilen, dann Allianz-Hilfe. <b>Eligible:</b> Allianz muss mind. eine Lv.6-Stadt halten. <b>Sieg:</b> 4 h durchgehende Besetzung oder längste Gesamt-Besetzung am Event-Ende. <b>Wichtig:</b> City-Durability-Tech ausbauen, bevor die City Wars starten!</div>
+    <div class="imgs">
+      <figure><img src="images/7.png" alt="City Clash S1"><figcaption><b>Bild 7</b> · City Clash · Wochen-Ziele</figcaption></figure>
+      <figure><img src="images/5.png" alt="Tips & Tricks"><figcaption><b>Bild 5</b> · Tips &amp; Tricks · City Fighting</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Ankündigung<span class="kind">öffentlich · ohne Emoji · Bilder 7 &amp; 5</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>City Clash ist unser PvP-Kern. Merkt euch die Regeln: Ab Tag 1 nehmen wir Militär-Strongholds ein, maximal 2 pro Tag. Eine Stadt können wir nur erobern, wenn wir den angrenzenden Stronghold besitzen. Ab Tag 3 sind Lv.1-Städte dran, aber nur 2 Eroberungen pro Tag bis Woche 4. Jede Woche steigt das Ziel-Level der Städte. Zum Erobern umzingeln wir die Stadt eng und bleiben zusammen. Ist sie verteidigt, brechen die 5 bis 10 Stärksten als Rammbock durch. Heilt in Wellen und nutzt danach die Allianz-Hilfe. Baut vorher unbedingt die City-Durability-Tech aus.</pre></div>
+    <div class="charcount">Zeichen: ~590 · Bilder 7 und 5 mitposten</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Allianz-Mail<span class="kind">Chat · mit Emoji · kein Bild</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>🏰 CITY CLASH – SO HOLEN WIR STÄDTE! 🏰
+
+📜 DIE REGELN (wichtig!):
+🔹 Ab Tag 1: Strongholds einnehmen (max 2/Tag) 💪
+🔹 Stadt geht NUR mit angrenzendem Stronghold! 🧱
+🔹 Ab Tag 3: Lv.1-Städte, aber nur 2 Eroberungen/Tag bis Woche 4 ⏳
+🔹 Jede Woche steigt das Ziel-Level (Lv.1 → Lv.7) 📈
+
+⚔️ SO KNACKEN WIR EINE STADT:
+1️⃣ Zur abgesprochenen Zeit ENG umzingeln, zusammenbleiben!
+2️⃣ Verteidigt? → die 5–10 Stärksten als Rammbock 🐏 → Durability runter!
+3️⃣ Leer? → ALLE Squads rein, Durability testen!
+4️⃣ In Wellen à 300–950 heilen → dann Allianz-Hilfe drücken! 🏥
+
+🛠️ PFLICHT VORHER: City-Durability-Tech ausbauen, sonst fällt unsere Stadt in Sekunden!
+🎯 Ziel: 4 Std. durchgehend halten ODER längste Gesamtzeit! Mind. eine Lv.6-Stadt = wir sind dabei!
+
+Rally-Zeiten kommen – seid pünktlich! ⏰🔥</pre></div>
+  </div>
+</section>
+
+<!-- 8 WEAPONS -->
+<section id="weapons">
+  <div class="wrap">
+    <h2><span class="num">8</span> Exklusivwaffen: Kimberly · DVA · Tesla <span class="when-badge">Woche 1 · 3 · 6 · Tag 4</span></h2>
+    <p class="lead">Ab Tag 4 der jeweiligen Woche: Kimberly „Rocket Shadow" (W1), DVA (W3/W6), Tesla (W6).</p>
+    <div class="grid">
+      <div class="card gold"><h4>✅ Aktivierung</h4><ul class="plain" style="color:var(--muted)">
+        <li>Held auf <b>5 Sterne</b> + <b>50 zugehörige Exclusive Weapon Shards</b></li>
+        <li>Waffe kann jederzeit aktiviert werden, aber nur nutzbar bis der Held 5★ ist</li></ul></div>
+      <div class="card blue"><h4>🧩 Shard-Quellen</h4><ul class="plain" style="color:var(--muted)">
+        <li>Exclusive Weapon Battle Pass (70 Shards = aktivieren + Level 2)</li>
+        <li>Universal Shards: Serum-Shop, VS-Duell-Truhen, Black-Market-Event, bestimmte Season-2-Aktivitäten</li></ul></div>
+      <div class="card crimson"><h4>⚙️ Werte</h4><ul class="plain" style="color:var(--muted)">
+        <li>Max <b>Level 30</b> (Upgrade sehr materialintensiv)</li>
+        <li>Boosts: HP, ATK, DEF, All-Damage-Resistance</li>
+        <li>Special: erhöht das Skill-Level-Cap des Helden</li></ul></div>
+    </div>
+    <div class="imgs">
+      <figure><img src="images/8.png" alt="Kim/DVA/Tesla Exclusive Weapons"><figcaption><b>Bild 8</b> · Kim/DVA/Tesla Übersicht</figcaption></figure>
+      <figure><img src="images/9.png" alt="Kimberly Rocket Shadow"><figcaption><b>Bild 9</b> · Kimberly „Rocket Shadow" (W1)</figcaption></figure>
+      <figure><img src="images/10.png" alt="DVA Exclusive Weapon"><figcaption><b>Bild 10</b> · DVA Exklusivwaffe (W3)</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Ankündigung<span class="kind">öffentlich · ohne Emoji · Bilder 8, 9 &amp; 10</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>Die Exklusivwaffen kommen ab Tag 4 der jeweiligen Woche: Kimberlys Rocket Shadow in Woche 1, DVA in Woche 3 und Tesla in Woche 6. Zum Aktivieren braucht ihr den Helden auf 5 Sternen und 50 passende Weapon Shards. Die Waffe wirkt nur, solange der Held 5 Sterne hat. Shards bekommt ihr vor allem über den Exclusive Weapon Battle Pass, mit 70 Shards aktiviert ihr die Waffe und erreicht Level 2. Universal Shards gibt es im Serum-Shop, in VS-Duell-Truhen und im Black-Market-Event. Die Waffe geht bis Level 30 und boostet HP, ATK, DEF und Schadensresistenz.</pre></div>
+    <div class="charcount">Zeichen: ~590 · Bilder 8, 9 und 10 mitposten</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Allianz-Mail<span class="kind">Chat · mit Emoji · kein Bild</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>🔫 EXKLUSIVWAFFEN: Kimberly, DVA &amp; Tesla! 🔫
+
+Ab Tag 4 der jeweiligen Woche verfügbar:
+🗓️ Woche 1 → Kimberly „Rocket Shadow"
+🗓️ Woche 3 → DVA
+🗓️ Woche 6 → Tesla
+
+✅ AKTIVIEREN:
+⭐ Held auf 5 Sterne bringen
+🧩 + 50 passende Weapon Shards
+⚠️ Die Waffe wirkt NUR, solange der Held 5★ ist!
+
+💰 SHARDS HOLEN:
+🎟️ Exclusive Weapon Battle Pass (70 Shards = aktiviert + Level 2!) – bester Deal
+🛒 Universal Shards: Serum-Shop, VS-Duell-Truhen, Black-Market-Event
+
+📈 Waffe geht bis Level 30, boostet HP/ATK/DEF + Schadensresistenz und hebt das Skill-Cap des Helden!
+
+💡 Wer auf Kimberly/DVA/Tesla setzt: Shards sammeln lohnt sich richtig! 🔥</pre></div>
+  </div>
+</section>
+
+<!-- 9 WISH HERO -->
+<section id="wish">
+  <div class="wrap">
+    <h2><span class="num">9</span> Wish Hero <span class="when-badge">Ab Tag 11</span></h2>
+    <p class="lead">Ab Tag 11 der Season kannst du einen Wunsch-Helden wählen.</p>
+    <ul class="check">
+      <li>Für je <b>200 Rekrutierungen</b> einen freigeschalteten <b>UR-Helden</b> aus dem Pool als Wish-Hero-Belohnung wählen</li>
+      <li>Wish Hero jederzeit wechselbar</li>
+      <li>Rekrutieren ist kosteneffizienter, <b>nachdem</b> der Wish aktiv ist → nach Tag 11 gezielt rekrutieren</li>
+    </ul>
+    <div class="imgs">
+      <figure><img src="images/29.jpg" alt="Wish Hero Update"><figcaption><b>Bild 29</b> · Wish Hero Update</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Ankündigung<span class="kind">öffentlich · ohne Emoji · Bild 29</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>Ab Tag 11 der Season könnt ihr einen Wish Hero, also einen Wunsch-Helden, wählen. Für je 200 Rekrutierungen dürft ihr einen freigeschalteten UR-Helden aus dem Pool als Belohnung aussuchen. Euren Wish Hero könnt ihr jederzeit wechseln, falls ihr euch umentscheidet. Wichtig für eure Ressourcen: Das Rekrutieren ist deutlich kosteneffizienter, nachdem der Wish aktiv ist. Spart also eure Rekrutierungs-Tickets und startet gezielt erst nach Tag 11 durch, sobald ihr euren Wunsch-Helden festgelegt habt. So holt ihr das Maximum aus jeder Rekrutierung heraus.</pre></div>
+    <div class="charcount">Zeichen: ~560 · Bild 29 mitposten</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Allianz-Mail<span class="kind">Chat · mit Emoji · kein Bild</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>⭐ WISH HERO – ab Tag 11! Spart eure Tickets! ⭐
+
+🎯 Ab Tag 11 könnt ihr einen WUNSCH-HELDEN wählen!
+🔁 Für je 200 Rekrutierungen → 1 freigeschalteter UR-Held aus dem Pool, den IHR aussucht!
+🔄 Jederzeit wechselbar – kein Stress bei der Wahl!
+
+💡 SUPER WICHTIG FÜR EURE RESSOURCEN:
+Rekrutieren ist VIEL günstiger, NACHDEM der Wish aktiv ist! 💰
+👉 Also: Rekrutierungs-Tickets JETZT sparen und erst nach Tag 11 loslegen, wenn ihr euren Wunsch-Helden festgelegt habt!
+
+Nicht vorher verpulvern – Geduld zahlt sich hier richtig aus! 🧠🔥</pre></div>
+  </div>
+</section>
+
+<!-- 10 MASON -->
+<section id="promotion">
+  <div class="wrap">
+    <h2><span class="num">10</span> Hero Promotion: Mason SSR → UR <span class="when-badge">Woche 2 · Dauer 42 Tage</span></h2>
+    <p class="lead">Mason von SSR (5★) zu UR-Legendary befördern, inkl. Armored Vehicle. <b>Obj 01, D1.</b></p>
+    <div class="callout gold"><b>Punkte maximieren:</b> 1) Bis <b>Donnerstag (VS-Duell Hero-Tag)</b> warten, dann befördern. 2) Vorher Mason auf 5★ + SSR-Universal-Shards, Wall-of-Honor-Level maxen (alle SSR-Shards auf ihn), alle Skill-Medaillen auf Mason. 3) Nach UR-Beförderung refundete Shards &amp; Medaillen per Mail einsammeln und reinvestieren.</div>
+    <table>
+      <tr><th>Thema</th><th>Detail</th></tr>
+      <tr><td><b>Voraussetzung</b></td><td>Legendary Hero Badge · Mason muss 5★ sein</td></tr>
+      <tr><td><b>Nach Beförderung</b></td><td>Mason kann via SSR-Universal/Mason-Fragmente zurück auf 5★ (1.600 Shards ab 5★). Skill-Medaillen frei umverteilbar.</td></tr>
+      <tr><td><b>Refunds</b></td><td>Shards fürs 5★-Anheben werden <b>nicht</b> erstattet · Wall-of-Honor-Fragmente werden als Mason-Shards erstattet · alle Skill-Medaillen erstattet</td></tr>
+      <tr><td><b>Reward Chest</b></td><td>Alle War Zones spenden 5.000.000 Coins (Alliance-Tech)</td></tr>
+      <tr><td><b>EXP Level Swap</b></td><td>Simultan-Event: 2 Helden tauschen EXP-Level, ideal, hohes Level auf Schlüsselheld zu übertragen</td></tr>
+    </table>
+    <div class="imgs">
+      <figure><img src="images/14.png" alt="Hero Promotion Mason"><figcaption><b>Bild 14</b> · Hero Promotion (Mason)</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Ankündigung<span class="kind">öffentlich · ohne Emoji · Bild 14</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>Ab Woche 2 läuft die Hero Promotion: Mason wird von SSR zu UR-Legendary befördert, inklusive Armored Vehicle. So holt ihr die meisten Punkte: Wartet mit der Beförderung bis Donnerstag, dem Hero-Tag im VS-Duell. Bringt Mason vorher auf 5 Sterne, maxt sein Wall-of-Honor-Level und legt alle Skill-Medaillen auf ihn. Nach der Beförderung bekommt ihr Wall-of-Honor-Fragmente und alle Skill-Medaillen per Mail zurück und könnt sie neu investieren. Die Shards fürs 5-Sterne-Anheben werden nicht erstattet. Voraussetzung ist ein Legendary Hero Badge und Mason auf 5 Sternen.</pre></div>
+    <div class="charcount">Zeichen: ~590 · Bild 14 mitposten</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Allianz-Mail<span class="kind">Chat · mit Emoji · kein Bild</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>🦸 HERO PROMOTION: MASON SSR → UR! Timing = Punkte! 🦸
+
+Ab Woche 2 könnt ihr Mason zu UR-Legendary machen (mit Armored Vehicle 🚗). ABER: Timing entscheidet über eure VS-Punkte!
+
+🗓️ REGEL NR. 1: Erst am DONNERSTAG (Hero-Tag im VS-Duell) befördern! ⏰
+Vorher vorbereiten:
+⭐ Mason auf 5 Sterne + SSR-Universal-Shards
+🏛️ Wall of Honor maxen (alle SSR-Shards auf Mason!)
+🎖️ ALLE Skill-Medaillen auf Mason legen!
+
+♻️ NACH der Beförderung:
+📬 Ihr kriegt Wall-of-Honor-Fragmente + alle Skill-Medaillen ZURÜCK per Mail → neu investieren!
+⚠️ ABER: Shards fürs 5★-Anheben gibt's NICHT zurück!
+
+📋 Voraussetzung: Legendary Hero Badge + Mason auf 5★.
+🎁 Allianz-Ziel: 5 Mio. Coins spenden!
+
+Sammelt eure Medaillen & Shards JETZT – und zündet Donnerstag! 💥</pre></div>
+  </div>
+</section>
+
+<!-- 11 CRIMSON LEGION -->
+<section id="legion">
+  <div class="wrap">
+    <h2><span class="num">11</span> Crimson Legion <span class="when-badge">Woche 2 · Dauer 17 Tage</span></h2>
+    <p class="lead">Allianz-Städte gegen wiederholte Angriffe der Crimson Legion verteidigen. <b>Obj 02, D2.</b></p>
+    <table>
+      <tr><th>Thema</th><th>Detail</th></tr>
+      <tr><td><b>Reward Chest</b></td><td>800 Cursed Elites eliminieren</td></tr>
+      <tr><td><b>Ablauf</b></td><td>Legion kündigt Ziele vorher an → Zeit zum Vorbereiten. Angriffe jeden <b>Dienstag &amp; Freitag</b>. Erster Angriff Di 12:00 auf eure schwächste Stadt.</td></tr>
+      <tr><td><b>Angriffsprozess</b></td><td>Countdown → Ziel-Ankündigung, 12 h Vorlauf bis zur Schlacht. <b>30 Wellen</b>, je 1 Min Abstand (~90 Min gesamt). Bis 20 Spieler können verstärken. Wellenstärke steigt mit jedem Angriff.</td></tr>
+      <tr><td><b>Richtwerte</b></td><td>Lv.2-Stadt 3,3–8,2M · Lv.3 11,8–21,2M · Lv.4 bis 26,4M · Lv.5 bis 29,3M</td></tr>
+      <tr><td><b>Ausgang</b></td><td><b>Sieg:</b> Allianz-Belohnung, Verteidiger besser. <b>Niederlage:</b> Stadt nimmt Schaden; sinkt Durability auf 0 → Stadt verloren, verfällt zur Ruine, dann 7-Tage-Schutz.</td></tr>
+    </table>
+    <div class="imgs">
+      <figure><img src="images/15.png" alt="Crimson Legion"><figcaption><b>Bild 15</b> · Crimson Legion</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Ankündigung<span class="kind">öffentlich · ohne Emoji · Bild 15</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>Ab Woche 2 greift die Crimson Legion unsere Städte an. Sie kündigt ihre Ziele vorher an, wir haben also Zeit zum Vorbereiten. Angriffe kommen jeden Dienstag und Freitag, der erste Dienstag um 12 Uhr auf unsere schwächste Stadt. Pro Angriff gibt es 30 Wellen im Minutentakt, das dauert rund 90 Minuten, und die Wellen werden stärker. Bis zu 20 Spieler können eine Stadt verstärken, also stationiert rechtzeitig Truppen. Verlieren wir und die Durability fällt auf null, geht die Stadt verloren und wird zur Ruine. Als Ziel müssen wir 800 Cursed Elites eliminieren.</pre></div>
+    <div class="charcount">Zeichen: ~590 · Bild 15 mitposten</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Allianz-Mail<span class="kind">Chat · mit Emoji · kein Bild</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>🔴 CRIMSON LEGION GREIFT AN – STÄDTE VERTEIDIGEN! 🔴
+
+Ab Woche 2 stürmt die Legion unsere Städte! Gute Nachricht: sie kündigt vorher an! 📢
+
+📅 WANN: Jeden Dienstag &amp; Freitag! Erster Angriff Di 12:00 auf unsere SCHWÄCHSTE Stadt!
+⏱️ ABLAUF: Countdown → 12 Std. Vorlauf → dann 30 Wellen im Minutentakt (~90 Min), immer stärker! 📈
+🛡️ Bis zu 20 Spieler können pro Stadt verstärken → RECHTZEITIG Truppen reinstellen!
+
+💪 Richtwerte Wellenstärke:
+🔹 Lv.2-Stadt: 3,3–8,2M
+🔹 Lv.3-Stadt: 11,8–21,2M
+🔹 Lv.4-Stadt: bis 26,4M
+🔹 Lv.5-Stadt: bis 29,3M
+
+⚠️ Verlieren = Stadt nimmt Schaden. Durability auf 0 → Stadt WEG (wird Ruine)! 💀
+🎁 Ziel: 800 Cursed Elites eliminieren!
+
+Wenn eure Stadt drankommt: sofort Bescheid geben, wir verstärken gemeinsam! 🤝🔥</pre></div>
+  </div>
+</section>
+
+<!-- 12 TROOP BOOST -->
+<section id="troopboost">
+  <div class="wrap">
+    <h2><span class="num">12</span> Troop Type Boost: Seasonale Militärgebäude <span class="when-badge">Woche 3 · Tag 1</span></h2>
+    <p class="lead">Die seasonalen Militärgebäude freischalten. <b>Obj 01, D1.</b></p>
+    <ul class="check">
+      <li><b>Reward Chest:</b> Global-Server-Ziel, alle War Zones spenden 5.000.000 Coins</li>
+      <li><b>Neue Gebäude:</b> Tank Center · Aircraft Center · Missile Center, verschwinden am Season-Ende</li>
+      <li>Bis <b>Level 30</b> ausbaubar · jedes Level +2 % HP/ATK/DEF für den entsprechenden Helden-Typ</li>
+      <li><b>Ressourcen:</b> Lv.1 = 4,2k Immune Proteins + 4,2k Mutant Crystals (+1 % Bonus) · Lv.2 = 15,6k + 7,8k (+2 %) · höhere Level gleiche Progression</li>
+    </ul>
+    <div class="imgs">
+      <figure><img src="images/16.png" alt="Troop Type Boost"><figcaption><b>Bild 16</b> · Troop Type Boost</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Ankündigung<span class="kind">öffentlich · ohne Emoji · Bild 16</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>Ab Woche 3 schalten wir die seasonalen Militärgebäude frei: Tank Center, Aircraft Center und Missile Center. Jedes Gebäude boostet den passenden Helden-Typ und lässt sich bis Level 30 ausbauen, wobei jedes Level zwei Prozent mehr HP, Angriff und Verteidigung bringt. Für Level 1 braucht ihr 4200 Immune Proteins und 4200 Mutant Crystals, für Level 2 schon 15600 und 7800. Hebt die Gebäude, die zu euren Haupttruppen passen, gezielt an. Achtung: Diese Gebäude verschwinden am Ende der Season wieder. Als Allianz-Ziel spenden alle War Zones 5 Millionen Coins.</pre></div>
+    <div class="charcount">Zeichen: ~590 · Bild 16 mitposten</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Allianz-Mail<span class="kind">Chat · mit Emoji · kein Bild</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>🏗️ TROOP TYPE BOOST – neue Militärgebäude ab Woche 3! 🏗️
+
+Drei neue Season-Gebäude schalten frei:
+🛡️ Tank Center
+✈️ Aircraft Center
+🚀 Missile Center
+
+📈 Jedes Level: +2% HP/ATK/DEF für den passenden Helden-Typ – bis Level 30!
+💡 TIPP: Levelt zuerst das Gebäude, das zu EUREN Haupttruppen passt!
+
+🧱 Ressourcen:
+🔹 Lv.1: 4,2k Immune Proteins + 4,2k Mutant Crystals
+🔹 Lv.2: 15,6k + 7,8k
+🔹 danach gleiche Progression
+
+⚠️ Achtung: Diese Gebäude verschwinden am Season-Ende wieder – aber der Boost hilft uns JETZT in den Kriegen!
+🎁 Allianz-Ziel: 5 Mio. Coins spenden!
+
+Baut clever – jeder Prozent zählt im City War! 💪🔥</pre></div>
+  </div>
+</section>
+
+<!-- 13 OUTPOSTS -->
+<section id="outposts">
+  <div class="wrap">
+    <h2><span class="num">13</span> Outposts &amp; Cross-Server <span class="when-badge">Woche 3 · Dauer 35 Tage</span></h2>
+    <p class="lead">Outposts in anderen War Zones platzieren, dort Strongholds &amp; Städte erobern, Cross-Server-Angriffe starten. <b>Obj 02, D1.</b></p>
+    <table>
+      <tr><th>Thema</th><th>Detail</th></tr>
+      <tr><td><b>Reward Chest</b></td><td>Ranking nach Cross-Server-Kills/Eroberungen · Shared Chest: 80 Strongholds in anderen War Zones</td></tr>
+      <tr><td><b>Platzierung</b></td><td>Nur <b>R4/R5</b>, in einer anderen Warzone. Einmal platziert nicht entfernbar. Erlaubt Eroberung des Strongholds, auf dem er steht (muss während der Eroberung gebaut bleiben).</td></tr>
+      <tr><td><b>Teleport</b></td><td>Freies Teleportieren zwischen War Zones, um vom Outpost anzugreifen. Outpost ist im Bau geschützt, danach direkt angreifbar (keine Rally nötig). Bei Zerstörung alle 24 h neu baubar.</td></tr>
+      <tr><td><b>Max</b></td><td>4 Outposts</td></tr>
+      <tr><td><b>Kampfregeln</b></td><td>Nicht-Kriegstage (Mo–Fr + So): nur Contaminated Land + Cross-Server-Angriffe. Bis Woche 4: Tag 2 → nur Krieg/Strongholds, alle 2 Tage, 2/Tag. Ab Woche 4 Tag 3 → auch War Declarations, Mi &amp; Sa, 2/Tag.</td></tr>
+    </table>
+    <div class="imgs">
+      <figure><img src="images/17.png" alt="Outposts"><figcaption><b>Bild 17</b> · Outposts &amp; Kampfregeln</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Ankündigung<span class="kind">öffentlich · ohne Emoji · Bild 17</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>Ab Woche 3 kommen die Outposts für den Cross-Server-Krieg. Nur R4 und R5 können sie in anderen War Zones platzieren, und einmal gesetzt lassen sie sich nicht mehr entfernen. Ein Outpost erlaubt die Eroberung des Strongholds, auf dem er steht, und muss dabei gebaut bleiben. Von dort teleportiert ihr euch frei zwischen den War Zones, um anzugreifen. Wir können maximal 4 Outposts halten. An Nicht-Kriegstagen sind nur Contaminated Land und Cross-Server-Angriffe erlaubt. Als gemeinsames Ziel erobern wir 80 Strongholds in anderen War Zones. Sprecht die Platzierungen im Führungsteam ab.</pre></div>
+    <div class="charcount">Zeichen: ~600 · Bild 17 mitposten</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Allianz-Mail<span class="kind">Chat · mit Emoji · kein Bild</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>🛰️ OUTPOSTS – Cross-Server-Krieg ab Woche 3! 🛰️
+
+Jetzt greifen wir andere War Zones an! 🌍
+
+📍 PLATZIERUNG: Nur R4/R5 setzen Outposts in fremde Warzones!
+⚠️ Einmal gesetzt = NICHT mehr entfernbar → also gut absprechen!
+🏰 Ein Outpost erlaubt die Eroberung des Strongholds, auf dem er steht (muss dabei gebaut bleiben!)
+🚀 Von dort: FREIER Teleport zwischen War Zones zum Angreifen!
+🔢 Max 4 Outposts gleichzeitig!
+🔧 Zerstört? → alle 24 Std. neu baubar!
+
+⚔️ KAMPFREGELN:
+🔹 Nicht-Kriegstage (Mo–Fr + So): nur Contaminated Land + Cross-Server-Angriffe
+🔹 Ab Woche 4: auch War Declarations (Mi &amp; Sa)
+
+🎁 Gemeinsames Ziel: 80 Strongholds in anderen War Zones! + Ranking nach Cross-Server-Kills!
+
+Führungsteam plant die Outpost-Spots – haltet euch bereit für Teleport-Angriffe! 🔥</pre></div>
+  </div>
+</section>
+
+<!-- 14 WAR DECLARATION -->
+<section id="wardec">
+  <div class="wrap">
+    <h2><span class="num">14</span> War Declaration <span class="when-badge">Woche 4 · Tag 1–3</span></h2>
+    <p class="lead">Krieg erklären und Städte in anderen War Zones erobern. <b>Obj 01, D1–3.</b></p>
+    <table>
+      <tr><th>Thema</th><th>Detail</th></tr>
+      <tr><td><b>Reward Chest</b></td><td>Collective Goal: 10.000.000 Influence Points durch Städte-Eroberungen in anderen War Zones</td></tr>
+      <tr><td><b>Kriegstage</b></td><td>Nur <b>Mittwoch &amp; Samstag</b> · 1 War Declaration/Tag · 2 Stadt-Eroberungen/Tag (max 4 Städte in anderen Warzones)</td></tr>
+      <tr><td><b>Ziele</b></td><td>1) City Defense durchbrechen · 2) City Durability zerstören</td></tr>
+    </table>
+    <div class="callout tip"><b>Capture-Strategie:</b> Engineer-Rolle mit <b>Siege Mastery 5/5</b> (+500 Durability-Schaden/Treffer), Siege Banners max 5/Zone (welche für die 2. Stadt aufheben). 1) Stadt eng umzingeln. 2) Sobald die Rally die Contaminated Zone betritt, sofort Squad 1 auf die Stadt. 3) Verteidigt → Rally + Rammbock wiederholen; leer → alle Squads zum Durability-Test. 4) In Wellen à 300–950 heilen, dann Allianz-Hilfe. 5) Eigene Stadt verteidigen → dauerhaft Truppen stationieren.</div>
+    <div class="imgs">
+      <figure><img src="images/18.png" alt="War Declaration"><figcaption><b>Bild 18</b> · War Declaration &amp; Capture-Strategie</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Ankündigung<span class="kind">öffentlich · ohne Emoji · Bild 18</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>Ab Woche 4 erklären wir anderen War Zones den Krieg und erobern dort Städte. Kriegserklärungen sind nur Mittwoch und Samstag möglich, mit einer Erklärung und zwei Stadt-Eroberungen pro Tag. Zum Erobern brecht ihr zuerst die Stadtverteidigung durch und zerstört dann die Durability. Der Engineer mit Siege Mastery 5 gibt plus 500 Durability-Schaden pro Treffer, und Siege Banners solltet ihr teilweise für die zweite Stadt aufheben. Umzingelt die Stadt eng, schickt beim Betreten der Contaminated Zone sofort Squad 1 rein und heilt in Wellen. Gemeinsames Ziel sind 10 Millionen Influence Points.</pre></div>
+    <div class="charcount">Zeichen: ~600 · Bild 18 mitposten</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Allianz-Mail<span class="kind">Chat · mit Emoji · kein Bild</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>⚔️ WAR DECLARATION – ab Woche 4 erobern wir fremde Städte! ⚔️
+
+📅 KRIEGSTAGE: NUR Mittwoch &amp; Samstag!
+🔹 1 Kriegserklärung/Tag
+🔹 2 Stadt-Eroberungen/Tag (max 4 Städte in anderen Warzones)
+
+🎯 SO GEHT'S:
+1️⃣ City Defense durchbrechen 🛡️
+2️⃣ City Durability zerstören 💥
+
+🏆 CAPTURE-STRATEGIE:
+🔧 Engineer mit Siege Mastery 5/5 = +500 Durability-Schaden pro Treffer!
+🚩 Siege Banners (max 5/Zone) – ein paar für die 2. Stadt aufheben!
+1️⃣ Stadt ENG umzingeln
+2️⃣ Sobald Rally die Contaminated Zone betritt → sofort Squad 1 auf die Stadt!
+3️⃣ Verteidigt? → Rally + Rammbock wiederholen. Leer? → alle Squads zum Durability-Test!
+4️⃣ In Wellen à 300–950 heilen → dann Allianz-Hilfe! 🏥
+
+🎁 Gemeinsames Ziel: 10 Mio. Influence Points!
+
+Mi &amp; Sa sind unsere Kriegstage – seid bereit! 🔥</pre></div>
+  </div>
+</section>
+
+<!-- 15 OCTAGON -->
+<section id="octagon">
+  <div class="wrap">
+    <h2><span class="num">15</span> Infinite Octagon &amp; Warzone Duel <span class="when-badge">Woche 4–7</span></h2>
+    <p class="lead">Warzone-Duell-Turnier zwischen den 8 War Zones, Kampf ums Capitol.</p>
+    <table>
+      <tr><th>Thema</th><th>Detail</th></tr>
+      <tr><td><b>Reward Chest</b></td><td>Collective Goal: insgesamt 1.000.000 Einheiten von Commandern anderer War Zones eliminieren · zusätzlich 10.000.000 Influence Points durch Städte-Eroberungen</td></tr>
+      <tr><td><b>Ablauf</b></td><td>Turnier in 3 Runden, 1. Runde nach Warzone-Influence-Ranking (Stichtag: Mitternacht Sonntag Woche 4). Influence Points je Duell-Sieg. Ab Woche 5: 1 Runde/Woche.</td></tr>
+      <tr><td><b>Bonuspunkte</b></td><td>Nur Allianzen mit &gt;1.000.000 Influence Points. 1 Sieg +250.000 · 2 Siege +500.000 · 3 Siege +1.500.000</td></tr>
+      <tr><td><b>Ziel</b></td><td>Kampf um das Capitol (klassische Warzone-Duell-Regeln)</td></tr>
+    </table>
+    <div class="imgs">
+      <figure><img src="images/19.png" alt="Infinite Octagon"><figcaption><b>Bild 19</b> · Infinite Octagon (W4)</figcaption></figure>
+      <figure><img src="images/21.png" alt="Warzone Duel"><figcaption><b>Bild 21</b> · Warzone Duel (W5–7)</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Ankündigung<span class="kind">öffentlich · ohne Emoji · Bilder 19 &amp; 21</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>Ab Woche 4 startet das Infinite Octagon, das Warzone-Duell-Turnier zwischen den 8 War Zones. Es läuft über drei Runden, ab Woche 5 eine Runde pro Woche, und am Ende geht es um das Capitol. Die erste Runde richtet sich nach dem Warzone-Influence-Ranking, Stichtag ist Mitternacht am Sonntag der Woche 4. Sammelt bis dahin so viele Influence Points wie möglich durch Städte-Eroberungen. Nur Allianzen mit mehr als einer Million Influence Points bekommen Bonuspunkte: ein Sieg bringt 250000, zwei Siege 500000 und drei Siege 1,5 Millionen. Gemeinsam eliminieren wir eine Million gegnerische Einheiten.</pre></div>
+    <div class="charcount">Zeichen: ~600 · Bilder 19 und 21 mitposten</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Allianz-Mail<span class="kind">Chat · mit Emoji · kein Bild</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>🥊 INFINITE OCTAGON – WARZONE-DUELL UMS CAPITOL! 🥊
+
+Ab Woche 4: unsere 8 War Zones treten gegeneinander an! Ziel am Ende: das CAPITOL! 🏛️
+
+🗓️ ABLAUF:
+🔹 Turnier in 3 Runden (ab Woche 5: 1 Runde/Woche)
+🔹 Runde 1 nach Warzone-Influence-Ranking
+⏰ STICHTAG: Mitternacht Sonntag, Woche 4! → bis dahin so viele Influence Points wie möglich sammeln (durch Städte-Eroberungen)!
+
+🏆 BONUSPUNKTE (nur ab 1 Mio. Influence Points!):
+✅ 1 Sieg → +250.000
+✅✅ 2 Siege → +500.000
+✅✅✅ 3 Siege → +1.500.000
+
+🎁 Gemeinsames Ziel: 1.000.000 gegnerische Einheiten eliminieren!
+
+👉 JEDER Stadt-Kill vor dem Sonntag zählt fürs Ranking – gebt Gas! 💪🔥</pre></div>
+  </div>
+</section>
+
+<!-- 16 BUILDER -->
+<section id="builder">
+  <div class="wrap">
+    <h2><span class="num">16</span> Builder Alliances <span class="when-badge">Woche 4–7 · permanent</span></h2>
+    <p class="lead">Eine Builder Alliance gibt ihr Influence-Ranking auf und entwickelt stattdessen Städte über Facilities, die Durability &amp; Boni geben. <b>Grundsatzentscheidung des Führungsteams!</b></p>
+    <div class="callout warn"><b>Prinzip:</b> Umwandlung nur zwischen Woche 4 und 7 möglich, <b>permanent für die Season</b> → keine City-War-Erklärungen mehr, kein Influence-Ranking mehr. Neues Ranking nach Builder-Level. Diese Entscheidung gut abwägen.</div>
+    <table>
+      <tr><th>Facility</th><th>Effekt</th></tr>
+      <tr><td><b>Factories</b> (Iron/Food/Coins)</td><td>Stündliche Produktion</td></tr>
+      <tr><td><b>Depots</b> (Gathering/Engineering/Research)</td><td>+10 % Geschwindigkeit (Sammeln/Bau/Forschung)</td></tr>
+      <tr><td><b>Training Center</b></td><td>+5 % Trainingsgeschwindigkeit</td></tr>
+      <tr><td><b>Medical Center</b></td><td>−5 % PvP-Truppenverluste</td></tr>
+      <tr><td><b>Radar Station</b></td><td>+5 % Hero DEF</td></tr>
+      <tr><td><b>Armory</b></td><td>+5 % Hero ATK</td></tr>
+    </table>
+    <div class="callout tip"><b>Funktionsweise:</b> R4/R5 wählen eroberte Städte für Support-Facilities (max 3/Stadt, keine in Strongholds). Bau startet bei 0 %, steigt mit Mitglieder-Spenden. Material aus Daily Tasks &amp; Radar. Ein Spieler muss mind. 24 h in der Allianz sein, um zu spenden. <b>+10 % City Durability</b> je gebauter Facility; manche Boni (Hero ATK/DEF, PvP-Verluste) gelten für alle Commander der War Zone.</div>
+    <div class="imgs">
+      <figure><img src="images/20.png" alt="Builder Alliances"><figcaption><b>Bild 20</b> · Builder Alliances</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Ankündigung<span class="kind">öffentlich · ohne Emoji · Bild 20</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>Zwischen Woche 4 und 7 können wir uns in eine Builder Alliance umwandeln. Das ist eine große Entscheidung: Wir geben unser Influence-Ranking und alle City-War-Erklärungen dauerhaft für die Season auf und entwickeln stattdessen unsere Städte über Facilities. Jede Facility gibt plus 10 Prozent City Durability, dazu Boni wie plus 5 Prozent Hero-Angriff oder minus 5 Prozent PvP-Verluste, teils für die ganze War Zone. R4 und R5 wählen die Städte, maximal drei Facilities pro Stadt, und der Bau steigt mit euren Spenden. Das Führungsteam entscheidet, ob dieser Weg zu uns passt.</pre></div>
+    <div class="charcount">Zeichen: ~580 · Bild 20 mitposten</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Allianz-Mail<span class="kind">Chat · mit Emoji · kein Bild</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>🏗️ BUILDER ALLIANCE – große Weichenstellung (Woche 4–7)! 🏗️
+
+Wir können uns in eine BUILDER ALLIANCE umwandeln – aber Achtung, das ist PERMANENT für die Season! ⚠️
+
+🔀 Was ändert sich?
+❌ Kein Influence-Ranking mehr
+❌ Keine City-War-Erklärungen mehr
+✅ Stattdessen: Städte mit Facilities aufbauen → neues Builder-Ranking!
+
+🏭 FACILITIES &amp; BONI (je +10% City Durability!):
+🔹 Factories → Iron/Food/Coins pro Stunde
+🔹 Depots → +10% Sammeln/Bau/Forschung
+🔹 Training Center → +5% Training
+🔹 Medical Center → −5% PvP-Verluste
+🔹 Radar Station → +5% Hero DEF
+🔹 Armory → +5% Hero ATK
+(manche Boni gelten für die ganze War Zone! 🌍)
+
+🛠️ R4/R5 wählen die Städte (max 3 Facilities/Stadt). Bau steigt mit EUREN Spenden – ab 24 Std. Mitgliedschaft spendbar!
+
+👉 Das Führungsteam bespricht, ob wir diesen Weg gehen. Sagt eure Meinung! 💬🔥</pre></div>
+  </div>
+</section>
+
+<!-- 17 PROFESSION -->
+<section id="profession">
+  <div class="wrap">
+    <h2><span class="num">17</span> Profession Hall &amp; Skills <span class="when-badge">Durchgängig</span></h2>
+    <p class="lead">Berufswahl bestimmt euren Fokus. Season-Skills starten zu Season-Beginn und werden am Ende zurückgesetzt (Punkte erstattet). Max-Level S1 = 40.</p>
+    <div class="grid">
+      <div class="card blue"><h4>🔧 Engineer (Bau-Typ)</h4><ul class="plain" style="color:var(--muted)">
+        <li>Weniger Bau-/Forschungszeit, geringere Forschungskosten</li>
+        <li>Bessere Ressourcenproduktion, Defensiv-Skills</li>
+        <li>Empfohlen wenn HQ &lt; Lv.30 / keine T10-Truppen</li></ul></div>
+      <div class="card crimson"><h4>⚔️ War Leader (Kampf-Typ)</h4><ul class="plain" style="color:var(--muted)">
+        <li>Bessere Einheiten-Werte &amp; Moral, schnelleres Training</li>
+        <li>Fokus Angriffs-Skills, für PvP, Capitol, Cross-Server</li>
+        <li>Empfohlen wenn Bau/Forschung weitgehend fertig</li></ul></div>
+    </div>
+    <h3>EXP-Gewinn &amp; Punkte</h3>
+    <table>
+      <tr><th>Quelle</th><th>Wert</th></tr>
+      <tr><td>Seasonale Gebäude upgraden</td><td>★★★★</td></tr>
+      <tr><td>Militär-Strongholds angreifen · Season Pass</td><td>★★★</td></tr>
+      <tr><td>Städte / Verteidiger angreifen · Zombies &amp; Cursed Elites · EXP-Packs</td><td>★★</td></tr>
+    </table>
+    <div class="callout tip"><b>Empfohlene Skills (Bild 23):</b> <b>Engineer</b>, Quick Production (Lv.1), Instant Construction/Research (15), Cooperative Construction/Research (30), Resource Economy (35), Recycling (35). <b>Season</b>, Knowledge (1), Predator (5), Veteran (10), Elite Hunter (15), Spread (25). <b>War Leader</b>, Instant Return (1), Drill Ground Prep (5), Craze (10), Inspire (35), Charge Banner (40). Wechsel/Reset per Season-Battle-Pass-Zertifikaten (Punkte werden erstattet).</div>
+    <div class="callout warn"><b>Season-Skills (Bild 28), Prioritäten:</b> <b>Excellent:</b> Lucky Predator (Lv.5, +10 Serum/Kill), Field Veteran (10), Elite Hunter (15, bis +150k EXP/Tag). <b>Good:</b> Battlefield Knowledge (1), Infection Spread (25, für aktive Farmer), Poison Trial (40). <b>Avoid:</b> Healing Expert (20), Viral Offense (30), Virus Boost (35, Nischenstrategie).</div>
+    <div class="imgs">
+      <figure><img src="images/23.png" alt="Profession Hall"><figcaption><b>Bild 23</b> · Profession Hall (Übersicht)</figcaption></figure>
+      <figure><img src="images/28.png" alt="Season Skills"><figcaption><b>Bild 28</b> · Season-Skills</figcaption></figure>
+      <figure><img src="images/24.png" alt="Engineer 1-50"><figcaption><b>Bild 24</b> · Engineer Lv.1–50</figcaption></figure>
+      <figure><img src="images/26.png" alt="War Leader 1-50"><figcaption><b>Bild 26</b> · War Leader Lv.1–50</figcaption></figure>
+    </div>
+    <p style="font-size:13px;color:var(--muted)">Weitere Skill-Details: <b>Bild 25</b> (Engineer 55–100) · <b>Bild 27</b> (War Leader 55–100), als Referenz im Ordner.</p>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Ankündigung<span class="kind">öffentlich · ohne Emoji · Bilder 23 &amp; 28</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>Die Profession Hall bestimmt euren Fokus. Wählt Engineer, wenn euer HQ noch unter Level 30 ist oder ihr keine T10-Truppen habt, denn das spart Bau- und Forschungszeit. Wählt War Leader, wenn Bau und Forschung weitgehend fertig sind, denn das stärkt Angriff und PvP. Season-Skills starten zu Beginn und werden am Ende zurückgesetzt, die Punkte bekommt ihr erstattet. Das Maximallevel in Season 1 ist 40. Am meisten EXP bringt das Upgraden seasonaler Gebäude, gefolgt von Strongholds und Städten. Priorisiert bei den Season-Skills Lucky Predator, Field Veteran und Elite Hunter.</pre></div>
+    <div class="charcount">Zeichen: ~600 · Bilder 23 und 28 mitposten</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Allianz-Mail<span class="kind">Chat · mit Emoji · kein Bild</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>🎓 PROFESSION HALL &amp; SKILLS – richtig wählen! 🎓
+
+Euer Beruf entscheidet euren Fokus:
+🔧 ENGINEER (Bau): weniger Bau-/Forschungszeit, mehr Ressourcen → nehmen, wenn HQ < Lv.30 oder keine T10-Truppen!
+⚔️ WAR LEADER (Kampf): mehr Angriff, Moral, schnelleres Training → nehmen, wenn Bau/Forschung fertig ist!
+
+📊 SO KRIEGT IHR EXP (am meisten oben):
+⭐⭐⭐⭐ Season-Gebäude upgraden
+⭐⭐⭐ Strongholds angreifen + Season Pass
+⭐⭐ Städte, Zombies &amp; Cursed Elites
+
+✅ SEASON-SKILLS – DAS LOHNT SICH:
+🔥 Lucky Predator (Lv.5) → +10 Serum pro Kill!
+🔥 Field Veteran (Lv.10) &amp; Elite Hunter (Lv.15) → bis +150k EXP/Tag!
+👍 Battlefield Knowledge (1), Infection Spread (25), Poison Trial (40)
+🚫 Finger weg von: Healing Expert, Viral Offense, Virus Boost (Nische!)
+
+💡 Season-Skills werden am Ende resettet – Punkte kriegt ihr zurück! Max-Level S1 = 40.
+
+Fragt, wenn ihr bei der Berufswahl unsicher seid! 💪</pre></div>
+  </div>
+</section>
+
+<!-- 18 END OF SEASON -->
+<section id="endseason">
+  <div class="wrap">
+    <h2><span class="num">18</span> Rewards &amp; Season-Ende <span class="when-badge">Woche 8 · Tag 7</span></h2>
+    <div class="grid">
+      <div class="card gold"><h4>🎁 Belohnungen</h4><ul class="plain" style="color:var(--muted)">
+        <li>RS &amp; Majordomos verteilen Season-1-Belohnungen nach Beitrag</li>
+        <li>Warzone-Influence-Belohnung per Mail</li>
+        <li>Nur <b>eine</b> Season-Belohnung pro Spieler (auch bei Allianzwechsel)</li></ul></div>
+      <div class="card crimson"><h4>🚫 Season-Ende (Tag 7)</h4><ul class="plain" style="color:var(--muted)">
+        <li>Keine Städte-/Stronghold-Eroberungen &amp; keine Teleports mehr</li>
+        <li>Zombies &amp; Doom-Elites werden normal</li>
+        <li>Season-Gebäude (Tank/Aircraft/Missile) &amp; deren Boni verschwinden</li>
+        <li>Season-Ressourcen (Proteine, Crystals, Serum) → Profession-EXP</li>
+        <li>Season-Skill-Punkte erstattet · Hero-Return-Rekrutierung verschwindet</li></ul></div>
+      <div class="card toxic"><h4>✅ Was bleibt</h4><ul class="plain" style="color:var(--muted)">
+        <li>Karte mit Städten &amp; Festungen (nicht mehr eroberbar)</li>
+        <li>Season-Shop &amp; Medaillen (Feier &amp; Season 2 nutzbar)</li>
+        <li>Erhaltene <b>Exklusivwaffen</b> bleiben</li>
+        <li>Hero-Return-Tickets für künftige Seasons behalten</li></ul></div>
+    </div>
+    <div class="imgs">
+      <figure><img src="images/22.png" alt="Rewards and End of Season"><figcaption><b>Bild 22</b> · Rewards &amp; End of Season</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Ankündigung<span class="kind">öffentlich · ohne Emoji · Bild 22</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>In Woche 8 endet die Season, die Belohnungen werden am Tag 7 verteilt. RS und Majordomos verteilen die Season-1-Belohnungen nach eurem Beitrag, die Warzone-Influence-Belohnung kommt per Mail. Es gibt nur eine Season-Belohnung pro Spieler, auch bei einem Allianzwechsel. Zum Ende sind keine Eroberungen und Teleports mehr möglich, die Season-Gebäude und ihre Boni verschwinden, und Season-Ressourcen werden in Profession-EXP umgewandelt. Gebt eure Proteine, Crystals und Serum also rechtzeitig aus. Eure Exklusivwaffen, der Season-Shop und die Medaillen bleiben euch erhalten.</pre></div>
+    <div class="charcount">Zeichen: ~580 · Bild 22 mitposten</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Allianz-Mail<span class="kind">Chat · mit Emoji · kein Bild</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>🏁 SEASON-ENDE (Woche 8) – letzte Chance, alles rauszuholen! 🏁
+
+🎁 BELOHNUNGEN (Tag 7):
+🔹 RS &amp; Majordomos verteilen nach eurem BEITRAG → also bis zuletzt aktiv bleiben!
+🔹 Warzone-Influence kommt per Mail 📬
+⚠️ Nur EINE Season-Belohnung pro Spieler – auch bei Allianzwechsel!
+
+🚫 WAS VERSCHWINDET:
+❌ Keine Eroberungen/Teleports mehr
+❌ Season-Gebäude (Tank/Aircraft/Missile) + Boni weg
+❌ Proteine, Crystals, Serum → werden zu Profession-EXP umgewandelt!
+❌ Hero-Return-Rekrutierung weg
+
+⏳ DESHALB JETZT: Gebt eure Season-Ressourcen &amp; Serum-Fragmente RECHTZEITIG aus – nichts verfallen lassen! 🛒
+
+✅ WAS BLEIBT:
+💪 Eure Exklusivwaffen!
+🛒 Season-Shop &amp; Medaillen (auch in Season 2 nutzbar)
+🎟️ Hero-Return-Tickets für künftige Seasons!
+
+Starkes Finish, Leute – gebt nochmal alles! 🔥🏆</pre></div>
+  </div>
+</section>
+
+<!-- WEEKLY ROUNDUP MAILS (DE) -->
+<section id="weekly">
+  <div class="wrap">
+    <h2><span class="num">📬</span> Wöchentliche Sammel-Mails <span class="when-badge">1 Mail pro Woche</span></h2>
+    <p class="lead">Pro Woche <b>eine</b> Allianz-Mail mit allen Infos, intern gegliedert in Wochenanfang · Mitte · Ende. Jede Woche steht hier mit ihrer Sammel-Mail <b>am Ende der Woche</b>, kopieren, [Zeiten] &amp; [Ziele] eintragen, posten.</p>
+
+    <h3>Woche 1, Start · Resistenz · Purge · Serum · City Clash</h3>
+    <div class="tmpl mail"><div class="bar"><span class="t">📬 Woche 1, Sammel-Mail<span class="kind">am Ende der Woche posten</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>🦠 WOCHE 1, SEASON-START „CRIMSON PLAGUE"! 🦠
+
+📌 WOCHENANFANG (Tag 1):
+🔁 Resistenz-Kreislauf SOFORT starten: höhere Zombies (Lupe 🔍) → Mutant Crystals → Protein-Farm → Immune Proteins → Virus Research Institute!
+🧟 The Purge läuft (7 Tage): höchststufige Zombies töten + Militär-Strongholds erobern (max 2/Tag)!
+⚠️ IMMER erst Resistenz prüfen, bevor ihr angreift – sonst Truppenverlust! Zu niedrig? Loki-Rally + Allys!
+
+📌 WOCHENMITTE (ab Tag 2–3):
+🧬 Serum Collection: tägliches Puzzle 🧩 + Fragmente im Serum-Shop (zuerst UR)! Allianz-Ziel: 3 Mio. Food spenden 🍞
+🏰 City Clash ab Tag 3: Lv.1-Städte (nur neben eigenem Stronghold), max 2 Eroberungen/Tag!
+🛠️ PFLICHT: City-Durability-Tech ausbauen, bevor die Wars starten!
+
+📌 WOCHENENDE (ab Tag 4):
+🔫 Kimberly „Rocket Shadow" Exklusivwaffe: Held 5★ + 50 Shards!
+🌦️ Wetter (ab Tag 3): ☀️Sunny=farmen · 🌧️Light Rain=riskante Elites · ☢️Acid Rain=keine Rally/PvP! Monica-Vorhersage checken!
+🎯 Wochenziel: [80 Strongholds / 80 Lv.1-Städte]
+
+Fragt lieber einmal zu viel! 💪🔥</pre></div>
+
+    <h3>Woche 2, Mason · Crimson Legion</h3>
+    <div class="tmpl mail"><div class="bar"><span class="t">📬 Woche 2, Sammel-Mail<span class="kind">am Ende der Woche posten</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>🔴 WOCHE 2, MASON &amp; CRIMSON LEGION! 🔴
+
+📌 WOCHENANFANG:
+🦸 Mason Hero Promotion (SSR→UR) startet – JETZT vorbereiten: Mason 5★, Wall of Honor maxen, ALLE Skill-Medaillen auf Mason!
+⏰ ABER: erst DONNERSTAG (VS Hero-Tag) befördern = maximale Punkte! Allianz-Ziel: 5 Mio. Coins.
+
+📌 WOCHENMITTE:
+🏰 Crimson Legion greift an! Angriffe Di &amp; Fr, erster Di 12:00 auf unsere SCHWÄCHSTE Stadt!
+⏱️ 30 Wellen (~90 Min), immer stärker – bis 20 Spieler verstärken → rechtzeitig Truppen reinstellen!
+🎁 Ziel: 800 Cursed Elites eliminieren. Verlieren = Stadt nimmt Schaden (Durability 0 → weg)!
+
+📌 WOCHENENDE:
+💥 DONNERSTAG Mason zünden – dann Medaillen/Fragmente per Mail zurück & neu investieren!
+🏙️ City Clash: Lv.3 &amp; Lv.4-Städte dran!
+🎯 [Rally-Zeiten eintragen]
+
+Wenn eure Stadt drankommt: sofort Bescheid geben! 🤝🔥</pre></div>
+
+    <h3>Woche 3, Troop Boost · Outposts · DVA</h3>
+    <div class="tmpl mail"><div class="bar"><span class="t">📬 Woche 3, Sammel-Mail<span class="kind">am Ende der Woche posten</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>🛰️ WOCHE 3, TRUPPEN-BOOST &amp; CROSS-SERVER! 🛰️
+
+📌 WOCHENANFANG:
+🏗️ Troop Type Boost: Tank/Aircraft/Missile Center bauen (bis Lv.30, +2%/Level HP/ATK/DEF)! Zuerst das Gebäude für EURE Haupttruppen! Allianz-Ziel: 5 Mio. Coins.
+⭐ Ab Tag 11: Wish Hero – Rekrut-Tickets sparen, gezielt rekrutieren (günstiger, wenn Wish aktiv)!
+
+📌 WOCHENMITTE:
+📍 Outposts (Cross-Server): nur R4/R5 platzieren in fremde Warzones – PERMANENT, max 4! Freier Teleport zum Angreifen 🚀
+🎁 Ziel: 80 Strongholds in anderen War Zones! Führungsteam plant die Spots.
+
+📌 WOCHENENDE:
+🔫 DVA Exklusivwaffe verfügbar (Held 5★ + Shards)!
+🏙️ City Clash: Lv.5 &amp; Lv.6-Städte! Wetter weiter timen 🌦️
+🎯 [Ziele eintragen]
+
+Haltet euch bereit für Teleport-Angriffe! 🔥</pre></div>
+
+    <h3>Woche 4, War Declaration · Octagon · Builder-Wahl</h3>
+    <div class="tmpl mail"><div class="bar"><span class="t">📬 Woche 4, Sammel-Mail<span class="kind">am Ende der Woche posten</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>⚔️ WOCHE 4, KRIEGSERKLÄRUNGEN &amp; WEICHENSTELLUNG! ⚔️
+
+📌 WOCHENANFANG:
+🗡️ War Declaration: fremde Städte erobern – NUR Mi &amp; Sa! 1 Erklärung + 2 Eroberungen/Tag.
+🔧 Engineer Siege Mastery 5/5 (+500 Durability/Treffer), 🚩 Siege Banners für die 2. Stadt aufheben! Ziel: 10 Mio. Influence Points.
+
+📌 WOCHENMITTE:
+🥊 Infinite Octagon startet (Warzone-Duell ums Capitol)!
+⏰ STICHTAG Influence-Ranking: MITTERNACHT SONNTAG! Bis dahin max. Influence durch Städte-Eroberungen! Bonuspunkte ab 1 Mio. Influence.
+
+📌 WOCHENENDE:
+🏗️ BUILDER-ALLIANCE-ENTSCHEIDUNG (Fenster W4–W7, PERMANENT!): Influence-Ranking + City Wars aufgeben für Facility-Aufbau (+10% Durability je Facility). Führungsteam entscheidet – sagt eure Meinung! 💬
+🏙️ City Clash: Lv.7-Städte!
+
+Mi &amp; Sa = Kriegstage. Seid bereit! 🔥</pre></div>
+
+    <h3>Woche 5, Warzone Duel · War Declaration</h3>
+    <div class="tmpl mail"><div class="bar"><span class="t">📬 Woche 5, Sammel-Mail<span class="kind">am Ende der Woche posten</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>🥊 WOCHE 5, WARZONE DUEL LÄUFT! 🥊
+
+📌 WOCHENANFANG:
+🏛️ Warzone Duel Runde (1 Runde/Woche) – Kampf ums Capitol! Influence sammeln, Duell-Siege holen!
+✅ Bonus: 1 Sieg +250k · 2 Siege +500k · 3 Siege +1,5 Mio (nur ab 1 Mio. Influence)!
+
+📌 WOCHENMITTE:
+⚔️ War Declaration weiter NUR Mi &amp; Sa – fremde Städte + Cross-Server-Kills fürs Ranking! Outposts nutzen 🛰️
+🎁 Ziel: 1 Mio. gegnerische Einheiten eliminieren!
+
+📌 WOCHENENDE:
+🏗️ Builder-Fenster läuft noch (bis W7) – falls geplant, Facility-Spenden koordinieren!
+🏛️ Capitol wird erst 28 Tage nach City-Battle-Start eroberbar – Vorbereitung läuft!
+🎯 [Duell-Zeiten eintragen]
+
+Jeder Kill zählt fürs Ranking! 💪🔥</pre></div>
+
+    <h3>Woche 6, Tesla · Warzone Duel</h3>
+    <div class="tmpl mail"><div class="bar"><span class="t">📬 Woche 6, Sammel-Mail<span class="kind">am Ende der Woche posten</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>⚡ WOCHE 6, TESLA &amp; NÄCHSTE DUELL-RUNDE! ⚡
+
+📌 WOCHENANFANG:
+🔫 Tesla Exklusivwaffe verfügbar (Held 5★ + Shards)! Shards über Battle Pass, Serum-Shop, VS-Truhen!
+🥊 Warzone Duel: nächste Runde ums Capitol – Influence + Duell-Siege pushen!
+
+📌 WOCHENMITTE:
+⚔️ War Declaration weiter Mi &amp; Sa – Influence + Cross-Server-Kills hochhalten!
+🎯 [Ziele eintragen]
+
+📌 WOCHENENDE:
+🏗️ Builder-Fenster schließt bald (nächste Woche letzte Chance in W7)! Jetzt entscheiden, falls noch offen!
+🏛️ Capitol-Push vorbereiten – koordiniert bleiben!
+
+Vollgas Richtung Capitol! 🔥🏛️</pre></div>
+
+    <h3>Woche 7, Capitol · Builder-Deadline · Ressourcen</h3>
+    <div class="tmpl mail"><div class="bar"><span class="t">📬 Woche 7, Sammel-Mail<span class="kind">am Ende der Woche posten</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>🏛️ WOCHE 7, KAMPF UMS CAPITOL! 🏛️
+
+📌 WOCHENANFANG:
+🥊 Letzte Warzone-Duell-Runde ums Capitol – ALLES auf Influence + Duell-Siege!
+🏛️ Capitol ist jetzt eroberbar (28 Tage nach City-Battle-Start) – koordinierter Push, alle bereithalten!
+
+📌 WOCHENMITTE:
+⚠️ BUILDER-ALLIANCE-FENSTER SCHLIESST diese Woche – LETZTE Chance zur Umwandlung! Führungsteam final entscheiden!
+
+📌 WOCHENENDE:
+🛒 Ressourcen-Check: Serum-Fragmente, Proteine &amp; Crystals langsam ausgeben – werden am Season-Ende nur zu Profession-EXP!
+🎯 [Capitol-Rally-Zeiten eintragen]
+
+Endspurt – holt euch das Capitol! 💪🔥</pre></div>
+
+    <h3>Woche 8, Finale · Rewards · Season-Ende</h3>
+    <div class="tmpl mail"><div class="bar"><span class="t">📬 Woche 8, Sammel-Mail<span class="kind">am Ende der Woche posten</span></span><button class="copybtn" onclick="copyTmpl(this)">Kopieren</button></div>
+<pre>🏁 WOCHE 8, FINALE &amp; SEASON-ENDE! 🏁
+
+📌 WOCHENANFANG:
+🏆 Letzte Woche – bis zuletzt aktiv bleiben! Belohnungen nach BEITRAG (RS/Majordomos). Letzte Eroberungen &amp; Duelle mitnehmen!
+
+📌 WOCHENMITTE:
+🛒 Season-Ressourcen JETZT ausgeben: Serum-Fragmente, Proteine, Crystals, Serum-Shop – sonst verfallen sie zu Profession-EXP!
+⚠️ Nur EINE Season-Belohnung pro Spieler – auch bei Allianzwechsel!
+
+📌 WOCHENENDE (Tag 7):
+🚫 Season-Ende: keine Eroberungen/Teleports mehr, Season-Gebäude + Boni verschwinden!
+✅ Was BLEIBT: Exklusivwaffen 💪, Season-Shop &amp; Medaillen 🛒, Hero-Return-Tickets 🎟️! Belohnungen kommen per Mail 📬
+
+Starkes Finish, Leute – gebt nochmal alles! 🔥🏆</pre></div>
+  </div>
+</section>
+
+<!-- CHEAT -->
+<section id="cheat">
+  <div class="wrap">
+    <h2><span class="num">📌</span> Merkkarte fürs Admin-Team</h2>
+    <div class="cheat">
+      <div>Resistenz first</div><div>Protein-Farmen → Immune Proteins → Virus Research Institute. Vor jedem Angriff geforderte Resistenz prüfen.</div>
+      <div>Wetter = Timing</div><div>Sunny farmen · Light Rain riskante Elites · Acid Rain keine Rally/PvP · Monica-Vorhersage nutzen.</div>
+      <div>Städte nur über Strongholds</div><div>Max 2 Eroberungen/Tag bis Woche 4 · City-Durability-Tech VOR den Wars ausbauen.</div>
+      <div>Timing zünden</div><div>Mason Donnerstag (Hero-Tag) · War Declaration nur Mi &amp; Sa · Octagon-Stichtag So Mitternacht W4.</div>
+      <div>Nicht allein angreifen</div><div>Bei niedriger Resistenz Loki-Rally + Allys · Kuren im Chat anfordern · Auto-Rally meiden.</div>
+      <div>Nichts verfallen lassen</div><div>Serum-Fragmente &amp; Season-Ressourcen vor Woche 8 ausgeben, sonst nur Profession-EXP.</div>
+    </div>
+  </div>
+</section>
+
+</div><!-- /only-de -->
+
+<div class="only-en">
+<nav class="toc">
+  <div class="wrap">
+    <a href="#roadmap-en">🗺️ Roadmap</a>
+    <a href="#basics-en">🧭 Basics</a>
+    <a href="#features-en">Features</a>
+    <a href="#virus-en">RA Virus</a>
+    <a href="#weather-en">Weather</a>
+    <a href="#protein-en">Protein/VRI</a>
+    <a href="#purge-en">Purge</a>
+    <a href="#serum-en">Serum</a>
+    <a href="#cityclash-en">City Clash</a>
+    <a href="#weapons-en">Weapons</a>
+    <a href="#wish-en">Wish Hero</a>
+    <a href="#promotion-en">Mason</a>
+    <a href="#legion-en">Crimson Legion</a>
+    <a href="#troopboost-en">Troop Boost</a>
+    <a href="#outposts-en">Outposts</a>
+    <a href="#wardec-en">War Decl.</a>
+    <a href="#octagon-en">Octagon/Duel</a>
+    <a href="#builder-en">Builder</a>
+    <a href="#profession-en">Professions</a>
+    <a href="#endseason-en">Season End</a>
+    <a href="#weekly-en">📬 Weekly Mails</a>
+  </div>
+</nav>
+
+<!-- ROADMAP EN -->
+<section id="roadmap-en">
+  <div class="wrap">
+    <h2><span class="num">🗺️</span> Season Roadmap (Week 1–8)</h2>
+    <p class="lead">Unlock order of the season events. Each week's roundup mail sits in its own week, tap a card to jump to the topic.</p>
+    <div class="roadmap collapsed"><div class="rline"></div>
+
+      <div class="phase"><div class="dot">D1</div><div class="pc" data-t="#protein-en"><div class="when">Week 1 · Day 1 · go to topic →</div>
+        <h4>Start: base building &amp; first events</h4>
+        <ul><li>Unlock <b>Protein Farms + Virus Research Institute</b> (the resistance engine)</li>
+        <li><b>The Purge</b> (7 days): kill the infected &amp; secure strongholds</li>
+        <li>Military strongholds capturable from Day 1 (max 2/day, up to 3 at first)</li></ul>
+        <div class="pclinks"><a href="#protein-en">Protein/VRI</a><a href="#purge-en">Purge</a><a href="#cityclash-en">City Clash</a></div>
+      </div></div>
+
+      <div class="phase"><div class="dot">W1</div><div class="pc" data-t="#serum-en"><div class="when">Week 1 · Day 2–4 · go to topic →</div>
+        <h4>Serum, cities &amp; first exclusive weapon</h4>
+        <ul><li><b>Serum Collection</b> (Day 2): puzzle event + Serum Shop</li>
+        <li><b>City Clash</b>: Lv.1 cities from Day 3 (only next to your own stronghold), max 2 captures/day until Week 4</li>
+        <li><b>Kimberly "Rocket Shadow"</b> exclusive weapon (Day 4)</li></ul>
+        <div class="pclinks"><a href="#serum-en">Serum</a><a href="#cityclash-en">City Clash</a><a href="#weapons-en">Weapons</a></div>
+      </div></div>
+
+      <div class="phase"><div class="dot">D11</div><div class="pc" data-t="#wish-en"><div class="when">From Day 11 · go to topic →</div>
+        <h4>Wish Hero</h4>
+        <ul><li>For every 200 recruits, choose an unlocked UR hero as your wish hero, switchable anytime.</li></ul>
+        <div class="pclinks"><a href="#wish-en">Wish Hero</a></div>
+      </div></div>
+
+      <div class="phase"><div class="dot">W2</div><div class="pc" data-t="#promotion-en"><div class="when">Week 2 · go to topic →</div>
+        <h4>Mason promotion &amp; Crimson Legion</h4>
+        <ul><li><b>Hero Promotion</b>: Mason SSR→UR (duration 42 days), trigger on Thursday/VS</li>
+        <li><b>Crimson Legion</b>: defends cities, attacks Tue &amp; Fri, 30 waves (~90 min)</li></ul>
+        <div class="pclinks"><a href="#promotion-en">Mason</a><a href="#legion-en">Crimson Legion</a></div>
+      </div></div>
+
+      <div class="phase"><div class="dot">W3</div><div class="pc" data-t="#troopboost-en"><div class="when">Week 3 · go to topic →</div>
+        <h4>Troop boost, outposts &amp; cross-server</h4>
+        <ul><li><b>Troop Type Boost</b>: build Tank/Aircraft/Missile Center (up to Lv.30)</li>
+        <li><b>Outposts</b> (duration 35 days): into other war zones, cross-server attacks</li>
+        <li><b>DVA</b> exclusive weapon available</li></ul>
+        <div class="pclinks"><a href="#troopboost-en">Troop Boost</a><a href="#outposts-en">Outposts</a><a href="#weapons-en">Weapons</a></div>
+      </div></div>
+
+      <div class="phase"><div class="dot">W4</div><div class="pc" data-t="#wardec-en"><div class="when">Week 4 · go to topic →</div>
+        <h4>War declarations &amp; the fork in the road</h4>
+        <ul><li><b>War Declaration</b>: cities in other war zones (Wed &amp; Sat only)</li>
+        <li><b>Infinite Octagon</b>: warzone duel tournament (ranking Sunday midnight W4)</li>
+        <li><b>Builder Alliances</b>: choice W4–W7 (permanent, no more city war)</li></ul>
+        <div class="pclinks"><a href="#wardec-en">War Decl.</a><a href="#octagon-en">Octagon</a><a href="#builder-en">Builder</a></div>
+      </div></div>
+
+      <div class="phase"><div class="dot">W5-7</div><div class="pc" data-t="#octagon-en"><div class="when">Week 5–7 · go to topic →</div>
+        <h4>Warzone duel series</h4>
+        <ul><li><b>Warzone Duel</b> (Infinite Octagon), 1 round/week, fight for the Capitol</li>
+        <li><b>Tesla</b> exclusive weapon (Week 6)</li>
+        <li>Capitol capture possible from 28 days after city battles start</li></ul>
+        <div class="pclinks"><a href="#octagon-en">Octagon/Duel</a><a href="#weapons-en">Weapons</a></div>
+      </div></div>
+
+      <div class="phase"><div class="dot">🏁</div><div class="pc" data-t="#endseason-en"><div class="when">Week 8 · Day 7 · go to topic →</div>
+        <h4>Rewards &amp; end of season</h4>
+        <ul><li>Reward distribution by contribution (RS/Majordomos, by mail)</li>
+        <li>Season resources → Profession EXP; season buildings &amp; boni disappear</li>
+        <li><b style="color:var(--crimson2)">Exclusive weapons stay; Season Shop &amp; medals remain usable</b></li></ul>
+        <div class="pclinks"><a href="#endseason-en">Season End</a></div>
+      </div></div>
+
+    </div>
+    <button class="morebtn" onclick="toggleRoadmap(this)">Show more &#9662;</button>
+  </div>
+</section>
+
+
+
+<!-- BASICS EN -->
+<section id="basics-en">
+  <div class="wrap">
+    <h2><span class="num">🧭</span> Basics, always keep in mind <span class="when-badge">Throughout</span></h2>
+    <p class="lead">The permanent mechanics that matter all season. Tap to jump to the detailed section.</p>
+    <div class="basics">
+      <a href="#features-en"><b>🗺️ Map &amp; goal</b><span>New map, Legion cities, Capitol, strongholds first.</span></a>
+      <a href="#virus-en"><b>🦠 RA virus &amp; resistance</b><span>Virus stacks 0–100, debuffs, check resistance before every attack.</span></a>
+      <a href="#weather-en"><b>🌦️ Weather = timing</b><span>Sunny farm, Light Rain risky elites, Acid Rain no rally.</span></a>
+      <a href="#protein-en"><b>💉 Resistance engine</b><span>Protein farms → Immune Proteins → Virus Research Institute.</span></a>
+    </div>
+  </div>
+</section>
+
+<!-- 1 FEATURES EN -->
+<section id="features-en">
+  <div class="wrap">
+    <h2><span class="num">1</span> New features &amp; season basics <span class="when-badge">Basics</span></h2>
+    <div class="grid">
+      <div class="card blue"><h4>🌍 World &amp; map</h4><ul class="plain" style="color:var(--muted)">
+        <li>Server map fully redone, bigger, full of new creatures</li>
+        <li>Infected villages, strongholds &amp; the Capitol as the <b>City of Apocalypse</b></li></ul></div>
+      <div class="card gold"><h4>🏙️ City control</h4><ul class="plain" style="color:var(--muted)">
+        <li>All cities belong to the <b>Lady in Red Legion</b></li>
+        <li>Start at the map edge in alliance hives, no city ownership</li>
+        <li>Goal: retake cities, first the <b>strongholds next to the cities</b></li></ul></div>
+      <div class="card crimson"><h4>⚠️ Capitol</h4><ul class="plain" style="color:var(--muted)">
+        <li>Whoever holds the Capitol before the season keeps it</li>
+        <li>Capitol capture only <b>28 days after</b> city battles start</li>
+        <li>Ministries stay accessible</li></ul></div>
+      <div class="card toxic"><h4>🧟 New enemies</h4><ul class="plain" style="color:var(--muted)">
+        <li>Doom elite zombies → aggressive <b>Infecting Scorpions</b></li>
+        <li>Most zombies are now <b>infectious</b></li></ul></div>
+    </div>
+    <div class="imgs">
+      <figure><img src="images/image.png" alt="New Features"><figcaption><b>Image 1</b> · New Features</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Announcement<span class="kind">public · no emoji · Image 1</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>Season 1 "Crimson Plague" is starting. The server map is completely new: bigger, with infected villages, strongholds and the Capitol as the City of Apocalypse. At the start all cities belong to the Lady in Red Legion. We start at the map edge in our hive, with no city ownership. The goal is to retake cities. The path there always runs through the strongholds right next to the cities. Warning: most zombies are now infectious and can infect our troops. Preparation is what decides.</pre></div>
+    <div class="charcount">Characters: ~500 · post Image 1 as attachment when copying</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Alliance mail<span class="kind">Chat · with emoji · no image</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>🦠 SEASON 1 IS HERE – "CRIMSON PLAGUE"! 🦠
+
+Everyone, everything has changed! 🗺️ The map is completely new, bigger and full of new creatures. Cities, infected villages, strongholds – and the Capitol is now the "City of Apocalypse". 😱
+
+👉 Important at the start:
+🔴 All cities belong to the Lady in Red Legion – we start with ZERO city ownership at the edge, in our hive.
+🏰 To take a city we ALWAYS need the stronghold right next to it first.
+🏛️ The Capitol can only be captured 28 days after city battles start – patience!
+🧟 Almost all zombies infect now. Without resistance we lose troops.
+
+Get ready, we'll pull this off together! 💪🔥</pre></div>
+  </div>
+</section>
+
+<!-- 2 VIRUS EN -->
+<section id="virus-en">
+  <div class="wrap">
+    <h2><span class="num">2</span> RA Virus: infection, resistance &amp; virus stacks <span class="when-badge">Core mechanic</span></h2>
+    <p class="lead">The heart of the season. Fights against certain enemies infect your troops. If the <b>Virus Research Institute</b> isn't high enough, <b>virus stacks (0–100)</b> pile up, the more, the harsher the debuffs.</p>
+
+    <h3>The two big risks</h3>
+    <div class="grid">
+      <div class="card crimson"><h4>1 · Damage reduction</h4><p style="color:var(--muted);margin:0;font-size:14px">If the zombie level is higher than your virus resistance, your damage drops massively. Example from the guide: needs <b>6,800</b> resistance, you have <b>4,200</b> → <b>−96% damage</b>. Check the required resistance before every attack.</p></div>
+      <div class="card blue"><h4>2 · New zombie types</h4><p style="color:var(--muted);margin:0;font-size:14px">Zombies now have types: <b>Tank / Aircraft / Missile</b>. Adjust troop composition to maximize damage and cut losses.</p></div>
+    </div>
+
+    <h3>Virus stacks &amp; debuffs</h3>
+    <table>
+      <tr><th>Threshold</th><th>Debuff</th><th>Effect</th></tr>
+      <tr><td class="prio">1</td><td><b>Hospital Stay</b></td><td>1 severely wounded unit every 300–200s</td></tr>
+      <tr><td class="prio">20</td><td><b>Morale is Low</b></td><td>−4% to −20% damage dealt</td></tr>
+      <tr><td class="prio">40</td><td><b>Fatal Virus</b></td><td>+4% to +10% own losses</td></tr>
+      <tr><td class="prio">60</td><td><b>Virus Plague</b></td><td>6–10% chance to lose the enemy even on a win</td></tr>
+      <tr><td class="prio">100</td><td><b>Virus Blast</b></td><td>After a 30s countdown the base explodes, infects at random, including neighboring bases. Max 100 stacks = all debuffs at once.</td></tr>
+    </table>
+
+    <h3>Cures &amp; help</h3>
+    <div class="grid">
+      <div class="card toxic"><h4>💉 Cures</h4><ul class="plain" style="color:var(--muted)">
+        <li><b>Manual Cure:</b> ally sends a plane → removes 1 virus stack</li>
+        <li><b>Auto Cure:</b> stacks drop slowly if no new infection</li>
+        <li>Request cures quickly via alliance chat</li></ul></div>
+      <div class="card gold"><h4>🆘 On low resistance</h4><ul class="plain" style="color:var(--muted)">
+        <li>Ask allies with higher resistance for help</li>
+        <li>Start a squad with a <b>low-command hero (e.g. Loki)</b> + rally on an elite and let allies finish it</li>
+        <li>In rallies the rally leader's resistance counts for all teams</li></ul></div>
+    </div>
+    <div class="callout warn"><b>Auto-rally warning:</b> being pulled into offline rallies means troop loss + virus accumulation. Fix: send troops to bases to avoid auto-infection. Attacking an infected base transfers virus stacks.</div>
+
+    <div class="imgs">
+      <figure><img src="images/2.png" alt="RA Virus"><figcaption><b>Image 2</b> · RA Virus (infection &amp; debuffs)</figcaption></figure>
+      <figure><img src="images/6.png" alt="Resistance Rally & PvE"><figcaption><b>Image 6</b> · Rally &amp; PvE resistance</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Announcement<span class="kind">public · no emoji · Images 2 &amp; 6</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>The RA virus is the core mechanic of the season. Fights against certain enemies infect your troops. If your Virus Research Institute is too low, virus stacks pile up from 0 to 100 and the debuffs get harsher: from level 20 your damage drops, from 40 losses rise, from 60 you can lose enemies despite a win, at 100 the base explodes. Check the required resistance before every attack. If it is too low, do not attack alone; request cures in chat or start a rally with an ally who has higher resistance.</pre></div>
+    <div class="charcount">Characters: ~540 · post Images 2 and 6</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Alliance mail<span class="kind">Chat · with emoji · no image</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>🦠 THE RA VIRUS – READ THIS OR YOU'LL LOSE TROOPS! 🦠
+
+Fights against infected enemies infect your troops. 🧟 If your Virus Research Institute is too low, VIRUS STACKS (0–100) pile up – and they wreck you:
+🔸 From 20 → less damage 📉
+🔸 From 40 → more own losses 💀
+🔸 From 60 → you lose enemies even on a win 😵
+🔸 At 100 → BOOM, base explodes and infects neighbors! 💥
+
+✅ HOW TO SURVIVE:
+🔍 ALWAYS check the required resistance before you attack!
+🆘 Too low? DON'T attack alone – request a cure in chat! ✈️
+🤝 Start a rally with an ally who has more resistance – their resistance applies to the whole rally!
+🧑‍✈️ Trick: squad with a low-command hero (e.g. Loki) + rally on an elite, let allies finish it = barely any losses!
+
+⚠️ Beware auto-rally: send troops onto bases so you don't get pulled into others' offline rallies!
+
+Ask once too often rather than once too little! 💪</pre></div>
+  </div>
+</section>
+
+<!-- 3 WEATHER EN -->
+<section id="weather-en">
+  <div class="wrap">
+    <h2><span class="num">3</span> Weather system <span class="when-badge">Throughout</span></h2>
+    <p class="lead">First 2 days always <b>Cloudy</b>, from Day 3 random weather, changing every 30 min to 8 h. <b>Monica</b> predicts 3 possible weathers with their probability.</p>
+    <table>
+      <tr><th>Weather</th><th>Effect</th></tr>
+      <tr><td><b>Acid Rain</b></td><td>Periodically adds virus stacks to all bases in the war zone, avoid attacks &amp; PvP if possible</td></tr>
+      <tr><td><b>Sunny</b></td><td>+30% Profession EXP when killing monsters</td></tr>
+      <tr><td><b>Foggy / Brumeux</b></td><td>Monsters start with +2 virus stacks</td></tr>
+      <tr><td><b>Rainbow</b></td><td>All commanders get regular Profession EXP</td></tr>
+      <tr><td><b>Windy</b></td><td>March speed −30% (plan rallies/reinforcements)</td></tr>
+      <tr><td><b>Light Rain</b></td><td>Troops take <b>no</b> virus stacks → ideal for risky elite/zombie attacks</td></tr>
+      <tr><td><b>Cloudy</b></td><td>Neutral, no effect</td></tr>
+    </table>
+    <div class="callout tip"><b>Permeate:</b> if a base is infected, outgoing teams carry 25% of its virus stacks. <b>Strategy:</b> farm monsters on <b>Sunny</b> (EXP), attack dangerous elites on <b>Light Rain</b>, avoid rallies/marches on <b>Acid Rain</b>. Use Monica's forecast to time attacks.</div>
+    <div class="imgs">
+      <figure><img src="images/3.png" alt="RA Virus continued / Weather"><figcaption><b>Image 3</b> · Weather, permeate &amp; tips</figcaption></figure>
+      <figure><img src="images/4.png" alt="Weather"><figcaption><b>Image 4</b> · Weather rules in detail</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Announcement<span class="kind">public · no emoji · Images 3 &amp; 4</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>The weather drives your tactics this season. The first two days it is cloudy, from Day 3 it changes randomly every 30 minutes to 8 hours. Monica predicts three possible weathers with their probability, use that to plan. Remember: on Sunny there is plus 30 percent Profession EXP from monsters, so farm then. On Light Rain troops take no virus stacks, ideal for dangerous elite attacks. On Acid Rain all bases gain virus stacks, so no rallies and no PvP. On Windy march speed drops by 30 percent.</pre></div>
+    <div class="charcount">Characters: ~560 · post Images 3 and 4</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Alliance mail<span class="kind">Chat · with emoji · no image</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>🌦️ WEATHER = TACTICS! Timing is everything this season! 🌦️
+
+From Day 3 the weather changes randomly (every 30 min – 8 h). Monica 🔮 tells you 3 possible weathers with % – LOOK there before you plan!
+
+☀️ SUNNY → +30% Profession EXP from monsters → FARM!
+🌧️ LIGHT RAIN → troops take NO virus stacks → attack dangerous elites now! 💪
+☢️ ACID RAIN → all bases gain virus stacks → NO rally, NO PvP! ⛔
+🌫️ FOGGY → monsters start with +2 stacks 😬
+💨 WINDY → march −30% → plan more time for rallies!
+☁️ CLOUDY → neutral, whatever
+
+⚠️ Remember: if your base is infected, your troops drag 25% of the stacks out with them (Permeate)!
+
+Glance at the weather, then attack – it saves your troops! 🧠🔥</pre></div>
+  </div>
+</section>
+
+<!-- 4 PROTEIN EN -->
+<section id="protein-en">
+  <div class="wrap">
+    <h2><span class="num">4</span> Protein Farms &amp; Virus Research Institute <span class="when-badge">Week 1 · Day 1</span></h2>
+    <p class="lead">The season's resistance engine. <b>Obj 01–02, Day 1.</b> Unlock and level up to raise virus resistance.</p>
+    <h3>The action loop</h3>
+    <table>
+      <tr><th>#</th><th>Step</th></tr>
+      <tr><td class="prio">1</td><td>Kill ever higher zombies (magnifier on the map) → get <b>Mutant Crystals</b></td></tr>
+      <tr><td class="prio">2</td><td>Upgrade the <b>Protein Farm</b> → produces <b>Immune Proteins</b></td></tr>
+      <tr><td class="prio">3</td><td>Use proteins to upgrade the <b>Virus Research Institute</b></td></tr>
+      <tr><td class="prio">4</td><td>Back to step 1 (higher zombies now possible)</td></tr>
+    </table>
+    <div class="callout warn"><b>Tip &amp; caution:</b> low resistance = high troop losses. If the debuff is too high (% damage dealt very low), <b>don't attack alone</b>. Safe alternative: squad with 1 low-command hero (e.g. Loki), start a rally on a Doom elite and let allies finish it → Mutant Crystals at minimal loss.</div>
+    <div class="callout tip"><b>Reward chests:</b> repair 2,000 Virus Research Institutes in total (all commanders in the war zone) · repair 2,000 Protein Farms in total.</div>
+    <div class="imgs">
+      <figure><img src="images/11.png" alt="Protein Farms / Virus Research Institute"><figcaption><b>Image 11</b> · Protein Farms &amp; Virus Research Institute</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Announcement<span class="kind">public · no emoji · Image 11</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>From Day 1: resistance above all. The loop is simple. Kill ever higher zombies via the magnifier icon on the map and collect Mutant Crystals. Use them to upgrade your Protein Farm, which then produces Immune Proteins. With the proteins you level the Virus Research Institute, which raises your resistance. After that you can attack stronger zombies and the loop starts over. Important: if your resistance is too low, do not attack alone. Instead start a rally with a low-command hero like Loki and let allies finish the elite.</pre></div>
+    <div class="charcount">Characters: ~580 · post Image 11</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Alliance mail<span class="kind">Chat · with emoji · no image</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>💉 DAY 1: PUSH RESISTANCE – THE MOST IMPORTANT LOOP! 💉
+
+Remember these 4 steps, that's the whole season: 🔁
+1️⃣ Kill higher zombies (magnifier 🔍 on the map) → Mutant Crystals 💎
+2️⃣ Upgrade Protein Farm → makes Immune Proteins 🥩
+3️⃣ Proteins into the Virus Research Institute → resistance goes up 🧪
+4️⃣ Now stronger zombies possible → back to step 1! ♻️
+
+⚠️ WARNING: if your resistance is too low, you lose TONS of troops!
+🆘 Then DON'T attack alone! Squad with Loki (low-command) + rally on a Doom elite → allies smash it → you get crystals with almost no losses! 🤝
+
+🎁 Shared goal: repair 2,000 Virus Research Institutes + 2,000 Protein Farms = rewards for everyone!
+
+Whoever levels up first farms the big stuff first! 🚀</pre></div>
+  </div>
+</section>
+
+<!-- 5 PURGE EN -->
+<section id="purge-en">
+  <div class="wrap">
+    <h2><span class="num">5</span> The Purge <span class="when-badge">Week 1 · Day 1 · 7 days</span></h2>
+    <p class="lead">Eliminate infected zombies and secure strongholds for the best individual and alliance ranking.</p>
+    <div class="grid">
+      <div class="card crimson"><h4>⚔️ Purge Action (individual)</h4><ul class="plain" style="color:var(--muted)">
+        <li>Duration 7 days, individual event</li>
+        <li>Kill the highest-level zombie during the event</li>
+        <li>On equal level, <b>kill speed</b> decides</li>
+        <li>Reward: better for higher ranks</li></ul></div>
+      <div class="card gold"><h4>🏰 Purge the Polluted Area (alliance)</h4><ul class="plain" style="color:var(--muted)">
+        <li>Duration 7 days, alliance ranking</li>
+        <li>Based on the <b>highest-level captured military stronghold</b></li>
+        <li>On a tie, <b>capture speed</b> decides</li>
+        <li>Reward: better for higher-placed alliances</li></ul></div>
+    </div>
+    <div class="callout tip"><b>Settlement:</b> daily rewards arrive by mail.</div>
+    <div class="imgs">
+      <figure><img src="images/13.png" alt="The Purge"><figcaption><b>Image 13</b> · The Purge</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Announcement<span class="kind">public · no emoji · Image 13</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>The Purge runs from Day 1 over 7 days and has two parts. In the individual part what counts is the highest-level zombie you kill. On equal level, whoever kills faster decides, so use your stamina deliberately. In the alliance part it is about the highest-level military stronghold we capture together. On a tie the alliance that captures faster wins. Better ranks bring better rewards. So focus on high zombie levels and coordinated stronghold captures. The rewards arrive daily by mail.</pre></div>
+    <div class="charcount">Characters: ~560 · post Image 13</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Alliance mail<span class="kind">Chat · with emoji · no image</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>🧟 THE PURGE – 7 DAYS, TWO RANKINGS, FAT REWARDS! 🧟
+
+Runs from Day 1 – this is where we grab ranks! 🏆
+
+👤 INDIVIDUAL (Purge Action):
+🔹 Counts: the highest-level zombie YOU kill!
+🔹 Same level? → whoever kills faster wins ⏱️ → use stamina cleverly!
+
+🏰 ALLIANCE (Purge the Polluted Area):
+🔹 Counts: our highest-level captured military stronghold!
+🔹 Tie? → whoever captures faster wins! → so COORDINATE! 🤝
+
+🎁 Better ranks = better rewards (arrive daily by mail 📬)
+
+👉 Focus: crack the highest zombies + join the stronghold rallies! Say the word if you can't solo an elite! 💪🔥</pre></div>
+  </div>
+</section>
+
+<!-- 6 SERUM EN -->
+<section id="serum-en">
+  <div class="wrap">
+    <h2><span class="num">6</span> Serum Collection <span class="when-badge">Week 1 · Day 2</span></h2>
+    <p class="lead">Genetic Research Project, the prelude to the Serum Collection mission. <b>Obj 03, Day 2.</b></p>
+    <ul class="check">
+      <li><b>Reward chest:</b> all war zones donate 3,000,000 food (counts like alliance tech donations), repeat throughout the week for alliance contributions</li>
+      <li><b>How it works:</b> a daily puzzle (like Tetris), collect all serum fragments in as few moves as possible, form blocks into lines</li>
+      <li><b>Serum Shop:</b> trade fragments in the special Season 1 Serum Shop. You also get serum via the season skill when killing zombies</li>
+      <li><b>Priority:</b> UR items first, some SSR items are also worth it. The shop refreshes weekly → don't spend everything at once</li>
+    </ul>
+    <div class="imgs">
+      <figure><img src="images/12.png" alt="Serum Collection"><figcaption><b>Image 12</b> · Serum Collection &amp; Serum Shop</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Announcement<span class="kind">public · no emoji · Image 12</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>From Day 2 the Serum Collection is running. As an alliance all war zones donate 3 million food, which counts like alliance tech donations, so donate diligently throughout the week for our contributions. Every day there is a puzzle similar to Tetris where you collect serum fragments in as few moves as possible by forming blocks into lines. You trade the fragments in the special Season 1 Serum Shop. You also get serum via the season skill when killing zombies. Buy UR items first, some SSR are also worth it. The shop refreshes weekly.</pre></div>
+    <div class="charcount">Characters: ~600 · post Image 12</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Alliance mail<span class="kind">Chat · with emoji · no image</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>🧬 SERUM COLLECTION – from Day 2! Free loot + alliance points! 🧬
+
+Here's how it works:
+🍞 Alliance goal: all war zones donate 3M food → counts like tech donations! So DONATE all week long! 🙌
+🧩 Daily Tetris puzzle: collect the serum fragments in as FEW moves as possible (form blocks into lines)!
+🛒 Trade fragments in the Season 1 Serum Shop 💊
+🧟 Bonus: you also get serum via the season skill when killing zombies!
+
+💡 TIP: buy UR items first (some SSR are worth it too)! The shop refreshes EVERY week 🔄 – don't blow it all at once, plan your buys!
+
+Do the puzzle daily – it's free and pays off nicely! ✅💪</pre></div>
+  </div>
+</section>
+
+<!-- 7 CITY CLASH EN -->
+<section id="cityclash-en">
+  <div class="wrap">
+    <h2><span class="num">7</span> City Clash: strongholds &amp; cities <span class="when-badge">Week 1–4</span></h2>
+    <p class="lead">The PvP core. Cities belong to the Legion, they can only be taken via adjacent strongholds.</p>
+    <div class="callout warn"><b>Base rules:</b> military strongholds capturable from Day 1 · a city can only be taken if you own the adjacent stronghold · max 2 strongholds/day, up to 3 at first · Lv.1 cities from Day 3 · only <b>2 city captures (war declarations) per day until Week 4</b> · an alliance can hold max 7 cities (8 with a Lv.6 city).</div>
+    <h3>Weekly goals &amp; reward chests (server time)</h3>
+    <table>
+      <tr><th>Time</th><th>Target object</th><th>Collective goal</th></tr>
+      <tr><td><b>W1 Day 1–3</b></td><td>Lv.1 cities from Wed 12:00</td><td>80 strongholds</td></tr>
+      <tr><td><b>W1 Day 3–7</b></td><td>Lv.2 cities from Sun 12:00</td><td>80 Lv.1 cities</td></tr>
+      <tr><td><b>W2 Day 1–3</b></td><td>Lv.3 cities from Wed</td><td>64 Lv.2 cities</td></tr>
+      <tr><td><b>W2 Day 3–7</b></td><td>Lv.4 cities from Sun</td><td>48 Lv.3 cities</td></tr>
+      <tr><td><b>W3 Day 1–3</b></td><td>Lv.5 cities from Wed</td><td>32 Lv.4 cities</td></tr>
+      <tr><td><b>W3 Day 3–7</b></td><td>Lv.6 cities from Sun</td><td>16 Lv.5 cities</td></tr>
+      <tr><td><b>W4 Day 5–7</b></td><td>Lv.7 cities from Sun</td><td>10 strongholds in other war zones</td></tr>
+    </table>
+    <div class="callout tip"><b>City fighting (capture tips from Image 5):</b> at the chosen time surround the city tightly &amp; stay together · defended city → break through with your 5–10 strongest players as a battering ram &amp; attack durability · empty city → send all squads in to test durability · heal in waves of 300–950, then alliance help. <b>Eligible:</b> the alliance must hold at least one Lv.6 city. <b>Win:</b> 4 h continuous occupation or the longest total occupation at event end. <b>Important:</b> build up City Durability tech before the city wars start!</div>
+    <div class="imgs">
+      <figure><img src="images/7.png" alt="City Clash S1"><figcaption><b>Image 7</b> · City Clash · weekly goals</figcaption></figure>
+      <figure><img src="images/5.png" alt="Tips & Tricks"><figcaption><b>Image 5</b> · Tips &amp; Tricks · city fighting</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Announcement<span class="kind">public · no emoji · Images 7 &amp; 5</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>City Clash is our PvP core. Remember the rules: from Day 1 we take military strongholds, at most 2 per day. We can only capture a city if we own the adjacent stronghold. From Day 3 Lv.1 cities are in play, but only 2 captures per day until Week 4. Every week the target city level rises. To capture, surround the city tightly and stay together. If it is defended, the 5 to 10 strongest break through as a battering ram. Heal in waves and then use alliance help. Be sure to build up City Durability tech beforehand.</pre></div>
+    <div class="charcount">Characters: ~590 · post Images 7 and 5</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Alliance mail<span class="kind">Chat · with emoji · no image</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>🏰 CITY CLASH – HOW WE TAKE CITIES! 🏰
+
+📜 THE RULES (important!):
+🔹 From Day 1: take strongholds (max 2/day) 💪
+🔹 A city ONLY works with an adjacent stronghold! 🧱
+🔹 From Day 3: Lv.1 cities, but only 2 captures/day until Week 4 ⏳
+🔹 Every week the target level rises (Lv.1 → Lv.7) 📈
+
+⚔️ HOW WE CRACK A CITY:
+1️⃣ At the agreed time surround it TIGHTLY, stay together!
+2️⃣ Defended? → the 5–10 strongest as a battering ram 🐏 → durability down!
+3️⃣ Empty? → ALL squads in, test durability!
+4️⃣ Heal in waves of 300–950 → then hit alliance help! 🏥
+
+🛠️ MANDATORY FIRST: build up City Durability tech, or our city falls in seconds!
+🎯 Goal: hold 4 h continuously OR the longest total time! At least one Lv.6 city = we're in!
+
+Rally times are coming – be on time! ⏰🔥</pre></div>
+  </div>
+</section>
+
+<!-- 8 WEAPONS EN -->
+<section id="weapons-en">
+  <div class="wrap">
+    <h2><span class="num">8</span> Exclusive weapons: Kimberly · DVA · Tesla <span class="when-badge">Week 1 · 3 · 6 · Day 4</span></h2>
+    <p class="lead">From Day 4 of the respective week: Kimberly "Rocket Shadow" (W1), DVA (W3/W6), Tesla (W6).</p>
+    <div class="grid">
+      <div class="card gold"><h4>✅ Activation</h4><ul class="plain" style="color:var(--muted)">
+        <li>Hero at <b>5 stars</b> + <b>50 matching Exclusive Weapon Shards</b></li>
+        <li>The weapon can be activated anytime, but only usable while the hero is 5★</li></ul></div>
+      <div class="card blue"><h4>🧩 Shard sources</h4><ul class="plain" style="color:var(--muted)">
+        <li>Exclusive Weapon Battle Pass (70 shards = activate + level 2)</li>
+        <li>Universal shards: Serum Shop, VS duel chests, Black Market event, certain Season 2 activities</li></ul></div>
+      <div class="card crimson"><h4>⚙️ Stats</h4><ul class="plain" style="color:var(--muted)">
+        <li>Max <b>level 30</b> (upgrade is very material-heavy)</li>
+        <li>Boosts: HP, ATK, DEF, all-damage resistance</li>
+        <li>Special: raises the hero's skill level cap</li></ul></div>
+    </div>
+    <div class="imgs">
+      <figure><img src="images/8.png" alt="Kim/DVA/Tesla Exclusive Weapons"><figcaption><b>Image 8</b> · Kim/DVA/Tesla overview</figcaption></figure>
+      <figure><img src="images/9.png" alt="Kimberly Rocket Shadow"><figcaption><b>Image 9</b> · Kimberly "Rocket Shadow" (W1)</figcaption></figure>
+      <figure><img src="images/10.png" alt="DVA Exclusive Weapon"><figcaption><b>Image 10</b> · DVA exclusive weapon (W3)</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Announcement<span class="kind">public · no emoji · Images 8, 9 &amp; 10</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>The exclusive weapons arrive from Day 4 of the respective week: Kimberly's Rocket Shadow in Week 1, DVA in Week 3 and Tesla in Week 6. To activate you need the hero at 5 stars and 50 matching weapon shards. The weapon only works while the hero is at 5 stars. You get shards mainly via the Exclusive Weapon Battle Pass; with 70 shards you activate the weapon and reach level 2. Universal shards are available in the Serum Shop, in VS duel chests and in the Black Market event. The weapon goes up to level 30 and boosts HP, ATK, DEF and damage resistance.</pre></div>
+    <div class="charcount">Characters: ~590 · post Images 8, 9 and 10</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Alliance mail<span class="kind">Chat · with emoji · no image</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>🔫 EXCLUSIVE WEAPONS: Kimberly, DVA &amp; Tesla! 🔫
+
+Available from Day 4 of the respective week:
+🗓️ Week 1 → Kimberly "Rocket Shadow"
+🗓️ Week 3 → DVA
+🗓️ Week 6 → Tesla
+
+✅ ACTIVATE:
+⭐ Bring the hero to 5 stars
+🧩 + 50 matching weapon shards
+⚠️ The weapon only works while the hero is 5★!
+
+💰 GET SHARDS:
+🎟️ Exclusive Weapon Battle Pass (70 shards = activated + level 2!) – best deal
+🛒 Universal shards: Serum Shop, VS duel chests, Black Market event
+
+📈 The weapon goes up to level 30, boosts HP/ATK/DEF + damage resistance and raises the hero's skill cap!
+
+💡 If you're going for Kimberly/DVA/Tesla: collecting shards really pays off! 🔥</pre></div>
+  </div>
+</section>
+
+<!-- 9 WISH HERO EN -->
+<section id="wish-en">
+  <div class="wrap">
+    <h2><span class="num">9</span> Wish Hero <span class="when-badge">From Day 11</span></h2>
+    <p class="lead">From Day 11 of the season you can choose a wish hero.</p>
+    <ul class="check">
+      <li>For every <b>200 recruits</b>, choose an unlocked <b>UR hero</b> from the pool as your wish hero reward</li>
+      <li>The wish hero can be switched anytime</li>
+      <li>Recruiting is more cost-effective <b>after</b> the wish is active → recruit deliberately after Day 11</li>
+    </ul>
+    <div class="imgs">
+      <figure><img src="images/29.jpg" alt="Wish Hero Update"><figcaption><b>Image 29</b> · Wish Hero Update</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Announcement<span class="kind">public · no emoji · Image 29</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>From Day 11 of the season you can choose a wish hero. For every 200 recruits you may pick an unlocked UR hero from the pool as a reward. You can switch your wish hero anytime if you change your mind. Important for your resources: recruiting is much more cost-effective after the wish is active. So save your recruit tickets and start pushing only after Day 11, once you have set your wish hero. That way you get the most out of every recruit.</pre></div>
+    <div class="charcount">Characters: ~560 · post Image 29</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Alliance mail<span class="kind">Chat · with emoji · no image</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>⭐ WISH HERO – from Day 11! Save your tickets! ⭐
+
+🎯 From Day 11 you can choose a WISH HERO!
+🔁 For every 200 recruits → 1 unlocked UR hero from the pool that YOU pick!
+🔄 Switchable anytime – no stress about the choice!
+
+💡 SUPER IMPORTANT FOR YOUR RESOURCES:
+Recruiting is MUCH cheaper AFTER the wish is active! 💰
+👉 So: save recruit tickets NOW and only start after Day 11 once you've set your wish hero!
+
+Don't burn them early – patience really pays off here! 🧠🔥</pre></div>
+  </div>
+</section>
+
+<!-- 10 MASON EN -->
+<section id="promotion-en">
+  <div class="wrap">
+    <h2><span class="num">10</span> Hero Promotion: Mason SSR → UR <span class="when-badge">Week 2 · 42 days</span></h2>
+    <p class="lead">Promote Mason from SSR (5★) to UR legendary, including Armored Vehicle. <b>Obj 01, D1.</b></p>
+    <div class="callout gold"><b>Maximize points:</b> 1) Wait until <b>Thursday (VS duel hero day)</b>, then promote. 2) Beforehand bring Mason to 5★ + SSR universal shards, max the Wall of Honor level (all SSR shards on him), all skill medals on Mason. 3) After the UR promotion collect the refunded shards &amp; medals by mail and reinvest.</div>
+    <table>
+      <tr><th>Topic</th><th>Detail</th></tr>
+      <tr><td><b>Requirement</b></td><td>Legendary Hero Badge · Mason must be 5★</td></tr>
+      <tr><td><b>After promotion</b></td><td>Mason can go back to 5★ via SSR universal/Mason fragments (1,600 shards from 5★). Skill medals freely reassignable.</td></tr>
+      <tr><td><b>Refunds</b></td><td>Shards for raising to 5★ are <b>not</b> refunded · Wall of Honor fragments are refunded as Mason shards · all skill medals refunded</td></tr>
+      <tr><td><b>Reward chest</b></td><td>All war zones donate 5,000,000 coins (alliance tech)</td></tr>
+      <tr><td><b>EXP Level Swap</b></td><td>Simultaneous event: 2 heroes swap EXP levels, ideal to move a high level onto a key hero</td></tr>
+    </table>
+    <div class="imgs">
+      <figure><img src="images/14.png" alt="Hero Promotion Mason"><figcaption><b>Image 14</b> · Hero Promotion (Mason)</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Announcement<span class="kind">public · no emoji · Image 14</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>From Week 2 the Hero Promotion runs: Mason is promoted from SSR to UR legendary, including the Armored Vehicle. Here is how to get the most points: wait with the promotion until Thursday, the hero day in the VS duel. Beforehand bring Mason to 5 stars, max his Wall of Honor level and put all skill medals on him. After the promotion you get Wall of Honor fragments and all skill medals back by mail and can reinvest them. The shards for raising to 5 stars are not refunded. The requirement is a Legendary Hero Badge and Mason at 5 stars.</pre></div>
+    <div class="charcount">Characters: ~590 · post Image 14</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Alliance mail<span class="kind">Chat · with emoji · no image</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>🦸 HERO PROMOTION: MASON SSR → UR! Timing = points! 🦸
+
+From Week 2 you can turn Mason into UR legendary (with Armored Vehicle 🚗). BUT: timing decides your VS points!
+
+🗓️ RULE NO. 1: only promote on THURSDAY (hero day in the VS duel)! ⏰
+Prepare beforehand:
+⭐ Mason to 5 stars + SSR universal shards
+🏛️ Max the Wall of Honor (all SSR shards on Mason!)
+🎖️ ALL skill medals on Mason!
+
+♻️ AFTER the promotion:
+📬 You get Wall of Honor fragments + all skill medals BACK by mail → reinvest!
+⚠️ BUT: shards for raising to 5★ are NOT returned!
+
+📋 Requirement: Legendary Hero Badge + Mason at 5★.
+🎁 Alliance goal: donate 5M coins!
+
+Collect your medals &amp; shards NOW – and fire on Thursday! 💥</pre></div>
+  </div>
+</section>
+
+<!-- 11 CRIMSON LEGION EN -->
+<section id="legion-en">
+  <div class="wrap">
+    <h2><span class="num">11</span> Crimson Legion <span class="when-badge">Week 2 · 17 days</span></h2>
+    <p class="lead">Defend alliance cities against repeated Crimson Legion attacks. <b>Obj 02, D2.</b></p>
+    <table>
+      <tr><th>Topic</th><th>Detail</th></tr>
+      <tr><td><b>Reward chest</b></td><td>Eliminate 800 Cursed Elites</td></tr>
+      <tr><td><b>Flow</b></td><td>The Legion announces targets in advance → time to prepare. Attacks every <b>Tuesday &amp; Friday</b>. First attack Tue 12:00 on your weakest city.</td></tr>
+      <tr><td><b>Attack process</b></td><td>Countdown → target announcement, 12 h lead time before battle. <b>30 waves</b>, 1 min apart (~90 min total). Up to 20 players can reinforce. Wave strength rises with each attack.</td></tr>
+      <tr><td><b>Reference values</b></td><td>Lv.2 city 3.3–8.2M · Lv.3 11.8–21.2M · Lv.4 up to 26.4M · Lv.5 up to 29.3M</td></tr>
+      <tr><td><b>Outcome</b></td><td><b>Win:</b> alliance reward, defenders get more. <b>Loss:</b> city takes damage; if durability hits 0 → city lost, decays into a ruin, then 7-day protection.</td></tr>
+    </table>
+    <div class="imgs">
+      <figure><img src="images/15.png" alt="Crimson Legion"><figcaption><b>Image 15</b> · Crimson Legion</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Announcement<span class="kind">public · no emoji · Image 15</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>From Week 2 the Crimson Legion attacks our cities. It announces its targets in advance, so we have time to prepare. Attacks come every Tuesday and Friday, the first Tuesday at 12:00 on our weakest city. Each attack has 30 waves one minute apart, lasting about 90 minutes, and the waves get stronger. Up to 20 players can reinforce a city, so station troops in time. If we lose and durability hits zero, the city is lost and turns into a ruin. Our goal is to eliminate 800 Cursed Elites.</pre></div>
+    <div class="charcount">Characters: ~590 · post Image 15</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Alliance mail<span class="kind">Chat · with emoji · no image</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>🔴 CRIMSON LEGION ATTACKS – DEFEND THE CITIES! 🔴
+
+From Week 2 the Legion storms our cities! Good news: it announces in advance! 📢
+
+📅 WHEN: every Tuesday &amp; Friday! First attack Tue 12:00 on our WEAKEST city!
+⏱️ FLOW: countdown → 12 h lead time → then 30 waves one minute apart (~90 min), always stronger! 📈
+🛡️ Up to 20 players can reinforce per city → station troops IN TIME!
+
+💪 Wave strength reference:
+🔹 Lv.2 city: 3.3–8.2M
+🔹 Lv.3 city: 11.8–21.2M
+🔹 Lv.4 city: up to 26.4M
+🔹 Lv.5 city: up to 29.3M
+
+⚠️ Losing = city takes damage. Durability to 0 → city GONE (becomes a ruin)! 💀
+🎁 Goal: eliminate 800 Cursed Elites!
+
+When your city is targeted: shout immediately, we reinforce together! 🤝🔥</pre></div>
+  </div>
+</section>
+
+<!-- 12 TROOP BOOST EN -->
+<section id="troopboost-en">
+  <div class="wrap">
+    <h2><span class="num">12</span> Troop Type Boost: seasonal military buildings <span class="when-badge">Week 3 · Day 1</span></h2>
+    <p class="lead">Unlock the seasonal military buildings. <b>Obj 01, D1.</b></p>
+    <ul class="check">
+      <li><b>Reward chest:</b> global server goal, all war zones donate 5,000,000 coins</li>
+      <li><b>New buildings:</b> Tank Center · Aircraft Center · Missile Center, they disappear at season end</li>
+      <li>Upgradable to <b>level 30</b> · each level +2% HP/ATK/DEF for the matching hero type</li>
+      <li><b>Resources:</b> Lv.1 = 4.2k Immune Proteins + 4.2k Mutant Crystals (+1% bonus) · Lv.2 = 15.6k + 7.8k (+2%) · higher levels same progression</li>
+    </ul>
+    <div class="imgs">
+      <figure><img src="images/16.png" alt="Troop Type Boost"><figcaption><b>Image 16</b> · Troop Type Boost</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Announcement<span class="kind">public · no emoji · Image 16</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>From Week 3 we unlock the seasonal military buildings: Tank Center, Aircraft Center and Missile Center. Each building boosts the matching hero type and can be upgraded to level 30, with each level giving two percent more HP, attack and defense. For level 1 you need 4200 Immune Proteins and 4200 Mutant Crystals, for level 2 already 15600 and 7800. Level up the buildings that match your main troops deliberately. Note: these buildings disappear again at the end of the season. As an alliance goal all war zones donate 5 million coins.</pre></div>
+    <div class="charcount">Characters: ~590 · post Image 16</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Alliance mail<span class="kind">Chat · with emoji · no image</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>🏗️ TROOP TYPE BOOST – new military buildings from Week 3! 🏗️
+
+Three new season buildings unlock:
+🛡️ Tank Center
+✈️ Aircraft Center
+🚀 Missile Center
+
+📈 Each level: +2% HP/ATK/DEF for the matching hero type – up to level 30!
+💡 TIP: level the building that matches YOUR main troops first!
+
+🧱 Resources:
+🔹 Lv.1: 4.2k Immune Proteins + 4.2k Mutant Crystals
+🔹 Lv.2: 15.6k + 7.8k
+🔹 same progression after that
+
+⚠️ Note: these buildings disappear at season end – but the boost helps us NOW in the wars!
+🎁 Alliance goal: donate 5M coins!
+
+Build smart – every percent counts in the city war! 💪🔥</pre></div>
+  </div>
+</section>
+
+<!-- 13 OUTPOSTS EN -->
+<section id="outposts-en">
+  <div class="wrap">
+    <h2><span class="num">13</span> Outposts &amp; cross-server <span class="when-badge">Week 3 · 35 days</span></h2>
+    <p class="lead">Place outposts in other war zones, capture strongholds &amp; cities there, launch cross-server attacks. <b>Obj 02, D1.</b></p>
+    <table>
+      <tr><th>Topic</th><th>Detail</th></tr>
+      <tr><td><b>Reward chest</b></td><td>Ranking by cross-server kills/captures · shared chest: 80 strongholds in other war zones</td></tr>
+      <tr><td><b>Placement</b></td><td>Only <b>R4/R5</b>, in another warzone. Once placed it cannot be removed. Enables capturing the stronghold it stands on (must stay built during the capture).</td></tr>
+      <tr><td><b>Teleport</b></td><td>Free teleport between war zones to attack from the outpost. The outpost is protected while building, then directly attackable (no rally needed). If destroyed, rebuildable every 24 h.</td></tr>
+      <tr><td><b>Max</b></td><td>4 outposts</td></tr>
+      <tr><td><b>Combat rules</b></td><td>Non-war days (Mon–Fri + Sun): only Contaminated Land + cross-server attacks. Until Week 4: Day 2 → war/strongholds only, every 2 days, 2/day. From Week 4 Day 3 → also War Declarations, Wed &amp; Sat, 2/day.</td></tr>
+    </table>
+    <div class="imgs">
+      <figure><img src="images/17.png" alt="Outposts"><figcaption><b>Image 17</b> · Outposts &amp; combat rules</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Announcement<span class="kind">public · no emoji · Image 17</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>From Week 3 the outposts arrive for cross-server war. Only R4 and R5 can place them in other war zones, and once set they cannot be removed. An outpost enables capturing the stronghold it stands on and must stay built during that. From there you teleport freely between war zones to attack. We can hold at most 4 outposts. On non-war days only Contaminated Land and cross-server attacks are allowed. As a shared goal we capture 80 strongholds in other war zones. Coordinate the placements within the leadership team.</pre></div>
+    <div class="charcount">Characters: ~600 · post Image 17</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Alliance mail<span class="kind">Chat · with emoji · no image</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>🛰️ OUTPOSTS – cross-server war from Week 3! 🛰️
+
+Now we attack other war zones! 🌍
+
+📍 PLACEMENT: only R4/R5 place outposts in other warzones!
+⚠️ Once set = can NOT be removed → so coordinate well!
+🏰 An outpost enables capturing the stronghold it stands on (must stay built!)
+🚀 From there: FREE teleport between war zones to attack!
+🔢 Max 4 outposts at once!
+🔧 Destroyed? → rebuildable every 24 h!
+
+⚔️ COMBAT RULES:
+🔹 Non-war days (Mon–Fri + Sun): only Contaminated Land + cross-server attacks
+🔹 From Week 4: also War Declarations (Wed &amp; Sat)
+
+🎁 Shared goal: 80 strongholds in other war zones! + ranking by cross-server kills!
+
+Leadership plans the outpost spots – stay ready for teleport attacks! 🔥</pre></div>
+  </div>
+</section>
+
+<!-- 14 WAR DECLARATION EN -->
+<section id="wardec-en">
+  <div class="wrap">
+    <h2><span class="num">14</span> War Declaration <span class="when-badge">Week 4 · Day 1–3</span></h2>
+    <p class="lead">Declare war and capture cities in other war zones. <b>Obj 01, D1–3.</b></p>
+    <table>
+      <tr><th>Topic</th><th>Detail</th></tr>
+      <tr><td><b>Reward chest</b></td><td>Collective goal: 10,000,000 Influence Points from city captures in other war zones</td></tr>
+      <tr><td><b>War days</b></td><td>Only <b>Wednesday &amp; Saturday</b> · 1 war declaration/day · 2 city captures/day (max 4 cities in other warzones)</td></tr>
+      <tr><td><b>Objectives</b></td><td>1) break through City Defense · 2) destroy City Durability</td></tr>
+    </table>
+    <div class="callout tip"><b>Capture strategy:</b> Engineer role with <b>Siege Mastery 5/5</b> (+500 durability damage/hit), Siege Banners max 5/zone (save some for the 2nd city). 1) Surround the city tightly. 2) As soon as the rally enters the Contaminated Zone, send Squad 1 onto the city immediately. 3) Defended → repeat rally + battering ram; empty → all squads to the durability test. 4) Heal in waves of 300–950, then alliance help. 5) Defend your own city → station troops permanently.</div>
+    <div class="imgs">
+      <figure><img src="images/18.png" alt="War Declaration"><figcaption><b>Image 18</b> · War Declaration &amp; capture strategy</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Announcement<span class="kind">public · no emoji · Image 18</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>From Week 4 we declare war on other war zones and capture cities there. War declarations are only possible Wednesday and Saturday, with one declaration and two city captures per day. To capture, first break through the city defense and then destroy the durability. The Engineer with Siege Mastery 5 gives plus 500 durability damage per hit, and you should save some Siege Banners for the second city. Surround the city tightly, send Squad 1 in immediately when entering the Contaminated Zone and heal in waves. The shared goal is 10 million Influence Points.</pre></div>
+    <div class="charcount">Characters: ~600 · post Image 18</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Alliance mail<span class="kind">Chat · with emoji · no image</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>⚔️ WAR DECLARATION – from Week 4 we capture foreign cities! ⚔️
+
+📅 WAR DAYS: ONLY Wednesday &amp; Saturday!
+🔹 1 war declaration/day
+🔹 2 city captures/day (max 4 cities in other warzones)
+
+🎯 HOW IT WORKS:
+1️⃣ Break through City Defense 🛡️
+2️⃣ Destroy City Durability 💥
+
+🏆 CAPTURE STRATEGY:
+🔧 Engineer with Siege Mastery 5/5 = +500 durability damage per hit!
+🚩 Siege Banners (max 5/zone) – save a few for the 2nd city!
+1️⃣ Surround the city TIGHTLY
+2️⃣ As soon as the rally enters the Contaminated Zone → send Squad 1 onto the city!
+3️⃣ Defended? → repeat rally + battering ram. Empty? → all squads to the durability test!
+4️⃣ Heal in waves of 300–950 → then alliance help! 🏥
+
+🎁 Shared goal: 10M Influence Points!
+
+Wed &amp; Sat are our war days – be ready! 🔥</pre></div>
+  </div>
+</section>
+
+<!-- 15 OCTAGON EN -->
+<section id="octagon-en">
+  <div class="wrap">
+    <h2><span class="num">15</span> Infinite Octagon &amp; Warzone Duel <span class="when-badge">Week 4–7</span></h2>
+    <p class="lead">Warzone duel tournament between the 8 war zones, the fight for the Capitol.</p>
+    <table>
+      <tr><th>Topic</th><th>Detail</th></tr>
+      <tr><td><b>Reward chest</b></td><td>Collective goal: eliminate 1,000,000 units from commanders of other war zones in total · plus 10,000,000 Influence Points from city captures</td></tr>
+      <tr><td><b>Flow</b></td><td>Tournament in 3 rounds, round 1 by warzone influence ranking (cutoff: midnight Sunday Week 4). Influence points per duel win. From Week 5: 1 round/week.</td></tr>
+      <tr><td><b>Bonus points</b></td><td>Only alliances with &gt;1,000,000 Influence Points. 1 win +250,000 · 2 wins +500,000 · 3 wins +1,500,000</td></tr>
+      <tr><td><b>Goal</b></td><td>Fight for the Capitol (classic warzone duel rules)</td></tr>
+    </table>
+    <div class="imgs">
+      <figure><img src="images/19.png" alt="Infinite Octagon"><figcaption><b>Image 19</b> · Infinite Octagon (W4)</figcaption></figure>
+      <figure><img src="images/21.png" alt="Warzone Duel"><figcaption><b>Image 21</b> · Warzone Duel (W5–7)</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Announcement<span class="kind">public · no emoji · Images 19 &amp; 21</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>From Week 4 the Infinite Octagon starts, the warzone duel tournament between the 8 war zones. It runs over three rounds, from Week 5 one round per week, and in the end it is about the Capitol. The first round is based on the warzone influence ranking, with the cutoff at midnight on Sunday of Week 4. Collect as many Influence Points as possible by then through city captures. Only alliances with more than one million Influence Points get bonus points: one win gives 250000, two wins 500000 and three wins 1.5 million. Together we eliminate one million enemy units.</pre></div>
+    <div class="charcount">Characters: ~600 · post Images 19 and 21</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Alliance mail<span class="kind">Chat · with emoji · no image</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>🥊 INFINITE OCTAGON – WARZONE DUEL FOR THE CAPITOL! 🥊
+
+From Week 4: our 8 war zones face off! Final goal: the CAPITOL! 🏛️
+
+🗓️ FLOW:
+🔹 Tournament in 3 rounds (from Week 5: 1 round/week)
+🔹 Round 1 by warzone influence ranking
+⏰ CUTOFF: midnight Sunday, Week 4! → until then collect as many Influence Points as possible (via city captures)!
+
+🏆 BONUS POINTS (only from 1M influence!):
+✅ 1 win → +250,000
+✅✅ 2 wins → +500,000
+✅✅✅ 3 wins → +1,500,000
+
+🎁 Shared goal: eliminate 1,000,000 enemy units!
+
+👉 EVERY city kill before Sunday counts for the ranking – go hard! 💪🔥</pre></div>
+  </div>
+</section>
+
+<!-- 16 BUILDER EN -->
+<section id="builder-en">
+  <div class="wrap">
+    <h2><span class="num">16</span> Builder Alliances <span class="when-badge">Week 4–7 · permanent</span></h2>
+    <p class="lead">A Builder Alliance gives up its influence ranking and instead develops cities via facilities that grant durability &amp; boni. <b>A fundamental leadership decision!</b></p>
+    <div class="callout warn"><b>Principle:</b> conversion is only possible between Week 4 and 7, <b>permanent for the season</b> → no more city war declarations, no more influence ranking. New ranking by builder level. Weigh this decision carefully.</div>
+    <table>
+      <tr><th>Facility</th><th>Effect</th></tr>
+      <tr><td><b>Factories</b> (Iron/Food/Coins)</td><td>Hourly production</td></tr>
+      <tr><td><b>Depots</b> (Gathering/Engineering/Research)</td><td>+10% speed (gathering/building/research)</td></tr>
+      <tr><td><b>Training Center</b></td><td>+5% training speed</td></tr>
+      <tr><td><b>Medical Center</b></td><td>−5% PvP troop losses</td></tr>
+      <tr><td><b>Radar Station</b></td><td>+5% Hero DEF</td></tr>
+      <tr><td><b>Armory</b></td><td>+5% Hero ATK</td></tr>
+    </table>
+    <div class="callout tip"><b>How it works:</b> R4/R5 choose captured cities for support facilities (max 3/city, none in strongholds). Building starts at 0% and rises with member donations. Materials from daily tasks &amp; radar. A player must be in the alliance for at least 24 h to donate. <b>+10% City Durability</b> per built facility; some boni (Hero ATK/DEF, PvP losses) apply to all commanders in the war zone.</div>
+    <div class="imgs">
+      <figure><img src="images/20.png" alt="Builder Alliances"><figcaption><b>Image 20</b> · Builder Alliances</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Announcement<span class="kind">public · no emoji · Image 20</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>Between Week 4 and 7 we can convert into a Builder Alliance. This is a big decision: we permanently give up our influence ranking and all city war declarations for the season and instead develop our cities via facilities. Each facility gives plus 10 percent City Durability, plus boni like plus 5 percent Hero attack or minus 5 percent PvP losses, some for the whole war zone. R4 and R5 choose the cities, at most three facilities per city, and construction rises with your donations. The leadership team decides whether this path fits us.</pre></div>
+    <div class="charcount">Characters: ~580 · post Image 20</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Alliance mail<span class="kind">Chat · with emoji · no image</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>🏗️ BUILDER ALLIANCE – big strategic call (Week 4–7)! 🏗️
+
+We can convert into a BUILDER ALLIANCE – but careful, it's PERMANENT for the season! ⚠️
+
+🔀 What changes?
+❌ No more influence ranking
+❌ No more city war declarations
+✅ Instead: build cities with facilities → new builder ranking!
+
+🏭 FACILITIES &amp; BONI (each +10% City Durability!):
+🔹 Factories → Iron/Food/Coins per hour
+🔹 Depots → +10% gathering/building/research
+🔹 Training Center → +5% training
+🔹 Medical Center → −5% PvP losses
+🔹 Radar Station → +5% Hero DEF
+🔹 Armory → +5% Hero ATK
+(some boni apply to the whole war zone! 🌍)
+
+🛠️ R4/R5 choose the cities (max 3 facilities/city). Construction rises with YOUR donations – donatable after 24 h membership!
+
+👉 Leadership discusses whether we take this path. Share your opinion! 💬🔥</pre></div>
+  </div>
+</section>
+
+<!-- 17 PROFESSION EN -->
+<section id="profession-en">
+  <div class="wrap">
+    <h2><span class="num">17</span> Profession Hall &amp; skills <span class="when-badge">Throughout</span></h2>
+    <p class="lead">Your profession choice sets your focus. Season skills start at season begin and are reset at the end (points refunded). Max level S1 = 40.</p>
+    <div class="grid">
+      <div class="card blue"><h4>🔧 Engineer (build type)</h4><ul class="plain" style="color:var(--muted)">
+        <li>Less building/research time, lower research cost</li>
+        <li>Better resource production, defensive skills</li>
+        <li>Recommended if HQ &lt; Lv.30 / no T10 troops</li></ul></div>
+      <div class="card crimson"><h4>⚔️ War Leader (combat type)</h4><ul class="plain" style="color:var(--muted)">
+        <li>Better unit stats &amp; morale, faster training</li>
+        <li>Focus on attack skills, for PvP, Capitol, cross-server</li>
+        <li>Recommended if building/research is largely done</li></ul></div>
+    </div>
+    <h3>EXP gain &amp; points</h3>
+    <table>
+      <tr><th>Source</th><th>Value</th></tr>
+      <tr><td>Upgrade seasonal buildings</td><td>★★★★</td></tr>
+      <tr><td>Attack military strongholds · Season Pass</td><td>★★★</td></tr>
+      <tr><td>Attack cities / defenders · zombies &amp; Cursed Elites · EXP packs</td><td>★★</td></tr>
+    </table>
+    <div class="callout tip"><b>Recommended skills (Image 23):</b> <b>Engineer</b>, Quick Production (Lv.1), Instant Construction/Research (15), Cooperative Construction/Research (30), Resource Economy (35), Recycling (35). <b>Season</b>, Knowledge (1), Predator (5), Veteran (10), Elite Hunter (15), Spread (25). <b>War Leader</b>, Instant Return (1), Drill Ground Prep (5), Craze (10), Inspire (35), Charge Banner (40). Switch/reset via season battle pass certificates (points refunded).</div>
+    <div class="callout warn"><b>Season skills (Image 28), priorities:</b> <b>Excellent:</b> Lucky Predator (Lv.5, +10 serum/kill), Field Veteran (10), Elite Hunter (15, up to +150k EXP/day). <b>Good:</b> Battlefield Knowledge (1), Infection Spread (25, for active farmers), Poison Trial (40). <b>Avoid:</b> Healing Expert (20), Viral Offense (30), Virus Boost (35, niche strategy).</div>
+    <div class="imgs">
+      <figure><img src="images/23.png" alt="Profession Hall"><figcaption><b>Image 23</b> · Profession Hall (overview)</figcaption></figure>
+      <figure><img src="images/28.png" alt="Season Skills"><figcaption><b>Image 28</b> · Season skills</figcaption></figure>
+      <figure><img src="images/24.png" alt="Engineer 1-50"><figcaption><b>Image 24</b> · Engineer Lv.1–50</figcaption></figure>
+      <figure><img src="images/26.png" alt="War Leader 1-50"><figcaption><b>Image 26</b> · War Leader Lv.1–50</figcaption></figure>
+    </div>
+    <p style="font-size:13px;color:var(--muted)">More skill details: <b>Image 25</b> (Engineer 55–100) · <b>Image 27</b> (War Leader 55–100), as reference in the folder.</p>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Announcement<span class="kind">public · no emoji · Images 23 &amp; 28</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>The Profession Hall sets your focus. Choose Engineer if your HQ is still below level 30 or you have no T10 troops, because it saves building and research time. Choose War Leader if building and research are largely done, because it strengthens attack and PvP. Season skills start at the beginning and are reset at the end, with the points refunded. The maximum level in Season 1 is 40. The most EXP comes from upgrading seasonal buildings, followed by strongholds and cities. Among the season skills, prioritize Lucky Predator, Field Veteran and Elite Hunter.</pre></div>
+    <div class="charcount">Characters: ~600 · post Images 23 and 28</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Alliance mail<span class="kind">Chat · with emoji · no image</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>🎓 PROFESSION HALL &amp; SKILLS – choose right! 🎓
+
+Your profession decides your focus:
+🔧 ENGINEER (build): less building/research time, more resources → take it if HQ &lt; Lv.30 or no T10 troops!
+⚔️ WAR LEADER (combat): more attack, morale, faster training → take it if building/research is done!
+
+📊 HOW YOU GET EXP (most at the top):
+⭐⭐⭐⭐ Upgrade season buildings
+⭐⭐⭐ Attack strongholds + Season Pass
+⭐⭐ Cities, zombies &amp; Cursed Elites
+
+✅ SEASON SKILLS – THESE ARE WORTH IT:
+🔥 Lucky Predator (Lv.5) → +10 serum per kill!
+🔥 Field Veteran (Lv.10) &amp; Elite Hunter (Lv.15) → up to +150k EXP/day!
+👍 Battlefield Knowledge (1), Infection Spread (25), Poison Trial (40)
+🚫 Stay away from: Healing Expert, Viral Offense, Virus Boost (niche!)
+
+💡 Season skills are reset at the end – you get the points back! Max level S1 = 40.
+
+Ask if you're unsure about the profession choice! 💪</pre></div>
+  </div>
+</section>
+
+<!-- 18 END OF SEASON EN -->
+<section id="endseason-en">
+  <div class="wrap">
+    <h2><span class="num">18</span> Rewards &amp; end of season <span class="when-badge">Week 8 · Day 7</span></h2>
+    <div class="grid">
+      <div class="card gold"><h4>🎁 Rewards</h4><ul class="plain" style="color:var(--muted)">
+        <li>RS &amp; Majordomos distribute Season 1 rewards by contribution</li>
+        <li>Warzone influence reward by mail</li>
+        <li>Only <b>one</b> season reward per player (even if you switch alliance)</li></ul></div>
+      <div class="card crimson"><h4>🚫 Season end (Day 7)</h4><ul class="plain" style="color:var(--muted)">
+        <li>No more city/stronghold captures &amp; no more teleports</li>
+        <li>Zombies &amp; Doom elites become normal</li>
+        <li>Season buildings (Tank/Aircraft/Missile) &amp; their boni disappear</li>
+        <li>Season resources (proteins, crystals, serum) → Profession EXP</li>
+        <li>Season skill points refunded · Hero Return recruiting disappears</li></ul></div>
+      <div class="card toxic"><h4>✅ What stays</h4><ul class="plain" style="color:var(--muted)">
+        <li>Map with cities &amp; fortresses (no longer capturable)</li>
+        <li>Season Shop &amp; medals (usable for the celebration &amp; Season 2)</li>
+        <li>Earned <b>exclusive weapons</b> stay</li>
+        <li>Keep Hero Return tickets for future seasons</li></ul></div>
+    </div>
+    <div class="imgs">
+      <figure><img src="images/22.png" alt="Rewards and End of Season"><figcaption><b>Image 22</b> · Rewards &amp; End of Season</figcaption></figure>
+    </div>
+
+    <div class="tmpl announce"><div class="bar"><span class="t">Announcement<span class="kind">public · no emoji · Image 22</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>In Week 8 the season ends, the rewards are distributed on Day 7. RS and Majordomos distribute the Season 1 rewards by your contribution, the warzone influence reward arrives by mail. There is only one season reward per player, even if you switch alliance. Toward the end no more captures and teleports are possible, the season buildings and their boni disappear, and season resources are converted into Profession EXP. So spend your proteins, crystals and serum in time. Your exclusive weapons, the Season Shop and the medals stay with you.</pre></div>
+    <div class="charcount">Characters: ~580 · post Image 22</div>
+
+    <div class="tmpl mail"><div class="bar"><span class="t">Alliance mail<span class="kind">Chat · with emoji · no image</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>🏁 SEASON END (Week 8) – last chance to grab everything! 🏁
+
+🎁 REWARDS (Day 7):
+🔹 RS &amp; Majordomos distribute by your CONTRIBUTION → so stay active to the end!
+🔹 Warzone influence arrives by mail 📬
+⚠️ Only ONE season reward per player – even if you switch alliance!
+
+🚫 WHAT DISAPPEARS:
+❌ No more captures/teleports
+❌ Season buildings (Tank/Aircraft/Missile) + boni gone
+❌ Proteins, crystals, serum → converted to Profession EXP!
+❌ Hero Return recruiting gone
+
+⏳ SO NOW: spend your season resources &amp; serum fragments IN TIME – don't let anything expire! 🛒
+
+✅ WHAT STAYS:
+💪 Your exclusive weapons!
+🛒 Season Shop &amp; medals (usable in Season 2 too)
+🎟️ Hero Return tickets for future seasons!
+
+Strong finish, everyone – give it all one more time! 🔥🏆</pre></div>
+  </div>
+</section>
+
+<!-- WEEKLY ROUNDUP MAILS (EN) -->
+<section id="weekly-en">
+  <div class="wrap">
+    <h2><span class="num">📬</span> Weekly Roundup Mails <span class="when-badge">1 mail per week</span></h2>
+    <p class="lead"><b>One</b> alliance mail per week with all the info, split into start · mid · end of week. Each week is listed here with its roundup mail <b>at the end of the week</b>, copy it, fill in the [times] &amp; [goals], post it.</p>
+
+    <h3>Week 1, Start · Resistance · Purge · Serum · City Clash</h3>
+    <div class="tmpl mail"><div class="bar"><span class="t">📬 Week 1, Roundup<span class="kind">post at the end of the week</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>🦠 WEEK 1, SEASON START "CRIMSON PLAGUE"! 🦠
+
+📌 START OF WEEK (Day 1):
+🔁 Start the resistance loop NOW: higher zombies (magnifier 🔍) → Mutant Crystals → Protein Farm → Immune Proteins → Virus Research Institute!
+🧟 The Purge is running (7 days): kill the highest-level zombies + capture military strongholds (max 2/day)!
+⚠️ ALWAYS check your resistance before attacking – or you lose troops! Too low? Loki rally + allies!
+
+📌 MID WEEK (from Day 2–3):
+🧬 Serum Collection: daily puzzle 🧩 + trade fragments in the Serum Shop (UR first)! Alliance goal: donate 3M food 🍞
+🏰 City Clash from Day 3: Lv.1 cities (only next to your own stronghold), max 2 captures/day!
+🛠️ MANDATORY: upgrade City Durability tech before the wars start!
+
+📌 END OF WEEK (from Day 4):
+🔫 Kimberly "Rocket Shadow" exclusive weapon: hero 5★ + 50 shards!
+🌦️ Weather (from Day 3): ☀️Sunny=farm · 🌧️Light Rain=risky elites · ☢️Acid Rain=no rally/PvP! Check Monica's forecast!
+🎯 Weekly goal: [80 strongholds / 80 Lv.1 cities]
+
+Better to ask once too often! 💪🔥</pre></div>
+
+    <h3>Week 2, Mason · Crimson Legion</h3>
+    <div class="tmpl mail"><div class="bar"><span class="t">📬 Week 2, Roundup<span class="kind">post at the end of the week</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>🔴 WEEK 2, MASON &amp; CRIMSON LEGION! 🔴
+
+📌 START OF WEEK:
+🦸 Mason Hero Promotion (SSR→UR) starts – prepare NOW: Mason 5★, max Wall of Honor, ALL skill medals on Mason!
+⏰ BUT: only promote on THURSDAY (VS hero day) = max points! Alliance goal: 5M coins.
+
+📌 MID WEEK:
+🏰 Crimson Legion attacks! Attacks Tue &amp; Fri, first one Tue 12:00 on our WEAKEST city!
+⏱️ 30 waves (~90 min), getting stronger – up to 20 players can reinforce → station troops in time!
+🎁 Goal: eliminate 800 Cursed Elites. Losing = city takes damage (Durability 0 → gone)!
+
+📌 END OF WEEK:
+💥 Promote Mason on THURSDAY – then collect medals/fragments back by mail &amp; reinvest!
+🏙️ City Clash: Lv.3 &amp; Lv.4 cities now!
+🎯 [enter rally times]
+
+If your city is targeted: speak up immediately! 🤝🔥</pre></div>
+
+    <h3>Week 3, Troop Boost · Outposts · DVA</h3>
+    <div class="tmpl mail"><div class="bar"><span class="t">📬 Week 3, Roundup<span class="kind">post at the end of the week</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>🛰️ WEEK 3, TROOP BOOST &amp; CROSS-SERVER! 🛰️
+
+📌 START OF WEEK:
+🏗️ Troop Type Boost: build Tank/Aircraft/Missile Center (up to Lv.30, +2%/level HP/ATK/DEF)! Level the building for YOUR main troops first! Alliance goal: 5M coins.
+⭐ From Day 11: Wish Hero – save recruit tickets, recruit on purpose (cheaper once the wish is active)!
+
+📌 MID WEEK:
+📍 Outposts (cross-server): only R4/R5 place them in other warzones – PERMANENT, max 4! Free teleport to attack 🚀
+🎁 Goal: 80 strongholds in other war zones! Leadership plans the spots.
+
+📌 END OF WEEK:
+🔫 DVA exclusive weapon available (hero 5★ + shards)!
+🏙️ City Clash: Lv.5 &amp; Lv.6 cities! Keep timing the weather 🌦️
+🎯 [enter goals]
+
+Stay ready for teleport attacks! 🔥</pre></div>
+
+    <h3>Week 4, War Declaration · Octagon · Builder choice</h3>
+    <div class="tmpl mail"><div class="bar"><span class="t">📬 Week 4, Roundup<span class="kind">post at the end of the week</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>⚔️ WEEK 4, WAR DECLARATIONS &amp; BIG DECISION! ⚔️
+
+📌 START OF WEEK:
+🗡️ War Declaration: capture cities in other war zones – ONLY Wed &amp; Sat! 1 declaration + 2 captures/day.
+🔧 Engineer Siege Mastery 5/5 (+500 Durability/hit), 🚩 save Siege Banners for the 2nd city! Goal: 10M Influence Points.
+
+📌 MID WEEK:
+🥊 Infinite Octagon starts (warzone duel for the Capitol)!
+⏰ Influence ranking DEADLINE: MIDNIGHT SUNDAY! Grab as much influence as possible via city captures! Bonus points from 1M influence.
+
+📌 END OF WEEK:
+🏗️ BUILDER ALLIANCE DECISION (window W4–W7, PERMANENT!): give up influence ranking + city wars for facility building (+10% Durability per facility). Leadership decides – share your opinion! 💬
+🏙️ City Clash: Lv.7 cities!
+
+Wed &amp; Sat = war days. Be ready! 🔥</pre></div>
+
+    <h3>Week 5, Warzone Duel · War Declaration</h3>
+    <div class="tmpl mail"><div class="bar"><span class="t">📬 Week 5, Roundup<span class="kind">post at the end of the week</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>🥊 WEEK 5, WARZONE DUEL IS ON! 🥊
+
+📌 START OF WEEK:
+🏛️ Warzone Duel round (1 round/week) – fight for the Capitol! Collect influence, grab duel wins!
+✅ Bonus: 1 win +250k · 2 wins +500k · 3 wins +1.5M (only from 1M influence)!
+
+📌 MID WEEK:
+⚔️ War Declaration continues ONLY Wed &amp; Sat – other cities + cross-server kills for the ranking! Use the outposts 🛰️
+🎁 Goal: eliminate 1M enemy units!
+
+📌 END OF WEEK:
+🏗️ Builder window is still open (until W7) – if planned, coordinate facility donations!
+🏛️ Capitol only becomes capturable 28 days after city battles start – prep is running!
+🎯 [enter duel times]
+
+Every kill counts for the ranking! 💪🔥</pre></div>
+
+    <h3>Week 6, Tesla · Warzone Duel</h3>
+    <div class="tmpl mail"><div class="bar"><span class="t">📬 Week 6, Roundup<span class="kind">post at the end of the week</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>⚡ WEEK 6, TESLA &amp; NEXT DUEL ROUND! ⚡
+
+📌 START OF WEEK:
+🔫 Tesla exclusive weapon available (hero 5★ + shards)! Shards via Battle Pass, Serum Shop, VS chests!
+🥊 Warzone Duel: next round for the Capitol – push influence + duel wins!
+
+📌 MID WEEK:
+⚔️ War Declaration continues Wed &amp; Sat – keep influence + cross-server kills high!
+🎯 [enter goals]
+
+📌 END OF WEEK:
+🏗️ Builder window closes soon (last chance next week in W7)! Decide now if still open!
+🏛️ Prepare the Capitol push – stay coordinated!
+
+Full speed toward the Capitol! 🔥🏛️</pre></div>
+
+    <h3>Week 7, Capitol · Builder deadline · Resources</h3>
+    <div class="tmpl mail"><div class="bar"><span class="t">📬 Week 7, Roundup<span class="kind">post at the end of the week</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>🏛️ WEEK 7, FIGHT FOR THE CAPITOL! 🏛️
+
+📌 START OF WEEK:
+🥊 Final warzone duel round for the Capitol – EVERYTHING on influence + duel wins!
+🏛️ Capitol is now capturable (28 days after city battles start) – coordinated push, everyone stand ready!
+
+📌 MID WEEK:
+⚠️ BUILDER ALLIANCE WINDOW CLOSES this week – LAST chance to convert! Leadership must decide for good!
+
+📌 END OF WEEK:
+🛒 Resource check: start spending serum fragments, proteins &amp; crystals – at season end they only turn into Profession EXP!
+🎯 [enter Capitol rally times]
+
+Final sprint – take the Capitol! 💪🔥</pre></div>
+
+    <h3>Week 8, Finale · Rewards · Season end</h3>
+    <div class="tmpl mail"><div class="bar"><span class="t">📬 Week 8, Roundup<span class="kind">post at the end of the week</span></span><button class="copybtn" onclick="copyTmpl(this)">Copy</button></div>
+<pre>🏁 WEEK 8, FINALE &amp; SEASON END! 🏁
+
+📌 START OF WEEK:
+🏆 Final week – stay active to the end! Rewards by CONTRIBUTION (RS/Majordomos). Grab the last captures &amp; duels!
+
+📌 MID WEEK:
+🛒 Spend season resources NOW: serum fragments, proteins, crystals, Serum Shop – otherwise they expire into Profession EXP!
+⚠️ Only ONE season reward per player – even if you switch alliance!
+
+📌 END OF WEEK (Day 7):
+🚫 Season end: no more captures/teleports, season buildings + boni disappear!
+✅ What STAYS: exclusive weapons 💪, Season Shop &amp; medals 🛒, Hero Return tickets 🎟️! Rewards arrive by mail 📬
+
+Strong finish, everyone – give it all one more time! 🔥🏆</pre></div>
+  </div>
+</section>
+
+<!-- CHEAT EN -->
+<section id="cheat-en">
+  <div class="wrap">
+    <h2><span class="num">📌</span> Cheat sheet for the admin team</h2>
+    <div class="cheat">
+      <div>Resistance first</div><div>Protein Farms → Immune Proteins → Virus Research Institute. Check the required resistance before every attack.</div>
+      <div>Weather = timing</div><div>Sunny farm · Light Rain risky elites · Acid Rain no rally/PvP · use Monica's forecast.</div>
+      <div>Cities only via strongholds</div><div>Max 2 captures/day until Week 4 · build City Durability tech BEFORE the wars.</div>
+      <div>Fire on timing</div><div>Mason Thursday (hero day) · War Declaration only Wed &amp; Sat · Octagon cutoff Sun midnight W4.</div>
+      <div>Don't attack alone</div><div>On low resistance Loki rally + allies · request cures in chat · avoid auto-rally.</div>
+      <div>Let nothing expire</div><div>Spend serum fragments &amp; season resources before Week 8, otherwise only Profession EXP.</div>
+    </div>
+  </div>
+</section>
+</div><!-- /only-en -->
+
+<footer>
+  <div class="wrap">
+    <span class="only-de">Master-Guide „Crimson Plague" · Inhalte &amp; Zahlen basieren auf den 29 Guide-Grafiken im Ordner <b>Season 1</b>. Werte im Zweifel <code class="tag">IN-GAME PRÜFEN</code>. Ankündigungen ohne Emoji + zugehörige Bilder posten · Allianz-Mails mit Emoji, ohne Bilder.</span>
+    <span class="only-en">Master Guide "Crimson Plague" · content &amp; numbers are based on the 29 guide graphics in the <b>Season 1</b> folder. When in doubt <code class="tag">CHECK IN-GAME</code>. Post announcements without emoji + their images · alliance mails with emoji, no images.</span>
+    <div class="credit" style="margin-top:14px">Guide erstellt von <b>Luna</b> · Stand August 2026 · <b>[RZSN] Rising Sun</b> Allianz · <b>Server 2261</b></div>
+  </div>
+</footer>
+
+<button class="top" id="toTop" title="Nach oben" aria-label="Nach oben">↑</button>
+<div id="lb" onclick="this.style.display='none'"><img src="" alt=""></div>
+
+<script>
+// --- Language switch (whole page DE/EN) ---
+function setLang(l){
+  document.documentElement.setAttribute('data-lang',l);
+  document.documentElement.lang=l;
+  try{localStorage.setItem('lw_lang',l);}catch(e){}
+  document.querySelectorAll('.langsw button[data-l]').forEach(b=>b.classList.toggle('active',b.dataset.l===l));
+}
+function pickLang(l){setLang(l);document.getElementById('langpick').style.display='none';}
+document.querySelectorAll('.langsw button[data-l]').forEach(b=>b.addEventListener('click',()=>setLang(b.dataset.l)));
+(function(){
+  let saved=null;try{saved=localStorage.getItem('lw_lang');}catch(e){}
+  if(saved==='de'||saved==='en'){setLang(saved);}
+  else{setLang('de');document.getElementById('langpick').style.display='flex';}
+})();
+
+// --- Copy template (keeps original button label per language) ---
+function copyTmpl(btn){
+  const pre = btn.closest('.tmpl').querySelector('pre');
+  const text = pre.innerText;
+  const orig = btn.dataset.label || (btn.dataset.label = btn.textContent);
+  const okTxt = document.documentElement.lang==='en' ? '✅ Copied!' : '✅ Kopiert!';
+  const done = ()=>{btn.textContent=okTxt;btn.classList.add('done');
+    setTimeout(()=>{btn.textContent=orig;btn.classList.remove('done');},1800);};
+  if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(text).then(done).catch(fallback);
+  } else { fallback(); }
+  function fallback(){
+    const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';
+    document.body.appendChild(ta);ta.focus();ta.select();
+    try{document.execCommand('copy');done();}catch(e){alert('Copy failed – please select manually.');}
+    document.body.removeChild(ta);
+  }
+}
+// Lightbox for images
+const lb=document.getElementById('lb');
+document.querySelectorAll('.imgs img').forEach(img=>{
+  img.addEventListener('click',()=>{lb.querySelector('img').src=img.src;lb.style.display='flex';});
+});
+// Roadmap card → jump to primary topic (chips keep their own links)
+document.querySelectorAll('.pc[data-t]').forEach(pc=>{
+  pc.addEventListener('click',e=>{ if(e.target.closest('a,button,.tmpl'))return; location.hash=pc.dataset.t; });
+});
+
+// --- Theme (Dunkel / Heller Ingame-Mode) ---
+function setTheme(t){
+  if(t==='light') document.documentElement.setAttribute('data-theme','light');
+  else document.documentElement.removeAttribute('data-theme');
+  try{localStorage.setItem('lw_theme',t);}catch(e){}
+  var b=document.getElementById('themeBtn');
+  if(b) b.textContent = (t==='light') ? '☀️' : '🌙';
+}
+(function(){ var s=null; try{s=localStorage.getItem('lw_theme');}catch(e){} setTheme(s==='light'?'light':'dark'); })();
+var _thb=document.getElementById('themeBtn');
+if(_thb) _thb.addEventListener('click',function(){
+  var cur = document.documentElement.getAttribute('data-theme')==='light' ? 'light':'dark';
+  setTheme(cur==='light' ? 'dark':'light');
+});
+
+// Back-to-top (robust per Handler)
+var _tt=document.getElementById('toTop');
+if(_tt) _tt.addEventListener('click',function(){window.scrollTo({top:0,left:0,behavior:'smooth'});});
+
+// Roadmap ein-/ausklappen (startet halb offen)
+function toggleRoadmap(btn){
+  var rm=btn.parentElement.querySelector('.roadmap');
+  if(!rm) return;
+  var collapsed=rm.classList.toggle('collapsed');
+  var en=document.documentElement.lang==='en';
+  btn.innerHTML = collapsed ? (en?'Show more':'Mehr anzeigen')+' &#9662;'
+                            : (en?'Less':'Weniger')+' &#9652;';
+  if(collapsed) btn.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+// Scrollspy: aktiven Abschnitt in der fixierten Übersicht markieren ("du bist hier")
+(function(){
+  var secs=[].slice.call(document.querySelectorAll('section[id]'));
+  function setActive(id){
+    document.querySelectorAll('nav.toc a').forEach(function(a){
+      a.classList.toggle('active', a.getAttribute('href')==='#'+id);
+    });
+  }
+  if('IntersectionObserver' in window && secs.length){
+    var obs=new IntersectionObserver(function(es){
+      es.forEach(function(e){ if(e.isIntersecting) setActive(e.target.id); });
+    },{rootMargin:'-45% 0px -50% 0px',threshold:0});
+    secs.forEach(function(s){obs.observe(s);});
+  }
+})();
+</script>
+</body>
+</html>
