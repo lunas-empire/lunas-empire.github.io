@@ -250,7 +250,7 @@
   html[data-lang="en"] .only-de{display:none}
   .langsw{display:flex;gap:6px;position:fixed;top:10px;right:12px;z-index:90}
   .langsw button{cursor:pointer;font-family:var(--font-display);font-weight:600;font-size:12px;letter-spacing:.04em;
-    padding:7px 12px;border-radius:999px;border:1px solid var(--line2);background:var(--card2);
+    padding:8px 13px;border-radius:var(--r-sm);border:1px solid var(--line2);background:var(--card2);
     backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:var(--muted);
     transition:color var(--dur) var(--ease-out),border-color var(--dur) var(--ease-out),background var(--dur) var(--ease-out)}
   .langsw button:hover{color:var(--ink);border-color:var(--muted)}
@@ -330,6 +330,24 @@
   html[data-theme="light"] .callout.tip{background:rgba(44,127,184,.09);}
   html[data-theme="light"] .pclinks a{background:rgba(44,127,184,.10);}
   html[data-theme="light"] #langpick{background:rgba(220,226,236,.96);}
+
+  /* Systemeinstellung respektieren: helle Variante bei prefers-color-scheme: light (Default folgt dem OS; manueller Toggle ueberschreibt) */
+  @media (prefers-color-scheme: light){
+    html:not([data-theme]){
+      --bg:#c4ccd9; --card:#e6ebf3; --card2:#d3dbe8;
+      --crimson:#c0410c; --crimson2:#c62828; --toxic:#1f6a9a; --toxic2:#155a86;
+      --gold:#8a5e0a; --ink:#232c42; --muted:#3f4a5c; --line:#9fabc1; --line2:#8592ab; --ok:#2f7d34; --blue:#1f6a9a;
+      --surface:#eef2f8; --surface-2:#dfe6f0;
+      --edge-hi:inset 0 1px 0 rgba(255,255,255,.7);
+      --shadow-sm:0 1px 2px rgba(28,38,58,.10); --shadow-md:0 14px 30px -14px rgba(28,38,58,.26);
+      --glow-crimson:0 10px 30px -10px rgba(198,40,40,.25);
+    }
+    html:not([data-theme]) section:nth-of-type(even){background:rgba(255,255,255,.45)}
+    html:not([data-theme]) nav.toc{background:rgba(230,235,243,.95)}
+    html:not([data-theme]) code.tag{background:#f2e6c6;color:#8a6410}
+    html:not([data-theme]) .tmpl .bar{background:rgba(198,40,40,.08)}
+    html:not([data-theme]) .note{color:#4a3f22}
+  }
 </style>
 </head>
 <body>
@@ -500,7 +518,7 @@
 <!-- 1 FEATURES -->
 <section id="features">
   <div class="wrap">
-    <h2><span class="num">1</span> Neue Features &amp; Season-Grundlagen <span class="when-badge">Grundlagen</span></h2>
+    <h2>Neue Features &amp; Season-Grundlagen <span class="when-badge">Grundlagen</span></h2>
     <div class="grid">
       <div class="card blue"><h4>🌍 Welt &amp; Karte</h4><ul class="plain" style="color:var(--muted)">
         <li>Server-Map komplett neu, größer, voller neuer Kreaturen</li>
@@ -543,7 +561,7 @@ Macht euch bereit, wir ziehen das gemeinsam durch! 💪🔥</pre></div>
 <!-- 2 VIRUS -->
 <section id="virus">
   <div class="wrap">
-    <h2><span class="num">2</span> RA-Virus: Infektion, Resistenz &amp; Virus Stacks <span class="when-badge">Kernmechanik</span></h2>
+    <h2>RA-Virus: Infektion, Resistenz &amp; Virus Stacks <span class="when-badge">Kernmechanik</span></h2>
     <p class="lead">Das Herzstück der Season. Kämpfe gegen bestimmte Gegner infizieren deine Truppen. Ist das <b>Virus Research Institute</b> nicht hoch genug, sammeln sich <b>Virus Stacks (0–100)</b> an, je mehr, desto härter die Debuffs.</p>
 
     <h3>Die zwei großen Risiken</h3>
@@ -608,7 +626,7 @@ Fragt lieber einmal zu viel als einmal zu wenig! 💪</pre></div>
 <!-- 3 WEATHER -->
 <section id="weather">
   <div class="wrap">
-    <h2><span class="num">3</span> Wetter-System <span class="when-badge">Durchgängig</span></h2>
+    <h2>Wetter-System <span class="when-badge">Durchgängig</span></h2>
     <p class="lead">Erste 2 Tage immer <b>Cloudy</b>, ab Tag 3 zufälliges Wetter, Wechsel alle 30 Min bis 8 h. <b>Monica</b> sagt 3 mögliche Wetter mit Wahrscheinlichkeit voraus.</p>
     <table>
       <tr><th>Wetter</th><th>Effekt</th></tr>
@@ -651,7 +669,7 @@ Kurz aufs Wetter schauen, dann angreifen – spart euch Truppen! 🧠🔥</pre><
 <!-- 4 PROTEIN -->
 <section id="protein">
   <div class="wrap">
-    <h2><span class="num">4</span> Protein-Farmen &amp; Virus Research Institute <span class="when-badge">Woche 1 · Tag 1</span></h2>
+    <h2>Protein-Farmen &amp; Virus Research Institute <span class="when-badge">Woche 1 · Tag 1</span></h2>
     <p class="lead">Der Resistenz-Motor der Season. <b>Obj 01–02, Tag 1.</b> Freischalten und hochziehen, um Virus-Resistenz zu steigern.</p>
     <h3>Der Aktions-Kreislauf</h3>
     <table>
@@ -692,7 +710,7 @@ Wer hier zuerst hochkommt, farmt zuerst die dicken Sachen! 🚀</pre></div>
 <!-- 5 PURGE -->
 <section id="purge">
   <div class="wrap">
-    <h2><span class="num">5</span> The Purge <span class="when-badge">Woche 1 · Tag 1 · 7 Tage</span></h2>
+    <h2>The Purge <span class="when-badge">Woche 1 · Tag 1 · 7 Tage</span></h2>
     <p class="lead">Infizierte Zombies eliminieren und Strongholds sichern für bestes Einzel- und Allianz-Ranking.</p>
     <div class="grid">
       <div class="card crimson"><h4>⚔️ Purge Action (Einzel)</h4><ul class="plain" style="color:var(--muted)">
@@ -737,7 +755,7 @@ Läuft ab Tag 1 – hier holen wir uns Ränge! 🏆
 <!-- 6 SERUM -->
 <section id="serum">
   <div class="wrap">
-    <h2><span class="num">6</span> Serum Collection <span class="when-badge">Woche 1 · Tag 2</span></h2>
+    <h2>Serum Collection <span class="when-badge">Woche 1 · Tag 2</span></h2>
     <p class="lead">Genetic Research Project, Vorspiel zur Serum-Collection-Mission. <b>Obj 03, Tag 2.</b></p>
     <ul class="check">
       <li><b>Reward Chest:</b> Alle War Zones spenden 3.000.000 Food (zählt wie Alliance-Tech-Spenden), die Woche über wiederholen für Allianz-Beiträge</li>
@@ -771,7 +789,7 @@ Macht das Puzzle täglich – kostet nix und bringt richtig was! ✅💪</pre></
 <!-- 7 CITY CLASH -->
 <section id="cityclash">
   <div class="wrap">
-    <h2><span class="num">7</span> City Clash: Strongholds &amp; Städte <span class="when-badge">Woche 1–4</span></h2>
+    <h2>City Clash: Strongholds &amp; Städte <span class="when-badge">Woche 1–4</span></h2>
     <p class="lead">Der PvP-Kern. Städte gehören der Legion, erobert werden sie nur über angrenzende Strongholds.</p>
     <div class="callout warn"><b>Grundregeln:</b> Ab Tag 1 Militär-Strongholds einnehmbar · Stadt nur erobern, wenn angrenzender Stronghold gehört · max 2 Strongholds/Tag, anfangs max 3 · ab Tag 3 Lv.1-Städte · nur <b>2 Stadt-Eroberungen (War Declarations) pro Tag bis Woche 4</b> · eine Allianz kann max 7 Städte halten (8 bei Lv.6-Stadt).</div>
     <h3>Wochen-Ziele &amp; Reward Chests (Server-Zeit)</h3>
@@ -820,7 +838,7 @@ Rally-Zeiten kommen – seid pünktlich! ⏰🔥</pre></div>
 <!-- 8 WEAPONS -->
 <section id="weapons">
   <div class="wrap">
-    <h2><span class="num">8</span> Exklusivwaffen: Kimberly · DVA · Tesla <span class="when-badge">Woche 1 · 3 · 6 · Tag 4</span></h2>
+    <h2>Exklusivwaffen: Kimberly · DVA · Tesla <span class="when-badge">Woche 1 · 3 · 6 · Tag 4</span></h2>
     <p class="lead">Ab Tag 4 der jeweiligen Woche: Kimberly „Rocket Shadow" (W1), DVA (W3/W6), Tesla (W6).</p>
     <div class="grid">
       <div class="card gold"><h4>✅ Aktivierung</h4><ul class="plain" style="color:var(--muted)">
@@ -870,7 +888,7 @@ Ab Tag 4 der jeweiligen Woche verfügbar:
 <!-- 9 WISH HERO -->
 <section id="wish">
   <div class="wrap">
-    <h2><span class="num">9</span> Wish Hero <span class="when-badge">Ab Tag 11</span></h2>
+    <h2>Wish Hero <span class="when-badge">Ab Tag 11</span></h2>
     <p class="lead">Ab Tag 11 der Season kannst du einen Wunsch-Helden wählen.</p>
     <ul class="check">
       <li>Für je <b>200 Rekrutierungen</b> einen freigeschalteten <b>UR-Helden</b> aus dem Pool als Wish-Hero-Belohnung wählen</li>
@@ -903,7 +921,7 @@ Nicht vorher verpulvern – Geduld zahlt sich hier richtig aus! 🧠🔥</pre></
 <!-- 10 MASON -->
 <section id="promotion">
   <div class="wrap">
-    <h2><span class="num">10</span> Hero Promotion: Mason SSR → UR <span class="when-badge">Woche 2 · Dauer 42 Tage</span></h2>
+    <h2>Hero Promotion: Mason SSR → UR <span class="when-badge">Woche 2 · Dauer 42 Tage</span></h2>
     <p class="lead">Mason von SSR (5★) zu UR-Legendary befördern, inkl. Armored Vehicle. <b>Obj 01, D1.</b></p>
     <div class="callout gold"><b>Punkte maximieren:</b> 1) Bis <b>Donnerstag (VS-Duell Hero-Tag)</b> warten, dann befördern. 2) Vorher Mason auf 5★ + SSR-Universal-Shards, Wall-of-Honor-Level maxen (alle SSR-Shards auf ihn), alle Skill-Medaillen auf Mason. 3) Nach UR-Beförderung refundete Shards &amp; Medaillen per Mail einsammeln und reinvestieren.</div>
     <table>
@@ -947,7 +965,7 @@ Sammelt eure Medaillen & Shards JETZT – und zündet Donnerstag! 💥</pre></di
 <!-- 11 CRIMSON LEGION -->
 <section id="legion">
   <div class="wrap">
-    <h2><span class="num">11</span> Crimson Legion <span class="when-badge">Woche 2 · Dauer 17 Tage</span></h2>
+    <h2>Crimson Legion <span class="when-badge">Woche 2 · Dauer 17 Tage</span></h2>
     <p class="lead">Allianz-Städte gegen wiederholte Angriffe der Crimson Legion verteidigen. <b>Obj 02, D2.</b></p>
     <table>
       <tr><th>Thema</th><th>Detail</th></tr>
@@ -990,7 +1008,7 @@ Wenn eure Stadt drankommt: sofort Bescheid geben, wir verstärken gemeinsam! �
 <!-- 12 TROOP BOOST -->
 <section id="troopboost">
   <div class="wrap">
-    <h2><span class="num">12</span> Troop Type Boost: Seasonale Militärgebäude <span class="when-badge">Woche 3 · Tag 1</span></h2>
+    <h2>Troop Type Boost: Seasonale Militärgebäude <span class="when-badge">Woche 3 · Tag 1</span></h2>
     <p class="lead">Die seasonalen Militärgebäude freischalten. <b>Obj 01, D1.</b></p>
     <ul class="check">
       <li><b>Reward Chest:</b> Global-Server-Ziel, alle War Zones spenden 5.000.000 Coins</li>
@@ -1032,7 +1050,7 @@ Baut clever – jeder Prozent zählt im City War! 💪🔥</pre></div>
 <!-- 13 OUTPOSTS -->
 <section id="outposts">
   <div class="wrap">
-    <h2><span class="num">13</span> Outposts &amp; Cross-Server <span class="when-badge">Woche 3 · Dauer 35 Tage</span></h2>
+    <h2>Outposts &amp; Cross-Server <span class="when-badge">Woche 3 · Dauer 35 Tage</span></h2>
     <p class="lead">Outposts in anderen War Zones platzieren, dort Strongholds &amp; Städte erobern, Cross-Server-Angriffe starten. <b>Obj 02, D1.</b></p>
     <table>
       <tr><th>Thema</th><th>Detail</th></tr>
@@ -1075,7 +1093,7 @@ Führungsteam plant die Outpost-Spots – haltet euch bereit für Teleport-Angri
 <!-- 14 WAR DECLARATION -->
 <section id="wardec">
   <div class="wrap">
-    <h2><span class="num">14</span> War Declaration <span class="when-badge">Woche 4 · Tag 1–3</span></h2>
+    <h2>War Declaration <span class="when-badge">Woche 4 · Tag 1–3</span></h2>
     <p class="lead">Krieg erklären und Städte in anderen War Zones erobern. <b>Obj 01, D1–3.</b></p>
     <table>
       <tr><th>Thema</th><th>Detail</th></tr>
@@ -1120,7 +1138,7 @@ Mi &amp; Sa sind unsere Kriegstage – seid bereit! 🔥</pre></div>
 <!-- 15 OCTAGON -->
 <section id="octagon">
   <div class="wrap">
-    <h2><span class="num">15</span> Infinite Octagon &amp; Warzone Duel <span class="when-badge">Woche 4–7</span></h2>
+    <h2>Infinite Octagon &amp; Warzone Duel <span class="when-badge">Woche 4–7</span></h2>
     <p class="lead">Warzone-Duell-Turnier zwischen den 8 War Zones, Kampf ums Capitol.</p>
     <table>
       <tr><th>Thema</th><th>Detail</th></tr>
@@ -1162,7 +1180,7 @@ Ab Woche 4: unsere 8 War Zones treten gegeneinander an! Ziel am Ende: das CAPITO
 <!-- 16 BUILDER -->
 <section id="builder">
   <div class="wrap">
-    <h2><span class="num">16</span> Builder Alliances <span class="when-badge">Woche 4–7 · permanent</span></h2>
+    <h2>Builder Alliances <span class="when-badge">Woche 4–7 · permanent</span></h2>
     <p class="lead">Eine Builder Alliance gibt ihr Influence-Ranking auf und entwickelt stattdessen Städte über Facilities, die Durability &amp; Boni geben. <b>Grundsatzentscheidung des Führungsteams!</b></p>
     <div class="callout warn"><b>Prinzip:</b> Umwandlung nur zwischen Woche 4 und 7 möglich, <b>permanent für die Season</b> → keine City-War-Erklärungen mehr, kein Influence-Ranking mehr. Neues Ranking nach Builder-Level. Diese Entscheidung gut abwägen.</div>
     <table>
@@ -1211,7 +1229,7 @@ Wir können uns in eine BUILDER ALLIANCE umwandeln – aber Achtung, das ist PER
 <!-- 17 PROFESSION -->
 <section id="profession">
   <div class="wrap">
-    <h2><span class="num">17</span> Profession Hall &amp; Skills <span class="when-badge">Durchgängig</span></h2>
+    <h2>Profession Hall &amp; Skills <span class="when-badge">Durchgängig</span></h2>
     <p class="lead">Berufswahl bestimmt euren Fokus. Season-Skills starten zu Season-Beginn und werden am Ende zurückgesetzt (Punkte erstattet). Max-Level S1 = 40.</p>
     <div class="grid">
       <div class="card blue"><h4>🔧 Engineer (Bau-Typ)</h4><ul class="plain" style="color:var(--muted)">
@@ -1271,7 +1289,7 @@ Fragt, wenn ihr bei der Berufswahl unsicher seid! 💪</pre></div>
 <!-- 18 END OF SEASON -->
 <section id="endseason">
   <div class="wrap">
-    <h2><span class="num">18</span> Rewards &amp; Season-Ende <span class="when-badge">Woche 8 · Tag 7</span></h2>
+    <h2>Rewards &amp; Season-Ende <span class="when-badge">Woche 8 · Tag 7</span></h2>
     <div class="grid">
       <div class="card gold"><h4>🎁 Belohnungen</h4><ul class="plain" style="color:var(--muted)">
         <li>RS &amp; Majordomos verteilen Season-1-Belohnungen nach Beitrag</li>
@@ -1620,7 +1638,7 @@ Starkes Finish, Leute – gebt nochmal alles! 🔥🏆</pre></div>
 <!-- 1 FEATURES EN -->
 <section id="features-en">
   <div class="wrap">
-    <h2><span class="num">1</span> New features &amp; season basics <span class="when-badge">Basics</span></h2>
+    <h2>New features &amp; season basics <span class="when-badge">Basics</span></h2>
     <div class="grid">
       <div class="card blue"><h4>🌍 World &amp; map</h4><ul class="plain" style="color:var(--muted)">
         <li>Server map fully redone, bigger, full of new creatures</li>
@@ -1663,7 +1681,7 @@ Get ready, we'll pull this off together! 💪🔥</pre></div>
 <!-- 2 VIRUS EN -->
 <section id="virus-en">
   <div class="wrap">
-    <h2><span class="num">2</span> RA Virus: infection, resistance &amp; virus stacks <span class="when-badge">Core mechanic</span></h2>
+    <h2>RA Virus: infection, resistance &amp; virus stacks <span class="when-badge">Core mechanic</span></h2>
     <p class="lead">The heart of the season. Fights against certain enemies infect your troops. If the <b>Virus Research Institute</b> isn't high enough, <b>virus stacks (0–100)</b> pile up, the more, the harsher the debuffs.</p>
 
     <h3>The two big risks</h3>
@@ -1728,7 +1746,7 @@ Ask once too often rather than once too little! 💪</pre></div>
 <!-- 3 WEATHER EN -->
 <section id="weather-en">
   <div class="wrap">
-    <h2><span class="num">3</span> Weather system <span class="when-badge">Throughout</span></h2>
+    <h2>Weather system <span class="when-badge">Throughout</span></h2>
     <p class="lead">First 2 days always <b>Cloudy</b>, from Day 3 random weather, changing every 30 min to 8 h. <b>Monica</b> predicts 3 possible weathers with their probability.</p>
     <table>
       <tr><th>Weather</th><th>Effect</th></tr>
@@ -1771,7 +1789,7 @@ Glance at the weather, then attack – it saves your troops! 🧠🔥</pre></div
 <!-- 4 PROTEIN EN -->
 <section id="protein-en">
   <div class="wrap">
-    <h2><span class="num">4</span> Protein Farms &amp; Virus Research Institute <span class="when-badge">Week 1 · Day 1</span></h2>
+    <h2>Protein Farms &amp; Virus Research Institute <span class="when-badge">Week 1 · Day 1</span></h2>
     <p class="lead">The season's resistance engine. <b>Obj 01–02, Day 1.</b> Unlock and level up to raise virus resistance.</p>
     <h3>The action loop</h3>
     <table>
@@ -1812,7 +1830,7 @@ Whoever levels up first farms the big stuff first! 🚀</pre></div>
 <!-- 5 PURGE EN -->
 <section id="purge-en">
   <div class="wrap">
-    <h2><span class="num">5</span> The Purge <span class="when-badge">Week 1 · Day 1 · 7 days</span></h2>
+    <h2>The Purge <span class="when-badge">Week 1 · Day 1 · 7 days</span></h2>
     <p class="lead">Eliminate infected zombies and secure strongholds for the best individual and alliance ranking.</p>
     <div class="grid">
       <div class="card crimson"><h4>⚔️ Purge Action (individual)</h4><ul class="plain" style="color:var(--muted)">
@@ -1857,7 +1875,7 @@ Runs from Day 1 – this is where we grab ranks! 🏆
 <!-- 6 SERUM EN -->
 <section id="serum-en">
   <div class="wrap">
-    <h2><span class="num">6</span> Serum Collection <span class="when-badge">Week 1 · Day 2</span></h2>
+    <h2>Serum Collection <span class="when-badge">Week 1 · Day 2</span></h2>
     <p class="lead">Genetic Research Project, the prelude to the Serum Collection mission. <b>Obj 03, Day 2.</b></p>
     <ul class="check">
       <li><b>Reward chest:</b> all war zones donate 3,000,000 food (counts like alliance tech donations), repeat throughout the week for alliance contributions</li>
@@ -1891,7 +1909,7 @@ Do the puzzle daily – it's free and pays off nicely! ✅💪</pre></div>
 <!-- 7 CITY CLASH EN -->
 <section id="cityclash-en">
   <div class="wrap">
-    <h2><span class="num">7</span> City Clash: strongholds &amp; cities <span class="when-badge">Week 1–4</span></h2>
+    <h2>City Clash: strongholds &amp; cities <span class="when-badge">Week 1–4</span></h2>
     <p class="lead">The PvP core. Cities belong to the Legion, they can only be taken via adjacent strongholds.</p>
     <div class="callout warn"><b>Base rules:</b> military strongholds capturable from Day 1 · a city can only be taken if you own the adjacent stronghold · max 2 strongholds/day, up to 3 at first · Lv.1 cities from Day 3 · only <b>2 city captures (war declarations) per day until Week 4</b> · an alliance can hold max 7 cities (8 with a Lv.6 city).</div>
     <h3>Weekly goals &amp; reward chests (server time)</h3>
@@ -1940,7 +1958,7 @@ Rally times are coming – be on time! ⏰🔥</pre></div>
 <!-- 8 WEAPONS EN -->
 <section id="weapons-en">
   <div class="wrap">
-    <h2><span class="num">8</span> Exclusive weapons: Kimberly · DVA · Tesla <span class="when-badge">Week 1 · 3 · 6 · Day 4</span></h2>
+    <h2>Exclusive weapons: Kimberly · DVA · Tesla <span class="when-badge">Week 1 · 3 · 6 · Day 4</span></h2>
     <p class="lead">From Day 4 of the respective week: Kimberly "Rocket Shadow" (W1), DVA (W3/W6), Tesla (W6).</p>
     <div class="grid">
       <div class="card gold"><h4>✅ Activation</h4><ul class="plain" style="color:var(--muted)">
@@ -1990,7 +2008,7 @@ Available from Day 4 of the respective week:
 <!-- 9 WISH HERO EN -->
 <section id="wish-en">
   <div class="wrap">
-    <h2><span class="num">9</span> Wish Hero <span class="when-badge">From Day 11</span></h2>
+    <h2>Wish Hero <span class="when-badge">From Day 11</span></h2>
     <p class="lead">From Day 11 of the season you can choose a wish hero.</p>
     <ul class="check">
       <li>For every <b>200 recruits</b>, choose an unlocked <b>UR hero</b> from the pool as your wish hero reward</li>
@@ -2023,7 +2041,7 @@ Don't burn them early – patience really pays off here! 🧠🔥</pre></div>
 <!-- 10 MASON EN -->
 <section id="promotion-en">
   <div class="wrap">
-    <h2><span class="num">10</span> Hero Promotion: Mason SSR → UR <span class="when-badge">Week 2 · 42 days</span></h2>
+    <h2>Hero Promotion: Mason SSR → UR <span class="when-badge">Week 2 · 42 days</span></h2>
     <p class="lead">Promote Mason from SSR (5★) to UR legendary, including Armored Vehicle. <b>Obj 01, D1.</b></p>
     <div class="callout gold"><b>Maximize points:</b> 1) Wait until <b>Thursday (VS duel hero day)</b>, then promote. 2) Beforehand bring Mason to 5★ + SSR universal shards, max the Wall of Honor level (all SSR shards on him), all skill medals on Mason. 3) After the UR promotion collect the refunded shards &amp; medals by mail and reinvest.</div>
     <table>
@@ -2067,7 +2085,7 @@ Collect your medals &amp; shards NOW – and fire on Thursday! 💥</pre></div>
 <!-- 11 CRIMSON LEGION EN -->
 <section id="legion-en">
   <div class="wrap">
-    <h2><span class="num">11</span> Crimson Legion <span class="when-badge">Week 2 · 17 days</span></h2>
+    <h2>Crimson Legion <span class="when-badge">Week 2 · 17 days</span></h2>
     <p class="lead">Defend alliance cities against repeated Crimson Legion attacks. <b>Obj 02, D2.</b></p>
     <table>
       <tr><th>Topic</th><th>Detail</th></tr>
@@ -2110,7 +2128,7 @@ When your city is targeted: shout immediately, we reinforce together! 🤝🔥</
 <!-- 12 TROOP BOOST EN -->
 <section id="troopboost-en">
   <div class="wrap">
-    <h2><span class="num">12</span> Troop Type Boost: seasonal military buildings <span class="when-badge">Week 3 · Day 1</span></h2>
+    <h2>Troop Type Boost: seasonal military buildings <span class="when-badge">Week 3 · Day 1</span></h2>
     <p class="lead">Unlock the seasonal military buildings. <b>Obj 01, D1.</b></p>
     <ul class="check">
       <li><b>Reward chest:</b> global server goal, all war zones donate 5,000,000 coins</li>
@@ -2152,7 +2170,7 @@ Build smart – every percent counts in the city war! 💪🔥</pre></div>
 <!-- 13 OUTPOSTS EN -->
 <section id="outposts-en">
   <div class="wrap">
-    <h2><span class="num">13</span> Outposts &amp; cross-server <span class="when-badge">Week 3 · 35 days</span></h2>
+    <h2>Outposts &amp; cross-server <span class="when-badge">Week 3 · 35 days</span></h2>
     <p class="lead">Place outposts in other war zones, capture strongholds &amp; cities there, launch cross-server attacks. <b>Obj 02, D1.</b></p>
     <table>
       <tr><th>Topic</th><th>Detail</th></tr>
@@ -2195,7 +2213,7 @@ Leadership plans the outpost spots – stay ready for teleport attacks! 🔥</pr
 <!-- 14 WAR DECLARATION EN -->
 <section id="wardec-en">
   <div class="wrap">
-    <h2><span class="num">14</span> War Declaration <span class="when-badge">Week 4 · Day 1–3</span></h2>
+    <h2>War Declaration <span class="when-badge">Week 4 · Day 1–3</span></h2>
     <p class="lead">Declare war and capture cities in other war zones. <b>Obj 01, D1–3.</b></p>
     <table>
       <tr><th>Topic</th><th>Detail</th></tr>
@@ -2240,7 +2258,7 @@ Wed &amp; Sat are our war days – be ready! 🔥</pre></div>
 <!-- 15 OCTAGON EN -->
 <section id="octagon-en">
   <div class="wrap">
-    <h2><span class="num">15</span> Infinite Octagon &amp; Warzone Duel <span class="when-badge">Week 4–7</span></h2>
+    <h2>Infinite Octagon &amp; Warzone Duel <span class="when-badge">Week 4–7</span></h2>
     <p class="lead">Warzone duel tournament between the 8 war zones, the fight for the Capitol.</p>
     <table>
       <tr><th>Topic</th><th>Detail</th></tr>
@@ -2282,7 +2300,7 @@ From Week 4: our 8 war zones face off! Final goal: the CAPITOL! 🏛️
 <!-- 16 BUILDER EN -->
 <section id="builder-en">
   <div class="wrap">
-    <h2><span class="num">16</span> Builder Alliances <span class="when-badge">Week 4–7 · permanent</span></h2>
+    <h2>Builder Alliances <span class="when-badge">Week 4–7 · permanent</span></h2>
     <p class="lead">A Builder Alliance gives up its influence ranking and instead develops cities via facilities that grant durability &amp; boni. <b>A fundamental leadership decision!</b></p>
     <div class="callout warn"><b>Principle:</b> conversion is only possible between Week 4 and 7, <b>permanent for the season</b> → no more city war declarations, no more influence ranking. New ranking by builder level. Weigh this decision carefully.</div>
     <table>
@@ -2331,7 +2349,7 @@ We can convert into a BUILDER ALLIANCE – but careful, it's PERMANENT for the s
 <!-- 17 PROFESSION EN -->
 <section id="profession-en">
   <div class="wrap">
-    <h2><span class="num">17</span> Profession Hall &amp; skills <span class="when-badge">Throughout</span></h2>
+    <h2>Profession Hall &amp; skills <span class="when-badge">Throughout</span></h2>
     <p class="lead">Your profession choice sets your focus. Season skills start at season begin and are reset at the end (points refunded). Max level S1 = 40.</p>
     <div class="grid">
       <div class="card blue"><h4>🔧 Engineer (build type)</h4><ul class="plain" style="color:var(--muted)">
@@ -2391,7 +2409,7 @@ Ask if you're unsure about the profession choice! 💪</pre></div>
 <!-- 18 END OF SEASON EN -->
 <section id="endseason-en">
   <div class="wrap">
-    <h2><span class="num">18</span> Rewards &amp; end of season <span class="when-badge">Week 8 · Day 7</span></h2>
+    <h2>Rewards &amp; end of season <span class="when-badge">Week 8 · Day 7</span></h2>
     <div class="grid">
       <div class="card gold"><h4>🎁 Rewards</h4><ul class="plain" style="color:var(--muted)">
         <li>RS &amp; Majordomos distribute Season 1 rewards by contribution</li>
