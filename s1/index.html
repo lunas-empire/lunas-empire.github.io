@@ -33,7 +33,7 @@
     --shadow-sm:0 1px 2px oklch(0% 0 0 / .35);
     --shadow-md:0 14px 34px -14px oklch(0% 0 0 / .6);
     --shadow-lg:0 34px 80px -28px oklch(0% 0 0 / .72);
-    --glow-crimson:0 10px 34px -8px oklch(52% 0.20 22 / .5);
+    --glow-crimson:0 8px 22px -12px oklch(0% 0 0 / .5);
     /* semantische z-Ebenen */
     --z-nav:50; --z-langsw:90; --z-top:60; --z-lightbox:200; --z-langpick:300;
   }
@@ -145,7 +145,7 @@
   .roadmap{position:relative;margin:26px 0}
   .rline{position:absolute;left:27px;top:12px;bottom:12px;width:2px;border-radius:2px;
     background:var(--crimson);
-    box-shadow:0 0 18px oklch(52% 0.20 22 / .45)}
+    box-shadow:none}
   .phase{position:relative;padding:0 0 22px 72px}
   .dot{position:absolute;left:9px;top:2px;width:38px;height:26px;border-radius:var(--r-sm);z-index:2;
     display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:11.5px;font-weight:700;
@@ -237,7 +237,7 @@
 
   footer{padding:clamp(36px,6vw,56px) 0 clamp(56px,8vw,80px);color:var(--muted);font-size:13.5px;border-top:1px solid var(--line)}
   .top{position:fixed;right:18px;bottom:18px;background:var(--crimson);color:oklch(97% 0 0);border:none;width:46px;height:46px;
-    border-radius:999px;font-size:20px;cursor:pointer;z-index:60;box-shadow:0 4px 14px oklch(52% 0.20 22 / .35);
+    border-radius:999px;font-size:20px;cursor:pointer;z-index:60;box-shadow:0 4px 14px oklch(0% 0 0 / .3);
     transition:background var(--dur) var(--ease-out),transform var(--dur) var(--ease-out)}
   .top:hover{background:var(--crimson2)}
   .top:active{transform:translateY(1px)}
@@ -316,7 +316,7 @@
     --shadow-sm:0 1px 2px rgba(28,38,58,.1);
     --shadow-md:0 14px 30px -14px rgba(28,38,58,.26);
     --shadow-lg:0 30px 66px -26px rgba(28,38,58,.32);
-    --glow-crimson:0 10px 30px -10px rgba(226,59,59,.3);
+    --glow-crimson:0 8px 20px -12px rgba(28,38,58,.22);
   }
   html[data-theme="light"] body{background:linear-gradient(#c9d1de,#a7b3c6) fixed;}
   html[data-theme="light"] section:nth-of-type(even){background:oklch(90% 0.012 250 / .5);}
@@ -340,7 +340,7 @@
       --surface:#eef2f8; --surface-2:#dfe6f0;
       --edge-hi:inset 0 1px 0 rgba(255,255,255,.7);
       --shadow-sm:0 1px 2px rgba(28,38,58,.10); --shadow-md:0 14px 30px -14px rgba(28,38,58,.26);
-      --glow-crimson:0 10px 30px -10px rgba(198,40,40,.25);
+      --glow-crimson:0 8px 20px -12px rgba(28,38,58,.22);
     }
     html:not([data-theme]) section:nth-of-type(even){background:rgba(255,255,255,.45)}
     html:not([data-theme]) nav.toc{background:rgba(230,235,243,.95)}
@@ -673,11 +673,11 @@ Kurz aufs Wetter schauen, dann angreifen – spart euch Truppen! 🧠🔥</pre><
     <p class="lead">Der Resistenz-Motor der Season. <b>Obj 01–02, Tag 1.</b> Freischalten und hochziehen, um Virus-Resistenz zu steigern.</p>
     <h3>Der Aktions-Kreislauf</h3>
     <table>
-      <tr><th>#</th><th>Schritt</th></tr>
-      <tr><td class="prio">1</td><td>Immer höhere Zombies töten (Lupe auf der Karte) → <b>Mutant Crystals</b> erhalten</td></tr>
-      <tr><td class="prio">2</td><td><b>Protein-Farm</b> upgraden → produziert <b>Immune Proteins</b></td></tr>
-      <tr><td class="prio">3</td><td>Proteine nutzen, um das <b>Virus Research Institute</b> zu upgraden</td></tr>
-      <tr><td class="prio">4</td><td>Zurück zu Schritt 1 (höhere Zombies möglich)</td></tr>
+      <tr><th>Ablauf</th><th>Schritt</th></tr>
+      <tr><td class="prio">▸</td><td>Immer höhere Zombies töten (Lupe auf der Karte) → <b>Mutant Crystals</b> erhalten</td></tr>
+      <tr><td class="prio">▸</td><td><b>Protein-Farm</b> upgraden → produziert <b>Immune Proteins</b></td></tr>
+      <tr><td class="prio">▸</td><td>Proteine nutzen, um das <b>Virus Research Institute</b> zu upgraden</td></tr>
+      <tr><td class="prio">↻</td><td>Kreislauf wiederholen (höhere Zombies möglich)</td></tr>
     </table>
     <div class="callout warn"><b>Tipp &amp; Vorsicht:</b> Niedrige Resistenz = hohe Truppenverluste. Ist der Debuff zu hoch (% ausgeteilter Schaden sehr niedrig), <b>nicht allein angreifen</b>. Sichere Alternative: Squad mit 1 Low-Command-Held (z.B. Loki), Rally auf einen Doom-Elite starten und Allys erledigen lassen → Mutant Crystals bei minimalem Verlust.</div>
     <div class="callout tip"><b>Reward Chests:</b> Insgesamt 2.000 Virus Research Institutes reparieren (alle Commander der War Zone) · insgesamt 2.000 Protein-Farmen reparieren.</div>
@@ -1793,11 +1793,11 @@ Glance at the weather, then attack – it saves your troops! 🧠🔥</pre></div
     <p class="lead">The season's resistance engine. <b>Obj 01–02, Day 1.</b> Unlock and level up to raise virus resistance.</p>
     <h3>The action loop</h3>
     <table>
-      <tr><th>#</th><th>Step</th></tr>
-      <tr><td class="prio">1</td><td>Kill ever higher zombies (magnifier on the map) → get <b>Mutant Crystals</b></td></tr>
-      <tr><td class="prio">2</td><td>Upgrade the <b>Protein Farm</b> → produces <b>Immune Proteins</b></td></tr>
-      <tr><td class="prio">3</td><td>Use proteins to upgrade the <b>Virus Research Institute</b></td></tr>
-      <tr><td class="prio">4</td><td>Back to step 1 (higher zombies now possible)</td></tr>
+      <tr><th>Flow</th><th>Step</th></tr>
+      <tr><td class="prio">▸</td><td>Kill ever higher zombies (magnifier on the map) → get <b>Mutant Crystals</b></td></tr>
+      <tr><td class="prio">▸</td><td>Upgrade the <b>Protein Farm</b> → produces <b>Immune Proteins</b></td></tr>
+      <tr><td class="prio">▸</td><td>Use proteins to upgrade the <b>Virus Research Institute</b></td></tr>
+      <tr><td class="prio">↻</td><td>Repeat the loop (higher zombies now possible)</td></tr>
     </table>
     <div class="callout warn"><b>Tip &amp; caution:</b> low resistance = high troop losses. If the debuff is too high (% damage dealt very low), <b>don't attack alone</b>. Safe alternative: squad with 1 low-command hero (e.g. Loki), start a rally on a Doom elite and let allies finish it → Mutant Crystals at minimal loss.</div>
     <div class="callout tip"><b>Reward chests:</b> repair 2,000 Virus Research Institutes in total (all commanders in the war zone) · repair 2,000 Protein Farms in total.</div>
