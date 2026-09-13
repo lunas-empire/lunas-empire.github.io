@@ -166,7 +166,7 @@ function syncChrome() {
   document.querySelector('.site-footer small').textContent = `RZSN · Rising Sun · Luna · ${BUILD_VERSION}`;
   document.querySelector('.main-nav').setAttribute('aria-label',t('menu'));
   const adminUrl = ALLIANCE_CONFIG.adminUrl;
-  if (adminUrl && /^https:\/\//i.test(adminUrl)) {
+  if (adminUrl && (/^https:\/\//i.test(adminUrl) || /^\/admin\/$/.test(adminUrl))) {
     document.querySelector('#admin-link').href = adminUrl;
     document.querySelector('#admin-link').rel = 'noreferrer';
   }
