@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { guideState, checklistKey, armsWindow, availableTask, getGuideDate, resetInstant, seasonEventInstant } from '../assets/engine.js';
 import { DAILY_GUIDES, TASKS } from '../assets/content.js';
 import { todayPriorities } from '../assets/priority.js';
-import { seasonSynergies, upcoming } from '../assets/season.js';
+import { DAY_ONE_GROUP, seasonTasks, seasonSynergies, upcoming } from '../assets/season.js';
 import { createStorage, checkedMap } from '../assets/storage.js';
 import { SEASON_COPY } from '../assets/season.js';
 const state=date=>guideState(new Date(date));
@@ -72,6 +72,14 @@ test('season events and real synergies only',()=>{
   assert.ok(!seasonSynergies(state('2026-09-17T12:00:00+02:00')).includes('mason'));
   assert.equal(upcoming(state('2026-09-13T12:00:00+02:00'))[0].day,1);
   assert.equal(upcoming(state('2026-11-17T12:00:00+01:00')).length,0);
+});
+test('Day 1 and first 24 hours share one canonical task group',()=>{
+  const dayOne=state('2026-09-21T04:00:00+02:00');
+  assert.deepEqual(DAY_ONE_GROUP.tasks,['firstBlood','farms','vri']);
+  assert.ok(DAY_ONE_GROUP.facts.includes('farmRate'));
+  assert.ok(DAY_ONE_GROUP.facts.includes('resistanceCheck'));
+  for (const id of DAY_ONE_GROUP.tasks) assert.ok(seasonTasks(dayOne).includes(id));
+  assert.equal(upcoming(state('2026-09-13T12:00:00+02:00'),3,[DAY_ONE_GROUP.day]).some(event=>event.day===1),false);
 });
 test('leadership wins and suppresses conflicting task',()=>{
   const priorities=todayPriorities(state('2026-09-14T12:00:00+02:00'),{active:true,suppressTaskIds:['drone']});

@@ -1,7 +1,7 @@
 import { BUILD_VERSION, ALLIANCE_CONFIG, LIVE_NOTICE } from './config.js';
 import { LANGUAGES, LOCALES, UI, translate } from './i18n.js';
 import { COPY, TASKS, DAILY_GUIDES } from './content.js';
-import { SEASON_COPY, SEASON_CONTENT, seasonTasks, seasonSynergies, upcoming } from './season.js';
+import { DAY_ONE_GROUP, SEASON_COPY, SEASON_CONTENT, seasonTasks, seasonSynergies, upcoming } from './season.js';
 import { DAY_MS, WEEKDAYS, guideState, selectedDate, checklistKey, armsWindow, availableTask } from './engine.js';
 import { todayPriorities } from './priority.js';
 import { createStorage, checkedMap } from './storage.js';
@@ -90,8 +90,8 @@ function checklist(kind, tasks, s = state) {
     return `<li><label><input type="checkbox" data-check="${escape(task.id)}" data-key="${key}" data-kind="${itemKind}"${checks[task.id]?' checked':''}><span class="task-text">${tx(task.text || task.id)}${task.frequency && frequencyText(task)?`<small>${escape(frequencyText(task))}</small>`:''}</span></label></li>`;
   }).join('')}</ul>`;
 }
-function nextCards(limit = 3) {
-  return upcoming(state,limit).map(e=>details(`${t('seasonDay')} ${e.day} · ${['kim','dva','tesla'].includes(e.id)?{kim:'Kimberly',dva:'DVA',tesla:'Tesla'}[e.id]:t('next')}`,paragraph(e.id)+(e.id==='kim'?guideFigure('weapons'):'')+(['kim','dva','tesla'].includes(e.id)?paragraph('weapon'):''))).join('');
+function nextCards(limit = 3, excludedDays = []) {
+  return upcoming(state,limit,excludedDays).map(e=>details(`${t('seasonDay')} ${e.day} · ${['kim','dva','tesla'].includes(e.id)?{kim:'Kimberly',dva:'DVA',tesla:'Tesla'}[e.id]:t('next')}`,paragraph(e.id)+(e.id==='kim'?guideFigure('weapons'):'')+(['kim','dva','tesla'].includes(e.id)?paragraph('weapon'):''))).join('');
 }
 function today() {
   const guide = DAILY_GUIDES[state.weekday];
@@ -119,17 +119,33 @@ function vs() {
   const tasks = [...new Set([...guide.tasks,...seasonSynergies(s)])].map(id=>({id}));
   return `<h1>${tx('vs')}</h1>${notice()}${daySelector()}<p class="intro">${escape(longDate(s.date))}</p><h2>${tx(s.weekday)}</h2>${minimum(s)}${selectedDay===6?`<aside class="card warning"><h3>${tx('shield')}</h3></aside>`:''}${checklist('vs',tasks,s)}${section('bestArms',arms(s,guide))}${section('avoid',list(guide.avoid.filter(permitted)))}${section('save',list(guide.save.filter(permitted)))}${section('tomorrow',`<h3>${tx(WEEKDAYS[(selectedDay+1)%7])}</h3>`)}${selectedDay===6?paragraph('fight'):''}`;
 }
-function first24() {
+function first24Body({withChecklist = false} = {}) {
   const flow = `<ol class="flow">${t('loop').split(' → ').map(step=>`<li>${escape(step)}</li>`).join('')}</ol>`;
   const farm = `<dl class="facts">${[t('immediate'),`Farm 1 → ${t('level')} 5`,`Farm 2 → ${t('level')} 10`,`Farm 3 → ${t('level')} 10`,'Weekly Pass'].map((unlock,index)=>`<div><dt>Farm ${index+1}</dt><dd>${escape(unlock)}</dd></div>`).join('')}</dl>`;
   const vri = details(`VRI · ${t('details')}`,`<dl class="facts">${[['1–5','100'],['6–15','250'],['16–20','400'],['21–30','500']].map(([level,value])=>`<div><dt>${tx('level')} ${level}</dt><dd>+${value} / ${tx('level')}</dd></div>`).join('')}<div><dt>${tx('max')}</dt><dd>10,000</dd></div></dl>`);
-  return details(t('first24'),guideFigure('farms')+flow+paragraph('farms')+farm+paragraph('farmRate')+paragraph('pass')+paragraph('vri')+vri+paragraph('firstBlood')+paragraph('profession'),state.seasonDay===1 || (!state.seasonDay && state.countdown<=3*DAY_MS),'first24');
+  const tasks = withChecklist ? checklist('season',DAY_ONE_GROUP.tasks.map(id=>({id}))) : '';
+  return tasks+guideFigure('farms')+flow+paragraph('farms')+farm+paragraph('farmRate')+paragraph('pass')+paragraph('vri')+vri+paragraph('firstBlood')+paragraph('resistanceCheck')+paragraph('profession');
+}
+function first24({withChecklist = false, open = false} = {}) {
+  return details(`${t('seasonDay')} 1 · ${t('first24')}`,first24Body({withChecklist}),open,'first24');
 }
 function season() {
   const ids = seasonTasks(state);
   const current = state.week > 8 ? 9 : state.week;
-  const visual=state.phase==='PRE_SEASON'?guideFigure('farms'):state.phase==='SEASON_WEEK_1'?guideFigure('resistance'):'';
-  return `<h1>${tx('season')}</h1>${status()}${notice()}${section('today',checklist('season',ids.slice(0,state.seasonDay?3:2).map(id=>({id}))))}${section('thisWeek',`<h3>${escape(phaseLabel(state))}</h3>${visual}${checklist('season',ids.slice(state.seasonDay?3:2).map(id=>({id})))}`)}${section('next',nextCards())}${first24()}${section('timeline',Object.entries(SEASON_CONTENT).map(([phase,items],index)=>details(index===0?t('pre'):index===9?t('post'):`${t('week')} ${index}`,list(items),index===current || index===current+1,phase)).join(''))}`;
+  const isPreSeason = state.phase === 'PRE_SEASON';
+  const isDayOne = state.seasonDay === DAY_ONE_GROUP.day;
+  const todayIds = isPreSeason ? ['prepSeason'] : isDayOne ? DAY_ONE_GROUP.tasks : [
+    ...(state.seasonDay >= 1 && state.seasonDay <= 56 ? ['doom','resistanceCheck'] : []),
+    ...seasonSynergies(state),
+  ];
+  const uniqueTodayIds = [...new Set(todayIds)].filter(id=>ids.includes(id));
+  const weekIds = ids.filter(id=>!uniqueTodayIds.includes(id));
+  const todayBody = isDayOne ? first24({withChecklist:true,open:true}) : checklist('season',uniqueTodayIds.map(id=>({id})));
+  const visual = state.phase === 'SEASON_WEEK_1' && !isDayOne ? guideFigure('resistance') : '';
+  const nextBody = isPreSeason
+    ? first24({open:state.countdown<=3*DAY_MS})+nextCards(3,[DAY_ONE_GROUP.day])
+    : nextCards();
+  return `<h1>${tx('season')}</h1>${status()}${notice()}${section('today',todayBody)}${section('thisWeek',`<h3>${escape(phaseLabel(state))}</h3>${visual}${checklist('season',weekIds.map(id=>({id})))}`)}${section('next',nextBody)}${section('timeline',Object.entries(SEASON_CONTENT).map(([phase,items],index)=>details(index===0?t('pre'):index===9?t('post'):`${t('week')} ${index}`,list(items),index===current || index===current+1,phase)).join(''))}`;
 }
 const references = ['philosophy','minister','drone','hero','radarSave','star','buildings','ssr','chests','safeServer','profession'];
 function guides() {

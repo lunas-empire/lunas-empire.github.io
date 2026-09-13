@@ -3,7 +3,7 @@ export const GUIDE_CONFIG = {
   serverDayAnchor: { date: '2026-09-12', day: 144 },
   seasonStart: '2026-09-21T04:00:00+02:00', server: 2261,
 };
-export const BUILD_VERSION = '2026-09-13.3';
+export const BUILD_VERSION = '2026-09-13.4';
 export const ALLIANCE_CONFIG = {
   vsDailyMinimum: 2600000,
   // Set only after an HTTPS admin deployment passes the unauthorized-access tests.

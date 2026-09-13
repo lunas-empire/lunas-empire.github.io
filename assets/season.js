@@ -53,16 +53,23 @@ export const EVENTS = [
   {day:15,id:'centers'}, {day:18,id:'dva'}, {day:22,id:'expansion'},
   {day:29,id:'warSeason'}, {day:39,id:'tesla'}, {day:50,id:'finish'},
 ];
+// Day 1 and the first 24 hours are one member workflow, not separate posts.
+export const DAY_ONE_GROUP = Object.freeze({
+  day:1,
+  tasks:Object.freeze(['firstBlood','farms','vri']),
+  facts:Object.freeze(['farmRate','pass','resistanceCheck','profession']),
+});
 export function seasonTasks(state) {
   const ids = [...SEASON_CONTENT[state.phase]];
   if (state.seasonDay >= 1 && state.seasonDay <= 56) {
     ids.push('doom','resistanceCheck');
-    if (state.seasonDay === 1) ids.unshift('firstBlood');
+    if (state.seasonDay === DAY_ONE_GROUP.day) ids.unshift(...DAY_ONE_GROUP.tasks);
   }
   return [...new Set(ids)];
 }
-export function upcoming(state, limit = 3) {
-  return EVENTS.filter(e=>e.day > state.seasonDay).slice(0,limit);
+export function upcoming(state, limit = 3, excludedDays = []) {
+  const excluded = new Set(excludedDays);
+  return EVENTS.filter(e=>e.day > state.seasonDay && !excluded.has(e.day)).slice(0,limit);
 }
 export function seasonSynergies(state) {
   const out = [];
