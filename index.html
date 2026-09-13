@@ -1,23 +1,32 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
+<head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Projekte</title>
-<style>
-  :root{color-scheme:dark}
-  body{margin:0;min-height:100dvh;display:grid;place-items:center;
-    font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-    background:#0e0f13;color:#e7e7ea}
-  main{width:min(90vw,420px);padding:8px}
-  h1{font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:#8a8b93;margin:0 0 18px}
-  a.card{display:block;padding:16px 18px;margin:8px 0;border:1px solid #26272e;border-radius:12px;
-    text-decoration:none;color:inherit;transition:border-color .15s,background .15s}
-  a.card:hover{border-color:#3d3f49;background:#15161c}
-  a.card b{display:block;font-size:17px}
-  a.card span{color:#8a8b93;font-size:13px}
-</style>
-<main>
-  <h1>Projekte</h1>
-  <a class="card" href="./s1/"><b>Season 1 Guide</b><span>Last War · [RZSN] Rising Sun</span></a>
-</main>
-</html>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Daily Guide, VS Duel and Season 1 guide for RZSN – Rising Sun, Server 2261. Available in seven languages.">
+<meta name="color-scheme" content="light dark">
+<title>RZSN Member Hub – Last War Survival</title>
+<link rel="icon" href="/assets/sun.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/hub.css">
+<script type="module" src="/assets/app.js"></script>
+</head>
+<body>
+<a class="skip" href="#main" data-ui="skip">Skip to content</a>
+<header class="site-header">
+<a class="brand" href="#today" aria-label="RZSN Member Hub"><img src="/assets/sun.svg" alt="" width="32" height="32"><span>RZSN <small>RISING SUN · 2261</small></span></a>
+<div class="header-controls">
+<label class="language"><span class="sr-only" data-ui="language">Language</span><select id="language"></select></label>
+<details id="menu"><summary data-ui="menu">Menu</summary><div class="menu-panel">
+<a href="#guides" data-ui="guides">Guides</a><a href="#faq" data-ui="faq">FAQ</a><a id="admin-link" href="#admin" data-ui="admin">R4/R5 Admin</a>
+<label for="theme" data-ui="theme">Appearance</label><select id="theme"><option value="system" data-ui="system">System</option><option value="light" data-ui="light">Light</option><option value="dark" data-ui="dark">Dark</option></select>
+</div></details></div>
+</header>
+<nav class="main-nav" aria-label="Main"><a href="#today" data-ui="today">Today</a><a href="#daily" data-ui="daily">Daily</a><a href="#vs" data-ui="vs">VS Duel</a><a href="#season" data-ui="season">Season 1</a></nav>
+<main id="main" tabindex="-1"><h1>RZSN Member Hub</h1></main>
+<p id="storage-error" class="storage-error" role="status" hidden></p>
+<footer class="site-footer"><p id="override"></p><p id="honest"></p><small>RZSN · Rising Sun · Luna</small></footer>
+<noscript><p lang="en">Enable JavaScript to use the daily dashboard and local checklists.</p></noscript>
+</body></html>
