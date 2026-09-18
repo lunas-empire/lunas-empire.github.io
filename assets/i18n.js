@@ -10,6 +10,8 @@ export const UI = {
   more:['Mehr','More','Ще','その他','Plus','Altro','Lainnya'],
   menu:['Menü','Menu','Меню','メニュー','Menu','Menu','Menu'],
   language:['Sprache','Language','Мова','言語','Langue','Lingua','Bahasa'],
+  chooseLanguage:['Wähle deine Sprache','Choose your language','Оберіть мову','言語を選択','Choisis ta langue','Scegli la lingua','Pilih bahasa'],
+  languagePrompt:['Du kannst die Sprache später jederzeit im Kopfbereich ändern.','You can change the language later from the header.','Мову завжди можна змінити пізніше у верхній частині сторінки.','言語は後からヘッダーでいつでも変更できます。','Tu pourras changer de langue plus tard dans l’en-tête.','Puoi cambiare lingua in seguito dall’intestazione.','Bahasa dapat diubah nanti dari bagian atas halaman.'],
   theme:['Darstellung','Appearance','Оформлення','表示設定','Apparence','Aspetto','Tampilan'],
   light:['Hell','Light','Світла','ライト','Clair','Chiaro','Terang'],
   dark:['Dunkel','Dark','Темна','ダーク','Sombre','Scuro','Gelap'],
@@ -70,6 +72,10 @@ export const UI = {
   allDone:['Alles auf deiner Liste erledigt.','Everything on your list is done.','Усе зі списку виконано.','リストの項目はすべて完了しました。','Tout est coché sur ta liste.','Hai completato tutta la lista.','Semua tugas dalam daftar sudah selesai.'],
   philosophy:['Wichtige Upgrades möglichst mit Rewards und Punkten kombinieren.','Time important upgrades to earn rewards and points together.','Поєднуйте важливі покращення з нагородами й очками.','大きな強化は、報酬とポイントを同時に得られるタイミングで。','Fais coïncider les améliorations importantes avec des récompenses et des points.','Combina gli upgrade importanti con ricompense e punti.','Lakukan upgrade penting saat bisa mendapat hadiah sekaligus poin.'],
 };
+export function resolveLanguagePreference(stored, legacy) {
+  const selected = [stored,legacy].find(value=>Object.hasOwn(LANGUAGES,value));
+  return {lang:selected || 'en',needsSelection:!selected};
+}
 export function translate(table, key, lang, values = {}) {
   const row = table[key];
   if (!row) throw new Error(`Missing translation: ${key}`);

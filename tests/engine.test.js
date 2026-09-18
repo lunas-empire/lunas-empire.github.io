@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import { guideState, checklistKey, armsWindow, availableTask, getGuideDate, resetInstant, seasonEventInstant, enemyBusterPhase } from '../assets/engine.js';
 import { DAILY_GUIDES, TASKS } from '../assets/content.js';
 import { todayPriorities } from '../assets/priority.js';
-import { DAY_ONE_GROUP, seasonTasks, seasonSynergies, upcoming } from '../assets/season.js';
+import { DAY_ONE_GROUP, SEASON_GUIDES, seasonTasks, seasonSynergies, upcoming } from '../assets/season.js';
 import { createStorage, checkedMap } from '../assets/storage.js';
 import { SEASON_COPY } from '../assets/season.js';
+import { resolveLanguagePreference } from '../assets/i18n.js';
 const state=date=>guideState(new Date(date));
 const cases=[
   ['2026-09-12T22:00:00+02:00',144,0,'PRE_SEASON'],
@@ -103,4 +104,16 @@ test('member image labels exist in every public language',()=>{
   for (const key of ['imageFarmsAlt','imageResistanceAlt','imageWeaponsAlt','imageHint','imageLanguage']) {
     assert.equal(SEASON_COPY[key].length,7);assert.ok(SEASON_COPY[key].every(value=>value.trim()));
   }
+});
+test('Season 1 guide images are assigned to the relevant weeks',()=>{
+  assert.deepEqual(SEASON_GUIDES.PRE_SEASON,['farms']);
+  assert.deepEqual(SEASON_GUIDES.SEASON_WEEK_1,['farms','resistance','weapons']);
+  assert.deepEqual(SEASON_GUIDES.SEASON_WEEK_3,['resistance','weapons']);
+  assert.deepEqual(SEASON_GUIDES.SEASON_WEEK_6,['weapons']);
+  assert.equal(SEASON_GUIDES.SEASON_WEEK_4,undefined);
+});
+test('first visits default to English and existing language choices persist',()=>{
+  assert.deepEqual(resolveLanguagePreference(null,null),{lang:'en',needsSelection:true});
+  assert.deepEqual(resolveLanguagePreference('de',null),{lang:'de',needsSelection:false});
+  assert.deepEqual(resolveLanguagePreference('invalid','ja'),{lang:'ja',needsSelection:false});
 });

@@ -37,6 +37,14 @@ export const SEASON_CONTENT = {
   SEASON_WEEK_7:['warSeason','finish'],
   SEASON_WEEK_8:['finish'], POST_SEASON:['after'],
 };
+export const SEASON_GUIDES = Object.freeze({
+  PRE_SEASON:Object.freeze(['farms']),
+  SEASON_WEEK_1:Object.freeze(['farms','resistance','weapons']),
+  SEASON_WEEK_2:Object.freeze(['resistance']),
+  SEASON_WEEK_3:Object.freeze(['resistance','weapons']),
+  SEASON_WEEK_5:Object.freeze(['resistance']),
+  SEASON_WEEK_6:Object.freeze(['weapons']),
+});
 export const EVENTS = [
   {day:1,id:'farms'}, {day:4,id:'kim'}, {day:8,id:'mason'}, {day:9,id:'legion'},
   {day:15,id:'centers'}, {day:18,id:'dva'}, {day:22,id:'expansion'},

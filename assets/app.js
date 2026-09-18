@@ -1,7 +1,7 @@
 import { BUILD_VERSION, ALLIANCE_CONFIG, LIVE_NOTICE } from './config.js';
-import { LANGUAGES, LOCALES, UI, translate } from './i18n.js';
+import { LANGUAGES, LOCALES, UI, resolveLanguagePreference, translate } from './i18n.js';
 import { COPY, TASKS, DAILY_GUIDES } from './content.js';
-import { DAY_ONE_GROUP, SEASON_COPY, SEASON_CONTENT, seasonTasks, seasonSynergies, upcoming } from './season.js';
+import { DAY_ONE_GROUP, SEASON_COPY, SEASON_CONTENT, SEASON_GUIDES, seasonTasks, seasonSynergies, upcoming } from './season.js';
 import { DAY_MS, WEEKDAYS, guideState, selectedDate, checklistKey, armsWindow, availableTask, enemyBusterPhase } from './engine.js';
 import { todayPriorities } from './priority.js';
 import { createStorage, checkedMap } from './storage.js';
@@ -15,8 +15,8 @@ function legacyPreference(key) {
 }
 const storedLanguage = storage.get('rzsn-language', null);
 const legacyLanguage = legacyPreference('lw_lang');
-const browserLanguage = navigator.language?.split('-')[0].toLowerCase();
-let lang = Object.hasOwn(LANGUAGES,storedLanguage) ? storedLanguage : Object.hasOwn(LANGUAGES,legacyLanguage) ? legacyLanguage : Object.hasOwn(LANGUAGES,browserLanguage) ? browserLanguage : 'en';
+const languagePreference = resolveLanguagePreference(storedLanguage,legacyLanguage);
+let lang = languagePreference.lang;
 let state = guideState();
 let selectedDay = state.weekdayIndex;
 let currentView = '';
@@ -24,6 +24,8 @@ const t = (key, values) => translate(dictionary,key,lang,values);
 const tx = (key, values) => escape(t(key,values));
 const main = document.querySelector('main');
 const menu = document.querySelector('#menu');
+const languageDialog = document.querySelector('#language-dialog');
+const languageOptions = document.querySelector('#language-options');
 const phaseLabel = s => s.phase === 'PRE_SEASON' ? t('pre') : s.phase === 'POST_SEASON' ? t('post') : `${t('week')} ${s.week}`;
 const longDate = date => new Intl.DateTimeFormat(LOCALES[lang], {dateStyle:'full',timeZone:'UTC'}).format(new Date(`${date}T12:00:00Z`));
 const paragraph = key => `<p>${tx(key)}</p>`;
@@ -51,7 +53,7 @@ function guideFigure(id) {
   const alt=media.day?t('dayGuideAlt',{day:t(media.day)}):t(media.alt);
   return `<figure class="guide-figure"><a href="${media.src}" target="_blank" rel="noopener" aria-label="${escape(alt)} ${tx('imageHint')}"><img src="${media.src}" width="${media.width}" height="${media.height}" loading="lazy" decoding="async" alt="${escape(alt)}"></a><figcaption><strong>${escape(alt)}</strong><span>${tx('imageHint')}</span><small>${tx('imageLanguage')}</small></figcaption></figure>`;
 }
-const guideGallery = ids => `<div class="guide-gallery">${ids.map(guideFigure).join('')}</div>`;
+const guideGallery = ids => ids.length ? `<div class="guide-gallery">${ids.map(guideFigure).join('')}</div>` : '';
 function notice() {
   if (!LIVE_NOTICE.active) return '';
   return `<aside class="card warning" aria-label="${tx('call')}"><h2>${tx('call')}</h2><p>${escape(LIVE_NOTICE.message[lang])}</p></aside>`;
@@ -164,11 +166,11 @@ function season() {
   const uniqueTodayIds = [...new Set(todayIds)].filter(id=>ids.includes(id));
   const weekIds = ids.filter(id=>!uniqueTodayIds.includes(id));
   const todayBody = isDayOne ? first24({withChecklist:true,open:true}) : checklist('season',uniqueTodayIds.map(id=>({id})));
-  const visual = state.phase === 'SEASON_WEEK_1' && !isDayOne ? guideFigure('resistance') : '';
   const nextBody = isPreSeason
     ? first24({open:state.countdown<=3*DAY_MS})+nextCards(3,[DAY_ONE_GROUP.day])
     : nextCards();
-  return `<h1>${tx('season')}</h1>${status()}${notice()}${section('today',todayBody)}${section('thisWeek',`<h3>${escape(phaseLabel(state))}</h3>${visual}${checklist('season',weekIds.map(id=>({id})))}`)}${section('next',nextBody)}${section('timeline',Object.entries(SEASON_CONTENT).map(([phase,items],index)=>details(index===0?t('pre'):index===9?t('post'):`${t('week')} ${index}`,list(items),index===current || index===current+1,phase)).join(''))}`;
+  const timeline = Object.entries(SEASON_CONTENT).map(([phase,items],index)=>details(index===0?t('pre'):index===9?t('post'):`${t('week')} ${index}`,list(items)+guideGallery(SEASON_GUIDES[phase] || []),index===current || index===current+1,phase)).join('');
+  return `<h1>${tx('season')}</h1>${status()}${notice()}${section('today',todayBody)}${section('thisWeek',`<h3>${escape(phaseLabel(state))}</h3>${checklist('season',weekIds.map(id=>({id})))}`)}${section('next',nextBody)}${section('timeline',timeline)}`;
 }
 const references = ['philosophy','minister','drone','hero','radarSave','star','buildings','ssr','chests','safeServer','profession'];
 function guides() {
@@ -221,8 +223,19 @@ function refreshClock() {
     document.querySelectorAll('[data-arms-state]').forEach(el=>{el.textContent=t(armsWindow(state,DAILY_GUIDES[state.weekday]));});
   }
 }
-document.querySelector('#language').innerHTML = Object.entries(LANGUAGES).map(([code,name])=>`<option value="${code}" lang="${code}">${code.toUpperCase()} · ${escape(name)}</option>`).join('');
+const languageEntries = Object.entries(LANGUAGES).sort(([a],[b])=>a==='en'?-1:b==='en'?1:0);
+document.querySelector('#language').innerHTML = languageEntries.map(([code,name])=>`<option value="${code}" lang="${code}">${code.toUpperCase()} · ${escape(name)}</option>`).join('');
+languageOptions.innerHTML = languageEntries.map(([code,name])=>`<button type="button" value="${code}" lang="${code}" data-language-choice${code===lang?' aria-current="true"':''}${code==='en'?' autofocus':''}>${escape(name)}</button>`).join('');
 document.querySelector('#language').addEventListener('change',event=>{lang=event.target.value;storage.set('rzsn-language',lang);render({preserve:true});});
+languageOptions.addEventListener('click',event=>{
+  const button=event.target.closest('[data-language-choice]');
+  if (!button) return;
+  lang=button.value;
+  storage.set('rzsn-language',lang);
+  languageDialog.close();
+  render({preserve:true});
+});
+languageDialog.addEventListener('cancel',event=>event.preventDefault());
 function setTheme(value) {
   if (value==='system') delete document.documentElement.dataset.theme;
   else document.documentElement.dataset.theme=value;
@@ -285,3 +298,4 @@ new ResizeObserver(entries=>{
 document.addEventListener('visibilitychange',()=>{if (!document.hidden) refreshClock();});
 setInterval(refreshClock,15000);
 render();
+if (languagePreference.needsSelection) languageDialog.showModal();
