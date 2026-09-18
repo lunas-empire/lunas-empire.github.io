@@ -3,7 +3,7 @@ export const GUIDE_CONFIG = {
   serverDayAnchor: { date: '2026-09-12', day: 144 },
   seasonStart: '2026-09-21T04:00:00+02:00', server: 2261,
 };
-export const BUILD_VERSION = '2026-09-13.5';
+export const BUILD_VERSION = '2026-09-18.1';
 export const ALLIANCE_CONFIG = {
   vsDailyMinimum: 2600000,
   // Same-origin route. It only exists on the combined server with real server-side auth.

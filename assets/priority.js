@@ -6,7 +6,6 @@ export function todayPriorities(state, notice = LIVE_NOTICE) {
   const tasks = [];
   const add = (id, priority, source) => tasks.push({id, priority, source});
   if (notice.active) add('notice',1,'call');
-  if (state.weekdayIndex === 6) add('shield',2,'important');
   add(guide.focus,3,'vs');
   seasonSynergies(state).forEach(id=>add(id,4,'season'));
   if (state.seasonDay === 1) ['firstBlood','farms','vri'].forEach(id=>add(id,4,'season'));

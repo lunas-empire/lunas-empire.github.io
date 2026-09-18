@@ -2,7 +2,7 @@ import { BUILD_VERSION, ALLIANCE_CONFIG, LIVE_NOTICE } from './config.js';
 import { LANGUAGES, LOCALES, UI, translate } from './i18n.js';
 import { COPY, TASKS, DAILY_GUIDES } from './content.js';
 import { DAY_ONE_GROUP, SEASON_COPY, SEASON_CONTENT, seasonTasks, seasonSynergies, upcoming } from './season.js';
-import { DAY_MS, WEEKDAYS, guideState, selectedDate, checklistKey, armsWindow, availableTask } from './engine.js';
+import { DAY_MS, WEEKDAYS, guideState, selectedDate, checklistKey, armsWindow, availableTask, enemyBusterPhase } from './engine.js';
 import { todayPriorities } from './priority.js';
 import { createStorage, checkedMap } from './storage.js';
 
@@ -55,6 +55,16 @@ const guideGallery = ids => `<div class="guide-gallery">${ids.map(guideFigure).j
 function notice() {
   if (!LIVE_NOTICE.active) return '';
   return `<aside class="card warning" aria-label="${tx('call')}"><h2>${tx('call')}</h2><p>${escape(LIVE_NOTICE.message[lang])}</p></aside>`;
+}
+function enemyBusterBanner(s) {
+  const phase=enemyBusterPhase(s);
+  if (!phase) return '';
+  if (phase==='upcoming') {
+    return `<aside class="enemy-buster" aria-labelledby="enemy-buster-title"><span class="badge">${tx('important')}</span><h2 id="enemy-buster-title">${tx('enemyBusterUpcomingTitle')}</h2><p class="enemy-buster__window">${tx('enemyBusterWindow')}</p><p>${tx('enemyBusterUpcomingText')}</p></aside>`;
+  }
+  const key=`rzsn-enemy-buster-shield-${s.date}`;
+  const confirmed=storage.get(key,false)===true;
+  return `<aside class="enemy-buster enemy-buster--active" data-confirmed="${confirmed}" aria-labelledby="enemy-buster-title"><span class="badge">${tx('important')}</span><h2 id="enemy-buster-title">${tx('enemyBusterActiveTitle')}</h2><p class="enemy-buster__window">${tx('enemyBusterWindow')}</p><label class="shield-confirm"><input type="checkbox" data-shield-check data-key="${escape(key)}"${confirmed?' checked':''}><span>${tx('shieldConfirmLabel')}</span></label><div class="shield-state" aria-live="polite"><p class="shield-state__pending">${tx('shieldPendingText')}</p><p class="shield-state__confirmed">${tx('shieldConfirmedText')}</p></div></aside>`;
 }
 function countdown() {
   const minutes = Math.floor(state.countdown / 60000);
@@ -111,7 +121,7 @@ function today() {
   const cards = priorities.filter(p=>p.id!=='notice').map(p=>`<li class="${p.id==='shield'?'warning':''}" data-priority="${p.id}"><span class="badge">${tx(p.source)}</span>${p.id==='arms'?arms(state,guide):p.id==='save'?list(guide.save.filter(permitted)):p.id==='shield'?`<h3>${tx(p.id)}</h3>`:paragraph(p.id)}</li>`).join('');
   const seasonIds = seasonTasks(state).filter(id=>!shown.has(id) && permitted(id)).slice(0,state.seasonDay?2:1);
   const nextSeason = state.phase === 'PRE_SEASON' ? first24() : nextCards(1);
-  return `<h1>MEMBER HUB</h1><p class="intro">${escape(longDate(state.date))}</p>${status()}${notice()}${section('focus',`<ul class="priority-list">${cards}</ul>`)}${section('vs',`<h3>${tx(state.weekday)}</h3>${minimum()}${guideFigure(`vs-${state.weekday}`)}${!shown.has('arms')?details(t('bestArms'),arms(state,guide)):''}${!shown.has('save')?details(t('save'),list(guide.save.filter(permitted))):''}${link('vs','details')}`)}${section('season',`<h3>${escape(phaseLabel(state))}</h3>${list(seasonIds)}${link('season','details')}`)}${section('daily',`${progress('daily',dailyTasks().map(task=>task.id))}${link('daily','checklist')}`)}${section('next',`<h3>${tx('tomorrow')} · ${tx(WEEKDAYS[(state.weekdayIndex+1)%7])}</h3>${nextSeason}`)}`;
+  return `<h1>MEMBER HUB</h1><p class="intro">${escape(longDate(state.date))}</p>${status()}${notice()}${enemyBusterBanner(state)}${section('focus',`<ul class="priority-list">${cards}</ul>`)}${section('vs',`<h3>${tx(state.weekday)}</h3>${minimum()}${guideFigure(`vs-${state.weekday}`)}${!shown.has('arms')?details(t('bestArms'),arms(state,guide)):''}${!shown.has('save')?details(t('save'),list(guide.save.filter(permitted))):''}${link('vs','details')}`)}${section('season',`<h3>${escape(phaseLabel(state))}</h3>${list(seasonIds)}${link('season','details')}`)}${section('daily',`${progress('daily',dailyTasks().map(task=>task.id))}${link('daily','checklist')}`)}${section('next',`<h3>${tx('tomorrow')} · ${tx(WEEKDAYS[(state.weekdayIndex+1)%7])}</h3>${nextSeason}`)}`;
 }
 function daySelector() {
   return `<div class="week-selector" role="group" aria-label="${tx('vs')}">${WEEKDAYS.map((day,index)=>{
@@ -130,7 +140,7 @@ function vs() {
   const guide = DAILY_GUIDES[s.weekday];
   const tasks = [...new Set([...guide.tasks,...seasonSynergies(s)])].map(id=>({id}));
   const guideIds=[`vs-${s.weekday}`,...(s.weekday==='sunday'?['vs-sunday-prep']:[])];
-  return `<h1>${tx('vs')}</h1>${notice()}${daySelector()}<p class="intro">${escape(longDate(s.date))}</p><h2>${tx(s.weekday)}</h2>${minimum(s)}${guideGallery(guideIds)}${selectedDay===6?`<aside class="card warning"><h3>${tx('shield')}</h3></aside>`:''}${checklist('vs',tasks,s)}${section('bestArms',arms(s,guide))}${section('avoid',list(guide.avoid.filter(permitted)))}${section('save',list(guide.save.filter(permitted)))}${details(t('secretMissionsGuideTitle'),guideFigure('vs-secret-missions'),false,'secret-missions-guide')}${section('tomorrow',`<h3>${tx(WEEKDAYS[(selectedDay+1)%7])}</h3>`)}${selectedDay===6?paragraph('fight'):''}`;
+  return `<h1>${tx('vs')}</h1>${notice()}${daySelector()}<p class="intro">${escape(longDate(s.date))}</p><h2>${tx(s.weekday)}</h2>${minimum(s)}${enemyBusterBanner(s)}${guideGallery(guideIds)}${checklist('vs',tasks,s)}${section('bestArms',arms(s,guide))}${section('avoid',list(guide.avoid.filter(permitted)))}${section('save',list(guide.save.filter(permitted)))}${details(t('secretMissionsGuideTitle'),guideFigure('vs-secret-missions'),false,'secret-missions-guide')}${section('tomorrow',`<h3>${tx(WEEKDAYS[(selectedDay+1)%7])}</h3>`)}${selectedDay===6?paragraph('fight'):''}`;
 }
 function first24Body({withChecklist = false} = {}) {
   const flow = `<ol class="flow">${t('loop').split(' → ').map(step=>`<li>${escape(step)}</li>`).join('')}</ol>`;
@@ -164,11 +174,7 @@ const references = ['philosophy','minister','drone','hero','radarSave','star','b
 function guides() {
   return `<h1>${tx('guides')}</h1>${notice()}<label class="search">${tx('search')}<input type="search" id="search" autocomplete="off"></label><p id="no-results" role="status" hidden>${tx('noResults')}</p><div id="search-results">${references.map(id=>`<article class="card" data-search="${id}">${paragraph(id)}</article>`).join('')}</div>`;
 }
-function faq() {
-  const questions = [['qFirst','aFirst'],['qTiming','philosophy'],['qHero','hero'],['qDrone','drone'],['qRadar','aRadar'],['qShield','shield'],['qBlood','aBlood'],['qProfession','profession']];
-  return `<h1>${tx('faq')}</h1>${notice()}${questions.map(([q,a])=>details(t(q),paragraph(a))).join('')}`;
-}
-const views = {today,daily,vs,season,guides,faq,admin:()=>`<h1>${tx('admin')}</h1>${paragraph('adminPending')}`};
+const views = {today,daily,vs,season,guides,admin:()=>`<h1>${tx('admin')}</h1>${paragraph('adminPending')}`};
 function syncChrome() {
   document.documentElement.lang = lang;
   document.querySelectorAll('[data-ui]').forEach(el=>{el.textContent = t(el.dataset.ui);});
@@ -235,6 +241,12 @@ main.addEventListener('click',event=>{
 });
 main.addEventListener('change',event=>{
   const input=event.target;
+  if (input.matches('[data-shield-check]')) {
+    storage.set(input.dataset.key,input.checked);
+    input.closest('.enemy-buster').dataset.confirmed=String(input.checked);
+    showStorageError();
+    return;
+  }
   if (!input.matches('[data-check]')) return;
   const key=input.dataset.key;
   const checks=checkedMap(storage.get(key));

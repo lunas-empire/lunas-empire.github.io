@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { guideState, checklistKey, armsWindow, availableTask, getGuideDate, resetInstant, seasonEventInstant } from '../assets/engine.js';
+import { guideState, checklistKey, armsWindow, availableTask, getGuideDate, resetInstant, seasonEventInstant, enemyBusterPhase } from '../assets/engine.js';
 import { DAILY_GUIDES, TASKS } from '../assets/content.js';
 import { todayPriorities } from '../assets/priority.js';
 import { DAY_ONE_GROUP, seasonTasks, seasonSynergies, upcoming } from '../assets/season.js';
@@ -59,7 +59,15 @@ for (let day=0;day<7;day++) test(`weekday ${day}: arms, radar, stars, priorities
   assert.equal(guide.arms?.start ?? null,[null,20,12,12,12,null,null][day]);
   const priorities=todayPriorities(s);
   assert.ok(priorities.length<=5);assert.equal(priorities.length,new Set(priorities.map(t=>t.id)).size);
-  if (day===6) assert.equal(priorities[0].id,'shield');
+  if (day===6) assert.ok(!priorities.some(priority=>priority.id==='shield'));
+});
+test('Enemy Buster banner follows the Friday and Saturday 04:00 resets',()=>{
+  assert.equal(enemyBusterPhase(state('2026-09-18T03:59:00+02:00')),null);
+  assert.equal(enemyBusterPhase(state('2026-09-18T04:00:00+02:00')),'upcoming');
+  assert.equal(enemyBusterPhase(state('2026-09-19T03:59:00+02:00')),'upcoming');
+  assert.equal(enemyBusterPhase(state('2026-09-19T04:00:00+02:00')),'active');
+  assert.equal(enemyBusterPhase(state('2026-09-20T03:59:00+02:00')),'active');
+  assert.equal(enemyBusterPhase(state('2026-09-20T04:00:00+02:00')),null);
 });
 test('Monday arms window crosses midnight without resetting server weekday',()=>{
   assert.equal(armsWindow(state('2026-09-14T19:59:00+02:00'),DAILY_GUIDES.monday),'later');

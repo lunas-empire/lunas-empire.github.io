@@ -42,6 +42,12 @@ export function armsWindow(state, guide) {
   const minutes = state.minute < GUIDE_CONFIG.serverResetHour * 60 ? state.minute + 1440 : state.minute;
   return minutes < guide.arms.start * 60 ? 'later' : minutes < guide.arms.end * 60 ? 'active' : 'ended';
 }
+
+export function enemyBusterPhase(state) {
+  if (state.weekdayIndex === 5) return 'upcoming';
+  if (state.weekdayIndex === 6) return 'active';
+  return null;
+}
 export function availableTask(task, state) {
   if (task.weekdays && !task.weekdays.includes(state.weekdayIndex)) return false;
   if (task.minDay && state.seasonDay < task.minDay) return false;

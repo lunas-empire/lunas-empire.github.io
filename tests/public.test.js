@@ -15,5 +15,7 @@ test('all public assets, including i18n, are served; private paths are not',asyn
       assert.equal(response.status,200,file);assert.equal(response.headers.get('content-type'),'image/webp');
     }
     for (const path of ['/admin/','/private/wiki.html','/.git/config','/assets/../private/wiki.html']) assert.equal((await fetch(url+path)).status,404,path);
+    const homepage=await (await fetch(url+'/')).text();
+    assert.ok(!homepage.includes('#faq'),'FAQ route is removed from the public navigation');
   } finally {await new Promise(resolve=>server.close(resolve));}
 });

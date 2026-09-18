@@ -7,7 +7,6 @@ export const UI = {
   vs:['VS Duel','VS Duel','VS Duel','VS Duel','VS Duel','VS Duel','VS Duel'],
   season:['Season 1','Season 1','Сезон 1','シーズン1','Saison 1','Stagione 1','Season 1'],
   guides:['Guides','Guides','Поради','ガイド','Guides','Guide','Panduan'],
-  faq:['FAQ','FAQ','Питання','よくある質問','FAQ','FAQ','FAQ'],
   more:['Mehr','More','Ще','その他','Plus','Altro','Lainnya'],
   menu:['Menü','Menu','Меню','メニュー','Menu','Menu','Menu'],
   language:['Sprache','Language','Мова','言語','Langue','Lingua','Bahasa'],
