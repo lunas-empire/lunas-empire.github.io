@@ -3,11 +3,11 @@ export const GUIDE_CONFIG = {
   serverDayAnchor: { date: '2026-09-12', day: 144 },
   seasonStart: '2026-09-21T04:00:00+02:00', server: 2261,
 };
-export const BUILD_VERSION = '2026-09-18.3';
+export const BUILD_VERSION = '2026-09-18.4';
 export const ALLIANCE_CONFIG = {
   vsDailyMinimum: 2600000,
-  // Same-origin route. It only exists on the combined server with real server-side auth.
-  adminUrl: '/admin/',
+  // GitHub Pages uses the internal #admin placeholder; a combined server may set /admin/.
+  adminUrl: '',
 };
 export const LIVE_NOTICE = {
   active: false, priority: 'critical',

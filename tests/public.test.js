@@ -17,9 +17,12 @@ test('all public assets, including i18n, are served; private paths are not',asyn
     for (const path of ['/admin/','/private/wiki.html','/.git/config','/assets/../private/wiki.html']) assert.equal((await fetch(url+path)).status,404,path);
     const homepage=await (await fetch(url+'/')).text();
     assert.ok(!homepage.includes('#faq'),'FAQ route is removed from the public navigation');
+    assert.ok(homepage.includes('id="admin-link" href="#admin"'),'public admin link uses the internal placeholder route');
     assert.ok(homepage.includes('id="language-dialog"'),'first-visit language dialog is present');
     assert.ok(homepage.includes('id="language-options"'),'language choices have a stable mount point');
     const appSource=await (await fetch(url+'/assets/app.js')).text();
+    const configSource=await (await fetch(url+'/assets/config.js')).text();
+    assert.ok(!configSource.includes("adminUrl: '/admin/'"),'static build does not point at an unavailable server route');
     assert.ok(!appSource.includes("'vs-sunday-prep'"),'Sunday VS renders only the primary guide image');
     for (const id of ['season-day-one','season-virus-research','season-protein-farm','season-additional-tips']) {
       assert.ok(appSource.includes(id),`${id} is included in the public guide library`);
