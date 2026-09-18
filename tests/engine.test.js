@@ -101,13 +101,14 @@ test('storage failure has in-memory fallback; corrupt checklists are safe',()=>{
   assert.deepEqual(checkedMap({yes:true,no:false,bad:'true'}),{yes:true});
 });
 test('member image labels exist in every public language',()=>{
-  for (const key of ['imageFarmsAlt','imageResistanceAlt','imageWeaponsAlt','imageHint','imageLanguage']) {
+  for (const key of ['imageFarmsAlt','imageResistanceAlt','imageWeaponsAlt','imageSeasonDayOneAlt','imageVirusResearchAlt','imageProteinFarmAlt','imageSeasonTipsAlt','imageHint','imageLanguage']) {
     assert.equal(SEASON_COPY[key].length,7);assert.ok(SEASON_COPY[key].every(value=>value.trim()));
   }
 });
 test('Season 1 guide images are assigned to the relevant weeks',()=>{
   assert.deepEqual(SEASON_GUIDES.PRE_SEASON,['farms']);
-  assert.deepEqual(SEASON_GUIDES.SEASON_WEEK_1,['farms','resistance','weapons']);
+  assert.deepEqual(SEASON_GUIDES.SEASON_WEEK_1,['season-day-one','season-virus-research','season-protein-farm','resistance','weapons']);
+  assert.deepEqual(SEASON_GUIDES.SEASON_WEEK_2,['season-additional-tips','resistance']);
   assert.deepEqual(SEASON_GUIDES.SEASON_WEEK_3,['resistance','weapons']);
   assert.deepEqual(SEASON_GUIDES.SEASON_WEEK_6,['weapons']);
   assert.equal(SEASON_GUIDES.SEASON_WEEK_4,undefined);

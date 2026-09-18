@@ -19,5 +19,10 @@ test('all public assets, including i18n, are served; private paths are not',asyn
     assert.ok(!homepage.includes('#faq'),'FAQ route is removed from the public navigation');
     assert.ok(homepage.includes('id="language-dialog"'),'first-visit language dialog is present');
     assert.ok(homepage.includes('id="language-options"'),'language choices have a stable mount point');
+    const appSource=await (await fetch(url+'/assets/app.js')).text();
+    assert.ok(!appSource.includes("'vs-sunday-prep'"),'Sunday VS renders only the primary guide image');
+    for (const id of ['season-day-one','season-virus-research','season-protein-farm','season-additional-tips']) {
+      assert.ok(appSource.includes(id),`${id} is included in the public guide library`);
+    }
   } finally {await new Promise(resolve=>server.close(resolve));}
 });

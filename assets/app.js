@@ -38,8 +38,11 @@ const MEMBER_MEDIA = {
   farms:{src:'/assets/member/farms-vri.webp',alt:'imageFarmsAlt',width:960,height:722},
   resistance:{src:'/assets/member/resistance.webp',alt:'imageResistanceAlt',width:960,height:786},
   weapons:{src:'/assets/member/weapons.webp',alt:'imageWeaponsAlt',width:960,height:692},
+  'season-day-one':{src:'/assets/member/season-day-one.webp',alt:'imageSeasonDayOneAlt',width:960,height:1434},
+  'season-virus-research':{src:'/assets/member/season-virus-research.webp',alt:'imageVirusResearchAlt',width:960,height:1446},
+  'season-protein-farm':{src:'/assets/member/season-protein-farm.webp',alt:'imageProteinFarmAlt',width:960,height:1424},
+  'season-additional-tips':{src:'/assets/member/season-additional-tips.webp',alt:'imageSeasonTipsAlt',width:960,height:1424},
   'vs-sunday':{src:'/assets/member/vs-sunday.webp',day:'sunday',width:960,height:1280},
-  'vs-sunday-prep':{src:'/assets/member/vs-sunday-prep.webp',alt:'vsPrepGuideAlt',width:960,height:1197},
   'vs-monday':{src:'/assets/member/vs-monday.webp',day:'monday',width:960,height:1280},
   'vs-tuesday':{src:'/assets/member/vs-tuesday.webp',day:'tuesday',width:960,height:1200},
   'vs-wednesday':{src:'/assets/member/vs-wednesday.webp',day:'wednesday',width:960,height:1200},
@@ -141,7 +144,7 @@ function vs() {
   const s = guideState(new Date(`${date}T12:00:00+02:00`));
   const guide = DAILY_GUIDES[s.weekday];
   const tasks = [...new Set([...guide.tasks,...seasonSynergies(s)])].map(id=>({id}));
-  const guideIds=[`vs-${s.weekday}`,...(s.weekday==='sunday'?['vs-sunday-prep']:[])];
+  const guideIds=[`vs-${s.weekday}`];
   return `<h1>${tx('vs')}</h1>${notice()}${daySelector()}<p class="intro">${escape(longDate(s.date))}</p><h2>${tx(s.weekday)}</h2>${minimum(s)}${enemyBusterBanner(s)}${guideGallery(guideIds)}${checklist('vs',tasks,s)}${section('bestArms',arms(s,guide))}${section('avoid',list(guide.avoid.filter(permitted)))}${section('save',list(guide.save.filter(permitted)))}${details(t('secretMissionsGuideTitle'),guideFigure('vs-secret-missions'),false,'secret-missions-guide')}${section('tomorrow',`<h3>${tx(WEEKDAYS[(selectedDay+1)%7])}</h3>`)}${selectedDay===6?paragraph('fight'):''}`;
 }
 function first24Body({withChecklist = false} = {}) {
@@ -172,9 +175,23 @@ function season() {
   const timeline = Object.entries(SEASON_CONTENT).map(([phase,items],index)=>details(index===0?t('pre'):index===9?t('post'):`${t('week')} ${index}`,list(items)+guideGallery(SEASON_GUIDES[phase] || []),index===current || index===current+1,phase)).join('');
   return `<h1>${tx('season')}</h1>${status()}${notice()}${section('today',todayBody)}${section('thisWeek',`<h3>${escape(phaseLabel(state))}</h3>${checklist('season',weekIds.map(id=>({id})))}`)}${section('next',nextBody)}${section('timeline',timeline)}`;
 }
-const references = ['philosophy','minister','drone','hero','radarSave','star','buildings','ssr','chests','safeServer','profession'];
+const REFERENCE_LABELS = {
+  safeServer:'Server 2261',minister:'Minister Buff',philosophy:'Upgrade Timing',
+  hero:'Hero',drone:'Drone',buildings:'Building Power',profession:'Engineer / War Leader',
+  radarSave:'Radar Tasks',star:'Star Missions',ssr:'SSR Gear Chests',chests:'Event / Arms Race Chests',
+};
+const REFERENCE_GROUPS = [
+  {title:'guideRules',ids:['safeServer','minister','philosophy']},
+  {title:'guideGrowth',ids:['hero','drone','buildings','profession']},
+  {title:'guidePlanning',ids:['radarSave','star','ssr','chests']},
+];
+function referenceLibrary() {
+  return `<div id="search-results" class="reference-groups">${REFERENCE_GROUPS.map(group=>`<section class="reference-group" data-search-group><h3>${tx(group.title)}</h3><dl class="reference-list">${group.ids.map(id=>`<div class="reference-note" data-search="${id}"><dt>${escape(REFERENCE_LABELS[id])}</dt><dd>${paragraph(id)}</dd></div>`).join('')}</dl></section>`).join('')}</div>`;
+}
 function guides() {
-  return `<h1>${tx('guides')}</h1>${notice()}<label class="search">${tx('search')}<input type="search" id="search" autocomplete="off"></label><p id="no-results" role="status" hidden>${tx('noResults')}</p><div id="search-results">${references.map(id=>`<article class="card" data-search="${id}">${paragraph(id)}</article>`).join('')}</div>`;
+  const vsGuides=[...WEEKDAYS.map(day=>`vs-${day}`),'vs-secret-missions'];
+  const seasonGuides=['season-day-one','season-virus-research','season-protein-farm','season-additional-tips','farms','resistance','weapons'];
+  return `<h1>${tx('guides')}</h1><p class="intro">${tx('guidesIntro')}</p>${notice()}<div class="guide-library">${section('vs',guideGallery(vsGuides))}${section('season',guideGallery(seasonGuides))}</div>${section('quickReference',`<label class="search">${tx('search')}<input type="search" id="search" autocomplete="off"></label><p id="no-results" role="status" hidden>${tx('noResults')}</p>${referenceLibrary()}`)}`;
 }
 const views = {today,daily,vs,season,guides,admin:()=>`<h1>${tx('admin')}</h1>${paragraph('adminPending')}`};
 function syncChrome() {
@@ -287,6 +304,7 @@ main.addEventListener('input',event=>{
   const query=event.target.value.trim().toLocaleLowerCase(LOCALES[lang]);
   let found=0;
   main.querySelectorAll('[data-search]').forEach(el=>{el.hidden=!el.textContent.toLocaleLowerCase(LOCALES[lang]).includes(query);if (!el.hidden) found++;});
+  main.querySelectorAll('[data-search-group]').forEach(group=>{group.hidden=!group.querySelector('[data-search]:not([hidden])');});
   document.querySelector('#no-results').hidden=found>0;
 });
 window.addEventListener('hashchange',()=>{menu.open=false;render({focus:true});});
