@@ -36,11 +36,22 @@ const MEMBER_MEDIA = {
   farms:{src:'/assets/member/farms-vri.webp',alt:'imageFarmsAlt',width:960,height:722},
   resistance:{src:'/assets/member/resistance.webp',alt:'imageResistanceAlt',width:960,height:786},
   weapons:{src:'/assets/member/weapons.webp',alt:'imageWeaponsAlt',width:960,height:692},
+  'vs-sunday':{src:'/assets/member/vs-sunday.webp',day:'sunday',width:960,height:1280},
+  'vs-sunday-prep':{src:'/assets/member/vs-sunday-prep.webp',alt:'vsPrepGuideAlt',width:960,height:1197},
+  'vs-monday':{src:'/assets/member/vs-monday.webp',day:'monday',width:960,height:1280},
+  'vs-tuesday':{src:'/assets/member/vs-tuesday.webp',day:'tuesday',width:960,height:1200},
+  'vs-wednesday':{src:'/assets/member/vs-wednesday.webp',day:'wednesday',width:960,height:1200},
+  'vs-thursday':{src:'/assets/member/vs-thursday.webp',day:'thursday',width:960,height:1200},
+  'vs-friday':{src:'/assets/member/vs-friday.webp',day:'friday',width:960,height:1280},
+  'vs-saturday':{src:'/assets/member/vs-saturday.webp',day:'saturday',width:960,height:1200},
+  'vs-secret-missions':{src:'/assets/member/vs-secret-missions.webp',alt:'secretMissionsGuideAlt',width:960,height:1200},
 };
 function guideFigure(id) {
   const media=MEMBER_MEDIA[id];
-  return `<figure class="guide-figure"><a href="${media.src}" target="_blank" rel="noopener" aria-label="${tx(media.alt)} ${tx('imageHint')}"><img src="${media.src}" width="${media.width}" height="${media.height}" loading="lazy" decoding="async" alt="${tx(media.alt)}"></a><figcaption><strong>${tx(media.alt)}</strong><span>${tx('imageHint')}</span><small>${tx('imageLanguage')}</small></figcaption></figure>`;
+  const alt=media.day?t('dayGuideAlt',{day:t(media.day)}):t(media.alt);
+  return `<figure class="guide-figure"><a href="${media.src}" target="_blank" rel="noopener" aria-label="${escape(alt)} ${tx('imageHint')}"><img src="${media.src}" width="${media.width}" height="${media.height}" loading="lazy" decoding="async" alt="${escape(alt)}"></a><figcaption><strong>${escape(alt)}</strong><span>${tx('imageHint')}</span><small>${tx('imageLanguage')}</small></figcaption></figure>`;
 }
+const guideGallery = ids => `<div class="guide-gallery">${ids.map(guideFigure).join('')}</div>`;
 function notice() {
   if (!LIVE_NOTICE.active) return '';
   return `<aside class="card warning" aria-label="${tx('call')}"><h2>${tx('call')}</h2><p>${escape(LIVE_NOTICE.message[lang])}</p></aside>`;
@@ -100,7 +111,7 @@ function today() {
   const cards = priorities.filter(p=>p.id!=='notice').map(p=>`<li class="${p.id==='shield'?'warning':''}" data-priority="${p.id}"><span class="badge">${tx(p.source)}</span>${p.id==='arms'?arms(state,guide):p.id==='save'?list(guide.save.filter(permitted)):p.id==='shield'?`<h3>${tx(p.id)}</h3>`:paragraph(p.id)}</li>`).join('');
   const seasonIds = seasonTasks(state).filter(id=>!shown.has(id) && permitted(id)).slice(0,state.seasonDay?2:1);
   const nextSeason = state.phase === 'PRE_SEASON' ? first24() : nextCards(1);
-  return `<h1>MEMBER HUB</h1><p class="intro">${escape(longDate(state.date))}</p>${status()}${notice()}${section('focus',`<ul class="priority-list">${cards}</ul>`)}${section('vs',`<h3>${tx(state.weekday)}</h3>${minimum()}${!shown.has('arms')?details(t('bestArms'),arms(state,guide)):''}${!shown.has('save')?details(t('save'),list(guide.save.filter(permitted))):''}${link('vs','details')}`)}${section('season',`<h3>${escape(phaseLabel(state))}</h3>${list(seasonIds)}${link('season','details')}`)}${section('daily',`${progress('daily',dailyTasks().map(task=>task.id))}${link('daily','checklist')}`)}${section('next',`<h3>${tx('tomorrow')} · ${tx(WEEKDAYS[(state.weekdayIndex+1)%7])}</h3>${nextSeason}`)}`;
+  return `<h1>MEMBER HUB</h1><p class="intro">${escape(longDate(state.date))}</p>${status()}${notice()}${section('focus',`<ul class="priority-list">${cards}</ul>`)}${section('vs',`<h3>${tx(state.weekday)}</h3>${minimum()}${guideFigure(`vs-${state.weekday}`)}${!shown.has('arms')?details(t('bestArms'),arms(state,guide)):''}${!shown.has('save')?details(t('save'),list(guide.save.filter(permitted))):''}${link('vs','details')}`)}${section('season',`<h3>${escape(phaseLabel(state))}</h3>${list(seasonIds)}${link('season','details')}`)}${section('daily',`${progress('daily',dailyTasks().map(task=>task.id))}${link('daily','checklist')}`)}${section('next',`<h3>${tx('tomorrow')} · ${tx(WEEKDAYS[(state.weekdayIndex+1)%7])}</h3>${nextSeason}`)}`;
 }
 function daySelector() {
   return `<div class="week-selector" role="group" aria-label="${tx('vs')}">${WEEKDAYS.map((day,index)=>{
@@ -118,7 +129,8 @@ function vs() {
   const s = guideState(new Date(`${date}T12:00:00+02:00`));
   const guide = DAILY_GUIDES[s.weekday];
   const tasks = [...new Set([...guide.tasks,...seasonSynergies(s)])].map(id=>({id}));
-  return `<h1>${tx('vs')}</h1>${notice()}${daySelector()}<p class="intro">${escape(longDate(s.date))}</p><h2>${tx(s.weekday)}</h2>${minimum(s)}${selectedDay===6?`<aside class="card warning"><h3>${tx('shield')}</h3></aside>`:''}${checklist('vs',tasks,s)}${section('bestArms',arms(s,guide))}${section('avoid',list(guide.avoid.filter(permitted)))}${section('save',list(guide.save.filter(permitted)))}${section('tomorrow',`<h3>${tx(WEEKDAYS[(selectedDay+1)%7])}</h3>`)}${selectedDay===6?paragraph('fight'):''}`;
+  const guideIds=[`vs-${s.weekday}`,...(s.weekday==='sunday'?['vs-sunday-prep']:[])];
+  return `<h1>${tx('vs')}</h1>${notice()}${daySelector()}<p class="intro">${escape(longDate(s.date))}</p><h2>${tx(s.weekday)}</h2>${minimum(s)}${guideGallery(guideIds)}${selectedDay===6?`<aside class="card warning"><h3>${tx('shield')}</h3></aside>`:''}${checklist('vs',tasks,s)}${section('bestArms',arms(s,guide))}${section('avoid',list(guide.avoid.filter(permitted)))}${section('save',list(guide.save.filter(permitted)))}${details(t('secretMissionsGuideTitle'),guideFigure('vs-secret-missions'),false,'secret-missions-guide')}${section('tomorrow',`<h3>${tx(WEEKDAYS[(selectedDay+1)%7])}</h3>`)}${selectedDay===6?paragraph('fight'):''}`;
 }
 function first24Body({withChecklist = false} = {}) {
   const flow = `<ol class="flow">${t('loop').split(' → ').map(step=>`<li>${escape(step)}</li>`).join('')}</ol>`;
