@@ -9,6 +9,14 @@ import { SEASON_COPY, SEASON_CONTENT, EVENTS } from '../assets/season.js';
 import { GUIDE_COPY, GUIDE_TEXT, MEMBER_MEDIA } from '../assets/guide-text.js';
 import { LIVE_NOTICE } from '../assets/config.js';
 const root=fileURLToPath(new URL('../',import.meta.url));
+const translationTables={UI,COPY,SEASON_COPY,GUIDE_COPY};
+const keyOwners=new Map();
+for (const [tableName,table] of Object.entries(translationTables)) {
+  for (const key of Object.keys(table)) {
+    assert.ok(!keyOwners.has(key),`Translation key collision: ${key} in ${keyOwners.get(key)} and ${tableName}`);
+    keyOwners.set(key,tableName);
+  }
+}
 const dictionary={...UI,...COPY,...SEASON_COPY,...GUIDE_COPY};
 const baseLanguages=['de','en','uk','ja','fr','it','id'];
 const placeholders=value=>[...value.matchAll(/\{(\w+)\}/g)].map(m=>m[1]).sort();
@@ -19,7 +27,11 @@ for (const [key,row] of Object.entries(dictionary)) {
     assert.ok(typeof value==='string' && value.trim(),`${key}: empty translation [${lang}]`);
     assert.ok(!/[\uFFFD\u0080-\u009F]/u.test(value),`${key}: encoding damage [${lang}]`);
     assert.deepEqual(placeholders(value),placeholders(row[1]),`${key}: placeholder mismatch [${lang}]`);
+    assert.doesNotMatch(value,/\bWarrior\b/,`${key}: use the in-game profession name War Leader [${lang}]`);
   }
+}
+for (const lang of Object.keys(LANGUAGES)) {
+  assert.notEqual(translate(UI,'guideRules',lang),translate(GUIDE_COPY,'guideRule',lang),`Rules/timing and Rule must stay distinct [${lang}]`);
 }
 assert.equal(new Set(TASKS.map(t=>t.id)).size,TASKS.length,'duplicate task IDs');
 assert.deepEqual(Object.keys(GUIDE_TEXT).sort(),Object.keys(MEMBER_MEDIA).sort(),'Every displayed guide image has a text equivalent');
