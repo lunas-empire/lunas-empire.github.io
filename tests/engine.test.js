@@ -113,7 +113,7 @@ test('guidance for unsure players exists in every public language',()=>{
 });
 test('current alliance targets are encoded',()=>{
   assert.equal(ALLIANCE_CONFIG.vsDailyMinimum,3600000);
-  assert.equal(Object.keys(LANGUAGES).length,11);
+  assert.equal(Object.keys(LANGUAGES).length,12);
   for (const lang of Object.keys(LANGUAGES)) assert.match(translate(COPY,'tech1',lang),/20(?:[ .]|,)000/);
 });
 test('Season 1 guide images are assigned to the relevant weeks',()=>{
@@ -129,5 +129,6 @@ test('first visits default to English and existing language choices persist',()=
   assert.deepEqual(resolveLanguagePreference('de',null),{lang:'de',needsSelection:false});
   assert.deepEqual(resolveLanguagePreference('ar',null),{lang:'ar',needsSelection:false});
   assert.deepEqual(resolveLanguagePreference('ko',null),{lang:'ko',needsSelection:false});
+  assert.deepEqual(resolveLanguagePreference('nl',null),{lang:'nl',needsSelection:false});
   assert.deepEqual(resolveLanguagePreference('invalid','ja'),{lang:'ja',needsSelection:false});
 });

@@ -3,10 +3,11 @@ import AR from './i18n-ar.js';
 import KO from './i18n-ko.js';
 import SV from './i18n-sv.js';
 import PT from './i18n-pt.js';
+import NL from './i18n-nl.js';
 
-export const LANGUAGES = {de:'Deutsch',en:'English',uk:'Українська',ja:'日本語',fr:'Français',it:'Italiano',id:'Bahasa Indonesia',ar:'العربية',ko:'한국어',sv:'Svenska',pt:'Português'};
-export const LOCALES = {de:'de-DE',en:'en-GB',uk:'uk-UA',ja:'ja-JP',fr:'fr-FR',it:'it-IT',id:'id-ID',ar:'ar-SA-u-ca-gregory',ko:'ko-KR',sv:'sv-SE',pt:'pt-PT'};
-const EXTRA_TRANSLATIONS = {ar:AR,ko:KO,sv:SV,pt:PT};
+export const LANGUAGES = {de:'Deutsch',en:'English',uk:'Українська',ja:'日本語',fr:'Français',it:'Italiano',id:'Bahasa Indonesia',ar:'العربية',ko:'한국어',sv:'Svenska',pt:'Português',nl:'Nederlands'};
+export const LOCALES = {de:'de-DE',en:'en-GB',uk:'uk-UA',ja:'ja-JP',fr:'fr-FR',it:'it-IT',id:'id-ID',ar:'ar-SA-u-ca-gregory',ko:'ko-KR',sv:'sv-SE',pt:'pt-PT',nl:'nl-NL'};
+const EXTRA_TRANSLATIONS = {ar:AR,ko:KO,sv:SV,pt:PT,nl:NL};
 export const UI = {
   today:['Heute','Today','Сьогодні','今日','Aujourd’hui','Oggi','Hari ini'],
   daily:['Täglich','Daily','Щодня','日課','Quotidien','Routine','Harian'],
