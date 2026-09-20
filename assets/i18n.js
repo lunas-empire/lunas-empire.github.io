@@ -94,9 +94,10 @@ export const UI = {
   allDone:['Alles auf deiner Liste erledigt.','Everything on your list is done.','Усе зі списку виконано.','リストの項目はすべて完了しました。','Tout est coché sur ta liste.','Hai completato tutta la lista.','Semua tugas dalam daftar sudah selesai.'],
   philosophy:['Wichtige Upgrades möglichst mit Rewards und Punkten kombinieren.','Time important upgrades to earn rewards and points together.','Поєднуйте важливі покращення з нагородами й очками.','大きな強化は、報酬とポイントを同時に得られるタイミングで。','Fais coïncider les améliorations importantes avec des récompenses et des points.','Combina gli upgrade importanti con ricompense e punti.','Lakukan upgrade penting saat bisa mendapat hadiah sekaligus poin.'],
 };
-export function resolveLanguagePreference(stored, legacy) {
-  const selected = [stored,legacy].find(value=>Object.hasOwn(LANGUAGES,value));
-  return {lang:selected || 'en',needsSelection:!selected};
+export function resolveLanguagePreference(stored, legacy, detected) {
+  const saved = [stored,legacy].find(value=>Object.hasOwn(LANGUAGES,value));
+  const suggested = Object.hasOwn(LANGUAGES,detected) ? detected : 'en';
+  return {lang:saved || suggested,needsSelection:!saved};
 }
 export function translate(table, key, lang, values = {}) {
   const row = table[key];

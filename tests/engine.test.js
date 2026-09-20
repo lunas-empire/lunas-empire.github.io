@@ -124,11 +124,13 @@ test('Season 1 guide images are assigned to the relevant weeks',()=>{
   assert.deepEqual(SEASON_GUIDES.SEASON_WEEK_6,['weapons']);
   assert.equal(SEASON_GUIDES.SEASON_WEEK_4,undefined);
 });
-test('first visits default to English and existing language choices persist',()=>{
+test('first visits suggest a supported browser language and saved choices persist',()=>{
   assert.deepEqual(resolveLanguagePreference(null,null),{lang:'en',needsSelection:true});
-  assert.deepEqual(resolveLanguagePreference('de',null),{lang:'de',needsSelection:false});
+  assert.deepEqual(resolveLanguagePreference(null,null,'de'),{lang:'de',needsSelection:true});
+  assert.deepEqual(resolveLanguagePreference(null,null,'invalid'),{lang:'en',needsSelection:true});
+  assert.deepEqual(resolveLanguagePreference('de',null,'ja'),{lang:'de',needsSelection:false});
   assert.deepEqual(resolveLanguagePreference('ar',null),{lang:'ar',needsSelection:false});
   assert.deepEqual(resolveLanguagePreference('ko',null),{lang:'ko',needsSelection:false});
   assert.deepEqual(resolveLanguagePreference('nl',null),{lang:'nl',needsSelection:false});
-  assert.deepEqual(resolveLanguagePreference('invalid','ja'),{lang:'ja',needsSelection:false});
+  assert.deepEqual(resolveLanguagePreference('invalid','ja','de'),{lang:'ja',needsSelection:false});
 });

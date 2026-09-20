@@ -16,7 +16,8 @@ function legacyPreference(key) {
 }
 const storedLanguage = storage.get('rzsn-language', null);
 const legacyLanguage = legacyPreference('lw_lang');
-const languagePreference = resolveLanguagePreference(storedLanguage,legacyLanguage);
+const browserLanguage = (navigator.languages || [navigator.language]).map(value=>String(value).toLowerCase().split('-')[0]).find(value=>Object.hasOwn(LANGUAGES,value));
+const languagePreference = resolveLanguagePreference(storedLanguage,legacyLanguage,browserLanguage);
 let lang = languagePreference.lang;
 let state = guideState();
 let selectedDay = state.weekdayIndex;
@@ -26,7 +27,7 @@ const tx = (key, values) => escape(t(key,values));
 const main = document.querySelector('main');
 const menu = document.querySelector('#menu');
 const languageDialog = document.querySelector('#language-dialog');
-const languageOptions = document.querySelector('#language-options');
+const setupLanguage = document.querySelector('#setup-language');
 const themeOptions = document.querySelector('#theme-options');
 const setupContinue = document.querySelector('#setup-continue');
 const themeToggle = document.querySelector('#theme-toggle');
@@ -241,12 +242,13 @@ function refreshClock() {
 }
 const languageEntries = Object.entries(LANGUAGES).sort(([a],[b])=>a==='en'?-1:b==='en'?1:0);
 document.querySelector('#language').innerHTML = languageEntries.map(([code,name])=>`<option value="${code}" lang="${code}">${code.toUpperCase()} · ${escape(name)}</option>`).join('');
-languageOptions.innerHTML = languageEntries.map(([code,name])=>`<button type="button" value="${code}" lang="${code}" data-language-choice${code===lang?' aria-current="true"':''}${code==='en'?' autofocus':''}>${escape(name)}</button>`).join('');
-let setupLanguageChosen = !languagePreference.needsSelection;
+setupLanguage.innerHTML = languageEntries.map(([code,name])=>`<option value="${code}" lang="${code}">${escape(name)}</option>`).join('');
+setupLanguage.value=lang;
+let setupLanguageChosen = true;
 const savedThemeRaw = storage.get('rzsn-theme',legacyPreference('lw_theme'));
 const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 let activeTheme = ['light','dark'].includes(savedThemeRaw) ? savedThemeRaw : systemTheme;
-let setupThemeChosen = ['light','dark','system'].includes(savedThemeRaw);
+let setupThemeChosen = true;
 function updateSetupReady() {
   setupContinue.disabled = !(setupLanguageChosen && setupThemeChosen);
 }
@@ -271,28 +273,19 @@ function setTheme(value,{persist=true}={}) {
   showStorageError();
 }
 setTheme(activeTheme,{persist:false});
-document.querySelector('#language').addEventListener('change',event=>{
-  lang=event.target.value;
+function setLanguage(value,{persist=true}={}) {
+  if (!Object.hasOwn(LANGUAGES,value)) return;
+  lang=value;
   setupLanguageChosen=true;
-  storage.set('rzsn-language',lang);
-  languageOptions.querySelectorAll('[data-language-choice]').forEach(button=>{
-    if (button.value===lang) button.setAttribute('aria-current','true');
-    else button.removeAttribute('aria-current');
-  });
+  if (persist) storage.set('rzsn-language',lang);
+  document.querySelector('#language').value=lang;
+  setupLanguage.value=lang;
   render({preserve:true});
-});
-languageOptions.addEventListener('click',event=>{
-  const button=event.target.closest('[data-language-choice]');
-  if (!button) return;
-  lang=button.value;
-  setupLanguageChosen=true;
-  storage.set('rzsn-language',lang);
-  languageOptions.querySelectorAll('[data-language-choice]').forEach(choice=>{
-    if (choice===button) choice.setAttribute('aria-current','true');
-    else choice.removeAttribute('aria-current');
-  });
-  render({preserve:true});
-});
+  updateSetupReady();
+  showStorageError();
+}
+document.querySelector('#language').addEventListener('change',event=>setLanguage(event.target.value));
+setupLanguage.addEventListener('change',event=>setLanguage(event.target.value));
 themeOptions.addEventListener('click',event=>{
   const button=event.target.closest('[data-theme-choice]');
   if (!button) return;
@@ -301,6 +294,7 @@ themeOptions.addEventListener('click',event=>{
 });
 setupContinue.addEventListener('click',()=>{
   if (!setupLanguageChosen || !setupThemeChosen) return;
+  storage.set('rzsn-language',lang);
   languageDialog.close();
 });
 languageDialog.addEventListener('cancel',event=>event.preventDefault());

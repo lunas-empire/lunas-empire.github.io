@@ -27,7 +27,8 @@ test('all public assets, including i18n, are served; private paths are not',asyn
     assert.ok(!homepage.includes('#faq'),'FAQ route is removed from the public navigation');
     assert.ok(homepage.includes('id="admin-link" href="#admin"'),'HTML keeps a safe fallback for the admin link');
     assert.ok(homepage.includes('id="language-dialog"'),'first-visit setup dialog is present');
-    assert.ok(homepage.includes('id="language-options"'),'language choices have a stable mount point');
+    assert.ok(homepage.includes('id="setup-language"'),'first-visit language picker has a stable native-select mount point');
+    assert.ok(!homepage.includes('id="language-options"'),'first visit no longer renders the long language-button grid');
     assert.ok(homepage.includes('id="theme-options"'),'first visit includes explicit light/dark choices');
     assert.ok(homepage.includes('id="setup-continue"'),'setup has an explicit continue action');
     assert.ok(homepage.includes('id="theme-toggle"'),'header has a theme icon toggle');
@@ -42,6 +43,8 @@ test('all public assets, including i18n, are served; private paths are not',asyn
     }
     assert.ok(appSource.includes('data-guide-image') && appSource.includes('dataset.retried'),'guide images retry once before showing a fallback');
     assert.ok(appSource.includes('setupThemeChosen') && appSource.includes("activeTheme==='dark'?'light':'dark'"),'theme setup and icon toggle logic are shipped');
+    assert.ok(appSource.includes('navigator.languages') && appSource.includes("setupLanguage.addEventListener('change'"),'first visit suggests browser language and uses the compact picker');
+    assert.ok(cssSource.includes('.setup-language-select') && cssSource.includes('@media(max-width:39.99rem){.language-dialog{inset:auto 0 0'),'first-visit setup is a mobile bottom sheet with a native language picker');
     assert.ok(cssSource.includes('.theme-toggle{width:44px'),'header theme toggle keeps a mobile touch target');
     assert.ok(cssSource.includes('grid-template-columns:repeat(12,minmax(0,1fr))'),'mobile VS days use a non-scrolling grid');
     assert.ok(!cssSource.includes('.week-selector{display:flex'),'the old horizontal VS slider is removed');
