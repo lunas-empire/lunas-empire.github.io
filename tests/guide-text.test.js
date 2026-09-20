@@ -16,6 +16,15 @@ test('every displayed guide image has complete localized text',()=>{
   }
 });
 
+test('Mason UR guidance keeps Wall 160 as preparation, not a requirement',()=>{
+  const [de,en]=GUIDE_COPY.guideTipsMason;
+  assert.match(de,/5★.*Legendary Hero Badge/);
+  assert.match(de,/kein Pflichtwert/);
+  assert.match(en,/5★.*Legendary Hero Badge/);
+  assert.match(en,/not a requirement/i);
+  assert.match(en,/1,600 shards/);
+});
+
 test('guide image metadata stays supplementary and dimensioned',()=>{
   for (const [id,media] of Object.entries(MEMBER_MEDIA)) {
     assert.match(media.src,/^\/assets\/member\/.+\.webp$/,`${id}: public image path`);
