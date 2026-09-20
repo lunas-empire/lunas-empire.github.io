@@ -7,7 +7,7 @@ import { todayPriorities } from '../assets/priority.js';
 import { DAY_ONE_GROUP, SEASON_GUIDES, seasonTasks, seasonSynergies, upcoming } from '../assets/season.js';
 import { createStorage, checkedMap } from '../assets/storage.js';
 import { SEASON_COPY } from '../assets/season.js';
-import { UI, LANGUAGES, resolveLanguagePreference, translate } from '../assets/i18n.js';
+import { UI, LANGUAGES, LOCALES, resolveLanguagePreference, translate } from '../assets/i18n.js';
 const state=date=>guideState(new Date(date));
 const cases=[
   ['2026-09-12T22:00:00+02:00',144,0,'PRE_SEASON'],
@@ -113,7 +113,9 @@ test('guidance for unsure players exists in every public language',()=>{
 });
 test('current alliance targets are encoded',()=>{
   assert.equal(ALLIANCE_CONFIG.vsDailyMinimum,3600000);
-  assert.equal(Object.keys(LANGUAGES).length,12);
+  assert.equal(Object.keys(LANGUAGES).length,15);
+  assert.match(LOCALES.th,/u-ca-gregory/);
+  assert.match(LOCALES.km,/u-ca-gregory/);
   for (const lang of Object.keys(LANGUAGES)) assert.match(translate(COPY,'tech1',lang),/20(?:[ .]|,)000/);
 });
 test('Season 1 guide images are assigned to the relevant weeks',()=>{
@@ -124,13 +126,15 @@ test('Season 1 guide images are assigned to the relevant weeks',()=>{
   assert.deepEqual(SEASON_GUIDES.SEASON_WEEK_6,['weapons']);
   assert.equal(SEASON_GUIDES.SEASON_WEEK_4,undefined);
 });
-test('first visits suggest a supported browser language and saved choices persist',()=>{
+test('first visits default to English and saved language choices persist',()=>{
   assert.deepEqual(resolveLanguagePreference(null,null),{lang:'en',needsSelection:true});
-  assert.deepEqual(resolveLanguagePreference(null,null,'de'),{lang:'de',needsSelection:true});
-  assert.deepEqual(resolveLanguagePreference(null,null,'invalid'),{lang:'en',needsSelection:true});
+  assert.deepEqual(resolveLanguagePreference(null,null,'de'),{lang:'en',needsSelection:true});
   assert.deepEqual(resolveLanguagePreference('de',null,'ja'),{lang:'de',needsSelection:false});
   assert.deepEqual(resolveLanguagePreference('ar',null),{lang:'ar',needsSelection:false});
   assert.deepEqual(resolveLanguagePreference('ko',null),{lang:'ko',needsSelection:false});
   assert.deepEqual(resolveLanguagePreference('nl',null),{lang:'nl',needsSelection:false});
+  assert.deepEqual(resolveLanguagePreference('th',null),{lang:'th',needsSelection:false});
+  assert.deepEqual(resolveLanguagePreference('km',null),{lang:'km',needsSelection:false});
+  assert.deepEqual(resolveLanguagePreference('fil',null),{lang:'fil',needsSelection:false});
   assert.deepEqual(resolveLanguagePreference('invalid','ja','de'),{lang:'ja',needsSelection:false});
 });

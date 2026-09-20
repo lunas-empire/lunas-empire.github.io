@@ -3,11 +3,12 @@ import { LANGUAGES, LOCALES, UI, resolveLanguagePreference, translate } from './
 import { COPY, TASKS, DAILY_GUIDES } from './content.js';
 import { DAY_ONE_GROUP, SEASON_COPY, SEASON_CONTENT, SEASON_GUIDES, seasonTasks, seasonSynergies, upcoming } from './season.js';
 import { GUIDE_COPY, GUIDE_TEXT, MEMBER_MEDIA } from './guide-text.js';
+import { SEASON_LIBRARY_COPY, SEASON_LIBRARY_GUIDES, SEASON_LIBRARY_MEDIA } from './season-library.js';
 import { DAY_MS, WEEKDAYS, guideState, selectedDate, checklistKey, armsWindow, availableTask, enemyBusterPhase } from './engine.js';
 import { todayPriorities } from './priority.js';
 import { createStorage, checkedMap } from './storage.js';
 
-const dictionary = {...UI,...COPY,...SEASON_COPY,...GUIDE_COPY};
+const dictionary = {...UI,...COPY,...SEASON_COPY,...GUIDE_COPY,...SEASON_LIBRARY_COPY};
 const escape = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 let storageFailed = false;
 const storage = createStorage(() => window.localStorage, () => { storageFailed = true; });
@@ -16,8 +17,7 @@ function legacyPreference(key) {
 }
 const storedLanguage = storage.get('rzsn-language', null);
 const legacyLanguage = legacyPreference('lw_lang');
-const browserLanguage = (navigator.languages || [navigator.language]).map(value=>String(value).toLowerCase().split('-')[0]).find(value=>Object.hasOwn(LANGUAGES,value));
-const languagePreference = resolveLanguagePreference(storedLanguage,legacyLanguage,browserLanguage);
+const languagePreference = resolveLanguagePreference(storedLanguage,legacyLanguage);
 let lang = languagePreference.lang;
 let state = guideState();
 let selectedDay = state.weekdayIndex;
@@ -45,12 +45,29 @@ function guideFigure(id) {
   const alt=guideAlt(media);
   return `<figure class="guide-figure"><a href="${media.src}" target="_blank" rel="noopener" aria-label="${escape(alt)} ${tx('imageHint')}"><img src="${media.src}" data-guide-image data-src="${media.src}" width="${media.width}" height="${media.height}" loading="lazy" decoding="async" alt="${escape(alt)}"></a><div class="guide-image-fallback" role="status" hidden><strong>${tx('imageUnavailable')}</strong><a href="${media.src}" target="_blank" rel="noopener">${tx('imageOpenOriginal')}</a></div><figcaption><strong>${escape(alt)}</strong><span>${tx('imageHint')}</span><small>${tx('imageLanguage')}</small></figcaption></figure>`;
 }
-function guideText(id) {
-  const title=guideAlt(MEMBER_MEDIA[id]);
-  return `<section class="guide-text"><p class="guide-text__label">${tx('guideTextTitle')}</p><h3>${escape(title)}</h3><p class="guide-text__intro">${tx('guideTextIntro')}</p><div class="guide-text__blocks">${GUIDE_TEXT[id].map(block=>`<section class="guide-text__block${block.tone==='warning'?' guide-text__block--warning':''}"><h4>${tx(block.heading)}</h4><p>${tx(block.text)}</p></section>`).join('')}</div></section>`;
+function guideTextBlocks(title,blocks,{showTitle=true}={}) {
+  return `<section class="guide-text"><p class="guide-text__label">${tx('guideTextTitle')}</p>${showTitle?`<h3>${escape(title)}</h3>`:''}<p class="guide-text__intro">${tx('guideTextIntro')}</p><div class="guide-text__blocks">${blocks.map(block=>`<section class="guide-text__block${block.tone==='warning'?' guide-text__block--warning':''}"><h4>${tx(block.heading)}</h4><p>${tx(block.text)}</p></section>`).join('')}</div></section>`;
+}
+function guideText(id,{showTitle=true}={}) {
+  return guideTextBlocks(guideAlt(MEMBER_MEDIA[id]),GUIDE_TEXT[id],{showTitle});
 }
 const guideCard = id => `<article class="guide-card">${guideText(id)}${guideFigure(id)}</article>`;
 const guideGallery = ids => ids.length ? `<div class="guide-gallery">${ids.map(guideCard).join('')}</div>` : '';
+function guideDisclosure(id) {
+  const title=guideAlt(MEMBER_MEDIA[id]);
+  return `<details class="guide-disclosure" data-search><summary>${escape(title)}</summary><article class="guide-card guide-card--inside">${guideText(id,{showTitle:false})}${guideFigure(id)}</article></details>`;
+}
+function seasonLibraryFigure(code,title) {
+  const media=SEASON_LIBRARY_MEDIA[code];
+  const alt=`${title} · #${code}`;
+  return `<figure class="guide-figure"><a href="${media.src}" target="_blank" rel="noopener" aria-label="${escape(alt)} ${tx('imageHint')}"><img src="${media.src}" data-guide-image data-src="${media.src}" width="${media.width}" height="${media.height}" loading="lazy" decoding="async" alt="${escape(alt)}"></a><div class="guide-image-fallback" role="status" hidden><strong>${tx('imageUnavailable')}</strong><a href="${media.src}" target="_blank" rel="noopener">${tx('imageOpenOriginal')}</a></div><figcaption><strong>${escape(alt)}</strong><span>${tx('imageHint')}</span><small>${tx('imageLanguage')}</small></figcaption></figure>`;
+}
+function seasonLibraryDisclosure(id) {
+  const guide=SEASON_LIBRARY_GUIDES[id];
+  const title=t(guide.title);
+  const images=`<div class="season-library-images">${guide.media.map(code=>seasonLibraryFigure(code,title)).join('')}</div>`;
+  return `<details class="guide-disclosure" data-search data-season-guide="${escape(id)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside">${guideTextBlocks(title,guide.blocks,{showTitle:false})}${images}</article></details>`;
+}
 function notice() {
   if (!LIVE_NOTICE.active) return '';
   return `<aside class="card warning" aria-label="${tx('call')}"><h2>${tx('call')}</h2><p>${escape(LIVE_NOTICE.message[lang])}</p></aside>`;
@@ -188,8 +205,11 @@ function referenceLibrary() {
 }
 function guides() {
   const vsGuides=[...WEEKDAYS.map(day=>`vs-${day}`),'vs-secret-missions'];
-  const seasonGuides=['season-day-one','season-virus-research','season-protein-farm','season-additional-tips','farms','resistance','weapons'];
-  return `<h1>${tx('guides')}</h1><p class="intro">${tx('guidesIntro')}</p>${notice()}<div class="guide-library">${section('vs',guideGallery(vsGuides))}${section('season',guideGallery(seasonGuides))}</div>${section('quickReference',`<label class="search">${tx('search')}<input type="search" id="search" autocomplete="off"></label><p id="no-results" role="status" hidden>${tx('noResults')}</p>${referenceLibrary()}`)}`;
+  const seasonGuides=Object.keys(SEASON_LIBRARY_GUIDES);
+  const search=`<label class="search">${tx('search')}<input type="search" id="search" autocomplete="off"></label><p id="no-results" role="status" hidden>${tx('noResults')}</p>`;
+  const vsLibrary=`<div class="guide-disclosures">${vsGuides.map(guideDisclosure).join('')}</div>`;
+  const seasonLibrary=`<div class="guide-disclosures">${seasonGuides.map(seasonLibraryDisclosure).join('')}</div>`;
+  return `<h1>${tx('guides')}</h1><p class="intro">${tx('guidesIntro')}</p>${notice()}${search}<div class="guide-library">${section('vs',vsLibrary)}${section('season',seasonLibrary)}</div>${section('quickReference',referenceLibrary())}`;
 }
 const views = {today,daily,vs,season,guides,admin:()=>`<h1>${tx('admin')}</h1>${paragraph('adminPending')}`};
 function syncChrome() {
@@ -357,7 +377,11 @@ main.addEventListener('input',event=>{
   if (event.target.id!=='search') return;
   const query=event.target.value.trim().toLocaleLowerCase(LOCALES[lang]);
   let found=0;
-  main.querySelectorAll('[data-search]').forEach(el=>{el.hidden=!el.textContent.toLocaleLowerCase(LOCALES[lang]).includes(query);if (!el.hidden) found++;});
+  main.querySelectorAll('[data-search]').forEach(el=>{
+    el.hidden=!el.textContent.toLocaleLowerCase(LOCALES[lang]).includes(query);
+    if (!el.hidden) found++;
+    if (el.matches('.guide-disclosure')) el.open=Boolean(query) && !el.hidden;
+  });
   main.querySelectorAll('[data-search-group]').forEach(group=>{group.hidden=!group.querySelector('[data-search]:not([hidden])');});
   document.querySelector('#no-results').hidden=found>0;
 });

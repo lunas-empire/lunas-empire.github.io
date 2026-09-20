@@ -9,9 +9,16 @@ test('all public assets, including i18n, are served; private paths are not',asyn
   try {
     const assets=(await readdir(new URL('../assets/',import.meta.url),{withFileTypes:true})).filter(item=>item.isFile()).map(item=>item.name);
     for (const file of assets) assert.equal((await fetch(url+'/assets/'+file)).status,200,file);
-    const images=await readdir(new URL('../assets/member/',import.meta.url));
-    for (const file of images) {
-      const response=await fetch(url+'/assets/member/'+file);
+    const memberDir=new URL('../assets/member/',import.meta.url);
+    const memberEntries=await readdir(memberDir,{withFileTypes:true});
+    for (const item of memberEntries.filter(item=>item.isFile())) {
+      const response=await fetch(url+'/assets/member/'+item.name);
+      assert.equal(response.status,200,item.name);assert.equal(response.headers.get('content-type'),'image/webp');
+    }
+    const seasonMaster=await readdir(new URL('../assets/member/season-master/',import.meta.url));
+    assert.equal(seasonMaster.length,29,'all Season 1 master images are public guide assets');
+    for (const file of seasonMaster) {
+      const response=await fetch(url+'/assets/member/season-master/'+file);
       assert.equal(response.status,200,file);assert.equal(response.headers.get('content-type'),'image/webp');
     }
     for (const path of ['/private/wiki.html','/.git/config','/assets/../private/wiki.html','/admin/private/wiki.html','/admin/server.mjs']) assert.equal((await fetch(url+path)).status,404,path);
@@ -28,7 +35,7 @@ test('all public assets, including i18n, are served; private paths are not',asyn
     assert.ok(homepage.includes('id="admin-link" href="#admin"'),'HTML keeps a safe fallback for the admin link');
     assert.ok(homepage.includes('id="language-dialog"'),'first-visit setup dialog is present');
     assert.ok(homepage.includes('id="setup-language"'),'first-visit language picker has a stable native-select mount point');
-    assert.ok(!homepage.includes('id="language-options"'),'first visit no longer renders the long language-button grid');
+    assert.ok(!homepage.includes('id="language-options"'),'first visit does not render the old language-button wall');
     assert.ok(homepage.includes('id="theme-options"'),'first visit includes explicit light/dark choices');
     assert.ok(homepage.includes('id="setup-continue"'),'setup has an explicit continue action');
     assert.ok(homepage.includes('id="theme-toggle"'),'header has a theme icon toggle');
@@ -36,15 +43,17 @@ test('all public assets, including i18n, are served; private paths are not',asyn
     const appSource=await (await fetch(url+'/assets/app.js')).text();
     const cssSource=await (await fetch(url+'/assets/hub.css')).text();
     const configSource=await (await fetch(url+'/assets/config.js')).text();
+    const seasonLibrarySource=await (await fetch(url+'/assets/season-library.js')).text();
     assert.ok(configSource.includes("adminUrl: '/admin/'"),'static build points at the encrypted admin route');
     assert.ok(!appSource.includes("'vs-sunday-prep'"),'Sunday VS renders only the primary guide image');
-    for (const id of ['season-day-one','season-virus-research','season-protein-farm','season-additional-tips']) {
-      assert.ok(appSource.includes(id),`${id} is included in the public guide library`);
+    assert.ok(appSource.includes('SEASON_LIBRARY_GUIDES') && appSource.includes('seasonLibraryDisclosure'),'app renders the complete Season guide library');
+    for (const id of ['basics','virus','weather','farmsVri','purge','serum','cityClash','weapons','wishHero','mason','legion','troopBoost','outposts','warDeclaration','octagon','builder','profession','rewards']) {
+      assert.ok(seasonLibrarySource.includes(`${id}:`),`${id} is included in the Season 1 guide library`);
     }
     assert.ok(appSource.includes('data-guide-image') && appSource.includes('dataset.retried'),'guide images retry once before showing a fallback');
     assert.ok(appSource.includes('setupThemeChosen') && appSource.includes("activeTheme==='dark'?'light':'dark'"),'theme setup and icon toggle logic are shipped');
-    assert.ok(appSource.includes('navigator.languages') && appSource.includes("setupLanguage.addEventListener('change'"),'first visit suggests browser language and uses the compact picker');
-    assert.ok(cssSource.includes('.setup-language-select') && cssSource.includes('@media(max-width:39.99rem){.language-dialog{inset:auto 0 0'),'first-visit setup is a mobile bottom sheet with a native language picker');
+    assert.ok(!appSource.includes('navigator.languages'),'fresh visits intentionally default to English instead of browser language');
+    assert.ok(cssSource.includes('select option{background-color:var(--color-panel);color:var(--color-ink)}'),'native language options have explicit contrast in both themes');
     assert.ok(cssSource.includes('.theme-toggle{width:44px'),'header theme toggle keeps a mobile touch target');
     assert.ok(cssSource.includes('grid-template-columns:repeat(12,minmax(0,1fr))'),'mobile VS days use a non-scrolling grid');
     assert.ok(!cssSource.includes('.week-selector{display:flex'),'the old horizontal VS slider is removed');

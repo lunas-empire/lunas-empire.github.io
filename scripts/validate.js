@@ -7,9 +7,10 @@ import { UI, LANGUAGES, translate } from '../assets/i18n.js';
 import { COPY, TASKS, DAILY_GUIDES } from '../assets/content.js';
 import { SEASON_COPY, SEASON_CONTENT, EVENTS } from '../assets/season.js';
 import { GUIDE_COPY, GUIDE_TEXT, MEMBER_MEDIA } from '../assets/guide-text.js';
+import { SEASON_LIBRARY_COPY, SEASON_LIBRARY_GUIDES, SEASON_LIBRARY_MEDIA } from '../assets/season-library.js';
 import { LIVE_NOTICE } from '../assets/config.js';
 const root=fileURLToPath(new URL('../',import.meta.url));
-const translationTables={UI,COPY,SEASON_COPY,GUIDE_COPY};
+const translationTables={UI,COPY,SEASON_COPY,GUIDE_COPY,SEASON_LIBRARY_COPY};
 const keyOwners=new Map();
 for (const [tableName,table] of Object.entries(translationTables)) {
   for (const key of Object.keys(table)) {
@@ -17,7 +18,7 @@ for (const [tableName,table] of Object.entries(translationTables)) {
     keyOwners.set(key,tableName);
   }
 }
-const dictionary={...UI,...COPY,...SEASON_COPY,...GUIDE_COPY};
+const dictionary={...UI,...COPY,...SEASON_COPY,...GUIDE_COPY,...SEASON_LIBRARY_COPY};
 const baseLanguages=['de','en','uk','ja','fr','it','id'];
 const placeholders=value=>[...value.matchAll(/\{(\w+)\}/g)].map(m=>m[1]).sort();
 for (const [key,row] of Object.entries(dictionary)) {
@@ -42,6 +43,21 @@ for (const [id,blocks] of Object.entries(GUIDE_TEXT)) {
     assert.ok(dictionary[block.text],`${id}: missing text ${block.text}`);
   }
 }
+assert.equal(Object.keys(SEASON_LIBRARY_GUIDES).length,18,'Season master guide topic count');
+const usedSeasonMedia=[];
+for (const [id,guide] of Object.entries(SEASON_LIBRARY_GUIDES)) {
+  assert.ok(dictionary[guide.title],`${id}: missing library title ${guide.title}`);
+  assert.ok(guide.blocks.length>=1,`${id}: missing library text`);
+  for (const code of guide.media) {
+    assert.ok(SEASON_LIBRARY_MEDIA[code],`${id}: missing Season media ${code}`);
+    usedSeasonMedia.push(code);
+  }
+  for (const block of guide.blocks) {
+    assert.ok(dictionary[block.heading],`${id}: missing heading ${block.heading}`);
+    assert.ok(dictionary[block.text],`${id}: missing text ${block.text}`);
+  }
+}
+assert.deepEqual(usedSeasonMedia.sort(),Object.keys(SEASON_LIBRARY_MEDIA).sort(),'Every Season 1 master image belongs to one public guide');
 const ids=[...TASKS.map(t=>t.text),...Object.values(DAILY_GUIDES).flatMap(g=>[g.focus,...g.tasks,...g.avoid,...g.save]),...Object.values(SEASON_CONTENT).flat(),...EVENTS.map(e=>e.id)];
 ids.forEach(id=>assert.ok(dictionary[id],`Missing content: ${id}`));
 if (LIVE_NOTICE.active) Object.keys(LANGUAGES).forEach(lang=>assert.ok(LIVE_NOTICE.message[lang]?.trim(),`Live notice missing ${lang}`));

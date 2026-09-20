@@ -1,13 +1,16 @@
-// Authored translations. Column order is stable; no online translation service.
+// Bundled translations. Column order for the seven base languages is stable.
 import AR from './i18n-ar.js';
 import KO from './i18n-ko.js';
 import SV from './i18n-sv.js';
 import PT from './i18n-pt.js';
 import NL from './i18n-nl.js';
+import TH from './i18n-th.js';
+import KM from './i18n-km.js';
+import FIL from './i18n-fil.js';
 
-export const LANGUAGES = {de:'Deutsch',en:'English',uk:'Українська',ja:'日本語',fr:'Français',it:'Italiano',id:'Bahasa Indonesia',ar:'العربية',ko:'한국어',sv:'Svenska',pt:'Português',nl:'Nederlands'};
-export const LOCALES = {de:'de-DE',en:'en-GB',uk:'uk-UA',ja:'ja-JP',fr:'fr-FR',it:'it-IT',id:'id-ID',ar:'ar-SA-u-ca-gregory',ko:'ko-KR',sv:'sv-SE',pt:'pt-PT',nl:'nl-NL'};
-const EXTRA_TRANSLATIONS = {ar:AR,ko:KO,sv:SV,pt:PT,nl:NL};
+export const LANGUAGES = {de:'Deutsch',en:'English',uk:'Українська',ja:'日本語',fr:'Français',it:'Italiano',id:'Bahasa Indonesia',ar:'العربية',ko:'한국어',sv:'Svenska',pt:'Português',nl:'Nederlands',th:'ไทย',km:'ខ្មែរ',fil:'Filipino'};
+export const LOCALES = {de:'de-DE',en:'en-GB',uk:'uk-UA',ja:'ja-JP',fr:'fr-FR',it:'it-IT',id:'id-ID',ar:'ar-SA-u-ca-gregory',ko:'ko-KR',sv:'sv-SE',pt:'pt-PT',nl:'nl-NL',th:'th-TH-u-ca-gregory',km:'km-KH-u-ca-gregory',fil:'fil-PH'};
+const EXTRA_TRANSLATIONS = {ar:AR,ko:KO,sv:SV,pt:PT,nl:NL,th:TH,km:KM,fil:FIL};
 export const UI = {
   today:['Heute','Today','Сьогодні','今日','Aujourd’hui','Oggi','Hari ini'],
   daily:['Täglich','Daily','Щодня','日課','Quotidien','Routine','Harian'],
@@ -94,10 +97,9 @@ export const UI = {
   allDone:['Alles auf deiner Liste erledigt.','Everything on your list is done.','Усе зі списку виконано.','リストの項目はすべて完了しました。','Tout est coché sur ta liste.','Hai completato tutta la lista.','Semua tugas dalam daftar sudah selesai.'],
   philosophy:['Wichtige Upgrades möglichst mit Rewards und Punkten kombinieren.','Time important upgrades to earn rewards and points together.','Поєднуйте важливі покращення з нагородами й очками.','大きな強化は、報酬とポイントを同時に得られるタイミングで。','Fais coïncider les améliorations importantes avec des récompenses et des points.','Combina gli upgrade importanti con ricompense e punti.','Lakukan upgrade penting saat bisa mendapat hadiah sekaligus poin.'],
 };
-export function resolveLanguagePreference(stored, legacy, detected) {
+export function resolveLanguagePreference(stored, legacy) {
   const saved = [stored,legacy].find(value=>Object.hasOwn(LANGUAGES,value));
-  const suggested = Object.hasOwn(LANGUAGES,detected) ? detected : 'en';
-  return {lang:saved || suggested,needsSelection:!saved};
+  return {lang:saved || 'en',needsSelection:!saved};
 }
 export function translate(table, key, lang, values = {}) {
   const row = table[key];
