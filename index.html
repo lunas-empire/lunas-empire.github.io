@@ -18,18 +18,20 @@
 <dialog id="language-dialog" class="language-dialog" aria-labelledby="language-dialog-title" aria-describedby="language-dialog-description">
 <form>
 <span class="badge">RZSN MEMBER HUB</span>
-<h2 id="language-dialog-title" data-ui="chooseLanguage">Choose your language</h2>
-<p id="language-dialog-description" data-ui="languagePrompt">You can change the language later from the header.</p>
-<div id="language-options" class="language-options"></div>
+<h2 id="language-dialog-title" data-ui="chooseSetup">Choose language & appearance</h2>
+<p id="language-dialog-description" data-ui="setupPrompt">Choose both now. You can change them later from the header.</p>
+<fieldset class="setup-group"><legend data-ui="language">Language</legend><div id="language-options" class="language-options"></div></fieldset>
+<fieldset class="setup-group"><legend data-ui="theme">Appearance</legend><div id="theme-options" class="theme-options"><button type="button" value="light" data-theme-choice><span aria-hidden="true">☀️</span><span data-ui="light">Light</span></button><button type="button" value="dark" data-theme-choice><span aria-hidden="true">🌙</span><span data-ui="dark">Dark</span></button></div></fieldset>
+<button type="button" id="setup-continue" class="setup-continue" data-ui="continue" disabled>Continue</button>
 </form>
 </dialog>
 <header class="site-header">
 <a class="brand" href="#today" aria-label="RZSN Member Hub"><img src="/assets/sun.svg" alt="" width="32" height="32"><span>RZSN <small>RISING SUN · 2261</small></span></a>
 <div class="header-controls">
 <label class="language"><span class="sr-only" data-ui="language">Language</span><select id="language"></select></label>
+<button type="button" id="theme-toggle" class="theme-toggle" aria-label="Toggle appearance"><span aria-hidden="true">☀️</span></button>
 <details id="menu"><summary data-ui="menu">Menu</summary><div class="menu-panel">
 <a href="#guides" data-ui="guides">Guides</a><a id="admin-link" href="#admin" data-ui="admin">R4/R5 Admin</a>
-<label for="theme" data-ui="theme">Appearance</label><select id="theme"><option value="system" data-ui="system">System</option><option value="light" data-ui="light">Light</option><option value="dark" data-ui="dark">Dark</option></select>
 </div></details></div>
 </header>
 <nav class="main-nav" aria-label="Main"><a href="#today" data-ui="today">Today</a><a href="#daily" data-ui="daily">Daily</a><a href="#vs" data-ui="vs">VS Duel</a><a href="#season" data-ui="season">Season 1</a></nav>

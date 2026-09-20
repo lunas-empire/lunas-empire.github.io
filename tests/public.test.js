@@ -26,8 +26,12 @@ test('all public assets, including i18n, are served; private paths are not',asyn
     const homepage=await (await fetch(url+'/')).text();
     assert.ok(!homepage.includes('#faq'),'FAQ route is removed from the public navigation');
     assert.ok(homepage.includes('id="admin-link" href="#admin"'),'HTML keeps a safe fallback for the admin link');
-    assert.ok(homepage.includes('id="language-dialog"'),'first-visit language dialog is present');
+    assert.ok(homepage.includes('id="language-dialog"'),'first-visit setup dialog is present');
     assert.ok(homepage.includes('id="language-options"'),'language choices have a stable mount point');
+    assert.ok(homepage.includes('id="theme-options"'),'first visit includes explicit light/dark choices');
+    assert.ok(homepage.includes('id="setup-continue"'),'setup has an explicit continue action');
+    assert.ok(homepage.includes('id="theme-toggle"'),'header has a theme icon toggle');
+    assert.ok(!homepage.includes('id="theme"'),'old theme select is removed');
     const appSource=await (await fetch(url+'/assets/app.js')).text();
     const cssSource=await (await fetch(url+'/assets/hub.css')).text();
     const configSource=await (await fetch(url+'/assets/config.js')).text();
@@ -37,6 +41,8 @@ test('all public assets, including i18n, are served; private paths are not',asyn
       assert.ok(appSource.includes(id),`${id} is included in the public guide library`);
     }
     assert.ok(appSource.includes('data-guide-image') && appSource.includes('dataset.retried'),'guide images retry once before showing a fallback');
+    assert.ok(appSource.includes('setupThemeChosen') && appSource.includes("activeTheme==='dark'?'light':'dark'"),'theme setup and icon toggle logic are shipped');
+    assert.ok(cssSource.includes('.theme-toggle{width:44px'),'header theme toggle keeps a mobile touch target');
     assert.ok(cssSource.includes('grid-template-columns:repeat(12,minmax(0,1fr))'),'mobile VS days use a non-scrolling grid');
     assert.ok(!cssSource.includes('.week-selector{display:flex'),'the old horizontal VS slider is removed');
   } finally {await new Promise(resolve=>server.close(resolve));}

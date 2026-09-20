@@ -27,6 +27,9 @@ const main = document.querySelector('main');
 const menu = document.querySelector('#menu');
 const languageDialog = document.querySelector('#language-dialog');
 const languageOptions = document.querySelector('#language-options');
+const themeOptions = document.querySelector('#theme-options');
+const setupContinue = document.querySelector('#setup-continue');
+const themeToggle = document.querySelector('#theme-toggle');
 const phaseLabel = s => s.phase === 'PRE_SEASON' ? t('pre') : s.phase === 'POST_SEASON' ? t('post') : `${t('week')} ${s.week}`;
 const longDate = date => new Intl.DateTimeFormat(LOCALES[lang], {dateStyle:'full',timeZone:'UTC'}).format(new Date(`${date}T12:00:00Z`));
 const paragraph = key => `<p>${tx(key)}</p>`;
@@ -196,6 +199,7 @@ function syncChrome() {
   document.querySelector('#honest').textContent = t('honest');
   document.querySelector('.site-footer small').textContent = `RZSN · Rising Sun · Luna · ${BUILD_VERSION}`;
   document.querySelector('.main-nav').setAttribute('aria-label',t('menu'));
+  syncThemeControls();
   const adminUrl = ALLIANCE_CONFIG.adminUrl;
   if (adminUrl && (/^https:\/\//i.test(adminUrl) || /^\/admin\/$/.test(adminUrl))) {
     document.querySelector('#admin-link').href = adminUrl;
@@ -237,24 +241,72 @@ function refreshClock() {
 const languageEntries = Object.entries(LANGUAGES).sort(([a],[b])=>a==='en'?-1:b==='en'?1:0);
 document.querySelector('#language').innerHTML = languageEntries.map(([code,name])=>`<option value="${code}" lang="${code}">${code.toUpperCase()} · ${escape(name)}</option>`).join('');
 languageOptions.innerHTML = languageEntries.map(([code,name])=>`<button type="button" value="${code}" lang="${code}" data-language-choice${code===lang?' aria-current="true"':''}${code==='en'?' autofocus':''}>${escape(name)}</button>`).join('');
-document.querySelector('#language').addEventListener('change',event=>{lang=event.target.value;storage.set('rzsn-language',lang);render({preserve:true});});
+let setupLanguageChosen = !languagePreference.needsSelection;
+const savedThemeRaw = storage.get('rzsn-theme',legacyPreference('lw_theme'));
+const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+let activeTheme = ['light','dark'].includes(savedThemeRaw) ? savedThemeRaw : systemTheme;
+let setupThemeChosen = ['light','dark','system'].includes(savedThemeRaw);
+function updateSetupReady() {
+  setupContinue.disabled = !(setupLanguageChosen && setupThemeChosen);
+}
+function syncThemeControls() {
+  document.documentElement.dataset.theme=activeTheme;
+  const nextTheme=activeTheme==='dark'?'light':'dark';
+  themeToggle.querySelector('span').textContent=activeTheme==='dark'?'🌙':'☀️';
+  const label=`${t('theme')} · ${t(nextTheme)}`;
+  themeToggle.setAttribute('aria-label',label);
+  themeToggle.title=label;
+  themeOptions.querySelectorAll('[data-theme-choice]').forEach(button=>{
+    if (button.value===activeTheme) button.setAttribute('aria-current','true');
+    else button.removeAttribute('aria-current');
+  });
+  updateSetupReady();
+}
+function setTheme(value,{persist=true}={}) {
+  if (!['light','dark'].includes(value)) return;
+  activeTheme=value;
+  if (persist) storage.set('rzsn-theme',value);
+  syncThemeControls();
+  showStorageError();
+}
+setTheme(activeTheme,{persist:false});
+document.querySelector('#language').addEventListener('change',event=>{
+  lang=event.target.value;
+  setupLanguageChosen=true;
+  storage.set('rzsn-language',lang);
+  languageOptions.querySelectorAll('[data-language-choice]').forEach(button=>{
+    if (button.value===lang) button.setAttribute('aria-current','true');
+    else button.removeAttribute('aria-current');
+  });
+  render({preserve:true});
+});
 languageOptions.addEventListener('click',event=>{
   const button=event.target.closest('[data-language-choice]');
   if (!button) return;
   lang=button.value;
+  setupLanguageChosen=true;
   storage.set('rzsn-language',lang);
-  languageDialog.close();
+  languageOptions.querySelectorAll('[data-language-choice]').forEach(choice=>{
+    if (choice===button) choice.setAttribute('aria-current','true');
+    else choice.removeAttribute('aria-current');
+  });
   render({preserve:true});
 });
+themeOptions.addEventListener('click',event=>{
+  const button=event.target.closest('[data-theme-choice]');
+  if (!button) return;
+  setupThemeChosen=true;
+  setTheme(button.value);
+});
+setupContinue.addEventListener('click',()=>{
+  if (!setupLanguageChosen || !setupThemeChosen) return;
+  languageDialog.close();
+});
 languageDialog.addEventListener('cancel',event=>event.preventDefault());
-function setTheme(value) {
-  if (value==='system') delete document.documentElement.dataset.theme;
-  else document.documentElement.dataset.theme=value;
-  document.querySelector('#theme').value=value;
-}
-const savedTheme = storage.get('rzsn-theme',legacyPreference('lw_theme') || 'system');
-setTheme(['light','dark','system'].includes(savedTheme)?savedTheme:'system');
-document.querySelector('#theme').addEventListener('change',event=>{setTheme(event.target.value);storage.set('rzsn-theme',event.target.value);showStorageError();});
+themeToggle.addEventListener('click',()=>{
+  setupThemeChosen=true;
+  setTheme(activeTheme==='dark'?'light':'dark');
+});
 document.addEventListener('keydown',event=>{if (event.key==='Escape' && menu.open) {menu.open=false;menu.querySelector('summary').focus();}});
 document.addEventListener('click',event=>{if (!menu.contains(event.target)) menu.open=false;});
 document.addEventListener('error',event=>{
@@ -323,4 +375,4 @@ new ResizeObserver(entries=>{
 document.addEventListener('visibilitychange',()=>{if (!document.hidden) refreshClock();});
 setInterval(refreshClock,15000);
 render();
-if (languagePreference.needsSelection) languageDialog.showModal();
+if (languagePreference.needsSelection || !setupThemeChosen) languageDialog.showModal();

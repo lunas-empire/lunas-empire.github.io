@@ -107,7 +107,7 @@ test('member image labels exist in every public language',()=>{
   }
 });
 test('guidance for unsure players exists in every public language',()=>{
-  for (const key of ['starterTitle','starterIntro','starterToday','starterDaily','starterVs','dailyIntro','vsIntro']) {
+  for (const key of ['starterTitle','starterIntro','starterToday','starterDaily','starterVs','dailyIntro','vsIntro','chooseSetup','setupPrompt','continue']) {
     assert.equal(UI[key].length,7);assert.ok(UI[key].every(value=>value.trim()));
   }
 });
