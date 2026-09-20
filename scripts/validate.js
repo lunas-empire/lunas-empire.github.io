@@ -3,20 +3,22 @@ import { readdir, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join, relative } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { UI, LANGUAGES } from '../assets/i18n.js';
+import { UI, LANGUAGES, translate } from '../assets/i18n.js';
 import { COPY, TASKS, DAILY_GUIDES } from '../assets/content.js';
 import { SEASON_COPY, SEASON_CONTENT, EVENTS } from '../assets/season.js';
 import { GUIDE_COPY, GUIDE_TEXT, MEMBER_MEDIA } from '../assets/guide-text.js';
 import { LIVE_NOTICE } from '../assets/config.js';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const dictionary={...UI,...COPY,...SEASON_COPY,...GUIDE_COPY};
+const baseLanguages=['de','en','uk','ja','fr','it','id'];
+const placeholders=value=>[...value.matchAll(/\{(\w+)\}/g)].map(m=>m[1]).sort();
 for (const [key,row] of Object.entries(dictionary)) {
-  assert.equal(row.length,Object.keys(LANGUAGES).length,`${key}: language count`);
-  const placeholders=value=>[...value.matchAll(/\{(\w+)\}/g)].map(m=>m[1]).sort();
-  for (const value of row) {
-    assert.ok(typeof value==='string' && value.trim(),`${key}: empty translation`);
-    assert.ok(!/[\uFFFD\u0080-\u009F]/u.test(value),`${key}: encoding damage`);
-    assert.deepEqual(placeholders(value),placeholders(row[1]),`${key}: placeholder mismatch`);
+  assert.equal(row.length,baseLanguages.length,`${key}: base language count`);
+  for (const lang of Object.keys(LANGUAGES)) {
+    const value=translate(dictionary,key,lang);
+    assert.ok(typeof value==='string' && value.trim(),`${key}: empty translation [${lang}]`);
+    assert.ok(!/[\uFFFD\u0080-\u009F]/u.test(value),`${key}: encoding damage [${lang}]`);
+    assert.deepEqual(placeholders(value),placeholders(row[1]),`${key}: placeholder mismatch [${lang}]`);
   }
 }
 assert.equal(new Set(TASKS.map(t=>t.id)).size,TASKS.length,'duplicate task IDs');
@@ -60,4 +62,4 @@ for (const file of await files(root)) {
 const manifest=JSON.parse(await readFile(join(root,'admin','data','manifest.json'),'utf8'));
 assert.equal(manifest.kdf?.iterations,600000,'Encrypted admin PBKDF2 work factor');
 assert.equal(Object.keys(manifest.files?.images || {}).length,29,'All encrypted admin images are present');
-console.log(`Validation passed: ${Object.keys(dictionary).length} translation keys × 7 languages; task references, syntax, encrypted admin separation.`);
+console.log(`Validation passed: ${Object.keys(dictionary).length} translation keys × ${Object.keys(LANGUAGES).length} languages; task references, syntax, encrypted admin separation.`);

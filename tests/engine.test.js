@@ -7,7 +7,7 @@ import { todayPriorities } from '../assets/priority.js';
 import { DAY_ONE_GROUP, SEASON_GUIDES, seasonTasks, seasonSynergies, upcoming } from '../assets/season.js';
 import { createStorage, checkedMap } from '../assets/storage.js';
 import { SEASON_COPY } from '../assets/season.js';
-import { UI, resolveLanguagePreference } from '../assets/i18n.js';
+import { UI, LANGUAGES, resolveLanguagePreference, translate } from '../assets/i18n.js';
 const state=date=>guideState(new Date(date));
 const cases=[
   ['2026-09-12T22:00:00+02:00',144,0,'PRE_SEASON'],
@@ -103,18 +103,18 @@ test('storage failure has in-memory fallback; corrupt checklists are safe',()=>{
 });
 test('member image labels exist in every public language',()=>{
   for (const key of ['imageFarmsAlt','imageResistanceAlt','imageWeaponsAlt','imageSeasonDayOneAlt','imageVirusResearchAlt','imageProteinFarmAlt','imageSeasonTipsAlt','imageHint','imageLanguage']) {
-    assert.equal(SEASON_COPY[key].length,7);assert.ok(SEASON_COPY[key].every(value=>value.trim()));
+    for (const lang of Object.keys(LANGUAGES)) assert.ok(translate(SEASON_COPY,key,lang).trim(),`${key} [${lang}]`);
   }
 });
 test('guidance for unsure players exists in every public language',()=>{
   for (const key of ['starterTitle','starterIntro','starterToday','starterDaily','starterVs','dailyIntro','vsIntro','chooseSetup','setupPrompt','continue']) {
-    assert.equal(UI[key].length,7);assert.ok(UI[key].every(value=>value.trim()));
+    for (const lang of Object.keys(LANGUAGES)) assert.ok(translate(UI,key,lang).trim(),`${key} [${lang}]`);
   }
 });
 test('current alliance targets are encoded',()=>{
   assert.equal(ALLIANCE_CONFIG.vsDailyMinimum,3600000);
-  assert.equal(COPY.tech1.length,7);
-  assert.ok(COPY.tech1.every(value=>/20(?:[ .]|,)000/.test(value)));
+  assert.equal(Object.keys(LANGUAGES).length,11);
+  for (const lang of Object.keys(LANGUAGES)) assert.match(translate(COPY,'tech1',lang),/20(?:[ .]|,)000/);
 });
 test('Season 1 guide images are assigned to the relevant weeks',()=>{
   assert.deepEqual(SEASON_GUIDES.PRE_SEASON,['farms']);
@@ -127,5 +127,7 @@ test('Season 1 guide images are assigned to the relevant weeks',()=>{
 test('first visits default to English and existing language choices persist',()=>{
   assert.deepEqual(resolveLanguagePreference(null,null),{lang:'en',needsSelection:true});
   assert.deepEqual(resolveLanguagePreference('de',null),{lang:'de',needsSelection:false});
+  assert.deepEqual(resolveLanguagePreference('ar',null),{lang:'ar',needsSelection:false});
+  assert.deepEqual(resolveLanguagePreference('ko',null),{lang:'ko',needsSelection:false});
   assert.deepEqual(resolveLanguagePreference('invalid','ja'),{lang:'ja',needsSelection:false});
 });

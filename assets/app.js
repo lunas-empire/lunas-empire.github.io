@@ -193,6 +193,7 @@ function guides() {
 const views = {today,daily,vs,season,guides,admin:()=>`<h1>${tx('admin')}</h1>${paragraph('adminPending')}`};
 function syncChrome() {
   document.documentElement.lang = lang;
+  document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
   document.querySelectorAll('[data-ui]').forEach(el=>{el.textContent = t(el.dataset.ui);});
   document.querySelector('#language').value = lang;
   document.querySelector('#override').textContent = t('override');

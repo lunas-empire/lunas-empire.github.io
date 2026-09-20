@@ -1,6 +1,12 @@
 // Authored translations. Column order is stable; no online translation service.
-export const LANGUAGES = {de:'Deutsch',en:'English',uk:'Українська',ja:'日本語',fr:'Français',it:'Italiano',id:'Bahasa Indonesia'};
-export const LOCALES = {de:'de-DE',en:'en-GB',uk:'uk-UA',ja:'ja-JP',fr:'fr-FR',it:'it-IT',id:'id-ID'};
+import AR from './i18n-ar.js';
+import KO from './i18n-ko.js';
+import SV from './i18n-sv.js';
+import PT from './i18n-pt.js';
+
+export const LANGUAGES = {de:'Deutsch',en:'English',uk:'Українська',ja:'日本語',fr:'Français',it:'Italiano',id:'Bahasa Indonesia',ar:'العربية',ko:'한국어',sv:'Svenska',pt:'Português'};
+export const LOCALES = {de:'de-DE',en:'en-GB',uk:'uk-UA',ja:'ja-JP',fr:'fr-FR',it:'it-IT',id:'id-ID',ar:'ar-SA-u-ca-gregory',ko:'ko-KR',sv:'sv-SE',pt:'pt-PT'};
+const EXTRA_TRANSLATIONS = {ar:AR,ko:KO,sv:SV,pt:PT};
 export const UI = {
   today:['Heute','Today','Сьогодні','今日','Aujourd’hui','Oggi','Hari ini'],
   daily:['Täglich','Daily','Щодня','日課','Quotidien','Routine','Harian'],
@@ -94,6 +100,9 @@ export function resolveLanguagePreference(stored, legacy) {
 export function translate(table, key, lang, values = {}) {
   const row = table[key];
   if (!row) throw new Error(`Missing translation: ${key}`);
-  const i = Object.keys(LANGUAGES).indexOf(lang);
-  return row[i < 0 ? 1 : i].replace(/\{(\w+)\}/g, (_, k) => values[k] ?? `{${k}}`);
+  const baseLanguages = ['de','en','uk','ja','fr','it','id'];
+  const baseIndex = baseLanguages.indexOf(lang);
+  const value = baseIndex >= 0 ? row[baseIndex] : EXTRA_TRANSLATIONS[lang]?.[key];
+  if (typeof value !== 'string' || !value.trim()) throw new Error(`Missing translation: ${key} [${lang}]`);
+  return value.replace(/\{(\w+)\}/g, (_, k) => values[k] ?? `{${k}}`);
 }
