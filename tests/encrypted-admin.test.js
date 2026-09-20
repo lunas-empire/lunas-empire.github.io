@@ -10,7 +10,7 @@ test('encrypted admin package interoperates with browser crypto and rejects a wr
   const temporary=await mkdtemp(join(tmpdir(),'rzsn-admin-'));
   const source=join(temporary,'source');
   const output=join(temporary,'data');
-  const password='correct horse battery staple 2261';
+  const password='0123456789';
   try {
     await mkdir(join(source,'images'),{recursive:true});
     await writeFile(join(source,'wiki.html'),'<h1>private admin fixture</h1>');

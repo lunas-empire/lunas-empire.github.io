@@ -18,7 +18,7 @@ function encrypt(bytes,key,aad) {
 }
 
 export async function buildEncryptedAdmin({password,sourceDir=defaultSource,outputDir=defaultOutput}={}) {
-  if (typeof password!=='string' || password.length<20 || password.length>128) throw new Error('ADMIN_PASSWORD must contain 20 to 128 characters.');
+  if (typeof password!=='string' || password.length<10 || password.length>128) throw new Error('ADMIN_PASSWORD must contain 10 to 128 characters.');
   if (basename(resolve(outputDir))!=='data') throw new Error('Encrypted output directory must be named data.');
   const wiki=await readFile(join(sourceDir,'wiki.html'));
   const imageDirectory=join(sourceDir,'images');
