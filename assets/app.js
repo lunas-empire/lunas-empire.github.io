@@ -4,6 +4,7 @@ import { COPY, TASKS, DAILY_GUIDES } from './content.js';
 import { DAY_ONE_GROUP, SEASON_COPY, SEASON_CONTENT, SEASON_GUIDES, seasonTasks, seasonSynergies, upcoming } from './season.js';
 import { GUIDE_COPY, GUIDE_TEXT, MEMBER_MEDIA } from './guide-text.js';
 import { SEASON_LIBRARY_COPY, SEASON_LIBRARY_GUIDES, SEASON_LIBRARY_MEDIA } from './season-library.js';
+import { TECH_GUIDE_HTML, TECH_GUIDE_TITLE } from './tech-guide.js';
 import { DAY_MS, WEEKDAYS, guideState, selectedDate, checklistKey, armsWindow, availableTask, enemyBusterPhase } from './engine.js';
 import { todayPriorities } from './priority.js';
 import { createStorage, checkedMap } from './storage.js';
@@ -67,6 +68,9 @@ function seasonLibraryDisclosure(id) {
   const title=t(guide.title);
   const images=`<div class="season-library-images">${guide.media.map(code=>seasonLibraryFigure(code,title)).join('')}</div>`;
   return `<details class="guide-disclosure" data-search data-season-guide="${escape(id)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside">${guideTextBlocks(title,guide.blocks,{showTitle:false})}${images}</article></details>`;
+}
+function techGuideDisclosure() {
+  return `<details class="guide-disclosure guide-disclosure--tech" data-search data-tech-guide><summary>${escape(TECH_GUIDE_TITLE)}</summary><div class="tech-guide-shell">${TECH_GUIDE_HTML}</div></details>`;
 }
 function notice() {
   if (!LIVE_NOTICE.active) return '';
@@ -207,9 +211,11 @@ function guides() {
   const vsGuides=[...WEEKDAYS.map(day=>`vs-${day}`),'vs-secret-missions'];
   const seasonGuides=Object.keys(SEASON_LIBRARY_GUIDES);
   const search=`<label class="search">${tx('search')}<input type="search" id="search" autocomplete="off"></label><p id="no-results" role="status" hidden>${tx('noResults')}</p>`;
+  const techLibrary=`<div class="guide-disclosures">${techGuideDisclosure()}</div>`;
   const vsLibrary=`<div class="guide-disclosures">${vsGuides.map(guideDisclosure).join('')}</div>`;
   const seasonLibrary=`<div class="guide-disclosures">${seasonGuides.map(seasonLibraryDisclosure).join('')}</div>`;
-  return `<h1>${tx('guides')}</h1><p class="intro">${tx('guidesIntro')}</p>${notice()}${search}<div class="guide-library">${section('vs',vsLibrary)}${section('season',seasonLibrary)}</div>${section('quickReference',referenceLibrary())}`;
+  const techSection=`<section class="section"><h2>RZSN TECH</h2>${techLibrary}</section>`;
+  return `<h1>${tx('guides')}</h1><p class="intro">${tx('guidesIntro')}</p>${notice()}${search}<div class="guide-library">${techSection}${section('vs',vsLibrary)}${section('season',seasonLibrary)}</div>${section('quickReference',referenceLibrary())}`;
 }
 const views = {today,daily,vs,season,guides,admin:()=>`<h1>${tx('admin')}</h1>${paragraph('adminPending')}`};
 function syncChrome() {
