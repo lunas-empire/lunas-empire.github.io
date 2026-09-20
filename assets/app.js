@@ -2,11 +2,12 @@ import { BUILD_VERSION, ALLIANCE_CONFIG, LIVE_NOTICE } from './config.js';
 import { LANGUAGES, LOCALES, UI, resolveLanguagePreference, translate } from './i18n.js';
 import { COPY, TASKS, DAILY_GUIDES } from './content.js';
 import { DAY_ONE_GROUP, SEASON_COPY, SEASON_CONTENT, SEASON_GUIDES, seasonTasks, seasonSynergies, upcoming } from './season.js';
+import { GUIDE_COPY, GUIDE_TEXT, MEMBER_MEDIA } from './guide-text.js';
 import { DAY_MS, WEEKDAYS, guideState, selectedDate, checklistKey, armsWindow, availableTask, enemyBusterPhase } from './engine.js';
 import { todayPriorities } from './priority.js';
 import { createStorage, checkedMap } from './storage.js';
 
-const dictionary = {...UI,...COPY,...SEASON_COPY};
+const dictionary = {...UI,...COPY,...SEASON_COPY,...GUIDE_COPY};
 const escape = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 let storageFailed = false;
 const storage = createStorage(() => window.localStorage, () => { storageFailed = true; });
@@ -34,29 +35,18 @@ const section = (title, body) => `<section class="section"><h2>${tx(title)}</h2>
 const details = (title, body, open = false, id = '') => `<details${open?' open':''}${id?` data-disclosure="${escape(id)}"`:''}><summary>${escape(title)}</summary>${body}</details>`;
 const link = (view, text) => `<a class="link-button" href="#${view}">${tx(text)} <span aria-hidden="true">→</span></a>`;
 const permitted = id => !LIVE_NOTICE.active || !LIVE_NOTICE.suppressTaskIds.includes(id);
-const MEMBER_MEDIA = {
-  farms:{src:'/assets/member/farms-vri.webp',alt:'imageFarmsAlt',width:960,height:722},
-  resistance:{src:'/assets/member/resistance.webp',alt:'imageResistanceAlt',width:960,height:786},
-  weapons:{src:'/assets/member/weapons.webp',alt:'imageWeaponsAlt',width:960,height:692},
-  'season-day-one':{src:'/assets/member/season-day-one.webp',alt:'imageSeasonDayOneAlt',width:960,height:1434},
-  'season-virus-research':{src:'/assets/member/season-virus-research.webp',alt:'imageVirusResearchAlt',width:960,height:1446},
-  'season-protein-farm':{src:'/assets/member/season-protein-farm.webp',alt:'imageProteinFarmAlt',width:960,height:1424},
-  'season-additional-tips':{src:'/assets/member/season-additional-tips.webp',alt:'imageSeasonTipsAlt',width:960,height:1424},
-  'vs-sunday':{src:'/assets/member/vs-sunday.webp',day:'sunday',width:960,height:1280},
-  'vs-monday':{src:'/assets/member/vs-monday.webp',day:'monday',width:960,height:1280},
-  'vs-tuesday':{src:'/assets/member/vs-tuesday.webp',day:'tuesday',width:960,height:1200},
-  'vs-wednesday':{src:'/assets/member/vs-wednesday.webp',day:'wednesday',width:960,height:1200},
-  'vs-thursday':{src:'/assets/member/vs-thursday.webp',day:'thursday',width:960,height:1200},
-  'vs-friday':{src:'/assets/member/vs-friday.webp',day:'friday',width:960,height:1280},
-  'vs-saturday':{src:'/assets/member/vs-saturday.webp',day:'saturday',width:960,height:1200},
-  'vs-secret-missions':{src:'/assets/member/vs-secret-missions.webp',alt:'secretMissionsGuideAlt',width:960,height:1200},
-};
+const guideAlt = media => media.day ? t('dayGuideAlt',{day:t(media.day)}) : t(media.alt);
 function guideFigure(id) {
   const media=MEMBER_MEDIA[id];
-  const alt=media.day?t('dayGuideAlt',{day:t(media.day)}):t(media.alt);
-  return `<figure class="guide-figure"><a href="${media.src}" target="_blank" rel="noopener" aria-label="${escape(alt)} ${tx('imageHint')}"><img src="${media.src}" width="${media.width}" height="${media.height}" loading="lazy" decoding="async" alt="${escape(alt)}"></a><figcaption><strong>${escape(alt)}</strong><span>${tx('imageHint')}</span><small>${tx('imageLanguage')}</small></figcaption></figure>`;
+  const alt=guideAlt(media);
+  return `<figure class="guide-figure"><a href="${media.src}" target="_blank" rel="noopener" aria-label="${escape(alt)} ${tx('imageHint')}"><img src="${media.src}" data-guide-image data-src="${media.src}" width="${media.width}" height="${media.height}" loading="lazy" decoding="async" alt="${escape(alt)}"></a><div class="guide-image-fallback" role="status" hidden><strong>${tx('imageUnavailable')}</strong><a href="${media.src}" target="_blank" rel="noopener">${tx('imageOpenOriginal')}</a></div><figcaption><strong>${escape(alt)}</strong><span>${tx('imageHint')}</span><small>${tx('imageLanguage')}</small></figcaption></figure>`;
 }
-const guideGallery = ids => ids.length ? `<div class="guide-gallery">${ids.map(guideFigure).join('')}</div>` : '';
+function guideText(id) {
+  const title=guideAlt(MEMBER_MEDIA[id]);
+  return `<section class="guide-text"><p class="guide-text__label">${tx('guideTextTitle')}</p><h3>${escape(title)}</h3><p class="guide-text__intro">${tx('guideTextIntro')}</p><div class="guide-text__blocks">${GUIDE_TEXT[id].map(block=>`<section class="guide-text__block${block.tone==='warning'?' guide-text__block--warning':''}"><h4>${tx(block.heading)}</h4><p>${tx(block.text)}</p></section>`).join('')}</div></section>`;
+}
+const guideCard = id => `<article class="guide-card">${guideText(id)}${guideFigure(id)}</article>`;
+const guideGallery = ids => ids.length ? `<div class="guide-gallery">${ids.map(guideCard).join('')}</div>` : '';
 function notice() {
   if (!LIVE_NOTICE.active) return '';
   return `<aside class="card warning" aria-label="${tx('call')}"><h2>${tx('call')}</h2><p>${escape(LIVE_NOTICE.message[lang])}</p></aside>`;
@@ -86,6 +76,9 @@ function arms(s, guide) {
 function minimum(s = state) {
   // Sunday is preparation, not a scored VS day.
   return s.weekdayIndex ? `<p class="muted">${tx('minimum',{points:new Intl.NumberFormat(LOCALES[lang],{notation:'compact',maximumFractionDigits:1}).format(ALLIANCE_CONFIG.vsDailyMinimum)})}</p>` : '';
+}
+function starterGuide() {
+  return `<aside class="card starter-guide" aria-labelledby="starter-guide-title"><h2 id="starter-guide-title">${tx('starterTitle')}</h2><p>${tx('starterIntro')}</p><ol class="starter-steps"><li><div class="starter-step"><strong>${tx('today')}</strong><span>${tx('starterToday')}</span></div></li><li><div class="starter-step"><a href="#daily">${tx('daily')}</a><span>${tx('starterDaily')}</span></div></li><li><div class="starter-step"><a href="#vs">${tx('vs')}</a><span>${tx('starterVs')}</span></div></li></ol></aside>`;
 }
 function dailyTasks(s = state) {
   // Approximate personal cadence only, based on this member's own last checkmark.
@@ -117,7 +110,7 @@ function checklist(kind, tasks, s = state) {
   }).join('')}</ul>`;
 }
 function nextCards(limit = 3, excludedDays = []) {
-  return upcoming(state,limit,excludedDays).map(e=>details(`${t('seasonDay')} ${e.day} · ${['kim','dva','tesla'].includes(e.id)?{kim:'Kimberly',dva:'DVA',tesla:'Tesla'}[e.id]:t('next')}`,paragraph(e.id)+(e.id==='kim'?guideFigure('weapons'):'')+(['kim','dva','tesla'].includes(e.id)?paragraph('weapon'):''))).join('');
+  return upcoming(state,limit,excludedDays).map(e=>details(`${t('seasonDay')} ${e.day} · ${['kim','dva','tesla'].includes(e.id)?{kim:'Kimberly',dva:'DVA',tesla:'Tesla'}[e.id]:t('next')}`,paragraph(e.id)+(e.id==='kim'?guideCard('weapons'):'')+(['kim','dva','tesla'].includes(e.id)?paragraph('weapon'):''))).join('');
 }
 function today() {
   const guide = DAILY_GUIDES[state.weekday];
@@ -126,18 +119,19 @@ function today() {
   const cards = priorities.filter(p=>p.id!=='notice').map(p=>`<li class="${p.id==='shield'?'warning':''}" data-priority="${p.id}"><span class="badge">${tx(p.source)}</span>${p.id==='arms'?arms(state,guide):p.id==='save'?list(guide.save.filter(permitted)):p.id==='shield'?`<h3>${tx(p.id)}</h3>`:paragraph(p.id)}</li>`).join('');
   const seasonIds = seasonTasks(state).filter(id=>!shown.has(id) && permitted(id)).slice(0,state.seasonDay?2:1);
   const nextSeason = state.phase === 'PRE_SEASON' ? first24() : nextCards(1);
-  return `<h1>MEMBER HUB</h1><p class="intro">${escape(longDate(state.date))}</p>${status()}${notice()}${enemyBusterBanner(state)}${section('focus',`<ul class="priority-list">${cards}</ul>`)}${section('vs',`<h3>${tx(state.weekday)}</h3>${minimum()}${guideFigure(`vs-${state.weekday}`)}${!shown.has('arms')?details(t('bestArms'),arms(state,guide)):''}${!shown.has('save')?details(t('save'),list(guide.save.filter(permitted))):''}${link('vs','details')}`)}${section('season',`<h3>${escape(phaseLabel(state))}</h3>${list(seasonIds)}${link('season','details')}`)}${section('daily',`${progress('daily',dailyTasks().map(task=>task.id))}${link('daily','checklist')}`)}${section('next',`<h3>${tx('tomorrow')} · ${tx(WEEKDAYS[(state.weekdayIndex+1)%7])}</h3>${nextSeason}`)}`;
+  return `<h1>MEMBER HUB</h1><p class="intro">${escape(longDate(state.date))}</p>${status()}${notice()}${enemyBusterBanner(state)}${starterGuide()}${section('focus',`<ul class="priority-list">${cards}</ul>`)}${section('daily',`${paragraph('dailyIntro')}${progress('daily',dailyTasks().map(task=>task.id))}${link('daily','checklist')}`)}${section('vs',`${paragraph('vsIntro')}<h3>${tx(state.weekday)}</h3>${minimum()}${guideCard(`vs-${state.weekday}`)}${!shown.has('arms')?details(t('bestArms'),arms(state,guide)):''}${!shown.has('save')?details(t('save'),list(guide.save.filter(permitted))):''}${link('vs','details')}`)}${section('season',`<h3>${escape(phaseLabel(state))}</h3>${list(seasonIds)}${link('season','details')}`)}${section('next',`<h3>${tx('tomorrow')} · ${tx(WEEKDAYS[(state.weekdayIndex+1)%7])}</h3>${nextSeason}`)}`;
 }
 function daySelector() {
   return `<div class="week-selector" role="group" aria-label="${tx('vs')}">${WEEKDAYS.map((day,index)=>{
     const date = new Date(`${selectedDate(state,index)}T12:00:00Z`);
     const label = new Intl.DateTimeFormat(LOCALES[lang],{weekday:'short',timeZone:'UTC'}).format(date);
-    return `<button type="button" data-day="${index}" data-current="${index===state.weekdayIndex}" aria-pressed="${index===selectedDay}" aria-label="${escape(longDate(selectedDate(state,index)))} · ${tx(day)}">${escape(label)}</button>`;
+    const dateLabel = new Intl.DateTimeFormat(LOCALES[lang],{day:'2-digit',month:'2-digit',timeZone:'UTC'}).format(date);
+    return `<button type="button" data-day="${index}" data-current="${index===state.weekdayIndex}" aria-pressed="${index===selectedDay}"${index===state.weekdayIndex?' aria-current="date"':''} aria-label="${escape(longDate(selectedDate(state,index)))} · ${tx(day)}"><span>${escape(label)}</span><small>${escape(dateLabel)}</small></button>`;
   }).join('')}</div>`;
 }
 function daily() {
   const tasks = dailyTasks();
-  return `<h1>${tx('daily')}</h1><p class="intro">${escape(longDate(state.date))} · ${tx('reset')}</p>${notice()}${progress('daily',tasks.map(task=>task.id))}<aside class="card warning">${paragraph('safeServer')}</aside>${['freebies','alliance','action','map','timing'].map(category=>details(t(category),checklist('daily',tasks.filter(task=>task.category===category))+(category==='timing'?paragraph('minister')+paragraph('philosophy')+paragraph('ssr'):''),category==='freebies',category)).join('')}${link('vs','vs')}`;
+  return `<h1>${tx('daily')}</h1><p class="intro">${escape(longDate(state.date))} · ${tx('reset')}</p>${paragraph('dailyIntro')}${notice()}${progress('daily',tasks.map(task=>task.id))}<aside class="card warning">${paragraph('safeServer')}</aside>${['freebies','alliance','action','map','timing'].map(category=>details(t(category),checklist('daily',tasks.filter(task=>task.category===category))+(category==='timing'?paragraph('minister')+paragraph('philosophy')+paragraph('ssr'):''),category==='freebies',category)).join('')}${link('vs','vs')}`;
 }
 function vs() {
   const date = selectedDate(state,selectedDay);
@@ -145,14 +139,14 @@ function vs() {
   const guide = DAILY_GUIDES[s.weekday];
   const tasks = [...new Set([...guide.tasks,...seasonSynergies(s)])].map(id=>({id}));
   const guideIds=[`vs-${s.weekday}`];
-  return `<h1>${tx('vs')}</h1>${notice()}${daySelector()}<p class="intro">${escape(longDate(s.date))}</p><h2>${tx(s.weekday)}</h2>${minimum(s)}${enemyBusterBanner(s)}${guideGallery(guideIds)}${checklist('vs',tasks,s)}${section('bestArms',arms(s,guide))}${section('avoid',list(guide.avoid.filter(permitted)))}${section('save',list(guide.save.filter(permitted)))}${details(t('secretMissionsGuideTitle'),guideFigure('vs-secret-missions'),false,'secret-missions-guide')}${section('tomorrow',`<h3>${tx(WEEKDAYS[(selectedDay+1)%7])}</h3>`)}${selectedDay===6?paragraph('fight'):''}`;
+  return `<h1>${tx('vs')}</h1>${paragraph('vsIntro')}${notice()}${daySelector()}<p class="intro">${escape(longDate(s.date))}</p><h2>${tx(s.weekday)}</h2>${minimum(s)}${enemyBusterBanner(s)}${guideGallery(guideIds)}${checklist('vs',tasks,s)}${section('bestArms',arms(s,guide))}${section('avoid',list(guide.avoid.filter(permitted)))}${section('save',list(guide.save.filter(permitted)))}${details(t('secretMissionsGuideTitle'),guideCard('vs-secret-missions'),false,'secret-missions-guide')}${section('tomorrow',`<h3>${tx(WEEKDAYS[(selectedDay+1)%7])}</h3>`)}${selectedDay===6?paragraph('fight'):''}`;
 }
 function first24Body({withChecklist = false} = {}) {
   const flow = `<ol class="flow">${t('loop').split(' → ').map(step=>`<li>${escape(step)}</li>`).join('')}</ol>`;
   const farm = `<dl class="facts">${[t('immediate'),`Farm 1 → ${t('level')} 5`,`Farm 2 → ${t('level')} 10`,`Farm 3 → ${t('level')} 10`,'Weekly Pass'].map((unlock,index)=>`<div><dt>Farm ${index+1}</dt><dd>${escape(unlock)}</dd></div>`).join('')}</dl>`;
   const vri = details(`VRI · ${t('details')}`,`<dl class="facts">${[['1–5','100'],['6–15','250'],['16–20','400'],['21–30','500']].map(([level,value])=>`<div><dt>${tx('level')} ${level}</dt><dd>+${value} / ${tx('level')}</dd></div>`).join('')}<div><dt>${tx('max')}</dt><dd>10,000</dd></div></dl>`);
   const tasks = withChecklist ? checklist('season',DAY_ONE_GROUP.tasks.map(id=>({id}))) : '';
-  return tasks+guideFigure('farms')+flow+paragraph('farms')+farm+paragraph('farmRate')+paragraph('pass')+paragraph('vri')+vri+paragraph('firstBlood')+paragraph('resistanceCheck')+paragraph('profession');
+  return tasks+guideCard('farms')+flow+paragraph('farms')+farm+paragraph('farmRate')+paragraph('pass')+paragraph('vri')+vri+paragraph('firstBlood')+paragraph('resistanceCheck')+paragraph('profession');
 }
 function first24({withChecklist = false, open = false} = {}) {
   return details(`${t('seasonDay')} 1 · ${t('first24')}`,first24Body({withChecklist}),open,'first24');
@@ -263,6 +257,19 @@ setTheme(['light','dark','system'].includes(savedTheme)?savedTheme:'system');
 document.querySelector('#theme').addEventListener('change',event=>{setTheme(event.target.value);storage.set('rzsn-theme',event.target.value);showStorageError();});
 document.addEventListener('keydown',event=>{if (event.key==='Escape' && menu.open) {menu.open=false;menu.querySelector('summary').focus();}});
 document.addEventListener('click',event=>{if (!menu.contains(event.target)) menu.open=false;});
+document.addEventListener('error',event=>{
+  const image=event.target;
+  if (!(image instanceof HTMLImageElement) || !image.matches('[data-guide-image]')) return;
+  if (!image.dataset.retried) {
+    image.dataset.retried='true';
+    const retryUrl=new URL(image.dataset.src,document.baseURI);
+    retryUrl.searchParams.set('v',BUILD_VERSION);
+    image.src=retryUrl.href;
+    return;
+  }
+  image.closest('a').hidden=true;
+  image.closest('.guide-figure').querySelector('.guide-image-fallback').hidden=false;
+},true);
 main.addEventListener('click',event=>{
   const button = event.target.closest('[data-day]');
   if (!button) return;

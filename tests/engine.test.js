@@ -1,12 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { ALLIANCE_CONFIG } from '../assets/config.js';
 import { guideState, checklistKey, armsWindow, availableTask, getGuideDate, resetInstant, seasonEventInstant, enemyBusterPhase } from '../assets/engine.js';
-import { DAILY_GUIDES, TASKS } from '../assets/content.js';
+import { COPY, DAILY_GUIDES, TASKS } from '../assets/content.js';
 import { todayPriorities } from '../assets/priority.js';
 import { DAY_ONE_GROUP, SEASON_GUIDES, seasonTasks, seasonSynergies, upcoming } from '../assets/season.js';
 import { createStorage, checkedMap } from '../assets/storage.js';
 import { SEASON_COPY } from '../assets/season.js';
-import { resolveLanguagePreference } from '../assets/i18n.js';
+import { UI, resolveLanguagePreference } from '../assets/i18n.js';
 const state=date=>guideState(new Date(date));
 const cases=[
   ['2026-09-12T22:00:00+02:00',144,0,'PRE_SEASON'],
@@ -104,6 +105,16 @@ test('member image labels exist in every public language',()=>{
   for (const key of ['imageFarmsAlt','imageResistanceAlt','imageWeaponsAlt','imageSeasonDayOneAlt','imageVirusResearchAlt','imageProteinFarmAlt','imageSeasonTipsAlt','imageHint','imageLanguage']) {
     assert.equal(SEASON_COPY[key].length,7);assert.ok(SEASON_COPY[key].every(value=>value.trim()));
   }
+});
+test('guidance for unsure players exists in every public language',()=>{
+  for (const key of ['starterTitle','starterIntro','starterToday','starterDaily','starterVs','dailyIntro','vsIntro']) {
+    assert.equal(UI[key].length,7);assert.ok(UI[key].every(value=>value.trim()));
+  }
+});
+test('current alliance targets are encoded',()=>{
+  assert.equal(ALLIANCE_CONFIG.vsDailyMinimum,3600000);
+  assert.equal(COPY.tech1.length,7);
+  assert.ok(COPY.tech1.every(value=>/20(?:[ .]|,)000/.test(value)));
 });
 test('Season 1 guide images are assigned to the relevant weeks',()=>{
   assert.deepEqual(SEASON_GUIDES.PRE_SEASON,['farms']);

@@ -1,4 +1,4 @@
 {
   "name": "rzsn-member-hub", "private": true, "type": "module",
-  "scripts": { "test": "node --test tests/*.test.js", "lint": "node scripts/validate.js", "dev": "node scripts/serve.js" }
+  "scripts": { "test": "node --test tests/*.test.js", "lint": "node scripts/validate.js", "dev": "node scripts/serve.js", "build:admin": "node scripts/build-admin.js" }
 }

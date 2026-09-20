@@ -14,18 +14,30 @@ test('all public assets, including i18n, are served; private paths are not',asyn
       const response=await fetch(url+'/assets/member/'+file);
       assert.equal(response.status,200,file);assert.equal(response.headers.get('content-type'),'image/webp');
     }
-    for (const path of ['/admin/','/private/wiki.html','/.git/config','/assets/../private/wiki.html']) assert.equal((await fetch(url+path)).status,404,path);
+    for (const path of ['/private/wiki.html','/.git/config','/assets/../private/wiki.html','/admin/private/wiki.html','/admin/server.mjs']) assert.equal((await fetch(url+path)).status,404,path);
+    const adminShell=await (await fetch(url+'/admin/')).text();
+    assert.ok(adminShell.includes('id="unlock-form"'),'admin route serves only the password shell');
+    assert.ok(!adminShell.includes('Operation KABUM'),'admin content is not present in the password shell');
+    const manifest=await (await fetch(url+'/admin/data/manifest.json')).json();
+    assert.equal(manifest.kdf.iterations,600000,'encrypted package uses the required PBKDF2 work factor');
+    assert.equal(Object.keys(manifest.files.images).length,29,'all admin images are encrypted');
+    const encryptedWiki=Buffer.from(await (await fetch(url+'/'+manifest.files.wiki.path)).arrayBuffer());
+    assert.ok(!encryptedWiki.includes(Buffer.from('Operation KABUM')),'encrypted wiki does not expose plaintext admin content');
     const homepage=await (await fetch(url+'/')).text();
     assert.ok(!homepage.includes('#faq'),'FAQ route is removed from the public navigation');
-    assert.ok(homepage.includes('id="admin-link" href="#admin"'),'public admin link uses the internal placeholder route');
+    assert.ok(homepage.includes('id="admin-link" href="#admin"'),'HTML keeps a safe fallback for the admin link');
     assert.ok(homepage.includes('id="language-dialog"'),'first-visit language dialog is present');
     assert.ok(homepage.includes('id="language-options"'),'language choices have a stable mount point');
     const appSource=await (await fetch(url+'/assets/app.js')).text();
+    const cssSource=await (await fetch(url+'/assets/hub.css')).text();
     const configSource=await (await fetch(url+'/assets/config.js')).text();
-    assert.ok(!configSource.includes("adminUrl: '/admin/'"),'static build does not point at an unavailable server route');
+    assert.ok(configSource.includes("adminUrl: '/admin/'"),'static build points at the encrypted admin route');
     assert.ok(!appSource.includes("'vs-sunday-prep'"),'Sunday VS renders only the primary guide image');
     for (const id of ['season-day-one','season-virus-research','season-protein-farm','season-additional-tips']) {
       assert.ok(appSource.includes(id),`${id} is included in the public guide library`);
     }
+    assert.ok(appSource.includes('data-guide-image') && appSource.includes('dataset.retried'),'guide images retry once before showing a fallback');
+    assert.ok(cssSource.includes('grid-template-columns:repeat(12,minmax(0,1fr))'),'mobile VS days use a non-scrolling grid');
+    assert.ok(!cssSource.includes('.week-selector{display:flex'),'the old horizontal VS slider is removed');
   } finally {await new Promise(resolve=>server.close(resolve));}
 });

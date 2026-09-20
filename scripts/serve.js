@@ -3,11 +3,13 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { resolve, join, extname } from 'node:path';
 const root=fileURLToPath(new URL('../',import.meta.url));
-const types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.webp':'image/webp'};
+const types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.bin':'application/octet-stream','.svg':'image/svg+xml','.webp':'image/webp'};
 export function createPublicServer() {
   return createServer(async(req,res)=>{
     const path=(req.url || '/').split('?')[0];
-    const file=path==='/'?'index.html':['/s1','/s1/','/s1/index.html'].includes(path)?'s1/index.html':/^\/assets\/(?:member\/)?[a-z0-9-]+\.(js|css|svg|webp)$/.test(path)?path.slice(1):null;
+    const adminFile=['/admin','/admin/','/admin/index.html'].includes(path)?'admin/index.html'
+      : /^\/admin\/(?:app|crypto)\.js$/.test(path) || path==='/admin/styles.css' || path==='/admin/data/manifest.json' || path==='/admin/data/wiki.bin' || /^\/admin\/data\/images\/(?:image|\d+)\.(?:png|jpg)\.bin$/.test(path)?path.slice(1):null;
+    const file=path==='/'?'index.html':['/s1','/s1/','/s1/index.html'].includes(path)?'s1/index.html':/^\/assets\/(?:member\/)?[a-z0-9-]+\.(js|css|svg|webp)$/.test(path)?path.slice(1):adminFile;
     res.setHeader('Cache-Control','no-cache');
     res.setHeader('X-Content-Type-Options','nosniff');
     if (!file) {res.writeHead(404);return res.end('Not found.');}
