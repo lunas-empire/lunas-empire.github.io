@@ -27,8 +27,12 @@ async function unlock(password) {
   }));
   for (const [name,url] of objectUrls) html=html.replaceAll(`src="images/${name}"`,`src="${url}"`);
   if (html.includes('src="images/')) throw new Error('Encrypted package is incomplete.');
-  const policy="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src blob:; connect-src 'none'; base-uri 'none'; form-action 'none'";
+  const policy="default-src 'none'; script-src 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src blob:; connect-src 'none'; base-uri 'none'; form-action 'none'";
+  const environment=location.hostname==='lunas-empire.github.io'?'STAGING':'PRODUCTION';
+  const runtimeBar=`<div class="admin-runtime-bar"><div class="admin-runtime-brand">Command Center</div><div class="admin-runtime-actions"><span class="admin-runtime-env">${environment}</span><a class="admin-runtime-home" href="/">← Member Hub</a></div></div>`;
   html=html.replace('<head>',`<head><meta http-equiv="Content-Security-Policy" content="${policy}">`);
+  html=html.replace('</head>','<link rel="stylesheet" href="/admin/wiki-theme.css"></head>');
+  html=html.replace('<body>',`<body>${runtimeBar}`);
   document.open();
   document.write(html);
   document.close();

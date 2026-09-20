@@ -8,7 +8,7 @@ export function createPublicServer() {
   return createServer(async(req,res)=>{
     const path=(req.url || '/').split('?')[0];
     const adminFile=['/admin','/admin/','/admin/index.html'].includes(path)?'admin/index.html'
-      : /^\/admin\/(?:app|crypto)\.js$/.test(path) || path==='/admin/styles.css' || path==='/admin/data/manifest.json' || path==='/admin/data/wiki.bin' || /^\/admin\/data\/images\/(?:image|\d+)\.(?:png|jpg)\.bin$/.test(path)?path.slice(1):null;
+      : /^\/admin\/(?:app|crypto)\.js$/.test(path) || /^\/admin\/(?:styles|wiki-theme)\.css$/.test(path) || path==='/admin/data/manifest.json' || path==='/admin/data/wiki.bin' || /^\/admin\/data\/images\/(?:image|\d+)\.(?:png|jpg)\.bin$/.test(path)?path.slice(1):null;
     const file=path==='/'?'index.html':['/s1','/s1/','/s1/index.html'].includes(path)?'s1/index.html':/^\/assets\/(?:[a-z0-9-]+\/)*[a-z0-9-]+\.(js|css|svg|webp)$/.test(path)?path.slice(1):adminFile;
     res.setHeader('Cache-Control','no-cache');
     res.setHeader('X-Content-Type-Options','nosniff');

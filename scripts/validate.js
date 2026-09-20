@@ -74,7 +74,7 @@ for (const file of await files(root)) {
   const publicPath=relative(root,file).replaceAll('\\','/');
   assert.ok(!/(?:^|\/)private(?:\/|$)/.test(publicPath),'Private content in public tree');
   if (publicPath.startsWith('admin/')) {
-    assert.match(publicPath,/^admin\/(?:(?:index\.html|styles\.css|app\.js|crypto\.js)|data\/(?:manifest\.json|wiki\.bin|images\/(?:image|\d+)\.(?:png|jpg)\.bin))$/,'Unexpected file in encrypted admin tree');
+    assert.match(publicPath,/^admin\/(?:(?:index\.html|styles\.css|wiki-theme\.css|app\.js|crypto\.js)|data\/(?:manifest\.json|wiki\.bin|images\/(?:image|\d+)\.(?:png|jpg)\.bin))$/,'Unexpected file in encrypted admin tree');
   }
   if (/\.(?:js|mjs)$/.test(file)) {
     const result=spawnSync(process.execPath,['--check',file],{encoding:'utf8'});
