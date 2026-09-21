@@ -58,12 +58,12 @@ for (let day=0;day<7;day++) test(`weekday ${day}: arms, radar, stars, priorities
   assert.equal(available.includes('radarClaim'),[1,3,5].includes(day));
   assert.equal(available.includes('radarSave'),[0,2,4].includes(day));
   assert.equal(available.includes('radarSaturday'),day===6);
-  assert.equal(guide.arms?.start ?? null,[null,20,12,12,12,null,null][day]);
+  assert.equal(guide.arms?.start ?? null,[null,16,8,8,8,null,null][day]);
   const priorities=todayPriorities(s);
   assert.ok(priorities.length<=5);assert.equal(priorities.length,new Set(priorities.map(t=>t.id)).size);
   if (day===6) assert.ok(!priorities.some(priority=>priority.id==='shield'));
 });
-test('Enemy Buster banner follows the Friday and Saturday 04:00 resets',()=>{
+test('Enemy Buster banner follows the Friday and Saturday 00:00 ST resets',()=>{
   assert.equal(enemyBusterPhase(state('2026-09-18T03:59:00+02:00')),null);
   assert.equal(enemyBusterPhase(state('2026-09-18T04:00:00+02:00')),'upcoming');
   assert.equal(enemyBusterPhase(state('2026-09-19T03:59:00+02:00')),'upcoming');

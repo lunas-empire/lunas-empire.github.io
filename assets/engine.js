@@ -29,6 +29,7 @@ export function guideState(now = getGuideDate()) {
     seasonDay, week, phase: !seasonDay ? 'PRE_SEASON' : week > 8 ? 'POST_SEASON' : `SEASON_WEEK_${week}`,
     countdown: Math.max(0, new Date(GUIDE_CONFIG.seasonStart) - now),
     minute: +p.hour * 60 + +p.minute,
+    serverMinute: ((+p.hour * 60 + +p.minute) - GUIDE_CONFIG.serverResetHour * 60 + 1440) % 1440,
   };
 }
 export function selectedDate(state, weekdayIndex) {
@@ -39,7 +40,7 @@ export function checklistKey(kind, state, date = state.date) {
 }
 export function armsWindow(state, guide) {
   if (!guide.arms) return 'unconfirmed';
-  const minutes = state.minute < GUIDE_CONFIG.serverResetHour * 60 ? state.minute + 1440 : state.minute;
+  const minutes = state.serverMinute;
   return minutes < guide.arms.start * 60 ? 'later' : minutes < guide.arms.end * 60 ? 'active' : 'ended';
 }
 

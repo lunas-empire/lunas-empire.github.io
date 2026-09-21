@@ -99,7 +99,7 @@ function status() {
 function arms(s, guide) {
   if (!guide.arms) return paragraph('unconfirmed');
   const hours = n => `${String(n % 24).padStart(2,'0')}:00`;
-  return `<strong class="time">${hours(guide.arms.start)}–${hours(guide.arms.end)}</strong><p>${escape(guide.arms.type)}</p>${s.date === state.date ? `<p data-arms-state>${tx(armsWindow(state,guide))}</p>` : ''}<small>${tx('armsNote')}</small>`;
+  return `<strong class="time">${hours(guide.arms.start)}–${hours(guide.arms.end)} ST</strong><p>${escape(guide.arms.type)}</p>${s.date === state.date ? `<p data-arms-state>${tx(armsWindow(state,guide))}</p>` : ''}<small>${tx('armsNote')}</small>`;
 }
 function minimum(s = state) {
   // Sunday is preparation, not a scored VS day.
