@@ -4,7 +4,7 @@ import { ALLIANCE_CONFIG } from '../assets/config.js';
 import { guideState, checklistKey, armsWindow, availableTask, getGuideDate, resetInstant, seasonEventInstant, enemyBusterPhase } from '../assets/engine.js';
 import { COPY, DAILY_GUIDES, TASKS } from '../assets/content.js';
 import { todayPriorities } from '../assets/priority.js';
-import { DAY_ONE_GROUP, SEASON_GUIDES, seasonTasks, seasonSynergies, upcoming } from '../assets/season.js';
+import { DAY_ONE_GROUP, SEASON_GUIDES, seasonTasks, seasonSynergies, seasonDailyTasks, seasonTodayTasks, seasonContext, isSeasonDailyTask, upcoming } from '../assets/season.js';
 import { createStorage, checkedMap } from '../assets/storage.js';
 import { SEASON_COPY } from '../assets/season.js';
 import { UI, LANGUAGES, LOCALES, resolveLanguagePreference, translate } from '../assets/i18n.js';
@@ -76,10 +76,24 @@ test('Monday arms window crosses midnight without resetting server weekday',()=>
   assert.equal(armsWindow(state('2026-09-14T20:00:00+02:00'),DAILY_GUIDES.monday),'active');
   assert.equal(armsWindow(state('2026-09-15T00:00:00+02:00'),DAILY_GUIDES.monday),'ended');
 });
-test('season events and real synergies only',()=>{
-  assert.ok(seasonSynergies(state('2026-09-24T12:00:00+02:00')).includes('kim'));
-  assert.ok(seasonSynergies(state('2026-10-01T12:00:00+02:00')).includes('mason'));
-  assert.ok(!seasonSynergies(state('2026-09-17T12:00:00+02:00')).includes('mason'));
+test('season milestones and recurring event days follow the verified Season 1 timeline',()=>{
+  const day4=seasonSynergies(state('2026-09-24T12:00:00+02:00'));
+  assert.ok(day4.includes('kim'));
+  assert.ok(day4.includes('cityCall'));
+  const day9=seasonSynergies(state('2026-09-29T12:00:00+02:00'));
+  assert.ok(day9.includes('legion'));
+  const day11=seasonSynergies(state('2026-10-01T12:00:00+02:00'));
+  assert.ok(day11.includes('wishHero'));
+  assert.ok(day11.includes('cityCall'));
+  assert.ok(!day11.includes('mason'));
+  const firstCrossWarSaturday=seasonSynergies(state('2026-10-10T12:00:00+02:00'));
+  assert.ok(firstCrossWarSaturday.includes('crossWarzoneSaturday'));
+  assert.ok(!firstCrossWarSaturday.includes('declarationDay'));
+  const firstDeclarationThursday=seasonSynergies(state('2026-10-15T12:00:00+02:00'));
+  assert.ok(firstDeclarationThursday.includes('declarationDay'));
+  const declarationSaturday=seasonSynergies(state('2026-10-17T12:00:00+02:00'));
+  assert.ok(declarationSaturday.includes('declarationDay'));
+  assert.ok(declarationSaturday.includes('crossWarzoneSaturday'));
   assert.equal(upcoming(state('2026-09-13T12:00:00+02:00'))[0].day,1);
   assert.equal(upcoming(state('2026-11-17T12:00:00+01:00')).length,0);
 });
@@ -205,4 +219,49 @@ test('adding Pumpkin likes preserves existing user checklist state across an upd
   assert.deepEqual(checkedMap(afterUpdate.get(dailyKey)),{freeStore:true,allianceDonation:true});
   assert.deepEqual(checkedMap(afterUpdate.get(seasonKey)),{pass:true,farms:true});
   assert.deepEqual(checkedMap(afterUpdate.get(pumpkinKey)),{pumpkinLikes:true});
+});
+test('Season 1 daily checklist grows by unlock day and resets independently',()=>{
+  const day1=state('2026-09-21T12:00:00+02:00');
+  const day2=state('2026-09-22T12:00:00+02:00');
+  const day3=state('2026-09-23T12:00:00+02:00');
+  const day49=state('2026-11-08T12:00:00+01:00');
+  const day50=state('2026-11-09T12:00:00+01:00');
+  assert.deepEqual(seasonDailyTasks(day1),['profession','pumpkinLikes']);
+  assert.ok(seasonDailyTasks(day2).includes('serumPuzzle'));
+  assert.ok(!seasonDailyTasks(day2).includes('geneticRecombination'));
+  assert.ok(seasonDailyTasks(day3).includes('geneticRecombination'));
+  assert.ok(seasonDailyTasks(day49).includes('geneticRecombination'));
+  assert.ok(!seasonDailyTasks(day50).includes('geneticRecombination'));
+  for (const id of ['profession','pumpkinLikes','serumPuzzle','geneticRecombination']) {
+    assert.ok(isSeasonDailyTask(id,day3),id);
+  }
+  assert.notEqual(checklistKey('seasonDaily',day2),checklistKey('seasonDaily',day3));
+  assert.ok(!seasonTasks(day3).includes('doom'),'Doom Walker is not forced as a Season daily');
+});
+
+test('Season 1 context reminders are non-checklist guidance',()=>{
+  const day1=seasonContext(state('2026-09-21T12:00:00+02:00'));
+  const day3=seasonContext(state('2026-09-23T12:00:00+02:00'));
+  assert.ok(day1.includes('farmVriProgress'));
+  assert.ok(day1.includes('resistanceCheck'));
+  assert.ok(!day1.includes('weatherCheck'));
+  assert.ok(day3.includes('weatherCheck'));
+});
+
+test('Season 1 key unlocks remain visible in the correct weeks',()=>{
+  const day8=seasonTasks(state('2026-09-28T12:00:00+02:00'));
+  assert.ok(day8.includes('mason'));
+  assert.ok(day8.includes('levelSwap'));
+  const day11=seasonTasks(state('2026-10-01T12:00:00+02:00'));
+  assert.ok(day11.includes('wishHero'));
+  const day16=seasonTasks(state('2026-10-06T12:00:00+02:00'));
+  assert.ok(day16.includes('warzoneExpedition'));
+  const day50=seasonTodayTasks(state('2026-11-09T12:00:00+01:00'));
+  assert.ok(day50.includes('seasonSettlement'));
+});
+
+test('new Season 1 checklist copy exists in every public language',()=>{
+  for (const key of ['serumPuzzle','geneticRecombination','weatherCheck','farmVriProgress','wishHero','levelSwap','warzoneExpedition','declarationDay','crossWarzoneSaturday','cityCall','seasonSettlement','purge','apocalypseCity','infiniteOctagon','seasonWarmup','finalBattle']) {
+    for (const lang of Object.keys(LANGUAGES)) assert.ok(translate(SEASON_COPY,key,lang).trim(),key+' ['+lang+']');
+  }
 });

@@ -1,7 +1,7 @@
 import { BUILD_VERSION, ALLIANCE_CONFIG, LIVE_NOTICE } from './config.js';
 import { LANGUAGES, LOCALES, UI, resolveLanguagePreference, translate } from './i18n.js';
 import { COPY, TASKS, DAILY_GUIDES } from './content.js';
-import { DAY_ONE_GROUP, SEASON_COPY, SEASON_CONTENT, SEASON_GUIDES, seasonTasks, seasonSynergies, upcoming } from './season.js';
+import { DAY_ONE_GROUP, SEASON_COPY, SEASON_CONTENT, SEASON_GUIDES, seasonTasks, seasonSynergies, seasonTodayTasks, seasonContext, isSeasonDailyTask, upcoming } from './season.js';
 import { GUIDE_COPY, GUIDE_TEXT, MEMBER_MEDIA } from './guide-text.js';
 import { SEASON_LIBRARY_COPY, SEASON_LIBRARY_GUIDES, SEASON_LIBRARY_MEDIA } from './season-library.js';
 import { TECH_GUIDE_HTML, TECH_GUIDE_TITLE } from './tech-guide.js';
@@ -132,12 +132,8 @@ function frequencyText(task) {
 }
 function checklist(kind, tasks, s = state) {
   return `<ul class="checklist">${tasks.filter(task=>permitted(task.id)).map(task=>{
-    // Doom Walker remains a normal daily mark; pumpkin likes have their own Season-daily reset.
-    const itemKind=kind==='season' && task.id==='doom'
-      ? 'daily'
-      : kind==='season' && task.id==='pumpkinLikes'
-        ? 'seasonDaily'
-        : kind;
+    // True Season dailies and recurring event-day actions reset at each 00:00 ST server day.
+    const itemKind=kind==='season' && isSeasonDailyTask(task.id,s) ? 'seasonDaily' : kind;
     const key=checklistKey(itemKind,s);
     const checks=checkedMap(storage.get(key));
     return `<li><label><input type="checkbox" data-check="${escape(task.id)}" data-key="${key}" data-kind="${itemKind}"${checks[task.id]?' checked':''}><span class="task-text">${tx(task.text || task.id)}${task.frequency && frequencyText(task)?`<small>${escape(frequencyText(task))}</small>`:''}</span></label></li>`;
@@ -152,9 +148,10 @@ function today() {
   const shown = new Set(priorities.map(p=>p.id));
   const cards = priorities.filter(p=>p.id!=='notice').map(p=>`<li class="${p.id==='shield'?'warning':''}" data-priority="${p.id}"><span class="badge">${tx(p.source)}</span>${p.id==='arms'?arms(state,guide):p.id==='save'?list(guide.save.filter(permitted)):p.id==='shield'?`<h3>${tx(p.id)}</h3>`:paragraph(p.id)}</li>`).join('');
   const seasonPool=seasonTasks(state).filter(id=>!shown.has(id) && permitted(id));
+  const liveSeason=seasonTodayTasks(state).filter(id=>!shown.has(id) && permitted(id));
   const seasonIds=(state.seasonDay>=1 && state.seasonDay<=56
-    ? ['profession','pumpkinLikes',...seasonPool.filter(id=>!['profession','pumpkinLikes'].includes(id))]
-    : seasonPool).slice(0,state.seasonDay?2:1);
+    ? [...liveSeason,...seasonPool.filter(id=>!liveSeason.includes(id))]
+    : seasonPool).slice(0,state.seasonDay?3:1);
   const nextSeason = state.phase === 'PRE_SEASON' ? first24() : nextCards(1);
   return `<h1>MEMBER HUB</h1><p class="intro">${escape(longDate(state.date))}</p>${status()}${notice()}${enemyBusterBanner(state)}${starterGuide()}${section('focus',`<ul class="priority-list">${cards}</ul>`)}${section('daily',`${paragraph('dailyIntro')}${progress('daily',dailyTasks().map(task=>task.id))}${link('daily','checklist')}`)}${section('vs',`${paragraph('vsIntro')}<h3>${tx(state.weekday)}</h3>${minimum()}${guideCard(`vs-${state.weekday}`)}${!shown.has('arms')?details(t('bestArms'),arms(state,guide)):''}${!shown.has('save')?details(t('save'),list(guide.save.filter(permitted))):''}${link('vs','details')}`)}${section('season',`<h3>${escape(phaseLabel(state))}</h3>${list(seasonIds)}${link('season','details')}`)}${section('next',`<h3>${tx('tomorrow')} · ${tx(WEEKDAYS[(state.weekdayIndex+1)%7])}</h3>${nextSeason}`)}`;
 }
@@ -193,13 +190,13 @@ function season() {
   const current = state.week > 8 ? 9 : state.week;
   const isPreSeason = state.phase === 'PRE_SEASON';
   const isDayOne = state.seasonDay === DAY_ONE_GROUP.day;
-  const todayIds = isPreSeason ? ['prepSeason'] : isDayOne ? DAY_ONE_GROUP.tasks : [
-    ...(state.seasonDay >= 1 && state.seasonDay <= 56 ? ['profession','pumpkinLikes','doom','resistanceCheck'] : []),
-    ...seasonSynergies(state),
-  ];
+  const todayIds = isPreSeason ? ['prepSeason'] : isDayOne ? DAY_ONE_GROUP.tasks : seasonTodayTasks(state);
   const uniqueTodayIds = [...new Set(todayIds)].filter(id=>ids.includes(id));
-  const weekIds = ids.filter(id=>!uniqueTodayIds.includes(id));
-  const todayBody = isDayOne ? first24({withChecklist:true,open:true}) : checklist('season',uniqueTodayIds.map(id=>({id})));
+  // Recurring event-day actions live only in Today's checklist; do not reappear as stale weekly boxes.
+  const weekIds = ids.filter(id=>!uniqueTodayIds.includes(id) && !['legion'].includes(id));
+  const contextIds=seasonContext(state).filter(permitted);
+  const contextBody=contextIds.length ? `<aside class="card warning">${list(contextIds)}</aside>` : '';
+  const todayBody = (isDayOne ? first24({withChecklist:true,open:true}) : checklist('season',uniqueTodayIds.map(id=>({id})))) + contextBody;
   const nextBody = isPreSeason
     ? first24({open:state.countdown<=3*DAY_MS})+nextCards(3,[DAY_ONE_GROUP.day])
     : nextCards();

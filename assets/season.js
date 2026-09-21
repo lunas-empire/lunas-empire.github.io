@@ -30,17 +30,33 @@ export const SEASON_COPY = {
   after:['Season 1 ist abgeschlossen. Daily und VS bleiben relevant; weitere Season-Calls folgen von R4/R5.','Season 1 is complete. Daily and VS remain relevant; follow R4/R5 for future season calls.','Сезон 1 завершено. Щоденні справи й VS залишаються актуальними; чекайте нових вказівок R4/R5.','シーズン1は終了。日課とVSは継続し、次のシーズンはR4/R5の案内を確認。','La saison 1 est terminée. Daily et VS restent utiles ; suis R4/R5 pour la suite.','La stagione 1 è conclusa. Daily e VS restano utili; segui R4/R5 per le prossime indicazioni.','Season 1 selesai. Rutinitas harian dan VS tetap berjalan; tunggu arahan Season berikutnya dari R4/R5.'],
   profession:['Profession Hall täglich prüfen: Skillpunkte nicht liegen lassen. Früh Engineer nutzen; zuerst Profession-EXP beschleunigen, danach Build/Research for Free und Build/Research Now priorisieren.','Check the Profession Hall every day: do not leave skill points unused. Use Engineer early; accelerate Profession EXP first, then prioritize Build/Research for Free and Build/Research Now.','Щодня перевіряйте Profession Hall і не залишайте Skill Points невикористаними. На старті обирайте Engineer: спочатку прискорюйте Profession EXP, потім Build/Research for Free та Build/Research Now.','Profession Hallを毎日確認し、Skill Pointsを余らせない。序盤はEngineerを使い、まずProfession EXPを加速、その後Build/Research for FreeとBuild/Research Nowを優先。','Vérifie le Profession Hall chaque jour et ne laisse pas de Skill Points inutilisés. Commence avec Engineer : accélère d’abord la Profession EXP, puis priorise Build/Research for Free et Build/Research Now.','Controlla ogni giorno il Profession Hall e non lasciare Skill Points inutilizzati. All’inizio usa Engineer: prima accelera la Profession EXP, poi dai priorità a Build/Research for Free e Build/Research Now.','Cek Profession Hall setiap hari dan jangan biarkan Skill Points menganggur. Gunakan Engineer di awal: percepat Profession EXP terlebih dahulu, lalu prioritaskan Build/Research for Free dan Build/Research Now.'],
   pumpkinLikes:['Täglich 10 Kürbis-Skins liken.','Like 10 Pumpkin Skins every day.','Щодня поставити вподобайку 10 Pumpkin Skins.','毎日Pumpkin Skinsを10個「いいね」する。','Aime 10 Pumpkin Skins chaque jour.','Metti Mi piace a 10 Pumpkin Skins ogni giorno.','Like 10 Pumpkin Skins setiap hari.'],
+  serumPuzzle:['Tägliches Serum-Puzzle abschließen und Serum-Shop prüfen; UR-Items priorisieren.','Complete the daily Serum puzzle and check the Serum Shop; prioritize UR items.','Щодня пройти Serum Puzzle і перевірити Serum Shop; пріоритет — UR-предмети.','毎日のSerum Puzzleを完了し、Serum Shopを確認。URアイテムを優先。','Termine le puzzle Serum quotidien et vérifie le Serum Shop ; priorise les objets UR.','Completa il puzzle Serum giornaliero e controlla il Serum Shop; dai priorità agli oggetti UR.','Selesaikan puzzle Serum harian dan cek Serum Shop; prioritaskan item UR.'],
+  geneticRecombination:['Genetic Fragments recombinieren; Charges nicht bei 30 cappen lassen und fehlende Fragmente tauschen.','Recombine Genetic Fragments; do not let charges cap at 30 and trade missing fragments.','Рекомбінуй Genetic Fragments; не допускай ліміту 30 зарядів і обмінюй відсутні фрагменти.','Genetic FragmentsをRecombine。回数を30で溢れさせず、不足Fragmentは交換する。','Recombine les Genetic Fragments ; évite de plafonner à 30 charges et échange les fragments manquants.','Ricombina i Genetic Fragments; non lasciare le cariche al limite di 30 e scambia i frammenti mancanti.','Recombine Genetic Fragments; jangan biarkan charge mentok 30 dan tukar fragmen yang kurang.'],
+  weatherCheck:['Monicas Wettervorhersage vor riskanten infizierten Angriffen prüfen.','Check Monica’s weather forecast before risky infected attacks.','Перевір прогноз погоди Monica перед ризикованими атаками на заражених.','危険な感染敵への攻撃前にMonicaの天気予報を確認。','Vérifie la météo de Monica avant les attaques risquées contre les infectés.','Controlla le previsioni di Monica prima degli attacchi rischiosi contro gli infetti.','Cek ramalan cuaca Monica sebelum serangan berisiko ke musuh terinfeksi.'],
+  farmVriProgress:['Protein Farms und VRI weiter ausbauen: Mutant Crystals → Farms → Immune Proteins → VRI.','Keep upgrading Protein Farms and VRI: Mutant Crystals → Farms → Immune Proteins → VRI.','Продовжуй покращувати Protein Farms і VRI: Mutant Crystals → Farms → Immune Proteins → VRI.','Protein FarmsとVRIを継続強化：Mutant Crystals → Farms → Immune Proteins → VRI。','Continue à améliorer Protein Farms et VRI : Mutant Crystals → Farms → Immune Proteins → VRI.','Continua a potenziare Protein Farms e VRI: Mutant Crystals → Farms → Immune Proteins → VRI.','Terus upgrade Protein Farms dan VRI: Mutant Crystals → Farms → Immune Proteins → VRI.'],
+  wishHero:['Wish Hero auswählen/prüfen und große Recruitment-Sessions bewusst timen.','Choose/check your Wish Hero and time large recruitment sessions deliberately.','Обери/перевір Wish Hero і свідомо плануй великі сесії Recruitment.','Wish Heroを選択・確認し、大量Recruitmentは計画的に行う。','Choisis/vérifie ton Wish Hero et planifie les grosses sessions de recrutement.','Scegli/controlla il Wish Hero e pianifica con attenzione le grandi sessioni di reclutamento.','Pilih/cek Wish Hero dan atur sesi recruitment besar dengan sengaja.'],
+  levelSwap:['Hero Level Swap prüfen: Es werden nur EXP-Level getauscht, nicht die Sterne.','Check Hero Level Swap: it swaps EXP levels only, not stars.','Перевір Hero Level Swap: міняються лише EXP-рівні, не зірки.','Hero Level Swapを確認：交換されるのはEXPレベルのみで、★は変わらない。','Vérifie Hero Level Swap : seuls les niveaux EXP sont échangés, pas les étoiles.','Controlla Hero Level Swap: scambia solo i livelli EXP, non le stelle.','Cek Hero Level Swap: hanya level EXP yang ditukar, bukan bintang.'],
+  warzoneExpedition:['Warzone Expedition aktiv: Outpost- und Invasionsplan von R4/R5 prüfen; auf kontaminiertem Gebiet besteht Cross-Warzone-PvP-Risiko.','Warzone Expedition active: check the R4/R5 outpost and invasion plan; contaminated land carries cross-warzone PvP risk.','Warzone Expedition активна: перевір план Outpost/вторгнення R4/R5; на зараженій території є ризик Cross-Warzone PvP.','Warzone Expedition開始：R4/R5のOutpost・侵攻計画を確認。汚染地域ではCross-Warzone PvPの危険あり。','Warzone Expedition active : vérifie le plan Outpost/invasion R4/R5 ; le terrain contaminé expose au PvP cross-warzone.','Warzone Expedition attiva: controlla il piano Outpost/invasione R4/R5; sul terreno contaminato c’è rischio PvP cross-warzone.','Warzone Expedition aktif: cek rencana Outpost/invasi R4/R5; contaminated land berisiko PvP cross-warzone.'],
+  declarationDay:['Declaration Day (Do/Sa): City-War nur nach R4/R5-Call starten und den In-game-Timer prüfen.','Declaration Day (Thu/Sat): start City War only on an R4/R5 call and verify the in-game timer.','Declaration Day (чт/сб): починай City War лише за наказом R4/R5 і перевір таймер у грі.','Declaration Day（木/土）：City WarはR4/R5の指示時のみ開始し、ゲーム内タイマーを確認。','Declaration Day (jeu./sam.) : lance City War uniquement sur ordre R4/R5 et vérifie le timer en jeu.','Declaration Day (gio/sab): avvia City War solo su chiamata R4/R5 e controlla il timer in gioco.','Declaration Day (Kam/Sab): mulai City War hanya atas arahan R4/R5 dan cek timer di game.'],
+  crossWarzoneSaturday:['Cross-Warzone-Kampftag: Shield und Laufzeit prüfen; heute können fremde Warzones Basen angreifen.','Cross-warzone war day: check your shield and remaining duration; other warzones can attack bases today.','Cross-Warzone день війни: перевір щит і його тривалість; сьогодні інші Warzones можуть атакувати бази.','Cross-Warzone戦日：Shieldと残り時間を確認。他Warzoneから基地攻撃が可能。','Jour de guerre cross-warzone : vérifie ton bouclier et sa durée ; les autres Warzones peuvent attaquer les bases.','Giorno di guerra cross-warzone: controlla scudo e durata residua; oggi le altre Warzone possono attaccare le basi.','Hari perang cross-warzone: cek shield dan sisa durasi; Warzone lain bisa menyerang base hari ini.'],
+  cityCall:['City/Stronghold-Freischaltung prüfen: Eroberungen nur nach R4/R5-Call und aktuellem In-game-Timer.','Check the current City/Stronghold unlock: capture only on an R4/R5 call and the live in-game timer.','Перевір поточне відкриття City/Stronghold: захоплення лише за наказом R4/R5 та актуальним таймером у грі.','現在のCity/Stronghold解放を確認。占領はR4/R5指示とゲーム内タイマーに従う。','Vérifie le déblocage City/Stronghold actuel : capture uniquement sur ordre R4/R5 et selon le timer en jeu.','Controlla lo sblocco City/Stronghold attuale: cattura solo su chiamata R4/R5 e secondo il timer in gioco.','Cek unlock City/Stronghold saat ini: capture hanya atas arahan R4/R5 dan timer live di game.'],
+  seasonSettlement:['Season-Ende vorbereiten: Contribution-Rewards prüfen und Season-Ressourcen sinnvoll verbrauchen.','Prepare for season end: check contribution rewards and spend seasonal resources sensibly.','Підготуйся до завершення сезону: перевір Contribution Rewards і розумно витрать сезонні ресурси.','シーズン終了準備：Contribution Rewardsを確認し、Season資源を計画的に使う。','Prépare la fin de saison : vérifie les Contribution Rewards et utilise intelligemment les ressources saisonnières.','Prepara la fine della stagione: controlla le Contribution Rewards e usa con criterio le risorse stagionali.','Siapkan akhir Season: cek Contribution Rewards dan gunakan resource Season dengan bijak.'],
+  purge:['The Purge: den höchsten sinnvoll besiegbaren infizierten Zombie pushen und tägliche Ranking-Rewards prüfen.','The Purge: push the highest infected zombie you can realistically defeat and check daily ranking rewards.','The Purge: перемагай найвищого зараженого Zombie, якого реально можеш здолати, і перевіряй щоденні рейтингові нагороди.','The Purge：無理なく倒せる最高レベルの感染Zombieを狙い、毎日のランキング報酬を確認。','The Purge : vise le zombie infecté le plus élevé que tu peux réellement battre et vérifie les récompenses quotidiennes.','The Purge: punta allo zombie infetto più alto che puoi davvero battere e controlla le ricompense giornaliere.','The Purge: kejar infected zombie tertinggi yang realistis bisa dikalahkan dan cek hadiah ranking harian.'],
+  apocalypseCity:['City of Apocalypse / Capitol: nur nach R4/R5-Call teilnehmen; In-game-Timer und Zugangsbedingungen prüfen.','City of Apocalypse / Capitol: participate only on an R4/R5 call; verify the in-game timer and access requirements.','City of Apocalypse / Capitol: бери участь лише за наказом R4/R5; перевір таймер і умови доступу в грі.','City of Apocalypse / Capitol：R4/R5の指示時のみ参加し、ゲーム内タイマーと参加条件を確認。','City of Apocalypse / Capitol : participe uniquement sur ordre R4/R5 ; vérifie le timer et les conditions d’accès.','City of Apocalypse / Capitol: partecipa solo su chiamata R4/R5; controlla timer e requisiti di accesso.','City of Apocalypse / Capitol: ikut hanya atas arahan R4/R5; cek timer dan syarat akses di game.'],
+  infiniteOctagon:['Infinite Octagon / Warzone Duel: R4/R5-Ziel verfolgen; Cross-Warzone-Captures bringen Influence.','Infinite Octagon / Warzone Duel: follow the R4/R5 target; cross-warzone captures drive Influence.','Infinite Octagon / Warzone Duel: дотримуйся цілі R4/R5; Cross-Warzone захоплення дають Influence.','Infinite Octagon / Warzone Duel：R4/R5の目標に従い、Cross-Warzone占領でInfluenceを稼ぐ。','Infinite Octagon / Warzone Duel : suis la cible R4/R5 ; les captures cross-warzone apportent de l’Influence.','Infinite Octagon / Warzone Duel: segui l’obiettivo R4/R5; le catture cross-warzone danno Influence.','Infinite Octagon / Warzone Duel: ikuti target R4/R5; capture cross-warzone menghasilkan Influence.'],
+  seasonWarmup:['Warm-up-Woche: Influence-/City-Pläne vorbereiten; keine besondere persönliche Mission erzwingen.','Warm-up week: prepare Influence/City plans; there is no special personal mission to force.','Warm-up тиждень: підготуй плани Influence/City; окремої обов’язкової особистої місії немає.','Warm-up週：Influence/City計画を準備。特別な個人必須ミッションはない。','Semaine Warm-up : prépare les plans Influence/City ; aucune mission personnelle spéciale à forcer.','Settimana Warm-up: prepara i piani Influence/City; non c’è una missione personale speciale obbligatoria.','Minggu Warm-up: siapkan rencana Influence/City; tidak ada misi pribadi khusus yang wajib dipaksakan.'],
+  finalBattle:['Final Battle: letzter Influence-Push vor Season-Ende; aktuelle R4/R5-Calls und Season Store beachten.','Final Battle: final Influence push before season end; follow current R4/R5 calls and watch the Season Store.','Final Battle: останній ривок Influence перед завершенням сезону; стеж за актуальними наказами R4/R5 і Season Store.','Final Battle：シーズン終了前の最後のInfluenceプッシュ。最新R4/R5指示とSeason Storeを確認。','Final Battle : dernier push d’Influence avant la fin ; suis les appels R4/R5 et surveille le Season Store.','Final Battle: ultimo push di Influence prima della fine; segui le call R4/R5 e controlla il Season Store.','Final Battle: push Influence terakhir sebelum Season berakhir; ikuti call R4/R5 dan cek Season Store.'],
 };
 export const SEASON_CONTENT = {
   PRE_SEASON:['prepSeason','pass'],
-  SEASON_WEEK_1:['farms','vri','doom','elite','kim'],
-  SEASON_WEEK_2:['mason','legion','resistanceCheck'],
-  SEASON_WEEK_3:['centers','dva','resistanceCheck'],
-  SEASON_WEEK_4:['expansion','kabum'],
-  SEASON_WEEK_5:['warSeason','resistanceCheck'],
-  SEASON_WEEK_6:['warSeason','tesla'],
-  SEASON_WEEK_7:['warSeason','finish'],
-  SEASON_WEEK_8:['finish'], POST_SEASON:['after'],
+  SEASON_WEEK_1:['farms','vri','purge','elite','kim'],
+  SEASON_WEEK_2:['mason','levelSwap','legion','wishHero'],
+  SEASON_WEEK_3:['centers','warzoneExpedition','expansion','dva'],
+  SEASON_WEEK_4:['expansion','warSeason','apocalypseCity','kabum'],
+  SEASON_WEEK_5:['warzoneExpedition','infiniteOctagon'],
+  SEASON_WEEK_6:['warzoneExpedition','seasonWarmup','tesla'],
+  SEASON_WEEK_7:['finalBattle','finish'],
+  SEASON_WEEK_8:['seasonSettlement','finish'], POST_SEASON:['after'],
 };
 export const SEASON_GUIDES = Object.freeze({
   PRE_SEASON:Object.freeze(['farms']),
@@ -50,10 +66,19 @@ export const SEASON_GUIDES = Object.freeze({
   SEASON_WEEK_5:Object.freeze(['resistance']),
   SEASON_WEEK_6:Object.freeze(['weapons']),
 });
+// Major member-facing milestones. City/Stronghold entries intentionally stay generic because
+// the live in-game countdown and R4/R5 call decide the exact capture moment.
 export const EVENTS = [
-  {day:1,id:'farms'}, {day:4,id:'kim'}, {day:8,id:'mason'}, {day:9,id:'legion'},
-  {day:15,id:'centers'}, {day:18,id:'dva'}, {day:22,id:'expansion'},
-  {day:29,id:'warSeason'}, {day:39,id:'tesla'}, {day:50,id:'finish'},
+  {day:1,id:'farms'}, {day:1,id:'purge'}, {day:2,id:'serumPuzzle'}, {day:3,id:'geneticRecombination'},
+  {day:4,id:'cityCall'}, {day:4,id:'kim'}, {day:7,id:'cityCall'},
+  {day:8,id:'mason'}, {day:8,id:'levelSwap'}, {day:9,id:'legion'},
+  {day:11,id:'cityCall'}, {day:11,id:'wishHero'}, {day:14,id:'cityCall'},
+  {day:15,id:'centers'}, {day:16,id:'warzoneExpedition'}, {day:18,id:'dva'},
+  {day:19,id:'cityCall'}, {day:21,id:'cityCall'}, {day:22,id:'expansion'},
+  {day:25,id:'declarationDay'}, {day:28,id:'cityCall'}, {day:28,id:'apocalypseCity'},
+  {day:29,id:'warzoneExpedition'}, {day:29,id:'infiniteOctagon'},
+  {day:36,id:'warzoneExpedition'}, {day:36,id:'seasonWarmup'}, {day:39,id:'tesla'}, {day:43,id:'finalBattle'},
+  {day:50,id:'seasonSettlement'},
 ];
 // Day 1 and the first 24 hours are one member workflow, not separate posts.
 export const DAY_ONE_GROUP = Object.freeze({
@@ -61,10 +86,40 @@ export const DAY_ONE_GROUP = Object.freeze({
   tasks:Object.freeze(['pass','firstBlood','farms','vri','profession','pumpkinLikes']),
   facts:Object.freeze(['farmRate','pass','resistanceCheck','profession']),
 });
+export function seasonDailyTasks(state) {
+  if (state.seasonDay < 1 || state.seasonDay > 56) return [];
+  const ids=['profession','pumpkinLikes'];
+  if (state.seasonDay >= 2) ids.push('serumPuzzle');
+  if (state.seasonDay >= 3 && state.seasonDay <= 49) ids.push('geneticRecombination');
+  return ids;
+}
+export function seasonContext(state) {
+  if (state.seasonDay < 1 || state.seasonDay > 56) return [];
+  const ids=['farmVriProgress','resistanceCheck'];
+  if (state.seasonDay >= 3) ids.push('weatherCheck');
+  return ids;
+}
+export function seasonSynergies(state) {
+  const out = [];
+  // Crimson Legion attacks Tuesday/Friday during its 18-day event window.
+  if ([2,5].includes(state.weekdayIndex) && state.seasonDay >= 9 && state.seasonDay <= 26) out.push('legion');
+  // Cross-warzone Saturday combat starts in Week 3.
+  if (state.weekdayIndex === 6 && state.seasonDay >= 20 && state.seasonDay <= 49) out.push('crossWarzoneSaturday');
+  // Once Warzone Declaration is active, City declarations are Thursday and Saturday.
+  if ([4,6].includes(state.weekdayIndex) && state.seasonDay >= 25 && state.seasonDay <= 49) out.push('declarationDay');
+  out.push(...EVENTS.filter(e=>e.day === state.seasonDay).map(e=>e.id));
+  return [...new Set(out)];
+}
+export function seasonTodayTasks(state) {
+  return [...new Set([...seasonDailyTasks(state),...seasonSynergies(state)])];
+}
+export function isSeasonDailyTask(id,state) {
+  return seasonDailyTasks(state).includes(id) || ['legion','crossWarzoneSaturday','declarationDay','cityCall'].includes(id);
+}
 export function seasonTasks(state) {
-  const ids = [...SEASON_CONTENT[state.phase]];
+  const ids = [...(SEASON_CONTENT[state.phase] || [])];
   if (state.seasonDay >= 1 && state.seasonDay <= 56) {
-    ids.push('profession','pumpkinLikes','doom','resistanceCheck');
+    ids.push(...seasonTodayTasks(state));
     if (state.seasonDay === DAY_ONE_GROUP.day) ids.unshift(...DAY_ONE_GROUP.tasks);
   }
   return [...new Set(ids)];
@@ -72,11 +127,4 @@ export function seasonTasks(state) {
 export function upcoming(state, limit = 3, excludedDays = []) {
   const excluded = new Set(excludedDays);
   return EVENTS.filter(e=>e.day > state.seasonDay && !excluded.has(e.day)).slice(0,limit);
-}
-export function seasonSynergies(state) {
-  const out = [];
-  if (state.weekdayIndex === 4 && state.seasonDay >= 8 && state.seasonDay <= 49) out.push('mason');
-  if ([2,5].includes(state.weekdayIndex) && state.seasonDay >= 9 && state.seasonDay <= 26) out.push('legion');
-  out.push(...EVENTS.filter(e=>e.day === state.seasonDay).map(e=>e.id));
-  return [...new Set(out)];
 }
