@@ -93,6 +93,8 @@ export const UI = {
   resistance:['Virus-Resistenz','Virus resistance','Стійкість до вірусу','ウイルス耐性','Résistance au virus','Resistenza al virus','Resistensi virus'],
   max:['Maximum','Maximum','Максимум','上限','Maximum','Massimo','Maksimum'],
   search:['Guides durchsuchen','Search guides','Пошук порад','ガイドを検索','Rechercher un guide','Cerca nelle guide','Cari panduan'],
+  shareGuide:['Guide teilen','Share guide','Поділитися гайдом','ガイドを共有','Partager le guide','Condividi guida','Bagikan panduan'],
+  linkCopied:['Link kopiert','Link copied','Посилання скопійовано','リンクをコピーしました','Lien copié','Link copiato','Tautan disalin'],
   noResults:['Keine Treffer. Versuche einen anderen Begriff.','No matches. Try another term.','Нічого не знайдено. Спробуйте інше слово.','該当する内容がありません。別の言葉で検索してください。','Aucun résultat. Essaie un autre terme.','Nessun risultato. Prova un altro termine.','Tidak ditemukan. Coba kata lain.'],
   allDone:['Alles auf deiner Liste erledigt.','Everything on your list is done.','Усе зі списку виконано.','リストの項目はすべて完了しました。','Tout est coché sur ta liste.','Hai completato tutta la lista.','Semua tugas dalam daftar sudah selesai.'],
   philosophy:['Wichtige Upgrades möglichst mit Rewards und Punkten kombinieren.','Time important upgrades to earn rewards and points together.','Поєднуйте важливі покращення з нагородами й очками.','大きな強化は、報酬とポイントを同時に得られるタイミングで。','Fais coïncider les améliorations importantes avec des récompenses et des points.','Combina gli upgrade importanti con ricompense e punti.','Lakukan upgrade penting saat bisa mendapat hadiah sekaligus poin.'],

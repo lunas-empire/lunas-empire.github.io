@@ -6,6 +6,7 @@ import { GUIDE_COPY, GUIDE_TEXT, MEMBER_MEDIA } from './guide-text.js';
 import { SEASON_LIBRARY_COPY, SEASON_LIBRARY_GUIDES, SEASON_LIBRARY_MEDIA } from './season-library.js';
 import { TECH_GUIDE_HTML, TECH_GUIDE_TITLE } from './tech-guide.js';
 import { professionGuideHtml, PROFESSION_GUIDE_SEARCH } from './profession-guide.js';
+import { memberRoute, guideUrl } from './guide-links.js';
 import { DAY_MS, WEEKDAYS, guideState, selectedDate, checklistKey, armsWindow, availableTask, enemyBusterPhase } from './engine.js';
 import { todayPriorities } from './priority.js';
 import { createStorage, checkedMap } from './storage.js';
@@ -54,10 +55,11 @@ function guideText(id,{showTitle=true}={}) {
   return guideTextBlocks(guideAlt(MEMBER_MEDIA[id]),GUIDE_TEXT[id],{showTitle});
 }
 const guideCard = id => `<article class="guide-card">${guideText(id)}${guideFigure(id)}</article>`;
+const guideShareButton = id => `<div class="guide-share-row"><button type="button" class="guide-share" data-share-guide="${escape(id)}">${tx('shareGuide')}</button></div>`;
 const guideGallery = ids => ids.length ? `<div class="guide-gallery">${ids.map(guideCard).join('')}</div>` : '';
 function guideDisclosure(id) {
   const title=guideAlt(MEMBER_MEDIA[id]);
-  return `<details class="guide-disclosure" data-search><summary>${escape(title)}</summary><article class="guide-card guide-card--inside">${guideText(id,{showTitle:false})}${guideFigure(id)}</article></details>`;
+  return `<details class="guide-disclosure" data-search data-guide-id="${escape(id)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside">${guideShareButton(id)}${guideText(id,{showTitle:false})}${guideFigure(id)}</article></details>`;
 }
 function seasonLibraryFigure(code,title) {
   const media=SEASON_LIBRARY_MEDIA[code];
@@ -70,10 +72,10 @@ function seasonLibraryDisclosure(id) {
   const images=`<div class="season-library-images">${guide.media.map(code=>seasonLibraryFigure(code,title)).join('')}</div>`;
   const profession=id==='profession'?professionGuideHtml(lang,escape):'';
   const searchTerms=id==='profession'?` ${PROFESSION_GUIDE_SEARCH}`:'';
-  return `<details class="guide-disclosure" data-search data-season-guide="${escape(id)}" data-search-extra="${escape(searchTerms)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside">${guideTextBlocks(title,guide.blocks,{showTitle:false})}${profession}${images}</article></details>`;
+  return `<details class="guide-disclosure" data-search data-guide-id="${escape(id)}" data-season-guide="${escape(id)}" data-search-extra="${escape(searchTerms)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside">${guideShareButton(id)}${guideTextBlocks(title,guide.blocks,{showTitle:false})}${profession}${images}</article></details>`;
 }
 function techGuideDisclosure() {
-  return `<details class="guide-disclosure guide-disclosure--tech" data-search data-tech-guide><summary>${escape(TECH_GUIDE_TITLE)}</summary><div class="tech-guide-shell">${TECH_GUIDE_HTML}</div></details>`;
+  return `<details class="guide-disclosure guide-disclosure--tech" data-search data-guide-id="tech" data-tech-guide><summary>${escape(TECH_GUIDE_TITLE)}</summary><div class="tech-guide-shell">${guideShareButton('tech')}${TECH_GUIDE_HTML}</div></details>`;
 }
 function notice() {
   if (!LIVE_NOTICE.active) return '';
@@ -254,16 +256,25 @@ function showStorageError() {
   error.hidden = !storageFailed;
   error.textContent = t('unavailableStorage');
 }
+function openDirectGuide(guideId,{scroll=true}={}) {
+  if (!guideId || currentView!=='guides') return false;
+  const target=[...main.querySelectorAll('[data-guide-id]')].find(el=>el.dataset.guideId===guideId);
+  if (!target) return false;
+  target.open=true;
+  if (scroll) requestAnimationFrame(()=>target.scrollIntoView({behavior:'smooth',block:'start'}));
+  return true;
+}
 function render({focus = false,preserve = false} = {}) {
-  const hash = location.hash.slice(1);
-  if (hash === 'main') { main.focus(); return; }
-  currentView = Object.hasOwn(views,hash) ? hash : 'today';
+  const route=memberRoute(location.hash);
+  if (route.view === 'main') { main.focus(); return; }
+  currentView = Object.hasOwn(views,route.view) ? route.view : 'today';
   const open = preserve ? new Set([...main.querySelectorAll('details[open][data-disclosure]')].map(el=>el.dataset.disclosure)) : null;
   main.innerHTML = views[currentView]();
   if (open) main.querySelectorAll('[data-disclosure]').forEach(el=>{el.open=open.has(el.dataset.disclosure);});
   syncChrome();
   document.title = `${t(currentView==='admin'?'admin':currentView)} · RZSN Member Hub`;
-  if (focus) { main.focus({preventScroll:true}); window.scrollTo(0,0); }
+  const directGuide=openDirectGuide(route.guideId,{scroll:true});
+  if (focus && !directGuide) { main.focus({preventScroll:true}); window.scrollTo(0,0); }
 }
 function refreshClock() {
   const next = guideState();
@@ -359,6 +370,49 @@ main.addEventListener('click',event=>{
   selectedDay=Number(button.dataset.day); render();
   main.querySelector(`[data-day="${selectedDay}"]`).focus({preventScroll:true});
 });
+async function copyGuideLink(url) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(url);
+    return;
+  }
+  const input=document.createElement('textarea');
+  input.value=url;
+  input.setAttribute('readonly','');
+  input.style.position='fixed';
+  input.style.opacity='0';
+  document.body.append(input);
+  input.select();
+  document.execCommand('copy');
+  input.remove();
+}
+main.addEventListener('click',async event=>{
+  const button=event.target.closest('[data-share-guide]');
+  if (!button) return;
+  const id=button.dataset.shareGuide;
+  const disclosure=button.closest('[data-guide-id]');
+  const title=disclosure?.querySelector(':scope > summary')?.textContent?.trim() || 'RZSN Guide';
+  const url=guideUrl(id,location.href);
+  try {
+    if (navigator.share) {
+      await navigator.share({title,url});
+      return;
+    }
+    await copyGuideLink(url);
+    const previous=button.textContent;
+    button.textContent=t('linkCopied');
+    setTimeout(()=>{if(button.isConnected) button.textContent=previous;},1600);
+  } catch (error) {
+    if (error?.name!=='AbortError') {
+      try {
+        await copyGuideLink(url);
+        const previous=button.textContent;
+        button.textContent=t('linkCopied');
+        setTimeout(()=>{if(button.isConnected) button.textContent=previous;},1600);
+      } catch {}
+    }
+  }
+});
+
 main.addEventListener('change',event=>{
   const input=event.target;
   if (input.matches('[data-shield-check]')) {
@@ -401,6 +455,9 @@ main.addEventListener('input',event=>{
   });
   main.querySelectorAll('.profession-path__section').forEach((section,index)=>{
     section.open=query ? section.textContent.toLocaleLowerCase(LOCALES[lang]).includes(query) : index===0;
+  });
+  main.querySelectorAll('.tech-guide__topic').forEach(section=>{
+    section.open=Boolean(query) && section.textContent.toLocaleLowerCase(LOCALES[lang]).includes(query);
   });
   main.querySelectorAll('[data-search-group]').forEach(group=>{group.hidden=!group.querySelector('[data-search]:not([hidden])');});
   document.querySelector('#no-results').hidden=found>0;

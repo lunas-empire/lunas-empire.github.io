@@ -180,3 +180,29 @@ test('10 Pumpkin Skin likes are a daily Season checklist task',()=>{
     assert.match(text,/10/,lang);
   }
 });
+
+
+test('adding Pumpkin likes preserves existing user checklist state across an update reload',()=>{
+  const s=state('2026-09-21T08:00:00+02:00');
+  const data=new Map();
+  const provider={
+    getItem:key=>data.has(key)?data.get(key):null,
+    setItem:(key,value)=>data.set(key,value),
+  };
+  const beforeUpdate=createStorage(()=>provider);
+  const dailyKey=checklistKey('daily',s);
+  const seasonKey=checklistKey('season',s);
+  beforeUpdate.set(dailyKey,{freeStore:true,allianceDonation:true});
+  beforeUpdate.set(seasonKey,{pass:true,farms:true});
+
+  // Simulate loading the newer site version against the same browser localStorage.
+  const afterUpdate=createStorage(()=>provider);
+  const pumpkinKey=checklistKey('seasonDaily',s);
+  assert.deepEqual(checkedMap(afterUpdate.get(dailyKey)),{freeStore:true,allianceDonation:true});
+  assert.deepEqual(checkedMap(afterUpdate.get(seasonKey)),{pass:true,farms:true});
+  assert.deepEqual(checkedMap(afterUpdate.get(pumpkinKey)),{});
+  afterUpdate.set(pumpkinKey,{pumpkinLikes:true});
+  assert.deepEqual(checkedMap(afterUpdate.get(dailyKey)),{freeStore:true,allianceDonation:true});
+  assert.deepEqual(checkedMap(afterUpdate.get(seasonKey)),{pass:true,farms:true});
+  assert.deepEqual(checkedMap(afterUpdate.get(pumpkinKey)),{pumpkinLikes:true});
+});
