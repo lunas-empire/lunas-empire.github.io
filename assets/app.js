@@ -5,6 +5,7 @@ import { DAY_ONE_GROUP, SEASON_COPY, SEASON_CONTENT, SEASON_GUIDES, seasonTasks,
 import { GUIDE_COPY, GUIDE_TEXT, MEMBER_MEDIA } from './guide-text.js';
 import { SEASON_LIBRARY_COPY, SEASON_LIBRARY_GUIDES, SEASON_LIBRARY_MEDIA } from './season-library.js';
 import { TECH_GUIDE_HTML, TECH_GUIDE_TITLE } from './tech-guide.js';
+import { professionGuideHtml, PROFESSION_GUIDE_SEARCH } from './profession-guide.js';
 import { DAY_MS, WEEKDAYS, guideState, selectedDate, checklistKey, armsWindow, availableTask, enemyBusterPhase } from './engine.js';
 import { todayPriorities } from './priority.js';
 import { createStorage, checkedMap } from './storage.js';
@@ -67,7 +68,9 @@ function seasonLibraryDisclosure(id) {
   const guide=SEASON_LIBRARY_GUIDES[id];
   const title=t(guide.title);
   const images=`<div class="season-library-images">${guide.media.map(code=>seasonLibraryFigure(code,title)).join('')}</div>`;
-  return `<details class="guide-disclosure" data-search data-season-guide="${escape(id)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside">${guideTextBlocks(title,guide.blocks,{showTitle:false})}${images}</article></details>`;
+  const profession=id==='profession'?professionGuideHtml(lang,escape):'';
+  const searchTerms=id==='profession'?` ${PROFESSION_GUIDE_SEARCH}`:'';
+  return `<details class="guide-disclosure" data-search data-season-guide="${escape(id)}" data-search-extra="${escape(searchTerms)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside">${guideTextBlocks(title,guide.blocks,{showTitle:false})}${profession}${images}</article></details>`;
 }
 function techGuideDisclosure() {
   return `<details class="guide-disclosure guide-disclosure--tech" data-search data-tech-guide><summary>${escape(TECH_GUIDE_TITLE)}</summary><div class="tech-guide-shell">${TECH_GUIDE_HTML}</div></details>`;
@@ -142,7 +145,10 @@ function today() {
   const priorities = todayPriorities(state);
   const shown = new Set(priorities.map(p=>p.id));
   const cards = priorities.filter(p=>p.id!=='notice').map(p=>`<li class="${p.id==='shield'?'warning':''}" data-priority="${p.id}"><span class="badge">${tx(p.source)}</span>${p.id==='arms'?arms(state,guide):p.id==='save'?list(guide.save.filter(permitted)):p.id==='shield'?`<h3>${tx(p.id)}</h3>`:paragraph(p.id)}</li>`).join('');
-  const seasonIds = seasonTasks(state).filter(id=>!shown.has(id) && permitted(id)).slice(0,state.seasonDay?2:1);
+  const seasonPool=seasonTasks(state).filter(id=>!shown.has(id) && permitted(id));
+  const seasonIds=(state.seasonDay>=1 && state.seasonDay<=56
+    ? ['profession',...seasonPool.filter(id=>id!=='profession')]
+    : seasonPool).slice(0,state.seasonDay?2:1);
   const nextSeason = state.phase === 'PRE_SEASON' ? first24() : nextCards(1);
   return `<h1>MEMBER HUB</h1><p class="intro">${escape(longDate(state.date))}</p>${status()}${notice()}${enemyBusterBanner(state)}${starterGuide()}${section('focus',`<ul class="priority-list">${cards}</ul>`)}${section('daily',`${paragraph('dailyIntro')}${progress('daily',dailyTasks().map(task=>task.id))}${link('daily','checklist')}`)}${section('vs',`${paragraph('vsIntro')}<h3>${tx(state.weekday)}</h3>${minimum()}${guideCard(`vs-${state.weekday}`)}${!shown.has('arms')?details(t('bestArms'),arms(state,guide)):''}${!shown.has('save')?details(t('save'),list(guide.save.filter(permitted))):''}${link('vs','details')}`)}${section('season',`<h3>${escape(phaseLabel(state))}</h3>${list(seasonIds)}${link('season','details')}`)}${section('next',`<h3>${tx('tomorrow')} · ${tx(WEEKDAYS[(state.weekdayIndex+1)%7])}</h3>${nextSeason}`)}`;
 }
@@ -182,7 +188,7 @@ function season() {
   const isPreSeason = state.phase === 'PRE_SEASON';
   const isDayOne = state.seasonDay === DAY_ONE_GROUP.day;
   const todayIds = isPreSeason ? ['prepSeason'] : isDayOne ? DAY_ONE_GROUP.tasks : [
-    ...(state.seasonDay >= 1 && state.seasonDay <= 56 ? ['doom','resistanceCheck'] : []),
+    ...(state.seasonDay >= 1 && state.seasonDay <= 56 ? ['profession','doom','resistanceCheck'] : []),
     ...seasonSynergies(state),
   ];
   const uniqueTodayIds = [...new Set(todayIds)].filter(id=>ids.includes(id));
@@ -384,9 +390,13 @@ main.addEventListener('input',event=>{
   const query=event.target.value.trim().toLocaleLowerCase(LOCALES[lang]);
   let found=0;
   main.querySelectorAll('[data-search]').forEach(el=>{
-    el.hidden=!el.textContent.toLocaleLowerCase(LOCALES[lang]).includes(query);
+    const haystack=(el.textContent+(el.dataset.searchExtra||'')).toLocaleLowerCase(LOCALES[lang]);
+    el.hidden=!haystack.includes(query);
     if (!el.hidden) found++;
     if (el.matches('.guide-disclosure')) el.open=Boolean(query) && !el.hidden;
+  });
+  main.querySelectorAll('.profession-path__section').forEach((section,index)=>{
+    section.open=query ? section.textContent.toLocaleLowerCase(LOCALES[lang]).includes(query) : index===0;
   });
   main.querySelectorAll('[data-search-group]').forEach(group=>{group.hidden=!group.querySelector('[data-search]:not([hidden])');});
   document.querySelector('#no-results').hidden=found>0;

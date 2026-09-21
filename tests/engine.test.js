@@ -85,10 +85,13 @@ test('season events and real synergies only',()=>{
 });
 test('Day 1 and first 24 hours share one canonical task group',()=>{
   const dayOne=state('2026-09-21T04:00:00+02:00');
-  assert.deepEqual(DAY_ONE_GROUP.tasks,['firstBlood','farms','vri']);
+  assert.deepEqual(DAY_ONE_GROUP.tasks,['firstBlood','farms','vri','profession']);
   assert.ok(DAY_ONE_GROUP.facts.includes('farmRate'));
   assert.ok(DAY_ONE_GROUP.facts.includes('resistanceCheck'));
+  assert.ok(DAY_ONE_GROUP.facts.includes('profession'));
   for (const id of DAY_ONE_GROUP.tasks) assert.ok(seasonTasks(dayOne).includes(id));
+  assert.ok(seasonTasks(dayOne).includes('profession'),'Profession Hall reminder is present on Season Day 1');
+  assert.ok(seasonTasks(state('2026-10-10T12:00:00+02:00')).includes('profession'),'Profession Hall reminder stays active on later Season days');
   assert.equal(upcoming(state('2026-09-13T12:00:00+02:00'),3,[DAY_ONE_GROUP.day]).some(event=>event.day===1),false);
 });
 test('leadership wins and suppresses conflicting task',()=>{

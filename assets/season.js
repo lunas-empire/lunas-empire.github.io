@@ -28,7 +28,7 @@ export const SEASON_COPY = {
   kabum:['Operation KABUM: auf R4/R5 warten, Positionierungs-Calls befolgen, niemals eigenständig starten.','Operation KABUM: wait for R4/R5, follow positioning calls and never start independently.','Operation KABUM: чекати R4/R5, виконувати вказівки щодо позицій, не починати самостійно.','Operation KABUM：R4/R5の配置指示に従い、独断で始めない。','Operation KABUM : attends R4/R5, suis les placements et ne commence jamais seul.','Operation KABUM: aspetta R4/R5, segui le indicazioni di posizione e non iniziare da solo.','Operation KABUM: tunggu R4/R5, ikuti arahan posisi, jangan mulai sendiri.'],
   finish:['Vor Season-Ende Season-Ressourcen und Rewards prüfen. Nichts unnötig verfallen lassen.','Before season end check seasonal resources and rewards. Avoid letting them expire.','До завершення сезону перевірити сезонні ресурси й нагороди. Не дати їм пропасти.','シーズン終了前に専用資源と報酬を確認。取り逃しや使い残しを減らす。','Avant la fin, vérifie ressources et récompenses saisonnières. Évite de les laisser expirer.','Prima della fine controlla risorse e ricompense stagionali. Evita di farle scadere.','Sebelum Season berakhir, cek sumber daya dan hadiah Season agar tidak terbuang.'],
   after:['Season 1 ist abgeschlossen. Daily und VS bleiben relevant; weitere Season-Calls folgen von R4/R5.','Season 1 is complete. Daily and VS remain relevant; follow R4/R5 for future season calls.','Сезон 1 завершено. Щоденні справи й VS залишаються актуальними; чекайте нових вказівок R4/R5.','シーズン1は終了。日課とVSは継続し、次のシーズンはR4/R5の案内を確認。','La saison 1 est terminée. Daily et VS restent utiles ; suis R4/R5 pour la suite.','La stagione 1 è conclusa. Daily e VS restano utili; segui R4/R5 per le prossime indicazioni.','Season 1 selesai. Rutinitas harian dan VS tetap berjalan; tunggu arahan Season berikutnya dari R4/R5.'],
-  profession:['Engineer hilft beim HQ-/Research-Aufbau, besonders ohne T10. War Leader passt später zu kampfbereiten Accounts. Kein pauschaler Wechseltermin.','Engineer supports HQ / research development, especially without T10. War Leader suits combat-ready accounts later. No fixed switch date.','Engineer допомагає розвивати HQ / Research, особливо без T10. War Leader підходить згодом готовим до боїв акаунтам. Фіксованої дати зміни немає.','HQ・研究の育成中、特にT10未解放ならEngineerが有用。戦闘準備が整ったらWar Leaderを検討。変更日は一律ではありません。','Engineer aide au développement HQ / Research, surtout sans T10. War Leader convient ensuite aux comptes prêts au combat. Pas de date fixe de changement.','Engineer aiuta a sviluppare HQ / Research, soprattutto senza T10. War Leader è adatto più avanti ad account pronti al combattimento. Nessuna data fissa per cambiare.','Engineer membantu pembangunan HQ / Research, terutama sebelum T10. War Leader cocok nanti saat akun siap tempur. Tidak ada tanggal wajib beralih.'],
+  profession:['Profession Hall täglich prüfen: Skillpunkte nicht liegen lassen. Früh Engineer nutzen; zuerst Profession-EXP beschleunigen, danach Build/Research for Free und Build/Research Now priorisieren.','Check the Profession Hall every day: do not leave skill points unused. Use Engineer early; accelerate Profession EXP first, then prioritize Build/Research for Free and Build/Research Now.','Щодня перевіряйте Profession Hall і не залишайте Skill Points невикористаними. На старті обирайте Engineer: спочатку прискорюйте Profession EXP, потім Build/Research for Free та Build/Research Now.','Profession Hallを毎日確認し、Skill Pointsを余らせない。序盤はEngineerを使い、まずProfession EXPを加速、その後Build/Research for FreeとBuild/Research Nowを優先。','Vérifie le Profession Hall chaque jour et ne laisse pas de Skill Points inutilisés. Commence avec Engineer : accélère d’abord la Profession EXP, puis priorise Build/Research for Free et Build/Research Now.','Controlla ogni giorno il Profession Hall e non lasciare Skill Points inutilizzati. All’inizio usa Engineer: prima accelera la Profession EXP, poi dai priorità a Build/Research for Free e Build/Research Now.','Cek Profession Hall setiap hari dan jangan biarkan Skill Points menganggur. Gunakan Engineer di awal: percepat Profession EXP terlebih dahulu, lalu prioritaskan Build/Research for Free dan Build/Research Now.'],
 };
 export const SEASON_CONTENT = {
   PRE_SEASON:['prepSeason','pass'],
@@ -57,13 +57,13 @@ export const EVENTS = [
 // Day 1 and the first 24 hours are one member workflow, not separate posts.
 export const DAY_ONE_GROUP = Object.freeze({
   day:1,
-  tasks:Object.freeze(['firstBlood','farms','vri']),
+  tasks:Object.freeze(['firstBlood','farms','vri','profession']),
   facts:Object.freeze(['farmRate','pass','resistanceCheck','profession']),
 });
 export function seasonTasks(state) {
   const ids = [...SEASON_CONTENT[state.phase]];
   if (state.seasonDay >= 1 && state.seasonDay <= 56) {
-    ids.push('doom','resistanceCheck');
+    ids.push('profession','doom','resistanceCheck');
     if (state.seasonDay === DAY_ONE_GROUP.day) ids.unshift(...DAY_ONE_GROUP.tasks);
   }
   return [...new Set(ids)];
