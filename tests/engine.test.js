@@ -4,9 +4,10 @@ import { ALLIANCE_CONFIG } from '../assets/config.js';
 import { guideState, checklistKey, armsWindow, availableTask, getGuideDate, resetInstant, seasonEventInstant, enemyBusterPhase } from '../assets/engine.js';
 import { COPY, DAILY_GUIDES, TASKS } from '../assets/content.js';
 import { todayPriorities } from '../assets/priority.js';
-import { DAY_ONE_GROUP, SEASON_GUIDES, seasonTasks, seasonSynergies, seasonDailyTasks, seasonTodayTasks, seasonContext, isSeasonDailyTask, upcoming } from '../assets/season.js';
+import { DAY_ONE_GROUP, SEASON_GUIDES, SEASON_ROADMAP, SEASON_GUIDE_ROADMAP, seasonTasks, seasonSynergies, seasonDailyTasks, seasonTodayTasks, seasonContext, isSeasonDailyTask, upcoming } from '../assets/season.js';
 import { createStorage, checkedMap } from '../assets/storage.js';
 import { SEASON_COPY } from '../assets/season.js';
+import { SEASON_LIBRARY_GUIDES } from '../assets/season-library.js';
 import { UI, LANGUAGES, LOCALES, resolveLanguagePreference, translate } from '../assets/i18n.js';
 const state=date=>guideState(new Date(date));
 const cases=[
@@ -264,4 +265,25 @@ test('new Season 1 checklist copy exists in every public language',()=>{
   for (const key of ['serumPuzzle','geneticRecombination','weatherCheck','farmVriProgress','wishHero','levelSwap','warzoneExpedition','declarationDay','crossWarzoneSaturday','cityCall','seasonSettlement','purge','apocalypseCity','infiniteOctagon','seasonWarmup','finalBattle']) {
     for (const lang of Object.keys(LANGUAGES)) assert.ok(translate(SEASON_COPY,key,lang).trim(),key+' ['+lang+']');
   }
+});
+
+test('Season roadmap is chronological and localized',()=>{
+  const days=SEASON_ROADMAP.map(item=>item.day);
+  assert.deepEqual(days,[...days].sort((a,b)=>a-b));
+  assert.equal(days[0],1);
+  assert.equal(days.at(-1),50);
+  for (const item of SEASON_ROADMAP) {
+    for (const lang of Object.keys(LANGUAGES)) {
+      assert.ok(translate(SEASON_COPY,item.label,lang).trim(),item.label+' ['+lang+']');
+    }
+  }
+});
+
+test('Season guide library follows roadmap order with every guide exactly once',()=>{
+  const ordered=SEASON_GUIDE_ROADMAP.flatMap(group=>group.guides);
+  const available=Object.keys(SEASON_LIBRARY_GUIDES);
+  assert.equal(ordered.length,new Set(ordered).size,'roadmap guide order has duplicates');
+  assert.deepEqual([...ordered].sort(),[...available].sort());
+  assert.deepEqual(ordered.slice(0,5),['basics','profession','farmsVri','virus','purge']);
+  assert.equal(ordered.at(-1),'rewards');
 });

@@ -1,12 +1,12 @@
 import { BUILD_VERSION, ALLIANCE_CONFIG, LIVE_NOTICE } from './config.js';
 import { LANGUAGES, LOCALES, UI, resolveLanguagePreference, translate } from './i18n.js';
 import { COPY, TASKS, DAILY_GUIDES } from './content.js';
-import { DAY_ONE_GROUP, SEASON_COPY, SEASON_CONTENT, SEASON_GUIDES, seasonTasks, seasonSynergies, seasonTodayTasks, seasonContext, isSeasonDailyTask, upcoming } from './season.js';
+import { DAY_ONE_GROUP, SEASON_COPY, SEASON_CONTENT, SEASON_GUIDES, SEASON_ROADMAP, SEASON_GUIDE_ROADMAP, seasonTasks, seasonSynergies, seasonTodayTasks, seasonContext, isSeasonDailyTask, upcoming } from './season.js';
 import { GUIDE_COPY, GUIDE_TEXT, MEMBER_MEDIA } from './guide-text.js';
 import { SEASON_LIBRARY_COPY, SEASON_LIBRARY_GUIDES, SEASON_LIBRARY_MEDIA } from './season-library.js';
 import { TECH_GUIDE_HTML, TECH_GUIDE_TITLE } from './tech-guide.js';
 import { professionGuideHtml, PROFESSION_GUIDE_SEARCH } from './profession-guide.js';
-import { memberRoute, guideUrl } from './guide-links.js';
+import { memberRoute, guideHash, guideUrl } from './guide-links.js';
 import { DAY_MS, WEEKDAYS, guideState, selectedDate, checklistKey, armsWindow, availableTask, enemyBusterPhase } from './engine.js';
 import { todayPriorities } from './priority.js';
 import { createStorage, checkedMap } from './storage.js';
@@ -142,6 +142,46 @@ function checklist(kind, tasks, s = state) {
 function nextCards(limit = 3, excludedDays = []) {
   return upcoming(state,limit,excludedDays).map(e=>details(`${t('seasonDay')} ${e.day} · ${['kim','dva','tesla'].includes(e.id)?{kim:'Kimberly',dva:'DVA',tesla:'Tesla'}[e.id]:t('next')}`,paragraph(e.id)+(e.id==='kim'?guideCard('weapons'):'')+(['kim','dva','tesla'].includes(e.id)?paragraph('weapon'):''))).join('');
 }
+const roadmapKindKey = kind => ({personal:'daily',alliance:'call',recurring:'action',mixed:'important'}[kind] || 'important');
+function roadmapGuideLinks(entry) {
+  const ids=[...new Set(entry.guides || [])].filter(id=>SEASON_LIBRARY_GUIDES[id]);
+  if (!ids.length) return '';
+  return `<div class="roadmap-guide-links">${ids.map(id=>`<a href="${guideHash(id)}">${tx(SEASON_LIBRARY_GUIDES[id].title)}</a>`).join('')}</div>`;
+}
+function roadmapMilestone(entry,status) {
+  const week=Math.ceil(entry.day/7);
+  const here=status==='current'? `<span class="roadmap-here">${tx('roadmapHere')}</span>` : '';
+  return `<li class="roadmap-item roadmap-item--${status}" data-roadmap-day="${entry.day}"><span class="roadmap-dot" aria-hidden="true"></span><article><div class="roadmap-meta"><span>${tx('week')} ${week} · ${tx('seasonDay')} ${entry.day}</span><span class="roadmap-kind roadmap-kind--${escape(entry.kind)}">${tx(roadmapKindKey(entry.kind))}</span></div><div class="roadmap-title-row"><h3>${tx(entry.label)}</h3>${here}</div>${roadmapGuideLinks(entry)}</article></li>`;
+}
+function roadmapPositionMarker(day) {
+  return `<li class="roadmap-position" aria-current="step"><span class="roadmap-dot" aria-hidden="true"></span><div><strong>${tx('roadmapHere')}</strong><span>${tx('seasonDay')} ${day}</span></div></li>`;
+}
+function roadmapGlance(s=state) {
+  const active=s.seasonDay>=1 && s.seasonDay<=56;
+  const current=active ? SEASON_ROADMAP.filter(entry=>entry.day===s.seasonDay) : [];
+  const next=SEASON_ROADMAP.find(entry=>entry.day>(s.seasonDay || 0));
+  const nowText=current.length ? current.map(entry=>t(entry.label)).join(' · ') : active ? `${t('seasonDay')} ${s.seasonDay}` : phaseLabel(s);
+  const nextText=next ? `${t('seasonDay')} ${next.day} · ${t(next.label)}` : t('post');
+  return `<div class="roadmap-glance"><div><small>${tx('today')}</small><strong>${escape(nowText)}</strong></div><div><small>${tx('next')}</small><strong>${escape(nextText)}</strong></div></div>`;
+}
+function seasonRoadmap() {
+  const day=state.seasonDay;
+  const active=day>=1 && day<=56;
+  const exact=active && SEASON_ROADMAP.some(entry=>entry.day===day);
+  let markerInserted=false;
+  const rows=[];
+  for (const entry of SEASON_ROADMAP) {
+    if (active && !exact && !markerInserted && entry.day>day) {
+      rows.push(roadmapPositionMarker(day));
+      markerInserted=true;
+    }
+    const status=state.phase==='POST_SEASON' || (active && entry.day<day) ? 'past'
+      : active && entry.day===day ? 'current' : 'future';
+    rows.push(roadmapMilestone(entry,status));
+  }
+  if (active && !exact && !markerInserted) rows.push(roadmapPositionMarker(day));
+  return roadmapGlance()+`<ol class="season-roadmap">${rows.join('')}</ol>`;
+}
 function today() {
   const guide = DAILY_GUIDES[state.weekday];
   const priorities = todayPriorities(state);
@@ -153,7 +193,7 @@ function today() {
     ? [...liveSeason,...seasonPool.filter(id=>!liveSeason.includes(id))]
     : seasonPool).slice(0,state.seasonDay?3:1);
   const nextSeason = state.phase === 'PRE_SEASON' ? first24() : nextCards(1);
-  return `<h1>MEMBER HUB</h1><p class="intro">${escape(longDate(state.date))}</p>${status()}${notice()}${enemyBusterBanner(state)}${starterGuide()}${section('focus',`<ul class="priority-list">${cards}</ul>`)}${section('daily',`${paragraph('dailyIntro')}${progress('daily',dailyTasks().map(task=>task.id))}${link('daily','checklist')}`)}${section('vs',`${paragraph('vsIntro')}<h3>${tx(state.weekday)}</h3>${minimum()}${guideCard(`vs-${state.weekday}`)}${!shown.has('arms')?details(t('bestArms'),arms(state,guide)):''}${!shown.has('save')?details(t('save'),list(guide.save.filter(permitted))):''}${link('vs','details')}`)}${section('season',`<h3>${escape(phaseLabel(state))}</h3>${list(seasonIds)}${link('season','details')}`)}${section('next',`<h3>${tx('tomorrow')} · ${tx(WEEKDAYS[(state.weekdayIndex+1)%7])}</h3>${nextSeason}`)}`;
+  return `<h1>MEMBER HUB</h1><p class="intro">${escape(longDate(state.date))}</p>${status()}${notice()}${enemyBusterBanner(state)}${starterGuide()}${section('focus',`<ul class="priority-list">${cards}</ul>`)}${section('daily',`${paragraph('dailyIntro')}${progress('daily',dailyTasks().map(task=>task.id))}${link('daily','checklist')}`)}${section('vs',`${paragraph('vsIntro')}<h3>${tx(state.weekday)}</h3>${minimum()}${guideCard(`vs-${state.weekday}`)}${!shown.has('arms')?details(t('bestArms'),arms(state,guide)):''}${!shown.has('save')?details(t('save'),list(guide.save.filter(permitted))):''}${link('vs','details')}`)}${section('season',`<h3>${escape(phaseLabel(state))}</h3>${roadmapGlance()}${list(seasonIds)}${link('season','details')}`)}${section('next',`<h3>${tx('tomorrow')} · ${tx(WEEKDAYS[(state.weekdayIndex+1)%7])}</h3>${nextSeason}`)}`;
 }
 function daySelector() {
   return `<div class="week-selector" role="group" aria-label="${tx('vs')}">${WEEKDAYS.map((day,index)=>{
@@ -201,7 +241,7 @@ function season() {
     ? first24({open:state.countdown<=3*DAY_MS})+nextCards(3,[DAY_ONE_GROUP.day])
     : nextCards();
   const timeline = Object.entries(SEASON_CONTENT).map(([phase,items],index)=>details(index===0?t('pre'):index===9?t('post'):`${t('week')} ${index}`,list(items)+guideGallery(SEASON_GUIDES[phase] || []),index===current || index===current+1,phase)).join('');
-  return `<h1>${tx('season')}</h1>${status()}${notice()}${section('today',todayBody)}${section('thisWeek',`<h3>${escape(phaseLabel(state))}</h3>${checklist('season',weekIds.map(id=>({id})))}`)}${section('next',nextBody)}${section('timeline',timeline)}`;
+  return `<h1>${tx('season')}</h1>${status()}${notice()}${section('timeline',seasonRoadmap())}${section('today',todayBody)}${section('thisWeek',`<h3>${escape(phaseLabel(state))}</h3>${checklist('season',weekIds.map(id=>({id})))}`)}${section('next',nextBody)}${details(t('details'),timeline,false,'season-week-details')}`;
 }
 const REFERENCE_LABELS = {
   safeServer:'Server 2261',minister:'Minister Buff',philosophy:'Upgrade Timing',
@@ -216,13 +256,15 @@ const REFERENCE_GROUPS = [
 function referenceLibrary() {
   return `<div id="search-results" class="reference-groups">${REFERENCE_GROUPS.map(group=>`<section class="reference-group" data-search-group><h3>${tx(group.title)}</h3><dl class="reference-list">${group.ids.map(id=>`<div class="reference-note" data-search="${id}"><dt>${escape(REFERENCE_LABELS[id])}</dt><dd>${paragraph(id)}</dd></div>`).join('')}</dl></section>`).join('')}</div>`;
 }
+function seasonGuideRoadmapLibrary() {
+  return `<div class="guide-roadmap">${SEASON_GUIDE_ROADMAP.map(group=>`<section class="guide-roadmap-week" data-search-group><h3>${tx('week')} ${escape(group.week)}</h3><div class="guide-disclosures">${group.guides.map(seasonLibraryDisclosure).join('')}</div></section>`).join('')}</div>`;
+}
 function guides() {
   const vsGuides=[...WEEKDAYS.map(day=>`vs-${day}`),'vs-secret-missions'];
-  const seasonGuides=Object.keys(SEASON_LIBRARY_GUIDES);
   const search=`<label class="search">${tx('search')}<input type="search" id="search" autocomplete="off"></label><p id="no-results" role="status" hidden>${tx('noResults')}</p>`;
   const techLibrary=`<div class="guide-disclosures">${techGuideDisclosure()}</div>`;
   const vsLibrary=`<div class="guide-disclosures">${vsGuides.map(guideDisclosure).join('')}</div>`;
-  const seasonLibrary=`<div class="guide-disclosures">${seasonGuides.map(seasonLibraryDisclosure).join('')}</div>`;
+  const seasonLibrary=seasonGuideRoadmapLibrary();
   const techSection=`<section class="section"><h2>RZSN TECH</h2>${techLibrary}</section>`;
   return `<h1>${tx('guides')}</h1><p class="intro">${tx('guidesIntro')}</p>${notice()}${search}<div class="guide-library">${techSection}${section('vs',vsLibrary)}${section('season',seasonLibrary)}</div>${section('quickReference',referenceLibrary())}`;
 }
