@@ -130,8 +130,12 @@ function frequencyText(task) {
 }
 function checklist(kind, tasks, s = state) {
   return `<ul class="checklist">${tasks.filter(task=>permitted(task.id)).map(task=>{
-    // Doom Walker remains a daily mark even when it is explained inside Season.
-    const itemKind=kind==='season' && task.id==='doom'?'daily':kind;
+    // Doom Walker remains a normal daily mark; pumpkin likes have their own Season-daily reset.
+    const itemKind=kind==='season' && task.id==='doom'
+      ? 'daily'
+      : kind==='season' && task.id==='pumpkinLikes'
+        ? 'seasonDaily'
+        : kind;
     const key=checklistKey(itemKind,s);
     const checks=checkedMap(storage.get(key));
     return `<li><label><input type="checkbox" data-check="${escape(task.id)}" data-key="${key}" data-kind="${itemKind}"${checks[task.id]?' checked':''}><span class="task-text">${tx(task.text || task.id)}${task.frequency && frequencyText(task)?`<small>${escape(frequencyText(task))}</small>`:''}</span></label></li>`;
@@ -147,7 +151,7 @@ function today() {
   const cards = priorities.filter(p=>p.id!=='notice').map(p=>`<li class="${p.id==='shield'?'warning':''}" data-priority="${p.id}"><span class="badge">${tx(p.source)}</span>${p.id==='arms'?arms(state,guide):p.id==='save'?list(guide.save.filter(permitted)):p.id==='shield'?`<h3>${tx(p.id)}</h3>`:paragraph(p.id)}</li>`).join('');
   const seasonPool=seasonTasks(state).filter(id=>!shown.has(id) && permitted(id));
   const seasonIds=(state.seasonDay>=1 && state.seasonDay<=56
-    ? ['profession',...seasonPool.filter(id=>id!=='profession')]
+    ? ['profession','pumpkinLikes',...seasonPool.filter(id=>!['profession','pumpkinLikes'].includes(id))]
     : seasonPool).slice(0,state.seasonDay?2:1);
   const nextSeason = state.phase === 'PRE_SEASON' ? first24() : nextCards(1);
   return `<h1>MEMBER HUB</h1><p class="intro">${escape(longDate(state.date))}</p>${status()}${notice()}${enemyBusterBanner(state)}${starterGuide()}${section('focus',`<ul class="priority-list">${cards}</ul>`)}${section('daily',`${paragraph('dailyIntro')}${progress('daily',dailyTasks().map(task=>task.id))}${link('daily','checklist')}`)}${section('vs',`${paragraph('vsIntro')}<h3>${tx(state.weekday)}</h3>${minimum()}${guideCard(`vs-${state.weekday}`)}${!shown.has('arms')?details(t('bestArms'),arms(state,guide)):''}${!shown.has('save')?details(t('save'),list(guide.save.filter(permitted))):''}${link('vs','details')}`)}${section('season',`<h3>${escape(phaseLabel(state))}</h3>${list(seasonIds)}${link('season','details')}`)}${section('next',`<h3>${tx('tomorrow')} · ${tx(WEEKDAYS[(state.weekdayIndex+1)%7])}</h3>${nextSeason}`)}`;
@@ -188,7 +192,7 @@ function season() {
   const isPreSeason = state.phase === 'PRE_SEASON';
   const isDayOne = state.seasonDay === DAY_ONE_GROUP.day;
   const todayIds = isPreSeason ? ['prepSeason'] : isDayOne ? DAY_ONE_GROUP.tasks : [
-    ...(state.seasonDay >= 1 && state.seasonDay <= 56 ? ['profession','doom','resistanceCheck'] : []),
+    ...(state.seasonDay >= 1 && state.seasonDay <= 56 ? ['profession','pumpkinLikes','doom','resistanceCheck'] : []),
     ...seasonSynergies(state),
   ];
   const uniqueTodayIds = [...new Set(todayIds)].filter(id=>ids.includes(id));

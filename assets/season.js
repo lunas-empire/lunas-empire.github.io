@@ -29,6 +29,7 @@ export const SEASON_COPY = {
   finish:['Vor Season-Ende Season-Ressourcen und Rewards prüfen. Nichts unnötig verfallen lassen.','Before season end check seasonal resources and rewards. Avoid letting them expire.','До завершення сезону перевірити сезонні ресурси й нагороди. Не дати їм пропасти.','シーズン終了前に専用資源と報酬を確認。取り逃しや使い残しを減らす。','Avant la fin, vérifie ressources et récompenses saisonnières. Évite de les laisser expirer.','Prima della fine controlla risorse e ricompense stagionali. Evita di farle scadere.','Sebelum Season berakhir, cek sumber daya dan hadiah Season agar tidak terbuang.'],
   after:['Season 1 ist abgeschlossen. Daily und VS bleiben relevant; weitere Season-Calls folgen von R4/R5.','Season 1 is complete. Daily and VS remain relevant; follow R4/R5 for future season calls.','Сезон 1 завершено. Щоденні справи й VS залишаються актуальними; чекайте нових вказівок R4/R5.','シーズン1は終了。日課とVSは継続し、次のシーズンはR4/R5の案内を確認。','La saison 1 est terminée. Daily et VS restent utiles ; suis R4/R5 pour la suite.','La stagione 1 è conclusa. Daily e VS restano utili; segui R4/R5 per le prossime indicazioni.','Season 1 selesai. Rutinitas harian dan VS tetap berjalan; tunggu arahan Season berikutnya dari R4/R5.'],
   profession:['Profession Hall täglich prüfen: Skillpunkte nicht liegen lassen. Früh Engineer nutzen; zuerst Profession-EXP beschleunigen, danach Build/Research for Free und Build/Research Now priorisieren.','Check the Profession Hall every day: do not leave skill points unused. Use Engineer early; accelerate Profession EXP first, then prioritize Build/Research for Free and Build/Research Now.','Щодня перевіряйте Profession Hall і не залишайте Skill Points невикористаними. На старті обирайте Engineer: спочатку прискорюйте Profession EXP, потім Build/Research for Free та Build/Research Now.','Profession Hallを毎日確認し、Skill Pointsを余らせない。序盤はEngineerを使い、まずProfession EXPを加速、その後Build/Research for FreeとBuild/Research Nowを優先。','Vérifie le Profession Hall chaque jour et ne laisse pas de Skill Points inutilisés. Commence avec Engineer : accélère d’abord la Profession EXP, puis priorise Build/Research for Free et Build/Research Now.','Controlla ogni giorno il Profession Hall e non lasciare Skill Points inutilizzati. All’inizio usa Engineer: prima accelera la Profession EXP, poi dai priorità a Build/Research for Free e Build/Research Now.','Cek Profession Hall setiap hari dan jangan biarkan Skill Points menganggur. Gunakan Engineer di awal: percepat Profession EXP terlebih dahulu, lalu prioritaskan Build/Research for Free dan Build/Research Now.'],
+  pumpkinLikes:['Täglich 10 Kürbis-Skins liken.','Like 10 Pumpkin Skins every day.','Щодня поставити вподобайку 10 Pumpkin Skins.','毎日Pumpkin Skinsを10個「いいね」する。','Aime 10 Pumpkin Skins chaque jour.','Metti Mi piace a 10 Pumpkin Skins ogni giorno.','Like 10 Pumpkin Skins setiap hari.'],
 };
 export const SEASON_CONTENT = {
   PRE_SEASON:['prepSeason','pass'],
@@ -57,13 +58,13 @@ export const EVENTS = [
 // Day 1 and the first 24 hours are one member workflow, not separate posts.
 export const DAY_ONE_GROUP = Object.freeze({
   day:1,
-  tasks:Object.freeze(['pass','firstBlood','farms','vri','profession']),
+  tasks:Object.freeze(['pass','firstBlood','farms','vri','profession','pumpkinLikes']),
   facts:Object.freeze(['farmRate','pass','resistanceCheck','profession']),
 });
 export function seasonTasks(state) {
   const ids = [...SEASON_CONTENT[state.phase]];
   if (state.seasonDay >= 1 && state.seasonDay <= 56) {
-    ids.push('profession','doom','resistanceCheck');
+    ids.push('profession','pumpkinLikes','doom','resistanceCheck');
     if (state.seasonDay === DAY_ONE_GROUP.day) ids.unshift(...DAY_ONE_GROUP.tasks);
   }
   return [...new Set(ids)];

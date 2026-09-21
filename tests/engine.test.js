@@ -85,13 +85,21 @@ test('season events and real synergies only',()=>{
 });
 test('Day 1 and first 24 hours share one canonical task group',()=>{
   const dayOne=state('2026-09-21T04:00:00+02:00');
-  assert.deepEqual(DAY_ONE_GROUP.tasks,['pass','firstBlood','farms','vri','profession']);
+  assert.deepEqual(DAY_ONE_GROUP.tasks,['pass','firstBlood','farms','vri','profession','pumpkinLikes']);
   assert.ok(DAY_ONE_GROUP.facts.includes('farmRate'));
   assert.ok(DAY_ONE_GROUP.facts.includes('resistanceCheck'));
   assert.ok(DAY_ONE_GROUP.facts.includes('profession'));
   for (const id of DAY_ONE_GROUP.tasks) assert.ok(seasonTasks(dayOne).includes(id));
   assert.ok(seasonTasks(dayOne).includes('profession'),'Profession Hall reminder is present on Season Day 1');
-  assert.ok(seasonTasks(state('2026-10-10T12:00:00+02:00')).includes('profession'),'Profession Hall reminder stays active on later Season days');
+  assert.ok(seasonTasks(dayOne).includes('pumpkinLikes'),'Pumpkin likes task is present on Season Day 1');
+  const laterSeason=state('2026-10-10T12:00:00+02:00');
+  assert.ok(seasonTasks(laterSeason).includes('profession'),'Profession Hall reminder stays active on later Season days');
+  assert.ok(seasonTasks(laterSeason).includes('pumpkinLikes'),'Pumpkin likes task stays active on later Season days');
+  for (const lang of Object.keys(LANGUAGES)) {
+    const text=translate(SEASON_COPY,'pumpkinLikes',lang);
+    assert.ok(text.trim(),`pumpkinLikes [${lang}]`);
+    assert.match(text,/10/,`pumpkinLikes count [${lang}]`);
+  }
   assert.equal(upcoming(state('2026-09-13T12:00:00+02:00'),3,[DAY_ONE_GROUP.day]).some(event=>event.day===1),false);
 });
 test('leadership wins and suppresses conflicting task',()=>{
@@ -155,4 +163,20 @@ test('Day 1 season purchase recommendation uses the current three prices',()=>{
   assert.ok(de.includes('1.000 Gold Bricks'));
   assert.ok(de.includes('2.000 Gold Bricks'));
   assert.doesNotMatch(de,/Optional fÃ¼r Farm 5/);
+});
+test('10 Pumpkin Skin likes are a daily Season checklist task',()=>{
+  const dayOne=state('2026-09-21T08:00:00+02:00');
+  const later=state('2026-10-10T12:00:00+02:00');
+  const pre=state('2026-09-20T12:00:00+02:00');
+  const post=state('2026-11-16T12:00:00+01:00');
+  assert.ok(seasonTasks(dayOne).includes('pumpkinLikes'));
+  assert.ok(seasonTasks(later).includes('pumpkinLikes'));
+  assert.ok(!seasonTasks(pre).includes('pumpkinLikes'));
+  assert.ok(!seasonTasks(post).includes('pumpkinLikes'));
+  assert.notEqual(checklistKey('seasonDaily',dayOne),checklistKey('seasonDaily',state('2026-09-22T08:00:00+02:00')));
+  for (const lang of Object.keys(LANGUAGES)) {
+    const text=translate(SEASON_COPY,'pumpkinLikes',lang);
+    assert.ok(text.trim(),lang);
+    assert.match(text,/10/,lang);
+  }
 });
