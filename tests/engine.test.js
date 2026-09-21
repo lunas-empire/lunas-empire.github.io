@@ -85,7 +85,7 @@ test('season events and real synergies only',()=>{
 });
 test('Day 1 and first 24 hours share one canonical task group',()=>{
   const dayOne=state('2026-09-21T04:00:00+02:00');
-  assert.deepEqual(DAY_ONE_GROUP.tasks,['firstBlood','farms','vri','profession']);
+  assert.deepEqual(DAY_ONE_GROUP.tasks,['pass','firstBlood','farms','vri','profession']);
   assert.ok(DAY_ONE_GROUP.facts.includes('farmRate'));
   assert.ok(DAY_ONE_GROUP.facts.includes('resistanceCheck'));
   assert.ok(DAY_ONE_GROUP.facts.includes('profession'));
@@ -140,4 +140,19 @@ test('first visits default to English and saved language choices persist',()=>{
   assert.deepEqual(resolveLanguagePreference('km',null),{lang:'km',needsSelection:false});
   assert.deepEqual(resolveLanguagePreference('fil',null),{lang:'fil',needsSelection:false});
   assert.deepEqual(resolveLanguagePreference('invalid','ja','de'),{lang:'ja',needsSelection:false});
+});
+test('Day 1 season purchase recommendation uses the current three prices',()=>{
+  assert.ok(DAY_ONE_GROUP.tasks.includes('pass'));
+  for (const lang of Object.keys(LANGUAGES)) {
+    const text=translate(SEASON_COPY,'pass',lang);
+    assert.match(text,/1[ .,Â ]?000/,lang);
+    assert.match(text,/2[ .,Â ]?000/,lang);
+    assert.ok(/Gold Bricks/i.test(text),lang);
+  }
+  const de=translate(SEASON_COPY,'pass','de');
+  assert.ok(de.includes('Season-Wochenpass'));
+  assert.ok(de.includes('1.000 Diamanten'));
+  assert.ok(de.includes('1.000 Gold Bricks'));
+  assert.ok(de.includes('2.000 Gold Bricks'));
+  assert.doesNotMatch(de,/Optional fÃ¼r Farm 5/);
 });
