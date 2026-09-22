@@ -123,6 +123,7 @@ progress{display:block;width:100%;height:.65rem;border:0;accent-color:var(--colo
 .guide-disclosure{border:1px solid var(--color-rule);border-radius:var(--radius-md);background:var(--color-panel);overflow:hidden;scroll-margin-top:calc(var(--nav-height) + 16px)}
 .guide-disclosure>summary{min-height:52px;display:flex;align-items:center;padding:var(--space-sm) var(--space-md);font-family:var(--font-display);font-weight:700;font-size:1.05rem;cursor:pointer;color:var(--color-ink)}
 .guide-disclosure[open]>summary{border-bottom:1px solid var(--color-rule);color:var(--color-accent)}
+.guide-disclosure--search-match{border-color:var(--color-accent)}.guide-disclosure--search-match>summary{color:var(--color-accent)}
 .guide-disclosure .guide-card--inside{margin:0;border:0;border-radius:0;background:transparent}
 .season-library-images{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-md);min-width:0}
 .season-library-images .guide-figure{margin:0}

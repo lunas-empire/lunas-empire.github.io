@@ -516,14 +516,37 @@ main.addEventListener('input',event=>{
     const haystack=(el.textContent+(el.dataset.searchExtra||'')).toLocaleLowerCase(LOCALES[lang]);
     el.hidden=!haystack.includes(query);
     if (!el.hidden) found++;
-    if (el.matches('.guide-disclosure')) el.open=Boolean(query) && !el.hidden;
+    if (el.matches('.guide-disclosure')) {
+      el.classList.toggle('guide-disclosure--search-match',Boolean(query) && !el.hidden);
+      if (query) el.open=false;
+    }
   });
-  main.querySelectorAll('.profession-path__section').forEach((section,index)=>{
-    section.open=query ? section.textContent.toLocaleLowerCase(LOCALES[lang]).includes(query) : index===0;
+  main.querySelectorAll('.profession-path__section,.tech-guide__topic').forEach(section=>{
+    section.hidden=false;
+    section.open=false;
   });
-  main.querySelectorAll('.tech-guide__topic').forEach(section=>{
-    section.open=Boolean(query) && section.textContent.toLocaleLowerCase(LOCALES[lang]).includes(query);
-  });
+  main.querySelectorAll('.tech-guide__phase').forEach(phase=>{phase.hidden=false;});
+  if (query) {
+    main.querySelectorAll('.guide-disclosure:not([hidden])').forEach(disclosure=>{
+      const summary=disclosure.querySelector(':scope > summary');
+      const titleMatch=summary?.textContent.toLocaleLowerCase(LOCALES[lang]).includes(query);
+      if (titleMatch) return;
+      disclosure.querySelectorAll('.profession-path__section,.tech-guide__topic').forEach(section=>{
+        section.hidden=!section.textContent.toLocaleLowerCase(LOCALES[lang]).includes(query);
+      });
+      disclosure.querySelectorAll('.tech-guide__phase').forEach(phase=>{
+        const topics=[...phase.querySelectorAll(':scope > .tech-guide__topic')];
+        const headingMatch=phase.querySelector(':scope > h3')?.textContent.toLocaleLowerCase(LOCALES[lang]).includes(query);
+        const standaloneMatch=!topics.length && phase.textContent.toLocaleLowerCase(LOCALES[lang]).includes(query);
+        if (headingMatch) topics.forEach(topic=>{topic.hidden=false;});
+        phase.hidden=!headingMatch && !standaloneMatch && !phase.querySelector(':scope > .tech-guide__topic:not([hidden])');
+      });
+    });
+  } else {
+    main.querySelectorAll('.tech-guide__phase').forEach(phase=>{phase.hidden=false;});
+    const firstProfession=main.querySelector('.profession-path__section');
+    if (firstProfession) firstProfession.open=true;
+  }
   main.querySelectorAll('[data-search-group]').forEach(group=>{group.hidden=!group.querySelector('[data-search]:not([hidden])');});
   document.querySelector('#no-results').hidden=found>0;
 });
