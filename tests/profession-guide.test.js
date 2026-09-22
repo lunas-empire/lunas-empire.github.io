@@ -7,19 +7,25 @@ import { SEASON_LIBRARY_COPY } from '../assets/season-library.js';
 
 const escape=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 
-test('Engineer profession guide contains the RZSN Season 1 skill path',()=>{
+test('Engineer profession guide contains the reviewed RZSN Season 1 path',()=>{
   const html=professionGuideHtml('en',escape);
   for (const text of [
-    'Combat Experience 3/3','Building Inspiration I 3/3',
+    'Combat Experience 3/3','Outstanding Contribution 1/1',
+    'Extra Meal 1/1','Siege Mastery 1/5+','Building Inspiration I 3/3',
     'Build for Free 5/5','Research for Free 5/5',
     'Build Now 5/5','Research Now 5/5',
-    'Cooperative Construction 2/2','Cooperative Research 2/2',
-    'Resource-Saving 5/5','Recycling 5/5','Drone Supply'
+    'Siege Inspiration 3/3',
+    'Cooperative Construction 1/2 → 2/2','Cooperative Research 1/2 → 2/2',
+    'Resource-Saving 5/5','Recycling 5/5','Professional Insights 5/5',
+    'Permanent core target'
   ]) assert.ok(html.includes(text),text);
-  assert.match(html,/Season 1 note: current guides list Lv40 as the S1 cap/);
-  assert.match(html,/Lv45\+ · later seasons/);
+  assert.match(html,/Season 1 caps at Profession Lv40/);
+  assert.match(html,/green right-hand column is season-specific/);
+  assert.ok(html.includes('Lv40 cap · review / respec'));
   assert.equal((html.match(/profession-path__section/g)||[]).length,3);
-  assert.ok(PROFESSION_GUIDE_SEARCH.includes('Drone Supply'));
+  assert.ok(PROFESSION_GUIDE_SEARCH.includes('Recycling'));
+  assert.ok(PROFESSION_GUIDE_SEARCH.includes('Professional Insights'));
+  assert.ok(!html.includes('Drone Supply'));
 });
 
 test('profession copy no longer points members to Season Pass for profession changes',()=>{
