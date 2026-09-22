@@ -21,7 +21,7 @@ test('Engineer profession guide contains the reviewed RZSN Season 1 path',()=>{
   ]) assert.ok(html.includes(text),text);
   assert.match(html,/Season 1 caps at Profession Lv40/);
   assert.match(html,/green right-hand column is season-specific/);
-  assert.ok(html.includes('Lv40 cap · review / respec'));
+  assert.ok(html.includes('Level 40 · Final build'));
   assert.equal((html.match(/profession-path__section/g)||[]).length,3);
   assert.ok(PROFESSION_GUIDE_SEARCH.includes('Recycling'));
   assert.ok(PROFESSION_GUIDE_SEARCH.includes('Professional Insights'));

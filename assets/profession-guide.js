@@ -1,14 +1,14 @@
 const COPY={
 de:{
-title:'🛠 RZSN Engineer Skill Path',
+title:'Engineer Skill Path',
 intro:'Engineer ist für Season 1 die Wachstums-Empfehlung. Der neue Referenz-Screenshot bestätigt den permanenten Kern: Bau/Forschung maximieren, Recycling und Resource-Saving ab Lv35 sehr hoch priorisieren.',
 cap:'Season 1 endet bei Profession Lv40. Die rechte grüne Spalte ist saisonabhängig und darf nicht blind aus einem anderen Season-Screenshot übernommen werden. Für S1 gelten die aktuellen grünen S1-Skills im Live-Client.',
-now:'Leveling bis Lv40',
-later:'Lv30–35 · Core & Extra Points',
-future:'Lv40 Cap · Build prüfen / Respec',
+now:'Level 1–15 · Kernaufbau',
+later:'Level 20–35 · Wachstum',
+future:'Level 40 · Finaler Build',
 rule:'Prioritäts-Legende',
 ruleText:'MAX = möglichst voll ausbauen. 1+ = mindestens 1 Punkt, später gern maximieren. OPTIONAL = nur wenn Punkte/Spielstil passen.',
-tips:'Tipps & Nutzung',
+tips:'Nutzung & Respec',
 active:'Aktive Skills richtig nutzen',
 activeText:'Build Now nur mit laufenden Bauqueues; Research Now idealerweise mit zwei langen Forschungen. Cooperative Construction/Research vor dem Start neuer Builds/Research nutzen; die Buffs stapeln nicht.',
 reset:'Am Lv40-Cap neu bewerten',
@@ -16,15 +16,15 @@ resetText:'Profession-EXP-Skills sind beim Hochleveln extrem wertvoll. Sobald Lv
 verify:'Skillnamen und Season-Skills können je nach Client/Season leicht abweichen. Bei der rechten grünen Spalte immer den aktuellen S1-Live-Client prüfen.'
 },
 en:{
-title:'🛠 RZSN Engineer Skill Path',
+title:'Engineer Skill Path',
 intro:'Engineer is the Season 1 growth recommendation. The new reference image confirms the permanent core: max construction/research skills and strongly prioritize Recycling and Resource-Saving from Lv35.',
 cap:'Season 1 caps at Profession Lv40. The green right-hand column is season-specific and must not be copied blindly from another season screenshot. Use the current S1 green skills shown in your live client.',
-now:'Leveling to Lv40',
-later:'Lv30–35 · core & extra points',
-future:'Lv40 cap · review / respec',
+now:'Levels 1–15 · Core setup',
+later:'Levels 20–35 · Growth',
+future:'Level 40 · Final build',
 rule:'Priority legend',
 ruleText:'MAX = fill as far as possible. 1+ = take at least one point, then max later if points allow. OPTIONAL = only when points and playstyle justify it.',
-tips:'Tips & usage',
+tips:'Usage & respec',
 active:'Use active skills properly',
 activeText:'Use Build Now only with active build queues; use Research Now ideally with two long researches running. Use Cooperative Construction/Research before starting new builds/research; the buffs do not stack.',
 reset:'Review again at the Lv40 cap',
@@ -72,7 +72,7 @@ export function professionGuideHtml(lang,escape){
 const c=lang==='de'?COPY.de:COPY.en;
 const e=value=>escape(value);
 return `<section class="profession-path" data-profession-path>
-<div class="profession-path__hero"><span class="badge">ENGINEER</span><h3>${e(c.title)}</h3><p>${e(c.intro)}</p></div>
+<div class="profession-path__hero"><span class="badge">SEASON 1 · ENGINEER</span><h3>${e(c.title)}</h3><p>${e(c.intro)}</p></div>
 <aside class="profession-path__cap"><strong>S1 · LV40</strong><p>${e(c.cap)}</p></aside>
 <details class="profession-path__section"><summary>${e(c.now)}</summary>
 <div class="profession-path__body"><h4>${e(c.rule)}</h4><p>${e(c.ruleText)}</p>${rows(S1,e)}</div></details>

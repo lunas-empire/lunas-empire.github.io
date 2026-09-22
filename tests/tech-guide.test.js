@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { TECH_GUIDE_TITLE, TECH_GUIDE_HTML } from '../assets/tech-guide.js';
 
 test('RZSN Tech Guide ships the requested research strategy',()=>{
-  assert.equal(TECH_GUIDE_TITLE,'🔬 RZSN TECH GUIDE');
+  assert.equal(TECH_GUIDE_TITLE,'RZSN Tech Guide');
   for (const text of [
     '9 VS reward boxes / 7.2M points',
     'Secretary of Science',
@@ -18,7 +18,7 @@ test('RZSN Tech Guide ships the requested research strategy',()=>{
     'Never leave a Tech Center idle.'
   ]) assert.ok(TECH_GUIDE_HTML.includes(text),text);
   for (const title of [
-    'GENERAL TECH TIPS','HOW TO SPEED UP RESEARCH','PHASE 1 – FOUNDATION',
-    'PHASE 2 – HEROES, TROOPS &amp; T10','PHASE 3 – MASTERY','SIMPLE RZSN TECH ORDER'
+    'General principles','Research speed','Phase 01 · Foundation',
+    'Phase 02 · Heroes, troops &amp; T10','Phase 03 · Mastery','Recommended research order'
   ]) assert.ok(TECH_GUIDE_HTML.includes(title),title);
 });

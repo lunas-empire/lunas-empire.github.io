@@ -95,7 +95,7 @@ export const GUIDE_TEXT = Object.freeze({
 });
 
 export const GUIDE_COPY = {
-  guideTextTitle:["Bildinhalt als Text","Image content as text","Зміст зображення текстом","画像内容のテキスト版","Contenu de l’image en texte","Contenuto dell’immagine in testo","Isi gambar dalam bentuk teks"],
+  guideTextTitle:["Kurzüberblick","Guide overview","Короткий огляд","ガイド概要","Aperçu du guide","Panoramica guida","Ringkasan panduan"],
   guideTextIntro:["Alle wichtigen Angaben der Grafik stehen hier in deiner Sprache. Das Bild darunter ist nur eine visuelle Hilfe.","All important information from the graphic is written here in your language. The image below is only a visual aid.","Уся важлива інформація зі схеми подана тут вашою мовою. Зображення нижче — лише візуальна підказка.","画像の重要な情報をすべてこの言語で記載しています。下の画像は視覚的な補助です。","Toutes les informations importantes de l’image sont écrites ici dans ta langue. L’image ci-dessous sert seulement d’aide visuelle.","Tutte le informazioni importanti della grafica sono scritte qui nella tua lingua. L’immagine sotto è solo un aiuto visivo.","Semua informasi penting dari gambar ditulis di sini dalam bahasamu. Gambar di bawah hanya bantuan visual."],
   imageUnavailable:["Das Bild konnte gerade nicht geladen werden.","The image could not be loaded right now.","Зображення зараз не вдалося завантажити.","画像を読み込めませんでした。","L’image n’a pas pu être chargée pour le moment.","Impossibile caricare l’immagine in questo momento.","Gambar tidak dapat dimuat saat ini."],
   imageOpenOriginal:["Originalbild erneut öffnen","Open the original image again","Відкрити оригінал ще раз","元画像をもう一度開く","Ouvrir à nouveau l’image originale","Apri di nuovo l’immagine originale","Buka lagi gambar asli"],
