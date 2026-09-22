@@ -330,6 +330,30 @@ function openDirectGuide(guideId,{scroll=true}={}) {
   if (scroll) requestAnimationFrame(()=>target.scrollIntoView({behavior:'smooth',block:'start'}));
   return true;
 }
+function decorateGuidePreviews() {
+  const selectors='.guide-disclosure,.guide-text__block,.tech-guide__phase,.tech-guide__topic,.profession-path__section,.profession-path__tips-disclosure';
+  main.querySelectorAll(selectors).forEach(details=>{
+    const summary=details.querySelector(':scope > summary');
+    if (!summary || summary.querySelector(':scope > .disclosure-title')) return;
+    const title=document.createElement('span');
+    title.className='disclosure-title';
+    while (summary.firstChild) title.append(summary.firstChild);
+    summary.append(title);
+
+    const source=details.querySelector(
+      ':scope > .guide-card--inside,:scope > .tech-guide-shell,:scope > .guide-text__block-body,:scope > .tech-guide__phase-body,:scope > .tech-guide__topic-body,:scope > .profession-path__body,:scope > .profession-path__tips'
+    );
+    const previewNode=source?.querySelector('p:not(.guide-text__label),li');
+    const previewText=previewNode?.textContent.replace(/\s+/g,' ').trim();
+    if (!previewText) return;
+    const preview=document.createElement('span');
+    preview.className='disclosure-preview';
+    preview.setAttribute('aria-hidden','true');
+    preview.textContent=previewText;
+    summary.append(preview);
+    details.classList.add('disclosure-has-preview');
+  });
+}
 function render({focus = false,preserve = false} = {}) {
   const route=memberRoute(location.hash);
   if (route.view === 'main') { main.focus(); return; }
@@ -337,6 +361,7 @@ function render({focus = false,preserve = false} = {}) {
   const open = preserve ? new Set([...main.querySelectorAll('details[open][data-disclosure]')].map(el=>el.dataset.disclosure)) : null;
   main.innerHTML = views[currentView]();
   if (open) main.querySelectorAll('[data-disclosure]').forEach(el=>{el.open=open.has(el.dataset.disclosure);});
+  decorateGuidePreviews();
   syncChrome();
   document.title = `${t(currentView==='admin'?'admin':currentView)} · RZSN Member Hub`;
   const directGuide=openDirectGuide(route.guideId,{scroll:true});
@@ -530,14 +555,17 @@ main.addEventListener('input',event=>{
   if (query) {
     main.querySelectorAll('.guide-disclosure:not([hidden])').forEach(disclosure=>{
       const summary=disclosure.querySelector(':scope > summary');
-      const titleMatch=summary?.textContent.toLocaleLowerCase(LOCALES[lang]).includes(query);
+      const titleText=summary?.querySelector(':scope > .disclosure-title')?.textContent || summary?.textContent || '';
+      const titleMatch=titleText.toLocaleLowerCase(LOCALES[lang]).includes(query);
       if (titleMatch) return;
       disclosure.querySelectorAll('.profession-path__section,.tech-guide__topic').forEach(section=>{
         section.hidden=!section.textContent.toLocaleLowerCase(LOCALES[lang]).includes(query);
       });
       disclosure.querySelectorAll('.tech-guide__phase').forEach(phase=>{
         const topics=[...phase.querySelectorAll(':scope > .tech-guide__topic')];
-        const headingMatch=phase.querySelector(':scope > summary')?.textContent.toLocaleLowerCase(LOCALES[lang]).includes(query);
+        const phaseSummary=phase.querySelector(':scope > summary');
+        const headingText=phaseSummary?.querySelector(':scope > .disclosure-title')?.textContent || phaseSummary?.textContent || '';
+        const headingMatch=headingText.toLocaleLowerCase(LOCALES[lang]).includes(query);
         const standaloneMatch=!topics.length && phase.textContent.toLocaleLowerCase(LOCALES[lang]).includes(query);
         if (headingMatch) topics.forEach(topic=>{topic.hidden=false;});
         phase.hidden=!headingMatch && !standaloneMatch && !phase.querySelector(':scope > .tech-guide__topic:not([hidden])');
