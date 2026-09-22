@@ -49,7 +49,7 @@ function guideFigure(id) {
   return `<figure class="guide-figure"><a href="${media.src}" target="_blank" rel="noopener" aria-label="${escape(alt)} ${tx('imageHint')}"><img src="${media.src}" data-guide-image data-src="${media.src}" width="${media.width}" height="${media.height}" loading="lazy" decoding="async" alt="${escape(alt)}"></a><div class="guide-image-fallback" role="status" hidden><strong>${tx('imageUnavailable')}</strong><a href="${media.src}" target="_blank" rel="noopener">${tx('imageOpenOriginal')}</a></div><figcaption><strong>${escape(alt)}</strong><span>${tx('imageHint')}</span><small>${tx('imageLanguage')}</small></figcaption></figure>`;
 }
 function guideTextBlocks(title,blocks,{showTitle=true}={}) {
-  return `<section class="guide-text"><p class="guide-text__label">${tx('guideTextTitle')}</p>${showTitle?`<h3>${escape(title)}</h3>`:''}<p class="guide-text__intro">${tx('guideTextIntro')}</p><div class="guide-text__blocks">${blocks.map(block=>`<section class="guide-text__block${block.tone==='warning'?' guide-text__block--warning':''}"><h4>${tx(block.heading)}</h4><p>${tx(block.text)}</p></section>`).join('')}</div></section>`;
+  return `<section class="guide-text"><p class="guide-text__label">${tx('guideTextTitle')}</p>${showTitle?`<h3>${escape(title)}</h3>`:''}<div class="guide-text__blocks">${blocks.map(block=>`<details class="guide-text__block${block.tone==='warning'?' guide-text__block--warning':''}"><summary>${tx(block.heading)}</summary><div class="guide-text__block-body"><p>${tx(block.text)}</p></div></details>`).join('')}</div></section>`;
 }
 function guideText(id,{showTitle=true}={}) {
   return guideTextBlocks(guideAlt(MEMBER_MEDIA[id]),GUIDE_TEXT[id],{showTitle});
@@ -57,9 +57,10 @@ function guideText(id,{showTitle=true}={}) {
 const guideCard = id => `<article class="guide-card">${guideText(id)}${guideFigure(id)}</article>`;
 const guideShareButton = id => `<div class="guide-share-row"><button type="button" class="guide-share" data-share-guide="${escape(id)}">${tx('shareGuide')}</button></div>`;
 const guideGallery = ids => ids.length ? `<div class="guide-gallery">${ids.map(guideCard).join('')}</div>` : '';
+const guideMediaDisclosure=(content,count)=>`<details class="guide-media-disclosure"><summary>${tx('guideSources')} · ${count}</summary><div class="guide-media-disclosure__body">${content}</div></details>`;
 function guideDisclosure(id) {
   const title=guideAlt(MEMBER_MEDIA[id]);
-  return `<details class="guide-disclosure" data-search data-guide-id="${escape(id)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside">${guideShareButton(id)}${guideText(id,{showTitle:false})}${guideFigure(id)}</article></details>`;
+  return `<details class="guide-disclosure" data-search data-guide-id="${escape(id)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside">${guideShareButton(id)}${guideText(id,{showTitle:false})}${guideMediaDisclosure(guideFigure(id),1)}</article></details>`;
 }
 function seasonLibraryFigure(code,title) {
   const media=SEASON_LIBRARY_MEDIA[code];
@@ -69,7 +70,7 @@ function seasonLibraryFigure(code,title) {
 function seasonLibraryDisclosure(id) {
   const guide=SEASON_LIBRARY_GUIDES[id];
   const title=t(guide.title);
-  const images=`<div class="season-library-images">${guide.media.map(code=>seasonLibraryFigure(code,title)).join('')}</div>`;
+  const images=guideMediaDisclosure(`<div class="season-library-images">${guide.media.map(code=>seasonLibraryFigure(code,title)).join('')}</div>`,guide.media.length);
   const profession=id==='profession'?professionGuideHtml(lang,escape):'';
   const searchTerms=id==='profession'?` ${PROFESSION_GUIDE_SEARCH}`:'';
   return `<details class="guide-disclosure" data-search data-guide-id="${escape(id)}" data-season-guide="${escape(id)}" data-search-extra="${escape(searchTerms)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside">${guideShareButton(id)}${guideTextBlocks(title,guide.blocks,{showTitle:false})}${profession}${images}</article></details>`;
@@ -536,7 +537,7 @@ main.addEventListener('input',event=>{
       });
       disclosure.querySelectorAll('.tech-guide__phase').forEach(phase=>{
         const topics=[...phase.querySelectorAll(':scope > .tech-guide__topic')];
-        const headingMatch=phase.querySelector(':scope > h3')?.textContent.toLocaleLowerCase(LOCALES[lang]).includes(query);
+        const headingMatch=phase.querySelector(':scope > summary')?.textContent.toLocaleLowerCase(LOCALES[lang]).includes(query);
         const standaloneMatch=!topics.length && phase.textContent.toLocaleLowerCase(LOCALES[lang]).includes(query);
         if (headingMatch) topics.forEach(topic=>{topic.hidden=false;});
         phase.hidden=!headingMatch && !standaloneMatch && !phase.querySelector(':scope > .tech-guide__topic:not([hidden])');
@@ -544,8 +545,6 @@ main.addEventListener('input',event=>{
     });
   } else {
     main.querySelectorAll('.tech-guide__phase').forEach(phase=>{phase.hidden=false;});
-    const firstProfession=main.querySelector('.profession-path__section');
-    if (firstProfession) firstProfession.open=true;
   }
   main.querySelectorAll('[data-search-group]').forEach(group=>{group.hidden=!group.querySelector('[data-search]:not([hidden])');});
   document.querySelector('#no-results').hidden=found>0;

@@ -8,6 +8,7 @@ later:'Lv30–35 · Core & Extra Points',
 future:'Lv40 Cap · Build prüfen / Respec',
 rule:'Prioritäts-Legende',
 ruleText:'MAX = möglichst voll ausbauen. 1+ = mindestens 1 Punkt, später gern maximieren. OPTIONAL = nur wenn Punkte/Spielstil passen.',
+tips:'Tipps & Nutzung',
 active:'Aktive Skills richtig nutzen',
 activeText:'Build Now nur mit laufenden Bauqueues; Research Now idealerweise mit zwei langen Forschungen. Cooperative Construction/Research vor dem Start neuer Builds/Research nutzen; die Buffs stapeln nicht.',
 reset:'Am Lv40-Cap neu bewerten',
@@ -23,6 +24,7 @@ later:'Lv30–35 · core & extra points',
 future:'Lv40 cap · review / respec',
 rule:'Priority legend',
 ruleText:'MAX = fill as far as possible. 1+ = take at least one point, then max later if points allow. OPTIONAL = only when points and playstyle justify it.',
+tips:'Tips & usage',
 active:'Use active skills properly',
 activeText:'Use Build Now only with active build queues; use Research Now ideally with two long researches running. Use Cooperative Construction/Research before starting new builds/research; the buffs do not stack.',
 reset:'Review again at the Lv40 cap',
@@ -72,12 +74,11 @@ const e=value=>escape(value);
 return `<section class="profession-path" data-profession-path>
 <div class="profession-path__hero"><span class="badge">ENGINEER</span><h3>${e(c.title)}</h3><p>${e(c.intro)}</p></div>
 <aside class="profession-path__cap"><strong>S1 · LV40</strong><p>${e(c.cap)}</p></aside>
-<details class="profession-path__section" open><summary>${e(c.now)}</summary>
+<details class="profession-path__section"><summary>${e(c.now)}</summary>
 <div class="profession-path__body"><h4>${e(c.rule)}</h4><p>${e(c.ruleText)}</p>${rows(S1,e)}</div></details>
 <details class="profession-path__section"><summary>${e(c.later)}</summary><div class="profession-path__body">${rows(MID,e)}</div></details>
 <details class="profession-path__section"><summary>${e(c.future)}</summary><div class="profession-path__body">${rows(CAP,e)}</div></details>
-<div class="profession-path__tips"><article><h4>${e(c.active)}</h4><p>${e(c.activeText)}</p></article><article><h4>${e(c.reset)}</h4><p>${e(c.resetText)}</p></article></div>
-<p class="profession-path__verify">${e(c.verify)}</p>
+<details class="profession-path__tips-disclosure"><summary>${e(c.tips)}</summary><div class="profession-path__tips"><article><h4>${e(c.active)}</h4><p>${e(c.activeText)}</p></article><article><h4>${e(c.reset)}</h4><p>${e(c.resetText)}</p></article><p class="profession-path__verify">${e(c.verify)}</p></div></details>
 </section>`;
 }
 export const PROFESSION_GUIDE_SEARCH='Engineer Profession Hall Combat Experience Outstanding Contribution Rapid Production Extra Meal Siege Mastery Building Inspiration Build for Free Research for Free Build Now Research Now Double Exchange Siege Inspiration Friendly Aid Cooperative Construction Cooperative Research Resource-Saving Recycling Professional Insights Medical Aid Friendly Shield Lv40';
