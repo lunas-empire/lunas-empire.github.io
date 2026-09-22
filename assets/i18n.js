@@ -1,16 +1,16 @@
-// Bundled translations. Column order for the seven base languages is stable.
-import AR from './i18n-ar.js';
-import KO from './i18n-ko.js';
-import SV from './i18n-sv.js';
-import PT from './i18n-pt.js';
-import NL from './i18n-nl.js';
-import TH from './i18n-th.js';
-import KM from './i18n-km.js';
-import FIL from './i18n-fil.js';
-
+// Seven core languages stay in the main bundle; the remaining translations load on demand.
 export const LANGUAGES = {de:'Deutsch',en:'English',uk:'Українська',ja:'日本語',fr:'Français',it:'Italiano',id:'Bahasa Indonesia',ar:'العربية',ko:'한국어',sv:'Svenska',pt:'Português',nl:'Nederlands',th:'ไทย',km:'ខ្មែរ',fil:'Filipino'};
 export const LOCALES = {de:'de-DE',en:'en-GB',uk:'uk-UA',ja:'ja-JP',fr:'fr-FR',it:'it-IT',id:'id-ID',ar:'ar-SA-u-ca-gregory',ko:'ko-KR',sv:'sv-SE',pt:'pt-PT',nl:'nl-NL',th:'th-TH-u-ca-gregory',km:'km-KH-u-ca-gregory',fil:'fil-PH'};
-const EXTRA_TRANSLATIONS = {ar:AR,ko:KO,sv:SV,pt:PT,nl:NL,th:TH,km:KM,fil:FIL};
+const EXTRA_TRANSLATIONS = {};
+const EXTRA_LOADERS = {
+  ar:()=>import('./i18n-ar.js'),ko:()=>import('./i18n-ko.js'),sv:()=>import('./i18n-sv.js'),pt:()=>import('./i18n-pt.js'),
+  nl:()=>import('./i18n-nl.js'),th:()=>import('./i18n-th.js'),km:()=>import('./i18n-km.js'),fil:()=>import('./i18n-fil.js')
+};
+export async function loadLanguage(lang) {
+  const loader=EXTRA_LOADERS[lang];
+  if (!loader || EXTRA_TRANSLATIONS[lang]) return;
+  EXTRA_TRANSLATIONS[lang]=(await loader()).default;
+}
 export const UI = {
   today:['Heute','Today','Сьогодні','今日','Aujourd’hui','Oggi','Hari ini'],
   daily:['Täglich','Daily','Щодня','日課','Quotidien','Routine','Harian'],
@@ -97,11 +97,30 @@ export const UI = {
   linkCopied:['Link kopiert','Link copied','Посилання скопійовано','リンクをコピーしました','Lien copié','Link copiato','Tautan disalin'],
   noResults:['Keine Treffer. Versuche einen anderen Begriff.','No matches. Try another term.','Нічого не знайдено. Спробуйте інше слово.','該当する内容がありません。別の言葉で検索してください。','Aucun résultat. Essaie un autre terme.','Nessun risultato. Prova un altro termine.','Tidak ditemukan. Coba kata lain.'],
   allDone:['Alles auf deiner Liste erledigt.','Everything on your list is done.','Усе зі списку виконано.','リストの項目はすべて完了しました。','Tout est coché sur ta liste.','Hai completato tutta la lista.','Semua tugas dalam daftar sudah selesai.'],
+  settings:['Einstellungen','Settings','Налаштування','設定','Réglages','Impostazioni','Pengaturan'],
+  installApp:['App installieren','Install app','Встановити застосунок','アプリをインストール','Installer l’app','Installa app','Instal aplikasi'],
+  detectedSetup:['Sprache und Darstellung wurden automatisch erkannt.','Language and appearance were detected automatically.','Мову й оформлення визначено автоматично.','言語と表示設定を自動検出しました。','La langue et l’apparence ont été détectées automatiquement.','Lingua e aspetto sono stati rilevati automaticamente.','Bahasa dan tampilan terdeteksi otomatis.'],
+  change:['Ändern','Change','Змінити','変更','Modifier','Modifica','Ubah'],
+  filterAll:['Alle','All','Усі','すべて','Tous','Tutti','Semua'],
+  filterCurrent:['Aktuell','Current','Актуальне','現在','Actuel','Attuali','Saat ini'],
+  filterSeason:['Season','Season','Сезон','シーズン','Saison','Season','Season'],
+  filterVs:['VS','VS','VS','VS','VS','VS','VS'],
+  filterTech:['Tech','Tech','Технології','研究','Tech','Tech','Tech'],
+  filterAccount:['Account','Account','Акаунт','アカウント','Compte','Account','Akun'],
+  resultsCount:['{count} Treffer','{count} results','{count} результатів','{count}件','{count} résultats','{count} risultati','{count} hasil'],
+  backToGuides:['Zurück zu Guides','Back to guides','Назад до гайдів','ガイド一覧へ','Retour aux guides','Torna alle guide','Kembali ke panduan'],
+  backToTop:['Nach oben','Back to top','Вгору','トップへ','Haut de page','Torna su','Ke atas'],
+  shareSection:['Abschnitt teilen','Share section','Поділитися розділом','セクションを共有','Partager la section','Condividi sezione','Bagikan bagian'],
+  seasonNow:['Jetzt','Now','Зараз','現在','Maintenant','Ora','Sekarang'],
+  seasonWeekFocus:['Diese Woche','This week','Цього тижня','今週','Cette semaine','Questa settimana','Minggu ini'],
+  nextMilestone:['Nächster Meilenstein','Next milestone','Наступний етап','次の節目','Prochaine étape','Prossimo traguardo','Target berikutnya'],
   philosophy:['Wichtige Upgrades möglichst mit Rewards und Punkten kombinieren.','Time important upgrades to earn rewards and points together.','Поєднуйте важливі покращення з нагородами й очками.','大きな強化は、報酬とポイントを同時に得られるタイミングで。','Fais coïncider les améliorations importantes avec des récompenses et des points.','Combina gli upgrade importanti con ricompense e punti.','Lakukan upgrade penting saat bisa mendapat hadiah sekaligus poin.'],
 };
-export function resolveLanguagePreference(stored, legacy) {
+export function resolveLanguagePreference(stored, legacy, browserLanguages = []) {
   const saved = [stored,legacy].find(value=>Object.hasOwn(LANGUAGES,value));
-  return {lang:saved || 'en',needsSelection:!saved};
+  if (saved) return {lang:saved,needsSelection:false,detected:false};
+  const detected=[...browserLanguages].map(value=>String(value).toLowerCase().split('-')[0]).find(value=>Object.hasOwn(LANGUAGES,value));
+  return {lang:detected || 'en',needsSelection:false,detected:true};
 }
 export function translate(table, key, lang, values = {}) {
   const row = table[key];

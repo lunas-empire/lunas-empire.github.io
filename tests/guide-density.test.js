@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { TECH_GUIDE_HTML } from '../assets/tech-guide.js';
+import { techGuideHtml } from '../assets/tech-guide.js';
 import { professionGuideHtml } from '../assets/profession-guide.js';
 
 const app=await readFile(new URL('../assets/app.js',import.meta.url),'utf8');
@@ -26,8 +26,10 @@ test('closed guide accordions show a subtle real-content preview',()=>{
 });
 
 test('Tech and Profession guides start with their inner sections collapsed',()=>{
-  assert.ok((TECH_GUIDE_HTML.match(/class="tech-guide__phase/g)||[]).length>=6);
-  assert.doesNotMatch(TECH_GUIDE_HTML,/<section class="tech-guide__phase/);
+  const tech=techGuideHtml('en',escape);
+  assert.ok((tech.match(/class="tech-guide__phase/g)||[]).length>=6);
+  assert.doesNotMatch(tech,/<section class="tech-guide__phase/);
+  assert.doesNotMatch(tech,/tech-guide__phase[^>]* open/);
   const profession=professionGuideHtml('en',escape);
   assert.equal((profession.match(/class="profession-path__section"/g)||[]).length,3);
   assert.doesNotMatch(profession,/profession-path__section" open/);

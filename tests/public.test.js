@@ -56,7 +56,12 @@ test('all public assets, including i18n, are served; private paths are not',asyn
     }
     assert.ok(appSource.includes('data-guide-image') && appSource.includes('dataset.retried'),'guide images retry once before showing a fallback');
     assert.ok(appSource.includes('setupThemeChosen') && appSource.includes("activeTheme==='dark'?'light':'dark'"),'theme setup and icon toggle logic are shipped');
-    assert.ok(!appSource.includes('navigator.languages'),'fresh visits intentionally default to English instead of browser language');
+    assert.ok(appSource.includes('navigator.languages'),'fresh visits detect a supported browser language');
+    assert.ok(appSource.includes("navigator.serviceWorker.register('/service-worker.js')"),'PWA service worker is registered');
+    assert.equal((await fetch(url+'/manifest.webmanifest')).status,200,'PWA manifest is served');
+    assert.equal((await fetch(url+'/service-worker.js')).status,200,'service worker is served');
+    assert.ok(homepage.includes('rel="manifest" href="/manifest.webmanifest"'),'homepage links the PWA manifest');
+    assert.ok(homepage.includes('id="settings-open"') && homepage.includes('id="install-app"'),'menu exposes settings and install actions');
     assert.ok(cssSource.includes('select option{background-color:var(--color-panel);color:var(--color-ink)}'),'native language options have explicit contrast in both themes');
     assert.ok(cssSource.includes('.theme-toggle{width:44px'),'header theme toggle keeps a mobile touch target');
     assert.ok(cssSource.includes('grid-template-columns:repeat(12,minmax(0,1fr))'),'mobile VS days use a non-scrolling grid');

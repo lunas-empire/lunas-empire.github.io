@@ -3,7 +3,9 @@ export const GUIDE_CONFIG = {
   serverDayAnchor: { date: '2026-09-12', day: 144 },
   seasonStart: '2026-09-21T04:00:00+02:00', server: 2261,
 };
-export const BUILD_VERSION = '2026-09-22.14-staging';
+export const BUILD_VERSION_BASE = '2026-09-22.15';
+const productionHost='rzsn-home.github.io';
+export const BUILD_VERSION = globalThis.location?.hostname===productionHost ? BUILD_VERSION_BASE : `${BUILD_VERSION_BASE}-staging`;
 export const ALLIANCE_CONFIG = {
   vsDailyMinimum: 3600000,
   // The static route contains only an encrypted package; the password is never published.

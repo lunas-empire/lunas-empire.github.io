@@ -8,7 +8,8 @@ import { DAY_ONE_GROUP, SEASON_GUIDES, SEASON_ROADMAP, SEASON_GUIDE_ROADMAP, sea
 import { createStorage, checkedMap } from '../assets/storage.js';
 import { SEASON_COPY } from '../assets/season.js';
 import { SEASON_LIBRARY_GUIDES } from '../assets/season-library.js';
-import { UI, LANGUAGES, LOCALES, resolveLanguagePreference, translate } from '../assets/i18n.js';
+import { UI, LANGUAGES, LOCALES, resolveLanguagePreference, translate, loadLanguage } from '../assets/i18n.js';
+await Promise.all(Object.keys(LANGUAGES).map(loadLanguage));
 const state=date=>guideState(new Date(date));
 const cases=[
   ['2026-09-12T22:00:00+02:00',144,0,'PRE_SEASON'],
@@ -152,17 +153,18 @@ test('Season 1 guide images are assigned to the relevant weeks',()=>{
   assert.deepEqual(SEASON_GUIDES.SEASON_WEEK_6,['weapons']);
   assert.equal(SEASON_GUIDES.SEASON_WEEK_4,undefined);
 });
-test('first visits default to English and saved language choices persist',()=>{
-  assert.deepEqual(resolveLanguagePreference(null,null),{lang:'en',needsSelection:true});
-  assert.deepEqual(resolveLanguagePreference(null,null,'de'),{lang:'en',needsSelection:true});
-  assert.deepEqual(resolveLanguagePreference('de',null,'ja'),{lang:'de',needsSelection:false});
-  assert.deepEqual(resolveLanguagePreference('ar',null),{lang:'ar',needsSelection:false});
-  assert.deepEqual(resolveLanguagePreference('ko',null),{lang:'ko',needsSelection:false});
-  assert.deepEqual(resolveLanguagePreference('nl',null),{lang:'nl',needsSelection:false});
-  assert.deepEqual(resolveLanguagePreference('th',null),{lang:'th',needsSelection:false});
-  assert.deepEqual(resolveLanguagePreference('km',null),{lang:'km',needsSelection:false});
-  assert.deepEqual(resolveLanguagePreference('fil',null),{lang:'fil',needsSelection:false});
-  assert.deepEqual(resolveLanguagePreference('invalid','ja','de'),{lang:'ja',needsSelection:false});
+test('first visits detect browser language while saved choices persist',()=>{
+  assert.deepEqual(resolveLanguagePreference(null,null),{lang:'en',needsSelection:false,detected:true});
+  assert.deepEqual(resolveLanguagePreference(null,null,['de-DE']),{lang:'de',needsSelection:false,detected:true});
+  assert.deepEqual(resolveLanguagePreference(null,null,['es-ES','ja-JP']),{lang:'ja',needsSelection:false,detected:true});
+  assert.deepEqual(resolveLanguagePreference('de',null,['ja-JP']),{lang:'de',needsSelection:false,detected:false});
+  assert.deepEqual(resolveLanguagePreference('ar',null),{lang:'ar',needsSelection:false,detected:false});
+  assert.deepEqual(resolveLanguagePreference('ko',null),{lang:'ko',needsSelection:false,detected:false});
+  assert.deepEqual(resolveLanguagePreference('nl',null),{lang:'nl',needsSelection:false,detected:false});
+  assert.deepEqual(resolveLanguagePreference('th',null),{lang:'th',needsSelection:false,detected:false});
+  assert.deepEqual(resolveLanguagePreference('km',null),{lang:'km',needsSelection:false,detected:false});
+  assert.deepEqual(resolveLanguagePreference('fil',null),{lang:'fil',needsSelection:false,detected:false});
+  assert.deepEqual(resolveLanguagePreference('invalid','ja',['de-DE']),{lang:'ja',needsSelection:false,detected:false});
 });
 test('Day 1 season purchase recommendation uses the current three prices',()=>{
   assert.ok(DAY_ONE_GROUP.tasks.includes('pass'));

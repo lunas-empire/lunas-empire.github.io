@@ -1,10 +1,10 @@
 import { BUILD_VERSION, ALLIANCE_CONFIG, LIVE_NOTICE } from './config.js';
-import { LANGUAGES, LOCALES, UI, resolveLanguagePreference, translate } from './i18n.js';
+import { LANGUAGES, LOCALES, UI, resolveLanguagePreference, translate, loadLanguage } from './i18n.js';
 import { COPY, TASKS, DAILY_GUIDES } from './content.js';
 import { DAY_ONE_GROUP, SEASON_COPY, SEASON_CONTENT, SEASON_GUIDES, SEASON_ROADMAP, SEASON_GUIDE_ROADMAP, seasonTasks, seasonSynergies, seasonTodayTasks, seasonContext, isSeasonDailyTask, upcoming } from './season.js';
 import { GUIDE_COPY, GUIDE_TEXT, MEMBER_MEDIA } from './guide-text.js';
 import { SEASON_LIBRARY_COPY, SEASON_LIBRARY_GUIDES, SEASON_LIBRARY_MEDIA } from './season-library.js';
-import { TECH_GUIDE_HTML, TECH_GUIDE_TITLE } from './tech-guide.js';
+import { TECH_GUIDE_TITLE, techGuideHtml } from './tech-guide.js';
 import { professionGuideHtml, PROFESSION_GUIDE_SEARCH } from './profession-guide.js';
 import { memberRoute, guideHash, guideUrl } from './guide-links.js';
 import { DAY_MS, WEEKDAYS, guideState, selectedDate, checklistKey, armsWindow, availableTask, enemyBusterPhase } from './engine.js';
@@ -20,11 +20,16 @@ function legacyPreference(key) {
 }
 const storedLanguage = storage.get('rzsn-language', null);
 const legacyLanguage = legacyPreference('lw_lang');
-const languagePreference = resolveLanguagePreference(storedLanguage,legacyLanguage);
+const languagePreference = resolveLanguagePreference(storedLanguage,legacyLanguage,navigator.languages || [navigator.language]);
 let lang = languagePreference.lang;
+await loadLanguage(lang);
+if (languagePreference.detected) storage.set('rzsn-language',lang);
 let state = guideState();
 let selectedDay = state.weekdayIndex;
 let currentView = '';
+let guideFilter='all';
+let guideSearchQuery='';
+let guideContextObserver=null;
 const t = (key, values) => translate(dictionary,key,lang,values);
 const tx = (key, values) => escape(t(key,values));
 const main = document.querySelector('main');
@@ -34,6 +39,11 @@ const setupLanguage = document.querySelector('#setup-language');
 const themeOptions = document.querySelector('#theme-options');
 const setupContinue = document.querySelector('#setup-continue');
 const themeToggle = document.querySelector('#theme-toggle');
+const settingsOpen = document.querySelector('#settings-open');
+const installApp = document.querySelector('#install-app');
+const firstVisitNote = document.querySelector('#first-visit-note');
+const firstVisitSettings = document.querySelector('#first-visit-settings');
+const firstVisitDismiss = document.querySelector('#first-visit-dismiss');
 const phaseLabel = s => s.phase === 'PRE_SEASON' ? t('pre') : s.phase === 'POST_SEASON' ? t('post') : `${t('week')} ${s.week}`;
 const longDate = date => new Intl.DateTimeFormat(LOCALES[lang], {dateStyle:'full',timeZone:'UTC'}).format(new Date(`${date}T12:00:00Z`));
 const paragraph = key => `<p>${tx(key)}</p>`;
@@ -43,10 +53,11 @@ const details = (title, body, open = false, id = '') => `<details${open?' open':
 const link = (view, text) => `<a class="link-button" href="#${view}">${tx(text)} <span aria-hidden="true">→</span></a>`;
 const permitted = id => !LIVE_NOTICE.active || !LIVE_NOTICE.suppressTaskIds.includes(id);
 const guideAlt = media => media.day ? t('dayGuideAlt',{day:t(media.day)}) : t(media.alt);
+const guidePreviewSrc = src => src.replace('/assets/member/','/assets/member/preview/');
 function guideFigure(id) {
   const media=MEMBER_MEDIA[id];
   const alt=guideAlt(media);
-  return `<figure class="guide-figure"><a href="${media.src}" target="_blank" rel="noopener" aria-label="${escape(alt)} ${tx('imageHint')}"><img src="${media.src}" data-guide-image data-src="${media.src}" width="${media.width}" height="${media.height}" loading="lazy" decoding="async" alt="${escape(alt)}"></a><div class="guide-image-fallback" role="status" hidden><strong>${tx('imageUnavailable')}</strong><a href="${media.src}" target="_blank" rel="noopener">${tx('imageOpenOriginal')}</a></div><figcaption><strong>${escape(alt)}</strong><span>${tx('imageHint')}</span><small>${tx('imageLanguage')}</small></figcaption></figure>`;
+  return `<figure class="guide-figure"><a href="${media.src}" target="_blank" rel="noopener" aria-label="${escape(alt)} ${tx('imageHint')}"><img src="${guidePreviewSrc(media.src)}" data-guide-image data-src="${guidePreviewSrc(media.src)}" width="${media.width}" height="${media.height}" loading="lazy" fetchpriority="low" decoding="async" alt="${escape(alt)}"></a><div class="guide-image-fallback" role="status" hidden><strong>${tx('imageUnavailable')}</strong><a href="${media.src}" target="_blank" rel="noopener">${tx('imageOpenOriginal')}</a></div><figcaption><strong>${escape(alt)}</strong><span>${tx('imageHint')}</span><small>${tx('imageLanguage')}</small></figcaption></figure>`;
 }
 function guideTextBlocks(title,blocks,{showTitle=true}={}) {
   return `<section class="guide-text"><p class="guide-text__label">${tx('guideTextTitle')}</p>${showTitle?`<h3>${escape(title)}</h3>`:''}<div class="guide-text__blocks">${blocks.map(block=>`<details class="guide-text__block${block.tone==='warning'?' guide-text__block--warning':''}"><summary>${tx(block.heading)}</summary><div class="guide-text__block-body"><p>${tx(block.text)}</p></div></details>`).join('')}</div></section>`;
@@ -60,12 +71,22 @@ const guideGallery = ids => ids.length ? `<div class="guide-gallery">${ids.map(g
 const guideMediaDisclosure=(content,count)=>`<details class="guide-media-disclosure"><summary>${tx('guideSources')} · ${count}</summary><div class="guide-media-disclosure__body">${content}</div></details>`;
 function guideDisclosure(id) {
   const title=guideAlt(MEMBER_MEDIA[id]);
-  return `<details class="guide-disclosure" data-search data-guide-id="${escape(id)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside">${guideShareButton(id)}${guideText(id,{showTitle:false})}${guideMediaDisclosure(guideFigure(id),1)}</article></details>`;
+  const current=id===`vs-${state.weekday}`;
+  return `<details class="guide-disclosure" data-search data-filter-item data-guide-category="vs" data-guide-current="${current}" data-guide-id="${escape(id)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside">${guideShareButton(id)}${guideText(id,{showTitle:false})}${guideMediaDisclosure(guideFigure(id),1)}</article></details>`;
 }
 function seasonLibraryFigure(code,title) {
   const media=SEASON_LIBRARY_MEDIA[code];
   const alt=`${title} · #${code}`;
-  return `<figure class="guide-figure"><a href="${media.src}" target="_blank" rel="noopener" aria-label="${escape(alt)} ${tx('imageHint')}"><img src="${media.src}" data-guide-image data-src="${media.src}" width="${media.width}" height="${media.height}" loading="lazy" decoding="async" alt="${escape(alt)}"></a><div class="guide-image-fallback" role="status" hidden><strong>${tx('imageUnavailable')}</strong><a href="${media.src}" target="_blank" rel="noopener">${tx('imageOpenOriginal')}</a></div><figcaption><strong>${escape(alt)}</strong><span>${tx('imageHint')}</span><small>${tx('imageLanguage')}</small></figcaption></figure>`;
+  return `<figure class="guide-figure"><a href="${media.src}" target="_blank" rel="noopener" aria-label="${escape(alt)} ${tx('imageHint')}"><img src="${guidePreviewSrc(media.src)}" data-guide-image data-src="${guidePreviewSrc(media.src)}" width="${media.width}" height="${media.height}" loading="lazy" fetchpriority="low" decoding="async" alt="${escape(alt)}"></a><div class="guide-image-fallback" role="status" hidden><strong>${tx('imageUnavailable')}</strong><a href="${media.src}" target="_blank" rel="noopener">${tx('imageOpenOriginal')}</a></div><figcaption><strong>${escape(alt)}</strong><span>${tx('imageHint')}</span><small>${tx('imageLanguage')}</small></figcaption></figure>`;
+}
+function seasonGuideWeek(id) {
+  return SEASON_GUIDE_ROADMAP.find(group=>group.guides.includes(id))?.week ?? '';
+}
+function seasonGuideIsCurrent(id) {
+  const week=seasonGuideWeek(id);
+  if (typeof week==='number') return week===state.week;
+  const range=String(week).match(/(\d+)\D+(\d+)/);
+  return Boolean(range && state.week>=Number(range[1]) && state.week<=Number(range[2]));
 }
 function seasonLibraryDisclosure(id) {
   const guide=SEASON_LIBRARY_GUIDES[id];
@@ -73,10 +94,10 @@ function seasonLibraryDisclosure(id) {
   const images=guideMediaDisclosure(`<div class="season-library-images">${guide.media.map(code=>seasonLibraryFigure(code,title)).join('')}</div>`,guide.media.length);
   const profession=id==='profession'?professionGuideHtml(lang,escape):'';
   const searchTerms=id==='profession'?` ${PROFESSION_GUIDE_SEARCH}`:'';
-  return `<details class="guide-disclosure" data-search data-guide-id="${escape(id)}" data-season-guide="${escape(id)}" data-search-extra="${escape(searchTerms)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside">${guideShareButton(id)}${guideTextBlocks(title,guide.blocks,{showTitle:false})}${profession}${images}</article></details>`;
+  return `<details class="guide-disclosure" data-search data-filter-item data-guide-category="season" data-guide-current="${seasonGuideIsCurrent(id)}" data-guide-id="${escape(id)}" data-season-guide="${escape(id)}" data-search-extra="${escape(searchTerms)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside">${guideShareButton(id)}${guideTextBlocks(title,guide.blocks,{showTitle:false})}${profession}${images}</article></details>`;
 }
 function techGuideDisclosure() {
-  return `<details class="guide-disclosure guide-disclosure--tech" data-search data-guide-id="tech" data-tech-guide><summary>${escape(TECH_GUIDE_TITLE)}</summary><div class="tech-guide-shell">${guideShareButton('tech')}${TECH_GUIDE_HTML}</div></details>`;
+  return `<details class="guide-disclosure guide-disclosure--tech" data-search data-filter-item data-guide-id="tech" data-guide-category="tech" data-guide-current="false" data-tech-guide><summary>${escape(TECH_GUIDE_TITLE)}</summary><div class="tech-guide-shell">${guideShareButton('tech')}${techGuideHtml(lang,escape)}</div></details>`;
 }
 function notice() {
   if (!LIVE_NOTICE.active) return '';
@@ -252,6 +273,30 @@ function first24Body({withChecklist = false} = {}) {
 function first24({withChecklist = false, open = false} = {}) {
   return details(`${t('seasonDay')} 1 · ${t('first24')}`,first24Body({withChecklist}),open,'first24');
 }
+function seasonProgressFor(ids,s=state) {
+  let done=0;
+  for (const id of ids) {
+    const kind=isSeasonDailyTask(id,s)?'seasonDaily':'season';
+    const checks=checkedMap(storage.get(checklistKey(kind,s)));
+    if (checks[id]) done++;
+  }
+  return {done,total:ids.length};
+}
+function seasonCommand(todayIds,weekIds) {
+  const todayProgress=seasonProgressFor(todayIds);
+  const weekProgress=seasonProgressFor(weekIds);
+  const current=SEASON_ROADMAP.filter(entry=>entry.day===state.seasonDay);
+  const nowText=current.length?current.map(entry=>t(entry.label)).join(' · '):phaseLabel(state);
+  const next=SEASON_ROADMAP.find(entry=>entry.day>state.seasonDay);
+  const nextText=next?`${t('seasonDay')} ${next.day} · ${t(next.label)}`:t('post');
+  return `<section class="season-command" aria-label="${tx('season')}">
+    <button type="button" class="season-command__now" data-season-jump="season-today"><span class="badge">${tx('seasonNow')}</span><h2>${state.seasonDay?`${tx('seasonDay')} ${state.seasonDay}`:escape(phaseLabel(state))}</h2><p>${escape(nowText)}</p><strong>${tx('progress',{done:todayProgress.done,total:todayProgress.total})}</strong></button>
+    <div class="season-command__secondary">
+      <button type="button" data-season-jump="season-week"><span class="badge">${tx('seasonWeekFocus')}</span><strong>${escape(phaseLabel(state))}</strong><small>${tx('progress',{done:weekProgress.done,total:weekProgress.total})}</small></button>
+      <button type="button" data-season-jump="season-next"><span class="badge">${tx('nextMilestone')}</span><strong>${escape(nextText)}</strong></button>
+    </div>
+  </section>`;
+}
 function season() {
   const ids = seasonTasks(state);
   const current = state.week > 8 ? 9 : state.week;
@@ -268,7 +313,8 @@ function season() {
     ? first24({open:state.countdown<=3*DAY_MS})+nextCards(3,[DAY_ONE_GROUP.day])
     : nextCards();
   const timeline = Object.entries(SEASON_CONTENT).map(([phase,items],index)=>details(index===0?t('pre'):index===9?t('post'):`${t('week')} ${index}`,list(items)+guideGallery(SEASON_GUIDES[phase] || []),index===current || index===current+1,phase)).join('');
-  return `<h1>${tx('season')}</h1>${status()}${notice()}${section('today',todayBody)}${section('thisWeek',`<h3>${escape(phaseLabel(state))}</h3>${checklist('season',weekIds.map(id=>({id})))}`)}${section('next',nextBody)}${details(t('details'),timeline,false,'season-week-details')}${section('timeline',seasonRoadmapDisclosure())}`;
+  const command=seasonCommand(uniqueTodayIds,weekIds);
+  return `<h1>${tx('season')}</h1>${status()}${notice()}${command}<section class="section" id="season-today"><h2>${tx('today')}</h2>${todayBody}</section><section class="section" id="season-week"><h2>${tx('thisWeek')}</h2><h3>${escape(phaseLabel(state))}</h3>${checklist('season',weekIds.map(id=>({id})))}</section><section class="section" id="season-next"><h2>${tx('next')}</h2>${nextBody}</section>${details(t('details'),timeline,false,'season-week-details')}${section('timeline',seasonRoadmapDisclosure())}`;
 }
 const REFERENCE_LABELS = {
   safeServer:'Server 2261',minister:'Minister Buff',philosophy:'Upgrade Timing',
@@ -281,19 +327,26 @@ const REFERENCE_GROUPS = [
   {title:'guidePlanning',ids:['radarSave','star','ssr','chests']},
 ];
 function referenceLibrary() {
-  return `<div id="search-results" class="reference-groups">${REFERENCE_GROUPS.map(group=>`<section class="reference-group" data-search-group><h3>${tx(group.title)}</h3><dl class="reference-list">${group.ids.map(id=>`<div class="reference-note" data-search="${id}"><dt>${escape(REFERENCE_LABELS[id])}</dt><dd>${paragraph(id)}</dd></div>`).join('')}</dl></section>`).join('')}</div>`;
+  return `<div id="search-results" class="reference-groups">${REFERENCE_GROUPS.map(group=>`<section class="reference-group" data-search-group><h3>${tx(group.title)}</h3><dl class="reference-list">${group.ids.map(id=>`<div class="reference-note" data-search="${id}" data-filter-item data-guide-category="account" data-guide-current="false"><dt>${escape(REFERENCE_LABELS[id])}</dt><dd>${paragraph(id)}</dd></div>`).join('')}</dl></section>`).join('')}</div>`;
 }
 function seasonGuideRoadmapLibrary() {
   return `<div class="guide-roadmap">${SEASON_GUIDE_ROADMAP.map(group=>`<section class="guide-roadmap-week" data-search-group><h3>${tx('week')} ${escape(group.week)}</h3><div class="guide-disclosures">${group.guides.map(seasonLibraryDisclosure).join('')}</div></section>`).join('')}</div>`;
 }
+function guideFilterBar() {
+  const filters=[['all','filterAll'],['current','filterCurrent'],['season','filterSeason'],['vs','filterVs'],['tech','filterTech'],['account','filterAccount']];
+  return `<div class="guide-tools"><div class="guide-filters" role="group" aria-label="${tx('guides')}">${filters.map(([id,key])=>`<button type="button" data-guide-filter="${id}" aria-pressed="${id===guideFilter}">${tx(key)}</button>`).join('')}</div><span id="guide-results-count" class="guide-results-count"></span></div>`;
+}
+function guideContextBar() {
+  return `<div id="guide-context-bar" class="guide-context-bar" hidden><a href="#guides">${tx('backToGuides')}</a><strong data-guide-context-title></strong><button type="button" data-guide-top aria-label="${tx('backToTop')}">↑</button></div>`;
+}
 function guides() {
   const vsGuides=[...WEEKDAYS.map(day=>`vs-${day}`),'vs-secret-missions'];
-  const search=`<label class="search">${tx('search')}<input type="search" id="search" autocomplete="off"></label><p id="no-results" role="status" hidden>${tx('noResults')}</p>`;
+  const search=`<label class="search">${tx('search')}<input type="search" id="search" autocomplete="off" value="${escape(guideSearchQuery)}"></label><p id="no-results" role="status" hidden>${tx('noResults')}</p>`;
   const techLibrary=`<div class="guide-disclosures">${techGuideDisclosure()}</div>`;
   const vsLibrary=`<div class="guide-disclosures">${vsGuides.map(guideDisclosure).join('')}</div>`;
   const seasonLibrary=seasonGuideRoadmapLibrary();
-  const techSection=`<section class="section"><h2>RZSN TECH</h2>${techLibrary}</section>`;
-  return `<h1>${tx('guides')}</h1><p class="intro">${tx('guidesIntro')}</p>${notice()}${search}<div class="guide-library">${techSection}${section('vs',vsLibrary)}${section('season',seasonLibrary)}</div>${section('quickReference',referenceLibrary())}`;
+  const techSection=`<section class="section"><h2>${tx('filterTech')}</h2>${techLibrary}</section>`;
+  return `${guideContextBar()}<h1>${tx('guides')}</h1><p class="intro">${tx('guidesIntro')}</p>${notice()}${search}${guideFilterBar()}<div class="guide-library">${techSection}${section('vs',vsLibrary)}${section('season',seasonLibrary)}</div>${section('quickReference',referenceLibrary())}`;
 }
 const views = {today,daily,vs,season,guides,admin:()=>`<h1>${tx('admin')}</h1>${paragraph('adminPending')}`};
 function syncChrome() {
@@ -322,12 +375,18 @@ function showStorageError() {
   error.hidden = !storageFailed;
   error.textContent = t('unavailableStorage');
 }
-function openDirectGuide(guideId,{scroll=true}={}) {
+function openDirectGuide(guideId,{sectionId='',scroll=true}={}) {
   if (!guideId || currentView!=='guides') return false;
   const target=[...main.querySelectorAll('[data-guide-id]')].find(el=>el.dataset.guideId===guideId);
   if (!target) return false;
+  target.hidden=false;
   target.open=true;
-  if (scroll) requestAnimationFrame(()=>target.scrollIntoView({behavior:'smooth',block:'start'}));
+  let scrollTarget=target;
+  if (sectionId) {
+    const nested=[...target.querySelectorAll('[data-section-id]')].find(el=>el.dataset.sectionId===sectionId);
+    if (nested) { nested.hidden=false; nested.open=true; scrollTarget=nested; }
+  }
+  if (scroll) requestAnimationFrame(()=>scrollTarget.scrollIntoView({behavior:'auto',block:'start',inline:'nearest'}));
   return true;
 }
 function decorateGuidePreviews() {
@@ -345,26 +404,112 @@ function decorateGuidePreviews() {
     );
     const previewNode=source?.querySelector('p:not(.guide-text__label),li');
     const previewText=previewNode?.textContent.replace(/\s+/g,' ').trim();
-    if (!previewText) return;
-    const preview=document.createElement('span');
-    preview.className='disclosure-preview';
-    preview.setAttribute('aria-hidden','true');
-    preview.textContent=previewText;
-    summary.append(preview);
-    details.classList.add('disclosure-has-preview');
+    if (previewText) {
+      const preview=document.createElement('span');
+      preview.className='disclosure-preview';
+      preview.setAttribute('aria-hidden','true');
+      preview.textContent=previewText;
+      summary.append(preview);
+      details.classList.add('disclosure-has-preview');
+    }
+    const sectionId=details.dataset.sectionId;
+    const guide=details.closest('[data-guide-id]');
+    if (sectionId && guide && source && !source.querySelector(':scope > .section-share-row')) {
+      const row=document.createElement('div');
+      row.className='section-share-row';
+      row.innerHTML=`<button type="button" class="section-share" data-share-section="${escape(sectionId)}" data-share-guide="${escape(guide.dataset.guideId)}">${tx('shareSection')}</button>`;
+      source.prepend(row);
+    }
   });
+}
+function setupGuideContextBar() {
+  guideContextObserver?.disconnect();
+  guideContextObserver=null;
+  const bar=main.querySelector('#guide-context-bar');
+  if (!bar) return;
+  const openGuide=main.querySelector('.guide-disclosure[open][data-guide-id]');
+  if (!openGuide) { bar.hidden=true; return; }
+  const summary=openGuide.querySelector(':scope > summary');
+  const title=summary?.querySelector('.disclosure-title')?.textContent?.trim() || summary?.textContent?.trim() || '';
+  const titleEl=bar.querySelector('[data-guide-context-title]');
+  if (titleEl) titleEl.textContent=title;
+  guideContextObserver=new IntersectionObserver(entries=>{
+    bar.hidden=entries[0]?.isIntersecting!==false;
+  },{threshold:0,rootMargin:'-8px 0px 0px 0px'});
+  if (summary) guideContextObserver.observe(summary);
+}
+function highlightGuideLabel(element,query) {
+  if (!element) return;
+  const base=element.dataset.searchLabel || element.textContent || '';
+  if (!element.dataset.searchLabel) element.dataset.searchLabel=base;
+  element.replaceChildren();
+  if (!query) { element.textContent=base; return; }
+  const lower=base.toLocaleLowerCase(LOCALES[lang]);
+  const needle=query.toLocaleLowerCase(LOCALES[lang]);
+  const index=lower.indexOf(needle);
+  if (index<0) { element.textContent=base; return; }
+  element.append(document.createTextNode(base.slice(0,index)));
+  const mark=document.createElement('mark');
+  mark.textContent=base.slice(index,index+needle.length);
+  element.append(mark,document.createTextNode(base.slice(index+needle.length)));
+}
+function applyGuideFilters() {
+  if (currentView!=='guides') return;
+  const raw=guideSearchQuery.trim();
+  const query=raw.toLocaleLowerCase(LOCALES[lang]);
+  let found=0;
+  main.querySelectorAll('[data-filter-item]').forEach(item=>{
+    const filterMatch=guideFilter==='all'
+      || (guideFilter==='current' && item.dataset.guideCurrent==='true')
+      || item.dataset.guideCategory===guideFilter;
+    const haystack=(item.textContent+(item.dataset.searchExtra||'')).toLocaleLowerCase(LOCALES[lang]);
+    const searchMatch=!query || haystack.includes(query);
+    item.hidden=!(filterMatch && searchMatch);
+    if (!item.hidden) found++;
+
+    if (item.matches('.guide-disclosure')) {
+      item.classList.toggle('guide-disclosure--search-match',Boolean(query) && !item.hidden);
+      if (query) item.open=false;
+      const title=item.querySelector(':scope > summary > .disclosure-title');
+      highlightGuideLabel(title,raw);
+      const titleText=(title?.dataset.searchLabel || title?.textContent || '').toLocaleLowerCase(LOCALES[lang]);
+      const titleMatch=!query || titleText.includes(query);
+      const nested=item.querySelectorAll('.guide-text__block,.profession-path__section,.profession-path__tips-disclosure,.tech-guide__phase,.tech-guide__topic');
+      nested.forEach(section=>{
+        section.open=false;
+        section.hidden=Boolean(query) && !titleMatch && !section.textContent.toLocaleLowerCase(LOCALES[lang]).includes(query);
+      });
+    } else {
+      highlightGuideLabel(item.querySelector('dt'),raw);
+    }
+  });
+  main.querySelectorAll('[data-search-group]').forEach(group=>{
+    group.hidden=!group.querySelector('[data-filter-item]:not([hidden])');
+  });
+  main.querySelectorAll('.guide-library>.section').forEach(group=>{
+    group.hidden=!group.querySelector('[data-filter-item]:not([hidden])');
+  });
+  const referenceSection=main.querySelector('#search-results')?.closest('.section');
+  if (referenceSection) referenceSection.hidden=!referenceSection.querySelector('[data-filter-item]:not([hidden])');
+  const noResults=main.querySelector('#no-results');
+  if (noResults) noResults.hidden=found>0;
+  const count=main.querySelector('#guide-results-count');
+  if (count) count.textContent=t('resultsCount',{count:found});
 }
 function render({focus = false,preserve = false} = {}) {
   const route=memberRoute(location.hash);
   if (route.view === 'main') { main.focus(); return; }
   currentView = Object.hasOwn(views,route.view) ? route.view : 'today';
+  if (currentView==='guides' && route.guideId) { guideFilter='all'; guideSearchQuery=''; }
   const open = preserve ? new Set([...main.querySelectorAll('details[open][data-disclosure]')].map(el=>el.dataset.disclosure)) : null;
   main.innerHTML = views[currentView]();
   if (open) main.querySelectorAll('[data-disclosure]').forEach(el=>{el.open=open.has(el.dataset.disclosure);});
   decorateGuidePreviews();
   syncChrome();
   document.title = `${t(currentView==='admin'?'admin':currentView)} · RZSN Member Hub`;
-  const directGuide=openDirectGuide(route.guideId,{scroll:true});
+  if (currentView==='guides') applyGuideFilters();
+  const directGuide=openDirectGuide(route.guideId,{sectionId:route.sectionId,scroll:true});
+  if (currentView==='guides') requestAnimationFrame(setupGuideContextBar);
   if (focus && !directGuide) { main.focus({preventScroll:true}); window.scrollTo(0,0); }
 }
 function refreshClock() {
@@ -411,8 +556,9 @@ function setTheme(value,{persist=true}={}) {
   showStorageError();
 }
 setTheme(activeTheme,{persist:false});
-function setLanguage(value,{persist=true}={}) {
+async function setLanguage(value,{persist=true}={}) {
   if (!Object.hasOwn(LANGUAGES,value)) return;
+  await loadLanguage(value);
   lang=value;
   setupLanguageChosen=true;
   if (persist) storage.set('rzsn-language',lang);
@@ -422,8 +568,8 @@ function setLanguage(value,{persist=true}={}) {
   updateSetupReady();
   showStorageError();
 }
-document.querySelector('#language').addEventListener('change',event=>setLanguage(event.target.value));
-setupLanguage.addEventListener('change',event=>setLanguage(event.target.value));
+document.querySelector('#language').addEventListener('change',async event=>setLanguage(event.target.value));
+setupLanguage.addEventListener('change',async event=>setLanguage(event.target.value));
 themeOptions.addEventListener('click',event=>{
   const button=event.target.closest('[data-theme-choice]');
   if (!button) return;
@@ -435,7 +581,10 @@ setupContinue.addEventListener('click',()=>{
   storage.set('rzsn-language',lang);
   languageDialog.close();
 });
-languageDialog.addEventListener('cancel',event=>event.preventDefault());
+settingsOpen.addEventListener('click',()=>{menu.open=false;languageDialog.showModal();});
+firstVisitSettings.addEventListener('click',()=>{firstVisitNote.hidden=true;languageDialog.showModal();});
+firstVisitDismiss.addEventListener('click',()=>{firstVisitNote.hidden=true;storage.set('rzsn-first-visit-note',true);});
+languageDialog.addEventListener('cancel',event=>{event.preventDefault();languageDialog.close();});
 themeToggle.addEventListener('click',()=>{
   setupThemeChosen=true;
   setTheme(activeTheme==='dark'?'light':'dark');
@@ -480,9 +629,11 @@ main.addEventListener('click',async event=>{
   const button=event.target.closest('[data-share-guide]');
   if (!button) return;
   const id=button.dataset.shareGuide;
+  const sectionId=button.dataset.shareSection || '';
   const disclosure=button.closest('[data-guide-id]');
-  const title=disclosure?.querySelector(':scope > summary')?.textContent?.trim() || 'RZSN Guide';
-  const url=guideUrl(id,location.href);
+  const section=sectionId ? button.closest('[data-section-id]') : null;
+  const title=(section?.querySelector(':scope > summary') || disclosure?.querySelector(':scope > summary'))?.textContent?.trim() || 'RZSN Guide';
+  const url=guideUrl(id,location.href,sectionId);
   try {
     if (navigator.share) {
       await navigator.share({title,url});
@@ -536,46 +687,31 @@ main.addEventListener('change',event=>{
 });
 main.addEventListener('input',event=>{
   if (event.target.id!=='search') return;
-  const query=event.target.value.trim().toLocaleLowerCase(LOCALES[lang]);
-  let found=0;
-  main.querySelectorAll('[data-search]').forEach(el=>{
-    const haystack=(el.textContent+(el.dataset.searchExtra||'')).toLocaleLowerCase(LOCALES[lang]);
-    el.hidden=!haystack.includes(query);
-    if (!el.hidden) found++;
-    if (el.matches('.guide-disclosure')) {
-      el.classList.toggle('guide-disclosure--search-match',Boolean(query) && !el.hidden);
-      if (query) el.open=false;
-    }
-  });
-  main.querySelectorAll('.profession-path__section,.tech-guide__topic').forEach(section=>{
-    section.hidden=false;
-    section.open=false;
-  });
-  main.querySelectorAll('.tech-guide__phase').forEach(phase=>{phase.hidden=false;});
-  if (query) {
-    main.querySelectorAll('.guide-disclosure:not([hidden])').forEach(disclosure=>{
-      const summary=disclosure.querySelector(':scope > summary');
-      const titleText=summary?.querySelector(':scope > .disclosure-title')?.textContent || summary?.textContent || '';
-      const titleMatch=titleText.toLocaleLowerCase(LOCALES[lang]).includes(query);
-      if (titleMatch) return;
-      disclosure.querySelectorAll('.profession-path__section,.tech-guide__topic').forEach(section=>{
-        section.hidden=!section.textContent.toLocaleLowerCase(LOCALES[lang]).includes(query);
-      });
-      disclosure.querySelectorAll('.tech-guide__phase').forEach(phase=>{
-        const topics=[...phase.querySelectorAll(':scope > .tech-guide__topic')];
-        const phaseSummary=phase.querySelector(':scope > summary');
-        const headingText=phaseSummary?.querySelector(':scope > .disclosure-title')?.textContent || phaseSummary?.textContent || '';
-        const headingMatch=headingText.toLocaleLowerCase(LOCALES[lang]).includes(query);
-        const standaloneMatch=!topics.length && phase.textContent.toLocaleLowerCase(LOCALES[lang]).includes(query);
-        if (headingMatch) topics.forEach(topic=>{topic.hidden=false;});
-        phase.hidden=!headingMatch && !standaloneMatch && !phase.querySelector(':scope > .tech-guide__topic:not([hidden])');
-      });
-    });
-  } else {
-    main.querySelectorAll('.tech-guide__phase').forEach(phase=>{phase.hidden=false;});
+  guideSearchQuery=event.target.value;
+  applyGuideFilters();
+  setupGuideContextBar();
+});
+main.addEventListener('click',event=>{
+  const seasonJump=event.target.closest('[data-season-jump]');
+  if (seasonJump) {
+    document.getElementById(seasonJump.dataset.seasonJump)?.scrollIntoView({behavior:'smooth',block:'start'});
+    return;
   }
-  main.querySelectorAll('[data-search-group]').forEach(group=>{group.hidden=!group.querySelector('[data-search]:not([hidden])');});
-  document.querySelector('#no-results').hidden=found>0;
+  const filter=event.target.closest('[data-guide-filter]');
+  if (filter) {
+    guideFilter=filter.dataset.guideFilter;
+    main.querySelectorAll('[data-guide-filter]').forEach(button=>button.setAttribute('aria-pressed',String(button===filter)));
+    applyGuideFilters();
+    setupGuideContextBar();
+    return;
+  }
+  const top=event.target.closest('[data-guide-top]');
+  if (top) {
+    const openGuide=main.querySelector('.guide-disclosure[open][data-guide-id]');
+    (openGuide || main).scrollIntoView({behavior:'smooth',block:'start'});
+    return;
+  }
+  if (event.target.closest('.guide-disclosure>summary')) requestAnimationFrame(()=>setTimeout(setupGuideContextBar,0));
 });
 window.addEventListener('hashchange',()=>{menu.open=false;render({focus:true});});
 window.addEventListener('storage',()=>render({preserve:true}));
@@ -585,5 +721,25 @@ new ResizeObserver(entries=>{
 }).observe(document.querySelector('.main-nav'));
 document.addEventListener('visibilitychange',()=>{if (!document.hidden) refreshClock();});
 setInterval(refreshClock,15000);
+
+let installPrompt=null;
+window.addEventListener('beforeinstallprompt',event=>{
+  event.preventDefault();
+  installPrompt=event;
+  installApp.hidden=false;
+});
+installApp.addEventListener('click',async()=>{
+  if (!installPrompt) return;
+  menu.open=false;
+  await installPrompt.prompt();
+  await installPrompt.userChoice;
+  installPrompt=null;
+  installApp.hidden=true;
+});
+window.addEventListener('appinstalled',()=>{installPrompt=null;installApp.hidden=true;});
+if ('serviceWorker' in navigator && location.protocol==='https:') {
+  navigator.serviceWorker.register('/service-worker.js').catch(()=>{});
+}
+
 render();
-if (languagePreference.needsSelection || !setupThemeChosen) languageDialog.showModal();
+if (languagePreference.detected && !storage.get('rzsn-first-visit-note',false)) firstVisitNote.hidden=false;

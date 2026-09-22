@@ -2,8 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { COPY, DAILY_GUIDES } from '../assets/content.js';
 import { GUIDE_COPY } from '../assets/guide-text.js';
-import { UI, LANGUAGES, translate } from '../assets/i18n.js';
+import { UI, LANGUAGES, translate, loadLanguage } from '../assets/i18n.js';
 import { guideState, armsWindow } from '../assets/engine.js';
+await Promise.all(Object.keys(LANGUAGES).map(loadLanguage));
 
 const clockKeys=['enemyBusterUpcomingTitle','enemyBusterWindow','shield','gatheringPrep','drone'];
 const guideClockKeys=['guideVsSundayActions','guideVsMondayActions','guideVsTuesdayActions','guideVsWednesdayActions','guideVsThursdayActions','guideVsFridayActions','guideVsSaturdayActions'];

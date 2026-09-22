@@ -5,8 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="Daily Guide, VS Duel and Season 1 guide for RZSN – Rising Sun, Server 2261. Available in multiple languages.">
 <meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#101821">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>RZSN Member Hub – Last War Survival</title>
 <link rel="icon" href="/assets/sun.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/icon-192.png">
+<link rel="manifest" href="/manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&display=swap" rel="stylesheet">
@@ -31,10 +36,11 @@
 <label class="language"><span class="sr-only" data-ui="language">Language</span><select id="language"></select></label>
 <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Toggle appearance"><span aria-hidden="true">☀️</span></button>
 <details id="menu"><summary data-ui="menu">Menu</summary><div class="menu-panel">
-<a href="#guides" data-ui="guides">Guides</a><a id="admin-link" href="#admin" data-ui="admin">R4/R5 Admin</a>
+<a href="#guides" data-ui="guides">Guides</a><button type="button" id="settings-open" class="menu-action" data-ui="settings">Settings</button><button type="button" id="install-app" class="menu-action" data-ui="installApp" hidden>Install app</button><a id="admin-link" href="#admin" data-ui="admin">R4/R5 Admin</a>
 </div></details></div>
 </header>
 <nav class="main-nav" aria-label="Main"><a href="#today" data-ui="today">Today</a><a href="#daily" data-ui="daily">Daily</a><a href="#vs" data-ui="vs">VS Duel</a><a href="#season" data-ui="season">Season 1</a></nav>
+<div id="first-visit-note" class="first-visit-note" role="status" hidden><span data-ui="detectedSetup">Language and appearance were detected automatically.</span><button type="button" id="first-visit-settings" data-ui="change">Change</button><button type="button" id="first-visit-dismiss" aria-label="Dismiss">×</button></div>
 <main id="main" tabindex="-1"><h1>RZSN Member Hub</h1></main>
 <p id="storage-error" class="storage-error" role="status" hidden></p>
 <footer class="site-footer"><p id="override"></p><p id="honest"></p><small>RZSN · Rising Sun · Luna</small></footer>

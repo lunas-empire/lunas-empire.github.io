@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { professionGuideHtml, PROFESSION_GUIDE_SEARCH } from '../assets/profession-guide.js';
-import { LANGUAGES, translate } from '../assets/i18n.js';
+import { LANGUAGES, translate, loadLanguage } from '../assets/i18n.js';
 import { GUIDE_COPY } from '../assets/guide-text.js';
 import { SEASON_LIBRARY_COPY } from '../assets/season-library.js';
+await Promise.all(Object.keys(LANGUAGES).map(loadLanguage));
 
 const escape=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 
@@ -20,7 +21,7 @@ test('Engineer profession guide contains the reviewed RZSN Season 1 path',()=>{
     'Permanent core target'
   ]) assert.ok(html.includes(text),text);
   assert.match(html,/Season 1 caps at Profession Lv40/);
-  assert.match(html,/green right-hand column is season-specific/);
+  assert.match(html,/green right-hand branch is season-specific/);
   assert.ok(html.includes('Level 40 · Final build'));
   assert.equal((html.match(/profession-path__section/g)||[]).length,3);
   assert.ok(PROFESSION_GUIDE_SEARCH.includes('Recycling'));

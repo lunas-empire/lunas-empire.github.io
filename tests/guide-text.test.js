@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { LANGUAGES, translate } from '../assets/i18n.js';
+import { LANGUAGES, translate, loadLanguage } from '../assets/i18n.js';
 import { COPY } from '../assets/content.js';
 import { SEASON_COPY } from '../assets/season.js';
 import { GUIDE_COPY, GUIDE_TEXT, MEMBER_MEDIA } from '../assets/guide-text.js';
 import { SEASON_LIBRARY_COPY, SEASON_LIBRARY_GUIDES, SEASON_LIBRARY_MEDIA } from '../assets/season-library.js';
+await Promise.all(Object.keys(LANGUAGES).map(loadLanguage));
 
 test('every displayed guide image has complete localized text',()=>{
   assert.deepEqual(Object.keys(GUIDE_TEXT).sort(),Object.keys(MEMBER_MEDIA).sort());
