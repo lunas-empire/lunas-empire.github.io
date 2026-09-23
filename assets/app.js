@@ -68,7 +68,7 @@ function guideText(id,{showTitle=true}={}) {
 const guideCard = id => `<article class="guide-card">${guideText(id)}${guideFigure(id)}</article>`;
 const guideShareButton = id => `<div class="guide-share-row"><button type="button" class="guide-share" data-share-guide="${escape(id)}">${tx('shareGuide')}</button></div>`;
 const guideGallery = ids => ids.length ? `<div class="guide-gallery">${ids.map(guideCard).join('')}</div>` : '';
-const guideMediaDisclosure=(content,count)=>`<details class="guide-media-disclosure"><summary>${tx('guideSources')} · ${count}</summary><div class="guide-media-disclosure__body">${content}</div></details>`;
+const guideMediaDisclosure=(content,count)=>`<details class="guide-media-disclosure"><summary><span class="guide-media-summary__icon" aria-hidden="true"></span><span class="guide-media-summary__copy"><strong>${tx('guideMediaTitle')} (${count})</strong><small>${tx('guideMediaHint')}</small></span></summary><div class="guide-media-disclosure__body">${content}</div></details>`;
 function guideDisclosure(id) {
   const title=guideAlt(MEMBER_MEDIA[id]);
   const current=id===`vs-${state.weekday}`;

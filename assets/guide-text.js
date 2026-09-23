@@ -107,6 +107,8 @@ export const GUIDE_COPY = {
   guideBeforeUpdate:["Vor dem Server-Update","Before the server update","До оновлення сервера","サーバー更新前","Avant la mise à jour du serveur","Prima dell’aggiornamento del server","Sebelum pembaruan server"],
   guideSteps:["Reihenfolge","Order","Порядок","順番","Ordre","Ordine","Urutan"],
   guideSources:["Quellen","Sources","Джерела","入手先","Sources","Fonti","Sumber"],
+  guideMediaTitle:["Bildvorschau","Image preview","Попередній перегляд зображення","画像プレビュー","Aperçu de l’image","Anteprima immagine","Pratinjau gambar"],
+  guideMediaHint:["Screenshot / Referenzbild zum Guide · zum Öffnen tippen.","Screenshot / reference image for this guide · tap to open.","Скріншот / довідкове зображення до гайда · натисніть, щоб відкрити.","ガイドのスクリーンショット／参考画像 · タップして開く。","Capture / image de référence du guide · appuie pour ouvrir.","Screenshot / immagine di riferimento della guida · tocca per aprire.","Screenshot / gambar referensi untuk panduan · ketuk untuk membuka."],
   guideWhy:["Wozu dient es?","What is it for?","Для чого це?","何のため？","À quoi ça sert ?","A cosa serve?","Apa fungsinya?"],
   guideUpgrade:["Ausbauen","Upgrade","Покращення","強化","Amélioration","Potenziamento","Upgrade"],
   guideDetails:["Details","Details","Подробиці","詳細","Détails","Dettagli","Detail"],

@@ -22,6 +22,14 @@ test('every displayed guide image has complete localized text',()=>{
   }
 });
 
+test('guide media preview labels are localized in all public languages',()=>{
+  assert.equal(GUIDE_COPY.guideSources[0],'Quellen');
+  assert.equal(GUIDE_COPY.guideSources[1],'Sources');
+  for (const key of ['guideMediaTitle','guideMediaHint']) {
+    for (const lang of Object.keys(LANGUAGES)) assert.ok(translate(GUIDE_COPY,key,lang).trim(),`${key} [${lang}]`);
+  }
+});
+
 test('Mason UR guidance keeps Wall 160 as preparation, not a requirement',()=>{
   const [de,en]=GUIDE_COPY.guideTipsMason;
   assert.match(de,/5★.*Legendary Hero Badge/);
