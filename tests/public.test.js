@@ -51,6 +51,8 @@ test('all public assets, including i18n, are served; private paths are not',asyn
     const trainGuideSource=await (await fetch(url+'/assets/train-guide.js')).text();
     assert.ok(configSource.includes("adminUrl: '/admin/'"),'static build points at the encrypted admin route');
     assert.ok(appSource.includes('trainGuideDisclosure') && trainGuideSource.includes('50,000 Train Rating'),'Alliance Train guide is shipped and rendered');
+    assert.ok(trainGuideSource.includes('/assets/member/train-guide-ui.webp'),'Alliance Train guide includes the annotated screenshot');
+    assert.equal((await fetch(url+'/assets/member/train-guide-ui.webp')).status,200,'Alliance Train guide image is served');
     assert.ok(!appSource.includes("'vs-sunday-prep'"),'Sunday VS renders only the primary guide image');
     assert.ok(appSource.includes('SEASON_LIBRARY_GUIDES') && appSource.includes('seasonLibraryDisclosure'),'app renders the complete Season guide library');
     for (const id of ['basics','virus','weather','farmsVri','purge','serum','cityClash','weapons','wishHero','mason','legion','troopBoost','outposts','warDeclaration','octagon','builder','profession','rewards']) {

@@ -174,24 +174,34 @@ export const trainGuideSectionTitle=lang=>row(lang,'section');
 export function trainGuideHtml(lang,escape){
   const e=escape;
   const step=(title,body)=>`<section class="train-step"><h4>${e(title)}</h4><p>${e(body)}</p></section>`;
-  return `<div class="train-guide">
-    <p class="train-guide__intro">${e(row(lang,'intro'))}</p>
-    <div class="train-guide__where" aria-label="${e(row(lang,'whereTitle'))}">
-      <h4>${e(row(lang,'whereTitle'))}</h4>
-      <div class="train-guide__tap-grid">
-        <div><strong>Tickets</strong><span>${e(row(lang,'whereTickets'))}</span></div>
-        <div><strong>Refresh</strong><span>${e(row(lang,'whereRefresh'))}</span></div>
-        <div><strong>Save</strong><span>${e(row(lang,'whereSave'))}</span></div>
+  const alt=`${row(lang,'title')}. ${row(lang,'whereSave')}. ${row(lang,'whereRefresh')}. ${row(lang,'whereTickets')}.`;
+  const figure=`<figure class="train-guide__figure">
+    <a href="/assets/member/train-guide-ui.webp" target="_blank" rel="noopener" aria-label="${e(alt)}">
+      <img src="/assets/member/train-guide-ui.webp" width="360" height="781" loading="lazy" decoding="async" alt="${e(alt)}">
+    </a>
+    <figcaption><strong>${e(row(lang,'whereTitle'))}</strong><span>${e(row(lang,'whereSave'))} · ${e(row(lang,'whereRefresh'))} · ${e(row(lang,'whereTickets'))}</span></figcaption>
+  </figure>`;
+  return `<div class="train-guide train-guide--with-image">
+    ${figure}
+    <div class="train-guide__content">
+      <p class="train-guide__intro">${e(row(lang,'intro'))}</p>
+      <div class="train-guide__where" aria-label="${e(row(lang,'whereTitle'))}">
+        <h4>${e(row(lang,'whereTitle'))}</h4>
+        <div class="train-guide__tap-grid">
+          <div><strong>Tickets</strong><span>${e(row(lang,'whereTickets'))}</span></div>
+          <div><strong>Refresh</strong><span>${e(row(lang,'whereRefresh'))}</span></div>
+          <div><strong>Save</strong><span>${e(row(lang,'whereSave'))}</span></div>
+        </div>
       </div>
+      <div class="train-guide__flow" aria-label="Train flow">
+        <span>Invite</span><b>→</b><span>5x Refresh</span><b>→</b><span>Gold</span><b>→</b><span>Save</span><b>→</b><span>Improve</span>
+      </div>
+      ${step(row(lang,'goldTitle'),row(lang,'goldBody'))}
+      ${step(row(lang,'improveTitle'),row(lang,'improveBody'))}
+      ${step(row(lang,'saveTitle'),row(lang,'saveBody'))}
+      ${step(row(lang,'targetTitle'),row(lang,'targetBody'))}
+      ${step(row(lang,'lastTitle'),row(lang,'lastBody'))}
+      <aside class="card train-guide__rule"><strong>${e(row(lang,'rule'))}</strong></aside>
     </div>
-    <div class="train-guide__flow" aria-label="Train flow">
-      <span>Invite</span><b>→</b><span>5x Refresh</span><b>→</b><span>Gold</span><b>→</b><span>Save</span><b>→</b><span>Improve</span>
-    </div>
-    ${step(row(lang,'goldTitle'),row(lang,'goldBody'))}
-    ${step(row(lang,'improveTitle'),row(lang,'improveBody'))}
-    ${step(row(lang,'saveTitle'),row(lang,'saveBody'))}
-    ${step(row(lang,'targetTitle'),row(lang,'targetBody'))}
-    ${step(row(lang,'lastTitle'),row(lang,'lastBody'))}
-    <aside class="card train-guide__rule"><strong>${e(row(lang,'rule'))}</strong></aside>
   </div>`;
 }
