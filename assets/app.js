@@ -73,7 +73,7 @@ const guideMediaDisclosure=(content,count)=>`<details class="guide-media-disclos
 function guideDisclosure(id) {
   const title=guideAlt(MEMBER_MEDIA[id]);
   const current=id===`vs-${state.weekday}`;
-  return `<details class="guide-disclosure" data-search data-filter-item data-guide-category="vs" data-guide-current="${current}" data-guide-id="${escape(id)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside">${guideShareButton(id)}${guideText(id,{showTitle:false})}${guideMediaDisclosure(guideFigure(id),1)}</article></details>`;
+  return `<details class="guide-disclosure" data-search data-filter-item data-guide-category="vs" data-guide-current="${current}" data-guide-today="${current}" data-guide-label="${tx('today')}" data-guide-id="${escape(id)}"><summary data-guide-label="${tx('today')}">${escape(title)}</summary><article class="guide-card guide-card--inside">${guideShareButton(id)}${guideText(id,{showTitle:false})}${guideMediaDisclosure(guideFigure(id),1)}</article></details>`;
 }
 function seasonLibraryFigure(code,title) {
   const media=SEASON_LIBRARY_MEDIA[code];
@@ -89,13 +89,18 @@ function seasonGuideIsCurrent(id) {
   const range=String(week).match(/(\d+)\D+(\d+)/);
   return Boolean(range && state.week>=Number(range[1]) && state.week<=Number(range[2]));
 }
+function seasonGuideIsToday(id) {
+  return SEASON_ROADMAP.some(item=>item.day===state.seasonDay && item.guides.includes(id));
+}
 function seasonLibraryDisclosure(id) {
   const guide=SEASON_LIBRARY_GUIDES[id];
   const title=t(guide.title);
   const images=guideMediaDisclosure(`<div class="season-library-images">${guide.media.map(code=>seasonLibraryFigure(code,title)).join('')}</div>`,guide.media.length);
   const profession=id==='profession'?professionGuideHtml(lang,escape):'';
   const searchTerms=id==='profession'?` ${PROFESSION_GUIDE_SEARCH}`:'';
-  return `<details class="guide-disclosure" data-search data-filter-item data-guide-category="season" data-guide-current="${seasonGuideIsCurrent(id)}" data-guide-id="${escape(id)}" data-season-guide="${escape(id)}" data-search-extra="${escape(searchTerms)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside">${guideShareButton(id)}${guideTextBlocks(title,guide.blocks,{showTitle:false})}${profession}${images}</article></details>`;
+  const today=seasonGuideIsToday(id);
+  const current=seasonGuideIsCurrent(id)||today;
+  return `<details class="guide-disclosure" data-search data-filter-item data-guide-category="season" data-guide-current="${current}" data-guide-today="${today}" data-guide-label="${tx('today')}" data-guide-id="${escape(id)}" data-season-guide="${escape(id)}" data-search-extra="${escape(searchTerms)}"><summary data-guide-label="${tx('today')}">${escape(title)}</summary><article class="guide-card guide-card--inside">${guideShareButton(id)}${guideTextBlocks(title,guide.blocks,{showTitle:false})}${profession}${images}</article></details>`;
 }
 function techGuideDisclosure() {
   return `<details class="guide-disclosure guide-disclosure--tech" data-search data-filter-item data-guide-id="tech" data-guide-category="tech" data-guide-current="false" data-tech-guide><summary>${escape(TECH_GUIDE_TITLE)}</summary><div class="tech-guide-shell">${guideShareButton('tech')}${techGuideHtml(lang,escape)}</div></details>`;
@@ -334,8 +339,23 @@ const REFERENCE_GROUPS = [
 function referenceLibrary() {
   return `<div id="search-results" class="reference-groups">${REFERENCE_GROUPS.map(group=>`<section class="reference-group" data-search-group><h3>${tx(group.title)}</h3><dl class="reference-list">${group.ids.map(id=>`<div class="reference-note" data-search="${id}" data-filter-item data-guide-category="account" data-guide-current="false"><dt>${escape(REFERENCE_LABELS[id])}</dt><dd>${paragraph(id)}</dd></div>`).join('')}</dl></section>`).join('')}</div>`;
 }
+function seasonWeekIsCurrent(week) {
+  if (typeof week==='number') return week===state.week;
+  const range=String(week).match(/(\d+)\D+(\d+)/);
+  return Boolean(range && state.week>=Number(range[1]) && state.week<=Number(range[2]));
+}
 function seasonGuideRoadmapLibrary() {
-  return `<div class="guide-roadmap">${SEASON_GUIDE_ROADMAP.map(group=>`<section class="guide-roadmap-week" data-search-group><h3>${tx('week')} ${escape(group.week)}</h3><div class="guide-disclosures">${group.guides.map(seasonLibraryDisclosure).join('')}</div></section>`).join('')}</div>`;
+  const groups=[...SEASON_GUIDE_ROADMAP].sort((a,b)=>Number(seasonWeekIsCurrent(b.week))-Number(seasonWeekIsCurrent(a.week)));
+  return `<div class="guide-roadmap">${groups.map(group=>{
+    const current=seasonWeekIsCurrent(group.week);
+    return `<section class="guide-roadmap-week${current?' guide-roadmap-week--current':''}" data-search-group data-season-current="${current}"><h3><span>${tx('week')} ${escape(group.week)}</span></h3><div class="guide-disclosures">${group.guides.map(seasonLibraryDisclosure).join('')}</div></section>`;
+  }).join('')}</div>`;
+}
+function seasonGuidePosition() {
+  if (state.seasonDay<1 || state.seasonDay>56) return '';
+  const milestone=SEASON_ROADMAP.find(item=>item.day===state.seasonDay);
+  const progress=Math.max(0,Math.min(100,(state.seasonDay/56)*100));
+  return `<div class="season-guide-position" aria-label="${tx('seasonDay')} ${state.seasonDay}, ${tx('week')} ${state.week}"><div class="season-guide-position__meta"><strong>${tx('seasonDay')} ${state.seasonDay}</strong><span>${tx('week')} ${state.week}</span>${milestone?`<small>${tx(milestone.label)}</small>`:''}</div><div class="season-guide-position__rail" aria-hidden="true"><span style="width:${progress.toFixed(2)}%"></span></div></div>`;
 }
 function guideFilterBar() {
   const filters=[['all','filterAll'],['current','filterCurrent'],['season','filterSeason'],['vs','filterVs'],['tech','filterTech'],['account','filterAccount']];
@@ -345,15 +365,18 @@ function guideContextBar() {
   return `<div id="guide-context-bar" class="guide-context-bar" hidden><a href="#guides">${tx('backToGuides')}</a><strong data-guide-context-title></strong><button type="button" data-guide-top aria-label="${tx('backToTop')}">↑</button></div>`;
 }
 function guides() {
-  const vsGuides=[...WEEKDAYS.map(day=>`vs-${day}`),'vs-secret-missions'];
+  const currentVsGuide=`vs-${state.weekday}`;
+  const vsGuides=[currentVsGuide,...WEEKDAYS.map(day=>`vs-${day}`).filter(id=>id!==currentVsGuide),'vs-secret-missions'];
   const search=`<label class="search">${tx('search')}<input type="search" id="search" autocomplete="off" value="${escape(guideSearchQuery)}"></label><p id="no-results" role="status" hidden>${tx('noResults')}</p>`;
   const techLibrary=`<div class="guide-disclosures">${techGuideDisclosure()}</div>`;
   const vsLibrary=`<div class="guide-disclosures">${vsGuides.map(guideDisclosure).join('')}</div>`;
   const trainLibrary=`<div class="guide-disclosures">${trainGuideDisclosure()}</div>`;
   const seasonLibrary=seasonGuideRoadmapLibrary();
+  const vsSection=`<section class="section guide-section--vs"><h2>${tx('vs')}</h2>${vsLibrary}</section>`;
+  const seasonSection=`<section class="section guide-section--season"><h2>${tx('season')}</h2>${seasonGuidePosition()}${seasonLibrary}</section>`;
+  const trainSection=`<section class="section guide-section--alliance"><h2>${escape(trainGuideSectionTitle(lang))}</h2>${trainLibrary}</section>`;
   const techSection=`<section class="section"><h2>${tx('filterTech')}</h2>${techLibrary}</section>`;
-  const trainSection=`<section class="section"><h2>${escape(trainGuideSectionTitle(lang))}</h2>${trainLibrary}</section>`;
-  return `${guideContextBar()}<h1>${tx('guides')}</h1><p class="intro">${tx('guidesIntro')}</p>${notice()}${search}${guideFilterBar()}<div class="guide-library">${techSection}${trainSection}${section('vs',vsLibrary)}${section('season',seasonLibrary)}</div>${section('quickReference',referenceLibrary())}`;
+  return `${guideContextBar()}<h1>${tx('guides')}</h1><p class="intro">${tx('guidesIntro')}</p>${notice()}${search}${guideFilterBar()}<div class="guide-library">${vsSection}${seasonSection}${trainSection}${techSection}</div>${section('quickReference',referenceLibrary())}`;
 }
 const views = {today,daily,vs,season,guides,admin:()=>`<h1>${tx('admin')}</h1>${paragraph('adminPending')}`};
 function syncChrome() {

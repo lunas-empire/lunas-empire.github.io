@@ -1,4 +1,4 @@
-const CACHE='rzsn-shell-v18';
+const CACHE='rzsn-shell-v19';
 const SHELL=['/','/index.html','/assets/hub.css','/assets/tokens.css','/assets/app.js','/assets/config.js','/assets/train-guide.js','/assets/member/train-guide-ui.webp','/assets/sun.svg','/manifest.webmanifest'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()));

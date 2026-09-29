@@ -1,6 +1,6 @@
 const COPY = {
   de:{
-    section:'Allianz-Tools', title:'Alliance Train: Gold, Tickets & bester Loot',
+    section:'Allianz & Events', title:'Alliance Train: Gold, Tickets & bester Loot',
     intro:'Wenn du die Einladung annimmst, gehört der Zug für diese Fahrt dir. Du hast danach 4 Stunden Zeit, ihn mit gespendeten Tickets so stark wie möglich zu machen.',
     whereTitle:'Wo du was findest', whereTickets:'Tickets einsammeln: unten rechts', whereRefresh:'Zug neu würfeln: Refresh unten mittig', whereSave:'Besten Stand sichern: Save links',
     goldTitle:'1. Zuerst Gold erreichen', goldBody:'Drücke Refresh 5-mal möglichst schnell. Nach dem fünften Refresh wird der Zug Gold. Erst dann siehst du das Train Rating, kannst den Zug speichern und die Allianz weiß, wo sie sich anstellen soll.',
@@ -11,7 +11,7 @@ const COPY = {
     rule:'Merksatz: 5x Refresh bis Gold → Tickets sammeln → besten Zug speichern → weiter verbessern → letzte Stunde nochmal prüfen.'
   },
   en:{
-    section:'Alliance tools', title:'Alliance Train: Gold, tickets & best loot',
+    section:'Alliance & Events', title:'Alliance Train: Gold, tickets & best loot',
     intro:'Once you accept the invitation, the train is yours for that trip. You then have 4 hours to improve it as much as possible with donated tickets.',
     whereTitle:'Where to tap', whereTickets:'Collect donated tickets: bottom right', whereRefresh:'Reroll the train: Refresh at the bottom centre', whereSave:'Keep your best setup: Save on the left',
     goldTitle:'1. Reach Gold first', goldBody:'Press Refresh 5 times as quickly as possible. After the fifth refresh the train becomes Gold. Only then is the Train Rating visible, you can save the setup, and alliance members know where to queue.',
@@ -22,7 +22,7 @@ const COPY = {
     rule:'Remember: 5x Refresh to Gold → collect tickets → save the best train → keep improving → check again in the final hour.'
   },
   uk:{
-    section:'Інструменти альянсу', title:'Alliance Train: Gold, квитки та найкращий лут',
+    section:'Альянс і події', title:'Alliance Train: Gold, квитки та найкращий лут',
     intro:'Після прийняття запрошення поїзд належить тобі на цю поїздку. Далі є 4 години, щоб максимально покращити його за донатні квитки.',
     whereTitle:'Де що натискати', whereTickets:'Забрати квитки: внизу праворуч', whereRefresh:'Оновити поїзд: Refresh внизу по центру', whereSave:'Зберегти найкращий варіант: Save ліворуч',
     goldTitle:'1. Спочатку зроби Gold', goldBody:'Натисни Refresh 5 разів якомога швидше. Після п’ятого оновлення поїзд стане Gold. Лише тоді видно Train Rating, можна зберігати склад і союзники розуміють, куди ставати в чергу.',
@@ -33,7 +33,7 @@ const COPY = {
     rule:'Пам’ятка: 5x Refresh до Gold → зібрати квитки → зберегти найкраще → далі покращувати → ще раз перевірити в останню годину.'
   },
   ja:{
-    section:'同盟ツール', title:'Alliance Train：Gold・Tickets・最高報酬',
+    section:'同盟・イベント', title:'Alliance Train：Gold・Tickets・最高報酬',
     intro:'招待を承認すると、その便のTrain担当になります。出発まで4時間あり、寄付されたTicketsでできるだけRatingを上げます。',
     whereTitle:'ボタン位置', whereTickets:'寄付Tickets回収：右下', whereRefresh:'Train更新：下中央のRefresh', whereSave:'最高状態保存：左のSave',
     goldTitle:'1. まずGoldにする', goldBody:'Refreshをできるだけ早く5回押します。5回目でTrainがGoldになります。Gold後にTrain Ratingが表示され、保存と同盟メンバーのQueueがしやすくなります。',
@@ -43,7 +43,7 @@ const COPY = {
     lastTitle:'出発前の最後の1時間', lastBody:'最後の1時間でもう一度確認してください。この時間はQueue参加と追加寄付が増えやすく、最後の更新チャンスです。',
     rule:'覚え方：5x RefreshでGold → Tickets回収 → 最高TrainをSave → 改善継続 → 最後の1時間に再確認。'
   },  fr:{
-    section:'Outils alliance', title:'Alliance Train : Gold, tickets et meilleur butin',
+    section:'Alliance & événements', title:'Alliance Train : Gold, tickets et meilleur butin',
     intro:'Après avoir accepté l’invitation, le train est à toi pour ce trajet. Tu as ensuite 4 heures pour l’améliorer au maximum avec les tickets donnés.',
     whereTitle:'Où appuyer', whereTickets:'Récupérer les tickets : en bas à droite', whereRefresh:'Relancer le train : Refresh en bas au centre', whereSave:'Garder le meilleur train : Save à gauche',
     goldTitle:'1. Passe d’abord le train en Gold', goldBody:'Appuie sur Refresh 5 fois aussi vite que possible. Au cinquième refresh, le train devient Gold. Ensuite seulement le Train Rating apparaît, tu peux sauvegarder et les membres savent où faire la queue.',
@@ -54,7 +54,7 @@ const COPY = {
     rule:'À retenir : 5x Refresh jusqu’à Gold → récupérer les tickets → sauvegarder le meilleur → continuer à améliorer → vérifier la dernière heure.'
   },
   it:{
-    section:'Strumenti alleanza', title:'Alliance Train: Gold, ticket e loot migliore',
+    section:'Alleanza & eventi', title:'Alliance Train: Gold, ticket e loot migliore',
     intro:'Quando accetti l’invito, il treno diventa tuo per quella corsa. Hai poi 4 ore per migliorarlo il più possibile con i ticket donati.',
     whereTitle:'Dove premere', whereTickets:'Raccogli ticket: in basso a destra', whereRefresh:'Cambia treno: Refresh in basso al centro', whereSave:'Salva il migliore: Save a sinistra',
     goldTitle:'1. Prima portalo a Gold', goldBody:'Premi Refresh 5 volte il più velocemente possibile. Dopo il quinto refresh il treno diventa Gold. Solo allora appare il Train Rating, puoi salvare e i membri sanno dove mettersi in coda.',
@@ -65,7 +65,7 @@ const COPY = {
     rule:'Ricorda: 5x Refresh fino a Gold → raccogli ticket → salva il migliore → continua a migliorare → ricontrolla nell’ultima ora.'
   },
   id:{
-    section:'Alat aliansi', title:'Alliance Train: Gold, tiket & loot terbaik',
+    section:'Aliansi & Event', title:'Alliance Train: Gold, tiket & loot terbaik',
     intro:'Setelah menerima undangan, kereta menjadi milikmu untuk perjalanan itu. Kamu punya 4 jam untuk meningkatkan kereta dengan tiket donasi.',
     whereTitle:'Lokasi tombol', whereTickets:'Ambil tiket: kanan bawah', whereRefresh:'Ganti kereta: Refresh di tengah bawah', whereSave:'Simpan setup terbaik: Save di kiri',
     goldTitle:'1. Jadikan Gold terlebih dahulu', goldBody:'Tekan Refresh 5 kali secepat mungkin. Setelah refresh kelima, kereta menjadi Gold. Baru setelah itu Train Rating terlihat, setup bisa disimpan, dan anggota tahu tempat antre.',
@@ -78,7 +78,7 @@ const COPY = {
 };
 const EXTRA = {
   ar:{
-    section:'أدوات التحالف',title:'قطار التحالف: Gold والتذاكر وأفضل الغنائم',
+    section:'التحالف والفعاليات',title:'قطار التحالف: Gold والتذاكر وأفضل الغنائم',
     intro:'بعد قبول الدعوة يصبح القطار لك في هذه الرحلة. لديك 4 ساعات لتحسينه قدر الإمكان باستخدام التذاكر التي يتبرع بها أعضاء التحالف.',
     whereTitle:'أماكن الأزرار',whereTickets:'استلام التذاكر المتبرع بها: أسفل اليمين',whereRefresh:'تغيير القطار: زر Refresh أسفل المنتصف',whereSave:'حفظ أفضل إعداد: زر Save على اليسار',
     goldTitle:'1. اجعل القطار Gold أولاً',goldBody:'اضغط Refresh خمس مرات بأسرع ما يمكن. بعد المرة الخامسة يصبح القطار Gold. عندها فقط يظهر Train Rating ويمكنك حفظ الإعداد ويعرف أعضاء التحالف أين يصطفون.',
@@ -89,7 +89,7 @@ const EXTRA = {
     rule:'تذكّر: 5x Refresh حتى Gold → اجمع التذاكر → احفظ أفضل قطار → واصل التحسين → تحقق مرة أخرى في الساعة الأخيرة.'
   },
   ko:{
-    section:'연맹 도구',title:'Alliance Train: Gold, 티켓, 최고 보상',
+    section:'연맹 & 이벤트',title:'Alliance Train: Gold, 티켓, 최고 보상',
     intro:'초대를 수락하면 해당 운행의 열차가 본인 소유가 됩니다. 출발 전 4시간 동안 연맹원이 기부한 티켓으로 최대한 높은 등급을 만들어야 합니다.',
     whereTitle:'버튼 위치',whereTickets:'기부 티켓 수령: 오른쪽 아래',whereRefresh:'열차 변경: 아래 가운데 Refresh',whereSave:'최고 상태 저장: 왼쪽 Save',
     goldTitle:'1. 먼저 Gold 만들기',goldBody:'Refresh를 가능한 빨리 5번 누르세요. 다섯 번째 Refresh 후 열차가 Gold가 됩니다. 그때부터 Train Rating이 보이고 저장할 수 있으며 연맹원이 어디에 대기해야 하는지 알 수 있습니다.',
@@ -100,7 +100,7 @@ const EXTRA = {
     rule:'기억: 5x Refresh로 Gold → 티켓 수령 → 최고 열차 저장 → 계속 개선 → 마지막 1시간에 재확인.'
   },
   sv:{
-    section:'Alliansverktyg',title:'Alliance Train: Gold, biljetter och bästa loot',
+    section:'Allians & event',title:'Alliance Train: Gold, biljetter och bästa loot',
     intro:'När du accepterar inbjudan blir tåget ditt för den resan. Du har sedan 4 timmar på dig att förbättra det så mycket som möjligt med donerade biljetter.',
     whereTitle:'Var du trycker',whereTickets:'Hämta donerade biljetter: nere till höger',whereRefresh:'Byt tåget: Refresh längst ned i mitten',whereSave:'Spara bästa setup: Save till vänster',
     goldTitle:'1. Gör tåget Gold först',goldBody:'Tryck Refresh 5 gånger så snabbt som möjligt. Efter den femte refreshen blir tåget Gold. Först då syns Train Rating, du kan spara och alliansmedlemmar vet var de ska köa.',
@@ -111,7 +111,7 @@ const EXTRA = {
     rule:'Kom ihåg: 5x Refresh till Gold → hämta biljetter → spara bästa tåget → fortsätt förbättra → kontrollera igen sista timmen.'
   },
   pt:{
-    section:'Ferramentas da aliança',title:'Alliance Train: Gold, bilhetes e melhor loot',
+    section:'Aliança & eventos',title:'Alliance Train: Gold, bilhetes e melhor loot',
     intro:'Depois de aceitares o convite, o comboio fica contigo nessa viagem. Tens 4 horas para o melhorar o máximo possível com os bilhetes doados pela aliança.',
     whereTitle:'Onde tocar',whereTickets:'Recolher bilhetes doados: canto inferior direito',whereRefresh:'Trocar o comboio: Refresh em baixo ao centro',whereSave:'Guardar a melhor versão: Save à esquerda',
     goldTitle:'1. Primeiro põe o comboio em Gold',goldBody:'Carrega em Refresh 5 vezes o mais rápido possível. Depois do quinto refresh o comboio fica Gold. Só então aparece o Train Rating, podes guardar e os membros sabem onde entrar na fila.',
@@ -122,7 +122,7 @@ const EXTRA = {
     rule:'Lembra-te: 5x Refresh até Gold → recolher bilhetes → guardar o melhor comboio → continuar a melhorar → verificar novamente na última hora.'
   },
   nl:{
-    section:'Alliantietools',title:'Alliance Train: Gold, tickets en beste loot',
+    section:'Alliantie & events',title:'Alliance Train: Gold, tickets en beste loot',
     intro:'Zodra je de uitnodiging accepteert, is de trein voor die rit van jou. Daarna heb je 4 uur om hem met gedoneerde tickets zo goed mogelijk te maken.',
     whereTitle:'Waar je moet tikken',whereTickets:'Gedoneerde tickets ophalen: rechtsonder',whereRefresh:'Trein verversen: Refresh onderaan in het midden',whereSave:'Beste setup bewaren: Save links',
     goldTitle:'1. Maak de trein eerst Gold',goldBody:'Druk zo snel mogelijk 5 keer op Refresh. Na de vijfde refresh wordt de trein Gold. Pas dan zie je de Train Rating, kun je opslaan en weten alliantieleden waar ze moeten aansluiten.',
@@ -133,7 +133,7 @@ const EXTRA = {
     rule:'Onthoud: 5x Refresh tot Gold → tickets ophalen → beste trein opslaan → blijven verbeteren → in het laatste uur opnieuw controleren.'
   },
   th:{
-    section:'เครื่องมือพันธมิตร',title:'Alliance Train: Gold, ตั๋ว และรางวัลที่ดีที่สุด',
+    section:'พันธมิตร & กิจกรรม',title:'Alliance Train: Gold, ตั๋ว และรางวัลที่ดีที่สุด',
     intro:'เมื่อรับคำเชิญแล้ว รถไฟจะเป็นของคุณสำหรับรอบนั้น จากนั้นมีเวลา 4 ชั่วโมงเพื่ออัปเกรดให้ดีที่สุดด้วยตั๋วที่สมาชิกพันธมิตรบริจาค.',
     whereTitle:'ตำแหน่งปุ่ม',whereTickets:'รับตั๋วที่บริจาค: มุมขวาล่าง',whereRefresh:'เปลี่ยนรถไฟ: ปุ่ม Refresh ตรงกลางด้านล่าง',whereSave:'บันทึกชุดที่ดีที่สุด: ปุ่ม Save ด้านซ้าย',
     goldTitle:'1. ทำให้เป็น Gold ก่อน',goldBody:'กด Refresh 5 ครั้งให้เร็วที่สุด หลังครั้งที่ 5 รถไฟจะเป็น Gold จากนั้นจึงจะเห็น Train Rating สามารถบันทึกได้ และสมาชิกพันธมิตรจะรู้ว่าต้องเข้าคิวตรงไหน.',
@@ -144,7 +144,7 @@ const EXTRA = {
     rule:'จำง่าย ๆ: 5x Refresh จน Gold → รับตั๋ว → บันทึกรถไฟที่ดีที่สุด → ปรับปรุงต่อ → ตรวจอีกครั้งในชั่วโมงสุดท้าย.'
   },
   km:{
-    section:'ឧបករណ៍សម្ព័ន្ធ',title:'Alliance Train: Gold, tickets និងរង្វាន់ល្អបំផុត',
+    section:'សម្ព័ន្ធ & ព្រឹត្តិការណ៍',title:'Alliance Train: Gold, tickets និងរង្វាន់ល្អបំផុត',
     intro:'ពេលអ្នកទទួលការអញ្ជើញ រថភ្លើងនោះជារបស់អ្នកសម្រាប់ដំណើរនោះ។ បន្ទាប់មកអ្នកមាន 4 ម៉ោងដើម្បីធ្វើឱ្យវាល្អបំផុតដោយប្រើ tickets ដែលសមាជិកសម្ព័ន្ធបរិច្ចាគ។',
     whereTitle:'កន្លែងចុច',whereTickets:'ប្រមូល tickets: ខាងក្រោមស្តាំ',whereRefresh:'ប្ដូររថភ្លើង: Refresh កណ្ដាលខាងក្រោម',whereSave:'រក្សាទុក setup ល្អបំផុត: Save ខាងឆ្វេង',
     goldTitle:'1. ធ្វើឱ្យរថភ្លើងជា Gold មុន',goldBody:'ចុច Refresh 5 ដងឱ្យលឿនតាមដែលអាចធ្វើបាន។ បន្ទាប់ពីលើកទី 5 រថភ្លើងនឹងក្លាយជា Gold។ ពេលនោះទើបឃើញ Train Rating អាច Save ហើយសមាជិកសម្ព័ន្ធដឹងកន្លែងចូលជួរ។',
@@ -155,7 +155,7 @@ const EXTRA = {
     rule:'ចងចាំ: 5x Refresh រហូតដល់ Gold → ប្រមូល tickets → Save រថភ្លើងល្អបំផុត → បន្តកែលម្អ → ពិនិត្យម្តងទៀតក្នុងម៉ោងចុងក្រោយ។'
   },
   fil:{
-    section:'Alliance tools',title:'Alliance Train: Gold, tickets at best loot',
+    section:'Alliance & Events',title:'Alliance Train: Gold, tickets at best loot',
     intro:'Kapag tinanggap mo ang imbitasyon, iyo ang tren para sa biyahe na iyon. May 4 oras ka para pagandahin ito gamit ang mga ticket na dine-donate ng alliance.',
     whereTitle:'Saan pipindot',whereTickets:'Kunin ang donated tickets: ibabang kanan',whereRefresh:'Palitan ang tren: Refresh sa ibabang gitna',whereSave:'I-save ang best setup: Save sa kaliwa',
     goldTitle:'1. Gawing Gold muna',goldBody:'Pindutin ang Refresh nang 5 beses nang mabilis hangga’t kaya. Pagkatapos ng ikalimang refresh, magiging Gold ang tren. Saka lang makikita ang Train Rating, puwedeng mag-save, at alam ng alliance kung saan pipila.',
