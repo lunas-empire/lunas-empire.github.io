@@ -8,9 +8,11 @@ const app=await readFile(new URL('../assets/app.js',import.meta.url),'utf8');
 const css=await readFile(new URL('../assets/hub.css',import.meta.url),'utf8');
 const escape=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 
-test('opened guides use progressive disclosure instead of exposing all content',()=>{
+test('opened guides keep text concise while placing the visual beside it',()=>{
   assert.match(app,/guide-text__block.*<summary>/);
-  assert.match(app,/guide-media-disclosure/);
+  assert.match(app,/guide-card--inside guide-card--split/);
+  assert.match(css,/\.guide-card__info,\.guide-card__visuals/);
+  assert.doesNotMatch(app,/guide-media-disclosure/);
   assert.doesNotMatch(app,/firstProfession\.open=true/);
 });
 

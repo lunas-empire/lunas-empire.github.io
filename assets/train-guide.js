@@ -182,7 +182,6 @@ export function trainGuideHtml(lang,escape){
     <figcaption><strong>${e(row(lang,'whereTitle'))}</strong><span>${e(row(lang,'whereSave'))} · ${e(row(lang,'whereRefresh'))} · ${e(row(lang,'whereTickets'))}</span></figcaption>
   </figure>`;
   return `<div class="train-guide train-guide--with-image">
-    ${figure}
     <div class="train-guide__content">
       <p class="train-guide__intro">${e(row(lang,'intro'))}</p>
       <div class="train-guide__where" aria-label="${e(row(lang,'whereTitle'))}">
@@ -203,5 +202,6 @@ export function trainGuideHtml(lang,escape){
       ${step(row(lang,'lastTitle'),row(lang,'lastBody'))}
       <aside class="card train-guide__rule"><strong>${e(row(lang,'rule'))}</strong></aside>
     </div>
+    ${figure}
   </div>`;
 }

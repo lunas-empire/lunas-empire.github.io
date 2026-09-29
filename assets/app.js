@@ -69,11 +69,10 @@ function guideText(id,{showTitle=true}={}) {
 const guideCard = id => `<article class="guide-card">${guideText(id)}${guideFigure(id)}</article>`;
 const guideShareButton = id => `<div class="guide-share-row"><button type="button" class="guide-share" data-share-guide="${escape(id)}">${tx('shareGuide')}</button></div>`;
 const guideGallery = ids => ids.length ? `<div class="guide-gallery">${ids.map(guideCard).join('')}</div>` : '';
-const guideMediaDisclosure=(content,count)=>`<details class="guide-media-disclosure"><summary><span class="guide-media-summary__icon" aria-hidden="true"></span><span class="guide-media-summary__copy"><strong>${tx('guideMediaTitle')} (${count})</strong><small>${tx('guideMediaHint')}</small></span></summary><div class="guide-media-disclosure__body">${content}</div></details>`;
 function guideDisclosure(id) {
   const title=guideAlt(MEMBER_MEDIA[id]);
   const current=id===`vs-${state.weekday}`;
-  return `<details class="guide-disclosure" data-search data-filter-item data-guide-category="vs" data-guide-current="${current}" data-guide-today="${current}" data-guide-label="${tx('today')}" data-guide-id="${escape(id)}"><summary data-guide-label="${tx('today')}">${escape(title)}</summary><article class="guide-card guide-card--inside">${guideShareButton(id)}${guideText(id,{showTitle:false})}${guideMediaDisclosure(guideFigure(id),1)}</article></details>`;
+  return `<details class="guide-disclosure" data-search data-filter-item data-guide-category="vs" data-guide-current="${current}" data-guide-today="${current}" data-guide-label="${tx('today')}" data-guide-id="${escape(id)}"><summary data-guide-label="${tx('today')}">${escape(title)}</summary><article class="guide-card guide-card--inside guide-card--split"><div class="guide-card__info">${guideShareButton(id)}${guideText(id,{showTitle:false})}</div><div class="guide-card__visuals">${guideFigure(id)}</div></article></details>`;
 }
 function seasonLibraryFigure(code,title) {
   const media=SEASON_LIBRARY_MEDIA[code];
@@ -95,19 +94,19 @@ function seasonGuideIsToday(id) {
 function seasonLibraryDisclosure(id) {
   const guide=SEASON_LIBRARY_GUIDES[id];
   const title=t(guide.title);
-  const images=guideMediaDisclosure(`<div class="season-library-images">${guide.media.map(code=>seasonLibraryFigure(code,title)).join('')}</div>`,guide.media.length);
+  const images=`<div class="guide-card__visuals season-library-images">${guide.media.map(code=>seasonLibraryFigure(code,title)).join('')}</div>`;
   const profession=id==='profession'?professionGuideHtml(lang,escape):'';
   const searchTerms=id==='profession'?` ${PROFESSION_GUIDE_SEARCH}`:'';
   const today=seasonGuideIsToday(id);
   const current=seasonGuideIsCurrent(id)||today;
-  return `<details class="guide-disclosure" data-search data-filter-item data-guide-category="season" data-guide-current="${current}" data-guide-today="${today}" data-guide-label="${tx('today')}" data-guide-id="${escape(id)}" data-season-guide="${escape(id)}" data-search-extra="${escape(searchTerms)}"><summary data-guide-label="${tx('today')}">${escape(title)}</summary><article class="guide-card guide-card--inside">${guideShareButton(id)}${guideTextBlocks(title,guide.blocks,{showTitle:false})}${profession}${images}</article></details>`;
+  return `<details class="guide-disclosure" data-search data-filter-item data-guide-category="season" data-guide-current="${current}" data-guide-today="${today}" data-guide-label="${tx('today')}" data-guide-id="${escape(id)}" data-season-guide="${escape(id)}" data-search-extra="${escape(searchTerms)}"><summary data-guide-label="${tx('today')}">${escape(title)}</summary><article class="guide-card guide-card--inside guide-card--split"><div class="guide-card__info">${guideShareButton(id)}${guideTextBlocks(title,guide.blocks,{showTitle:false})}${profession}</div>${images}</article></details>`;
 }
 function techGuideDisclosure() {
   return `<details class="guide-disclosure guide-disclosure--tech" data-search data-filter-item data-guide-id="tech" data-guide-category="tech" data-guide-current="false" data-tech-guide><summary>${escape(TECH_GUIDE_TITLE)}</summary><div class="tech-guide-shell">${guideShareButton('tech')}${techGuideHtml(lang,escape)}</div></details>`;
 }
 function trainGuideDisclosure() {
   const title=trainGuideTitle(lang);
-  return `<details class="guide-disclosure guide-disclosure--train" data-search data-filter-item data-guide-id="train" data-guide-category="account" data-guide-current="false" data-search-extra="${escape(TRAIN_GUIDE_SEARCH)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside">${guideShareButton('train')}${trainGuideHtml(lang,escape)}</article></details>`;
+  return `<details class="guide-disclosure guide-disclosure--train" data-search data-filter-item data-guide-id="train" data-guide-category="account" data-guide-current="false" data-search-extra="${escape(TRAIN_GUIDE_SEARCH)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside guide-card--train">${guideShareButton('train')}${trainGuideHtml(lang,escape)}</article></details>`;
 }
 function notice() {
   if (!LIVE_NOTICE.active) return '';
