@@ -1,5 +1,5 @@
-const CACHE='rzsn-shell-v20';
-const SHELL=['/','/index.html','/assets/hub.css','/assets/tokens.css','/assets/app.js','/assets/config.js','/assets/train-guide.js','/assets/member/train-guide-ui.webp','/assets/sun.svg','/manifest.webmanifest'];
+const CACHE='rzsn-shell-v21';
+const SHELL=['/','/index.html','/assets/hub.css','/assets/overview.css','/assets/overview.js','/assets/overview-i18n.js','/assets/tokens.css','/assets/app.js','/assets/config.js','/assets/train-guide.js','/assets/member/train-guide-ui.webp','/assets/sun.svg','/manifest.webmanifest'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()));
 });
@@ -11,6 +11,7 @@ self.addEventListener('fetch',event=>{
   const url=new URL(event.request.url);
   if(url.origin!==location.origin) return;
   if(event.request.mode==='navigate'){
+    if (!['/','/index.html','/s1/','/s1/index.html'].includes(url.pathname)) return;
     event.respondWith(fetch(event.request).then(response=>{
       const copy=response.clone();
       caches.open(CACHE).then(cache=>cache.put('/index.html',copy));
@@ -19,6 +20,15 @@ self.addEventListener('fetch',event=>{
     return;
   }
   if(url.pathname.startsWith('/assets/')){
+    // Keep a complete code release together when an installed app is reopened.
+    // Guide images can remain stale-while-revalidate; source files are network-first.
+    if (/\.(?:js|css)$/.test(url.pathname)) {
+      event.respondWith(fetch(event.request).then(response=>{
+        if (response.ok) caches.open(CACHE).then(cache=>cache.put(event.request,response.clone()));
+        return response;
+      }).catch(()=>caches.match(event.request)));
+      return;
+    }
     event.respondWith(caches.match(event.request).then(cached=>{
       const network=fetch(event.request).then(response=>{
         if(response.ok) caches.open(CACHE).then(cache=>cache.put(event.request,response.clone()));

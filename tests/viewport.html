@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RZSN responsive review</title>
+<style>body{margin:0;background:#e9edf0;font:14px system-ui;color:#202833}form{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:14px 20px}label{display:flex;gap:6px;align-items:center}select,button{font:inherit;padding:7px}main{padding:0 20px 20px;overflow:auto}iframe{display:block;border:1px solid #8994a0;background:white;height:820px}output{font-size:12px}</style></head>
+<body><form><label>Width <select name="width"><option>320</option><option>390</option><option>430</option><option>768</option><option>1280</option></select></label><label>View <select name="view"><option>today</option><option>daily</option><option>vs</option><option>season</option><option>guides</option></select></label><button>Review</button><output id="viewport-report"></output></form><main><iframe title="RZSN viewport preview"></iframe></main>
+<script>
+const params=new URLSearchParams(location.search);
+const width=['320','390','430','768','1280'].includes(params.get('width'))?params.get('width'):'390';
+const view=['today','daily','vs','season','guides'].includes(params.get('view'))?params.get('view'):'today';
+document.querySelector('[name=width]').value=width;
+document.querySelector('[name=view]').value=view;
+const frame=document.querySelector('iframe');
+frame.style.width=width+'px';frame.src='/#'+view;
+frame.addEventListener('load',()=>{
+  const report=()=>{
+    const doc=frame.contentDocument;
+    document.querySelector('output').textContent=`Viewport ${doc.documentElement.clientWidth}px · page ${doc.documentElement.scrollWidth}px`;
+  };
+  new ResizeObserver(report).observe(frame.contentDocument.body);report();
+});
+</script></body></html>

@@ -8,9 +8,10 @@ import { TECH_GUIDE_TITLE, techGuideHtml } from './tech-guide.js';
 import { professionGuideHtml, PROFESSION_GUIDE_SEARCH } from './profession-guide.js';
 import { trainGuideHtml, trainGuideTitle, trainGuideSectionTitle, TRAIN_GUIDE_SEARCH } from './train-guide.js';
 import { memberRoute, guideHash, guideUrl } from './guide-links.js';
-import { DAY_MS, WEEKDAYS, guideState, selectedDate, checklistKey, armsWindow, availableTask, enemyBusterPhase } from './engine.js';
-import { todayPriorities } from './priority.js';
+import { DAY_MS, WEEKDAYS, guideState, selectedDate, checklistKey, armsWindow, availableTask, enemyBusterPhase, seasonEventInstant } from './engine.js';
 import { createStorage, checkedMap } from './storage.js';
+import { OVERVIEW_COPY } from './overview-i18n.js';
+import { taskReferences, taskDone, writeTask, availabilityKey, taskToken, taskProgress, taskVisible, seasonTaskUnlocked, nextReset, conciseTask, TASK_GUIDES } from './overview.js';
 
 const dictionary = {...UI,...COPY,...SEASON_COPY,...GUIDE_COPY,...SEASON_LIBRARY_COPY};
 const escape = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
@@ -28,10 +29,11 @@ if (languagePreference.detected) storage.set('rzsn-language',lang);
 let state = guideState();
 let selectedDay = state.weekdayIndex;
 let currentView = '';
-let guideFilter='all';
+let guideFilter='current';
+let taskFilter='open';
 let guideSearchQuery='';
 let guideContextObserver=null;
-const t = (key, values) => translate(dictionary,key,lang,values);
+const t = (key, values={}) => OVERVIEW_COPY[lang]?.[key]?.replace(/\{(\w+)\}/g,(_,name)=>values[name]??`{${name}}`) ?? translate(dictionary,key,lang,values);
 const tx = (key, values) => escape(t(key,values));
 const main = document.querySelector('main');
 const menu = document.querySelector('#menu');
@@ -70,7 +72,7 @@ const guideCard = id => `<article class="guide-card">${guideText(id)}${guideFigu
 const guideShareButton = id => `<div class="guide-share-row"><button type="button" class="guide-share" data-share-guide="${escape(id)}">${tx('shareGuide')}</button></div>`;
 const guideGallery = ids => ids.length ? `<div class="guide-gallery">${ids.map(guideCard).join('')}</div>` : '';
 function guideDisclosure(id) {
-  const title=guideAlt(MEMBER_MEDIA[id]);
+  const title=shortGuideTitle(id);
   const current=id===`vs-${state.weekday}`;
   return `<details class="guide-disclosure" data-search data-filter-item data-guide-category="vs" data-guide-current="${current}" data-guide-today="${current}" data-guide-label="${tx('today')}" data-guide-id="${escape(id)}"><summary data-guide-label="${tx('today')}">${escape(title)}</summary><article class="guide-card guide-card--inside guide-card--split"><div class="guide-card__info">${guideShareButton(id)}${guideText(id,{showTitle:false})}</div><div class="guide-card__visuals">${guideFigure(id)}</div></article></details>`;
 }
@@ -127,12 +129,55 @@ function countdown() {
   return t('countdown',{d:Math.floor(minutes/1440),h:Math.floor(minutes%1440/60),m:minutes%60});
 }
 function status() {
-  return `<div class="status"><div><small>${tx('serverDay')}</small><strong>${state.serverDay}</strong></div><div><small>${escape(phaseLabel(state))}</small>${state.seasonDay && state.week <= 8 ? `<strong>${tx('seasonDay')} ${state.seasonDay}</strong>` : ''}</div>${state.phase === 'PRE_SEASON' ? `<div class="countdown"><small>${tx('starts')}</small><strong id="countdown" role="timer" aria-live="off">${escape(countdown())}</strong></div>` : ''}</div><small>${tx('reset')}</small>`;
+  return `<div class="overview-meta"><span>${tx('serverDay')} ${state.serverDay}</span><span>${escape(phaseLabel(state))}${state.seasonDay>0&&state.week<=8?` · ${tx('seasonDay')} ${state.seasonDay}`:''}</span>${state.phase==='PRE_SEASON'?`<span id="countdown">${escape(countdown())}</span>`:''}</div>`;
 }
 function arms(s, guide) {
   if (!guide.arms) return paragraph('unconfirmed');
-  const hours = n => `${String(n % 24).padStart(2,'0')}:00`;
-  return `<strong class="time">${hours(guide.arms.start)}–${hours(guide.arms.end)} ST</strong><p>${escape(guide.arms.type)}</p>${s.date === state.date ? `<p data-arms-state>${tx(armsWindow(state,guide))}</p>` : ''}<small>${tx('armsNote')}</small>`;
+  const hours=n=>`${String(n%24).padStart(2,'0')}:00`;
+  const current=s.date===state.date;
+  return `<div class="arms-clock"><strong class="time">${hours(guide.arms.start)}–${hours(guide.arms.end)} ST</strong>${current?`<span class="time-status" data-arms-state data-state="${armsWindow(state,guide)}">${tx(armsWindow(state,guide))}</span>`:''}</div><small>${escape(guide.arms.type)}</small>`;
+}
+function shortGuideTitle(id) {
+  if (id.startsWith('vs-') && WEEKDAYS.includes(id.slice(3))) return t(id.slice(3));
+  if (id==='vs-secret-missions') return t('secretMissionsGuideTitle');
+  if (id==='tech') return TECH_GUIDE_TITLE;
+  if (id==='train') return trainGuideTitle(lang);
+  return SEASON_LIBRARY_GUIDES[id]?t(SEASON_LIBRARY_GUIDES[id].title):guideAlt(MEMBER_MEDIA[id]);
+}
+function taskTitle(task) {
+  const special={profession:'compactProfession',serumPuzzle:'compactSerum',geneticRecombination:'compactGenetic'};
+  return special[task.id]?t(special[task.id]):conciseTask(t(task.text||task.id));
+}
+function taskItem(kind,task,s=state) {
+  const refs=taskReferences(kind,task.id,s);
+  const unavailable=checkedMap(storage.get(availabilityKey(s)))[taskToken(refs[0])]===true;
+  return {...task,kind,s,refs,done:taskDone(storage,refs),unavailable};
+}
+function seasonTaskGroups(s=state) {
+  const ids=seasonTasks(s).filter(id=>permitted(id)&&seasonTaskUnlocked(id,s));
+  const dailyIds=s.seasonDay===1?DAY_ONE_GROUP.tasks:s.phase==='PRE_SEASON'?['prepSeason']:seasonTodayTasks(s);
+  const todayIds=[...new Set(dailyIds)].filter(id=>ids.includes(id));
+  const weekIds=ids.filter(id=>!todayIds.includes(id)&&!['legion'].includes(id));
+  return {todayIds,weekIds};
+}
+function allTaskItems(s=state) {
+  const groups=seasonTaskGroups(s);
+  return [...vsOnlyTasks(s).map(task=>taskItem('vs',task,s)),...dailyTasks(s).map(task=>taskItem('daily',task,s)),...groups.todayIds.map(id=>taskItem('season',{id},s)),...groups.weekIds.map(id=>taskItem('season',{id},s))];
+}
+function vsOnlyTasks(s=state) {
+  const shared=new Set([...TASKS.map(task=>task.id),...seasonTasks(s)]);
+  return DAILY_GUIDES[s.weekday].tasks.filter(id=>permitted(id)&&!shared.has(id)).map(id=>({id}));
+}
+function progressMarkup(items,label=t('routine')) {
+  const {done,total}=taskProgress(items);
+  return `<div class="task-progress" data-task-progress data-refs="${escape(JSON.stringify(items.map(item=>item.refs)))}"><div class="progress-row"><span>${escape(label)}</span><strong data-progress-label>${tx('progress',{done,total})}</strong></div><progress value="${done}" max="${total||1}" aria-label="${escape(label)}" data-progress-bar></progress></div>`;
+}
+function remainingReset() {
+  const minutes=Math.max(0,Math.ceil((nextReset(state)-state.now)/60000));
+  return t('remaining',{h:Math.floor(minutes/60),m:minutes%60});
+}
+function resetCard() {
+  return `<div class="reset-card"><span>${tx('nextReset')}</span><strong>00:00 ST</strong><small data-reset-countdown>${escape(remainingReset())}</small></div>`;
 }
 function minimum(s = state) {
   // Sunday is preparation, not a scored VS day.
@@ -144,35 +189,45 @@ function starterGuide() {
 function dailyTasks(s = state) {
   // Approximate personal cadence only, based on this member's own last checkmark.
   const history = storage.get('rzsn-cadence',{});
-  const checks = checkedMap(storage.get(checklistKey('daily',s)));
   return TASKS.filter(task => availableTask(task,s) && permitted(task.id)).filter(task => {
     if (!['every_48h','every_2_days'].includes(task.frequency)) return true;
     const last = Number(history?.[task.id]);
-    return checks[task.id] || !last || s.now.getTime() - last >= 2 * DAY_MS;
+    return taskDone(storage,taskReferences('daily',task.id,s)) || !last || s.now.getTime() - last >= 2 * DAY_MS;
   });
 }
-function progress(kind, ids, s = state) {
-  const checks = checkedMap(storage.get(checklistKey(kind,s)));
-  const done = ids.filter(id=>checks[id]).length;
-  return `<div class="progress-row"><span>${tx('routine')}</span><span data-progress-label>${tx('progress',{done,total:ids.length})}</span></div><progress value="${done}" max="${ids.length || 1}" aria-label="${tx('routine')}" data-progress-bar></progress>`;
-}
+
 function frequencyText(task) {
   if (['every_48h','every_2_days'].includes(task.frequency)) return t('every2');
   if (['event_specific','season_specific'].includes(task.frequency)) return t('available');
   return task.frequency === 'twice_daily' ? t('twice') : '';
 }
-function checklist(kind, tasks, s = state) {
-  return `<ul class="checklist">${tasks.filter(task=>permitted(task.id)).map(task=>{
-    // True Season dailies and recurring event-day actions reset at each 00:00 ST server day.
-    const itemKind=kind==='season' && isSeasonDailyTask(task.id,s) ? 'seasonDaily' : kind;
-    const key=checklistKey(itemKind,s);
-    const checks=checkedMap(storage.get(key));
-    return `<li><label><input type="checkbox" data-check="${escape(task.id)}" data-key="${key}" data-kind="${itemKind}"${checks[task.id]?' checked':''}><span class="task-text">${tx(task.text || task.id)}${task.frequency && frequencyText(task)?`<small>${escape(frequencyText(task))}</small>`:''}</span></label></li>`;
+function checklist(kind, tasks, s = state, {filter='all', group=''}={}) {
+  return `<ul class="checklist overview-checklist" data-task-list data-task-filter="${filter}">${tasks.filter(task=>permitted(task.id)).map(task=>{
+    const item=taskItem(kind,task,s);
+    const ref=item.refs[0];
+    const title=taskTitle(task);
+    const guideId=TASK_GUIDES[task.id];
+    const frequency=frequencyText(task);
+    return `<li class="task-row" data-task-row data-done="${item.done}" data-unavailable="${item.unavailable}" data-refs="${escape(JSON.stringify(item.refs))}"${taskVisible(item,filter)?'':' hidden'}><div class="task-line"><label><input type="checkbox" data-check="${escape(task.id)}" data-key="${ref.key}" data-kind="${ref.kind}" data-origin-kind="${kind}" data-date="${s.date}"${item.done?' checked':''}${item.unavailable?' disabled':''}><span class="task-text">${escape(title)}${frequency?`<small>${escape(frequency)}</small>`:''}</span></label><details class="task-detail" data-disclosure="task-${group}-${kind}-${escape(task.id)}"><summary aria-label="${tx('details')} · ${escape(title)}">${tx('details')}</summary><div class="task-detail-body"><p>${tx(task.text||task.id)}</p>${guideId?`<a class="task-guide" href="${guideHash(guideId)}">${escape(shortGuideTitle(guideId))} →</a>`:''}<button type="button" class="availability-toggle" data-unavailable-toggle data-token="${escape(taskToken(ref))}" data-date="${s.date}">${tx(item.unavailable?'restoreTask':'skipToday')}</button></div></details></div></li>`;
   }).join('')}</ul>`;
 }
-function nextCards(limit = 3, excludedDays = []) {
-  return upcoming(state,limit,excludedDays).map(e=>details(`${t('seasonDay')} ${e.day} · ${['kim','dva','tesla'].includes(e.id)?{kim:'Kimberly',dva:'DVA',tesla:'Tesla'}[e.id]:t('next')}`,paragraph(e.id)+(e.id==='kim'?guideCard('weapons'):'')+(['kim','dva','tesla'].includes(e.id)?paragraph('weapon'):''))).join('');
+function taskGroup(kind,tasks,title,id,{open=false,filter=taskFilter}={}) {
+  if (!tasks.length) return '';
+  const items=tasks.map(task=>taskItem(kind,task));
+  const {done,total}=taskProgress(items);
+  const visible=items.some(item=>taskVisible(item,filter));
+  return `<details class="task-group" data-task-group data-disclosure="${id}"${open?' open':''}${visible?'':' hidden'}><summary><span>${escape(title)}</span><span class="group-progress" data-group-progress>${done} / ${total}</span></summary>${checklist(kind,tasks,state,{filter,group:id})}</details>`;
 }
+function nextCards(limit = 3, excludedDays = []) {
+  return upcoming(state,limit,excludedDays).map(e=>{
+    const id=TASK_GUIDES[e.id];
+    const title=id?shortGuideTitle(id):conciseTask(t(e.id));
+    const day=e.day===state.seasonDay+1?t('tomorrow'):`${t('seasonDay')} ${e.day}`;
+    const time=new Intl.DateTimeFormat(LOCALES[lang],{day:'numeric',month:'short',timeZone:'Europe/Berlin'}).format(seasonEventInstant(e.day));
+    return `<details class="next-event" data-disclosure="next-${e.day}-${e.id}"><summary><small>${escape(day)} · ${escape(time)}</small><strong>${escape(title)}${['kim','dva','tesla'].includes(e.id)?` · ${{kim:'Kimberly',dva:'DVA',tesla:'Tesla'}[e.id]}`:''}</strong></summary>${paragraph(e.id)}${id?`<a href="${guideHash(id)}">${escape(shortGuideTitle(id))} →</a>`:''}</details>`;
+  }).join('');
+}
+
 const roadmapKindKey = kind => ({personal:'daily',alliance:'call',recurring:'action',mixed:'important'}[kind] || 'important');
 function roadmapGuideLinks(entry) {
   const ids=[...new Set(entry.guides || [])].filter(id=>SEASON_LIBRARY_GUIDES[id]);
@@ -228,29 +283,18 @@ function nextRoadmapText(s=state) {
   const next=SEASON_ROADMAP.find(entry=>entry.day>s.seasonDay);
   return next ? `${t('seasonDay')} ${next.day} · ${t(next.label)}` : t('post');
 }
-function compactPriority(priority,guide) {
-  if (priority.id==='arms') return `<div class="today-priority__text"><strong>${tx('bestArms')}</strong><span>${String(guide.arms.start).padStart(2,'0')}:00–${String(guide.arms.end).padStart(2,'0')}:00 ST · ${escape(guide.arms.type)}</span></div>`;
-  if (priority.id==='save') return `<div class="today-priority__text"><strong>${tx('save')}</strong><span>${guide.save.filter(permitted).map(id=>t(id)).join(' · ')}</span></div>`;
-  return `<div class="today-priority__text"><strong>${tx(priority.source)}</strong><span>${tx(priority.id)}</span></div>`;
-}
 function today() {
-  const guide = DAILY_GUIDES[state.weekday];
-  const priorities = todayPriorities(state).filter(p=>p.id!=='notice');
-  const shown = new Set(priorities.map(p=>p.id));
-  const primary=priorities.slice(0,3);
-  const secondary=priorities.slice(3);
-  const seasonPool=seasonTasks(state).filter(id=>!shown.has(id) && permitted(id));
-  const liveSeason=seasonTodayTasks(state).filter(id=>!shown.has(id) && permitted(id));
-  const seasonIds=(state.seasonDay>=1 && state.seasonDay<=56
-    ? [...liveSeason,...seasonPool.filter(id=>!liveSeason.includes(id))]
-    : seasonPool).slice(0,state.seasonDay?2:1);
-  const dailyIds=dailyTasks().map(task=>task.id);
-  const secondaryHtml=secondary.length ? details(t('details'),`<div class="today-more-priorities">${secondary.map(p=>compactPriority(p,guide)).join('')}</div>`) : '';
-  const focusCard=`<article class="today-card today-card--focus"><div class="today-card__head"><span class="badge">${tx('focus')}</span><a href="#daily">${tx('checklist')} →</a></div><div class="today-priorities">${primary.map(p=>`<div class="today-priority${p.id==='shield'?' today-priority--warning':''}">${compactPriority(p,guide)}</div>`).join('')}</div>${secondaryHtml}</article>`;
-  const dailyCard=`<article class="today-card"><span class="badge">${tx('daily')}</span><h2>${tx('checklist')}</h2>${progress('daily',dailyIds)}${link('daily','checklist')}</article>`;
-  const vsCard=`<article class="today-card"><span class="badge">${tx('vs')}</span><h2>${tx(state.weekday)}</h2>${minimum()}<p class="today-card__hint">${guide.arms?`${tx('bestArms')}: ${String(guide.arms.start).padStart(2,'0')}:00–${String(guide.arms.end).padStart(2,'0')}:00 ST`:tx('unconfirmed')}</p>${link('vs','details')}</article>`;
-  const seasonCard=`<article class="today-card"><span class="badge">${tx('season')}</span><h2>${escape(phaseLabel(state))}</h2>${seasonIds.length?list(seasonIds):''}<p class="today-card__hint"><strong>${tx('next')}:</strong> ${escape(nextRoadmapText())}</p>${link('season','details')}</article>`;
-  return `<h1>MEMBER HUB</h1><p class="intro">${escape(longDate(state.date))}</p>${status()}${notice()}${enemyBusterBanner(state)}<div class="today-dashboard">${focusCard}<div class="today-card-grid">${dailyCard}${vsCard}${seasonCard}</div></div>`;
+  const guide=DAILY_GUIDES[state.weekday];
+  const routine=allTaskItems();
+  const candidates=[...guide.tasks.map(id=>taskItem('vs',{id})),...seasonTodayTasks(state).filter(permitted).map(id=>taskItem('season',{id})),...routine];
+  const unique=[...new Map(candidates.filter(item=>permitted(item.id)).map(item=>[taskToken(item.refs[0]),item])).values()];
+  const pending=unique.filter(item=>!item.done&&!item.unavailable).slice(0,4);
+  const quickTasks=pending.map(item=>checklist(item.kind,[item],state,{filter:'open',group:'today'})).join('');
+  const related=[`vs-${state.weekday}`,...seasonSynergies(state).map(id=>TASK_GUIDES[id]),...(state.week>=1&&state.week<=8?['profession']:[])].filter(Boolean);
+  const next=SEASON_ROADMAP.find(entry=>entry.day>state.seasonDay);
+  return `<header class="page-heading"><div><p class="eyebrow">${escape(longDate(state.date))}</p><h1>${tx('today')}</h1></div>${status()}</header>${notice()}${enemyBusterBanner(state)}
+    <section class="focus-panel"><div class="focus-panel__main"><span class="eyebrow">${tx('focus')}</span><h2>${tx(state.weekday)}</h2><p>${tx(guide.focus)}</p>${minimum()}<a class="primary-link" href="#vs">${tx('doNow')} →</a></div><div class="focus-panel__time"><span class="eyebrow">${tx('bestArms')}</span>${arms(state,guide)}${resetCard()}</div><div class="focus-panel__save"><strong>${tx('save')}</strong><span>${guide.save.filter(permitted).map(id=>tx(id)).join(' · ')}</span></div></section>
+    <div class="overview-columns"><section class="open-tasks"><div class="section-heading"><h2>${tx('doNow')}</h2><a href="#daily">${tx('tasks')} →</a></div>${progressMarkup(routine,t('tasks'))}${quickTasks||`<p class="empty-state">${tx('allDone')}</p>`}<p class="empty-state" data-today-empty hidden>${tx('allDone')}</p><a class="text-link" href="#daily">${tx('checklist')} →</a></section><aside class="overview-aside"><section><h2>${tx('relevantGuides')}</h2><div class="related-guides">${[...new Set(related)].slice(0,3).map(id=>`<a href="${guideHash(id)}"><span>${escape(shortGuideTitle(id))}</span><span aria-hidden="true">↗</span></a>`).join('')}</div></section><section class="next-preview"><span class="eyebrow">${tx('nextMilestone')}</span><h2>${next?tx(next.label):tx('post')}</h2>${next?`<p>${tx('seasonDay')} ${next.day} · ${tx('week')} ${Math.ceil(next.day/7)}</p>`:''}<a href="#season">${tx('season')} →</a></section></aside></div>`;
 }
 function daySelector() {
   return `<div class="week-selector" role="group" aria-label="${tx('vs')}">${WEEKDAYS.map((day,index)=>{
@@ -261,17 +305,20 @@ function daySelector() {
   }).join('')}</div>`;
 }
 function daily() {
-  const tasks = dailyTasks();
-  return `<h1>${tx('daily')}</h1><p class="intro">${escape(longDate(state.date))} · ${tx('reset')}</p>${paragraph('dailyIntro')}${notice()}${progress('daily',tasks.map(task=>task.id))}<aside class="card warning">${paragraph('safeServer')}</aside>${['freebies','alliance','action','map','timing'].map(category=>details(t(category),checklist('daily',tasks.filter(task=>task.category===category))+(category==='timing'?paragraph('minister')+paragraph('philosophy')+paragraph('ssr'):''),category==='freebies',category)).join('')}${link('vs','vs')}`;
+  const tasks=dailyTasks();
+  const groups=seasonTaskGroups();
+  const items=allTaskItems();
+  return `<header class="page-heading"><div><p class="eyebrow">${escape(longDate(state.date))}</p><h1>${tx('tasks')}</h1></div>${resetCard()}</header><p class="intro">${tx('tasksIntro')}</p>${notice()}${progressMarkup(items,t('tasks'))}<div class="task-filters" role="group" aria-label="${tx('tasks')}">${[['open','openTasks'],['all','allTasks'],['unavailable','unavailableTasks']].map(([id,key])=>`<button type="button" data-task-filter-button="${id}" aria-pressed="${id===taskFilter}">${tx(key)}</button>`).join('')}</div><p class="empty-state" data-tasks-empty hidden></p><div class="task-groups">${taskGroup('vs',vsOnlyTasks(),`${t('vs')} · ${t(state.weekday)}`,'vs-tasks',{open:true})}${taskGroup('season',groups.todayIds.map(id=>({id})),t('season'),'season-routine',{open:true})}${['freebies','alliance','action','map','timing'].map((category,index)=>taskGroup('daily',tasks.filter(task=>task.category===category),t(category),category,{open:index===0})).join('')}${taskGroup('season',groups.weekIds.map(id=>({id})),`${t('season')} · ${t('thisWeek')}`,'season-week-tasks')}</div><p class="muted task-note">${tx('resetNote')}</p><aside class="rule-note">${tx('safeServer')}</aside>`;
 }
 function vs() {
-  const date = selectedDate(state,selectedDay);
-  const s = guideState(new Date(`${date}T12:00:00+02:00`));
-  const guide = DAILY_GUIDES[s.weekday];
-  const tasks = [...new Set([...guide.tasks,...seasonSynergies(s)])].map(id=>({id}));
-  const guideIds=[`vs-${s.weekday}`];
-  return `<h1>${tx('vs')}</h1>${paragraph('vsIntro')}${notice()}${daySelector()}<p class="intro">${escape(longDate(s.date))}</p><h2>${tx(s.weekday)}</h2>${minimum(s)}${enemyBusterBanner(s)}${guideGallery(guideIds)}${checklist('vs',tasks,s)}${section('bestArms',arms(s,guide))}${section('avoid',list(guide.avoid.filter(permitted)))}${section('save',list(guide.save.filter(permitted)))}${details(t('secretMissionsGuideTitle'),guideCard('vs-secret-missions'),false,'secret-missions-guide')}${section('tomorrow',`<h3>${tx(WEEKDAYS[(selectedDay+1)%7])}</h3>`)}${selectedDay===6?paragraph('fight'):''}`;
+  const date=selectedDate(state,selectedDay);
+  const s=guideState(new Date(`${date}T12:00:00+02:00`));
+  const guide=DAILY_GUIDES[s.weekday];
+  const tasks=[...new Set([...guide.tasks,...seasonSynergies(s)])].filter(permitted).map(id=>({id}));
+  const avoid=guide.avoid.filter(id=>!guide.save.includes(id)&&permitted(id));
+  return `<header class="page-heading"><h1>${tx('vs')}</h1></header>${notice()}${daySelector()}<div class="vs-heading"><div><p class="eyebrow">${escape(longDate(s.date))}</p><h2>${tx(s.weekday)}</h2>${minimum(s)}</div><div class="vs-window"><span class="eyebrow">${tx('bestArms')}</span>${arms(s,guide)}</div></div>${enemyBusterBanner(s)}<section class="vs-plan"><h2>${tx('doNow')}</h2>${checklist('vs',tasks,s,{group:'vs'})}</section><div class="save-note"><strong>${tx('save')} · ${tx(WEEKDAYS[(selectedDay+1)%7])}</strong>${list(guide.save.filter(permitted))}</div>${avoid.length?`<aside class="rule-note">${list(avoid)}</aside>`:''}${details(t('vsDetails'),guideGallery([`vs-${s.weekday}`])+paragraph('armsNote'),false,'vs-explanation')}<a class="text-link" href="${guideHash('vs-secret-missions')}">${tx('secretMissionsGuideTitle')} →</a>${selectedDay===6?paragraph('fight'):''}`;
 }
+
 function first24Body({withChecklist = false} = {}) {
   const flow = `<ol class="flow">${t('loop').split(' → ').map(step=>`<li>${escape(step)}</li>`).join('')}</ol>`;
   const farm = `<dl class="facts">${[t('immediate'),`Farm 1 → ${t('level')} 5`,`Farm 2 → ${t('level')} 10`,`Farm 3 → ${t('level')} 10`,'Season Weekly Pass · 1,000 Diamonds'].map((unlock,index)=>`<div><dt>Farm ${index+1}</dt><dd>${escape(unlock)}</dd></div>`).join('')}</dl>`;
@@ -282,49 +329,16 @@ function first24Body({withChecklist = false} = {}) {
 function first24({withChecklist = false, open = false} = {}) {
   return details(`${t('seasonDay')} 1 · ${t('first24')}`,first24Body({withChecklist}),open,'first24');
 }
-function seasonProgressFor(ids,s=state) {
-  let done=0;
-  for (const id of ids) {
-    const kind=isSeasonDailyTask(id,s)?'seasonDaily':'season';
-    const checks=checkedMap(storage.get(checklistKey(kind,s)));
-    if (checks[id]) done++;
-  }
-  return {done,total:ids.length};
-}
-function seasonCommand(todayIds,weekIds) {
-  const todayProgress=seasonProgressFor(todayIds);
-  const weekProgress=seasonProgressFor(weekIds);
-  const current=SEASON_ROADMAP.filter(entry=>entry.day===state.seasonDay);
-  const nowText=current.length?current.map(entry=>t(entry.label)).join(' · '):phaseLabel(state);
-  const next=SEASON_ROADMAP.find(entry=>entry.day>state.seasonDay);
-  const nextText=next?`${t('seasonDay')} ${next.day} · ${t(next.label)}`:t('post');
-  return `<section class="season-command" aria-label="${tx('season')}">
-    <button type="button" class="season-command__now" data-season-jump="season-today"><span class="badge">${tx('seasonNow')}</span><h2>${state.seasonDay?`${tx('seasonDay')} ${state.seasonDay}`:escape(phaseLabel(state))}</h2><p>${escape(nowText)}</p><strong>${tx('progress',{done:todayProgress.done,total:todayProgress.total})}</strong></button>
-    <div class="season-command__secondary">
-      <button type="button" data-season-jump="season-week"><span class="badge">${tx('seasonWeekFocus')}</span><strong>${escape(phaseLabel(state))}</strong><small>${tx('progress',{done:weekProgress.done,total:weekProgress.total})}</small></button>
-      <button type="button" data-season-jump="season-next"><span class="badge">${tx('nextMilestone')}</span><strong>${escape(nextText)}</strong></button>
-    </div>
-  </section>`;
-}
 function season() {
-  const ids = seasonTasks(state);
-  const current = state.week > 8 ? 9 : state.week;
-  const isPreSeason = state.phase === 'PRE_SEASON';
-  const isDayOne = state.seasonDay === DAY_ONE_GROUP.day;
-  const todayIds = isPreSeason ? ['prepSeason'] : isDayOne ? DAY_ONE_GROUP.tasks : seasonTodayTasks(state);
-  const uniqueTodayIds = [...new Set(todayIds)].filter(id=>ids.includes(id));
-  // Recurring event-day actions live only in Today's checklist; do not reappear as stale weekly boxes.
-  const weekIds = ids.filter(id=>!uniqueTodayIds.includes(id) && !['legion'].includes(id));
+  const {todayIds,weekIds}=seasonTaskGroups();
+  const current=state.week>8?9:state.week;
+  const isPreSeason=state.phase==='PRE_SEASON';
   const contextIds=seasonContext(state).filter(permitted);
-  const contextBody=contextIds.length ? `<aside class="card warning">${list(contextIds)}</aside>` : '';
-  const todayBody = (isDayOne ? first24({withChecklist:true,open:true}) : checklist('season',uniqueTodayIds.map(id=>({id})))) + contextBody;
-  const nextBody = isPreSeason
-    ? first24({open:state.countdown<=3*DAY_MS})+nextCards(3,[DAY_ONE_GROUP.day])
-    : nextCards();
-  const timeline = Object.entries(SEASON_CONTENT).map(([phase,items],index)=>details(index===0?t('pre'):index===9?t('post'):`${t('week')} ${index}`,list(items)+guideGallery(SEASON_GUIDES[phase] || []),index===current || index===current+1,phase)).join('');
-  const command=seasonCommand(uniqueTodayIds,weekIds);
-  return `<h1>${tx('season')}</h1>${status()}${notice()}${command}<section class="section" id="season-today"><h2>${tx('today')}</h2>${todayBody}</section><section class="section" id="season-week"><h2>${tx('thisWeek')}</h2><h3>${escape(phaseLabel(state))}</h3>${checklist('season',weekIds.map(id=>({id})))}</section><section class="section" id="season-next"><h2>${tx('next')}</h2>${nextBody}</section>${details(t('details'),timeline,false,'season-week-details')}${section('timeline',seasonRoadmapDisclosure())}`;
+  const todayItems=todayIds.map(id=>taskItem('season',{id}));
+  const timeline=Object.entries(SEASON_CONTENT).map(([phase,items],index)=>details(index===0?t('pre'):index===9?t('post'):`${t('week')} ${index}`,list(items)+guideGallery(SEASON_GUIDES[phase]||[]),index===current,phase)).join('');
+  return `<header class="page-heading"><h1>${tx('season')}</h1>${status()}</header>${notice()}${seasonGuidePosition()}<nav class="section-links" aria-label="${tx('season')}"><a href="#season" data-season-jump="season-today">${tx('today')}</a><a href="#season" data-season-jump="season-week">${tx('thisWeek')}</a><a href="#season" data-season-jump="season-next">${tx('next')}</a></nav><div class="overview-columns season-columns"><div><section id="season-today"><div class="section-heading"><h2>${tx('today')}</h2><a href="#daily">${tx('tasks')} →</a></div>${progressMarkup(todayItems,t('season'))}${checklist('season',todayIds.map(id=>({id})),state,{group:'season'})}${state.seasonDay===1?first24({open:false}):''}</section><section class="section" id="season-week"><h2>${tx('thisWeek')}</h2>${weekIds.length?checklist('season',weekIds.map(id=>({id})),state,{group:'week'}):paragraph('allDone')}</section></div><aside id="season-next"><h2>${tx('nextMilestone')}</h2>${isPreSeason?first24({open:false})+nextCards(3,[DAY_ONE_GROUP.day]):nextCards()}</aside></div>${contextIds.length?details(t('important'),list(contextIds),false,'season-context'):''}${details(t('details'),timeline,false,'season-week-details')}${section('timeline',seasonRoadmapDisclosure())}`;
 }
+
 const REFERENCE_LABELS = {
   safeServer:'Server 2261',minister:'Minister Buff',philosophy:'Upgrade Timing',
   hero:'Hero',drone:'Drone',buildings:'Building Power',profession:'Engineer / War Leader',
@@ -375,7 +389,7 @@ function guides() {
   const seasonSection=`<section class="section guide-section--season"><h2>${tx('season')}</h2>${seasonGuidePosition()}${seasonLibrary}</section>`;
   const trainSection=`<section class="section guide-section--alliance"><h2>${escape(trainGuideSectionTitle(lang))}</h2>${trainLibrary}</section>`;
   const techSection=`<section class="section"><h2>${tx('filterTech')}</h2>${techLibrary}</section>`;
-  return `${guideContextBar()}<h1>${tx('guides')}</h1><p class="intro">${tx('guidesIntro')}</p>${notice()}${search}${guideFilterBar()}<div class="guide-library">${vsSection}${seasonSection}${trainSection}${techSection}</div>${section('quickReference',referenceLibrary())}`;
+  return `${guideContextBar()}<h1>${tx('guides')}</h1><p class="intro">${tx('guideIntro')}</p>${notice()}${search}${guideFilterBar()}<div class="guide-library">${vsSection}${seasonSection}${trainSection}${techSection}</div>${section('quickReference',referenceLibrary())}`;
 }
 const views = {today,daily,vs,season,guides,admin:()=>`<h1>${tx('admin')}</h1>${paragraph('adminPending')}`};
 function syncChrome() {
@@ -403,6 +417,37 @@ function showStorageError() {
   const error = document.querySelector('#storage-error');
   error.hidden = !storageFailed;
   error.textContent = t('unavailableStorage');
+}
+function syncTaskState() {
+  const skipped=checkedMap(storage.get(availabilityKey(state)));
+  const describe=refs=>({refs,done:taskDone(storage,refs),unavailable:skipped[taskToken(refs[0])]===true});
+  main.querySelectorAll('[data-task-progress]').forEach(element=>{
+    const stats=taskProgress(JSON.parse(element.dataset.refs).map(describe));
+    element.querySelector('[data-progress-label]').textContent=t('progress',stats);
+    const bar=element.querySelector('progress');
+    bar.value=stats.done;bar.max=stats.total||1;
+  });
+  main.querySelectorAll('[data-task-row]').forEach(row=>{
+    const refs=JSON.parse(row.dataset.refs);
+    const input=row.querySelector('[data-check]');
+    const unavailable=checkedMap(storage.get(`rzsn-unavailable-${input.dataset.date}`))[taskToken(refs[0])]===true;
+    const item={refs,done:taskDone(storage,refs),unavailable};
+    input.checked=item.done;input.disabled=unavailable;
+    row.dataset.done=String(item.done);row.dataset.unavailable=String(unavailable);
+    row.hidden=!taskVisible(item,row.closest('[data-task-list]').dataset.taskFilter);
+    row.querySelector('[data-unavailable-toggle]').textContent=t(unavailable?'restoreTask':'skipToday');
+  });
+  main.querySelectorAll('[data-task-group]').forEach(group=>{
+    const items=[...group.querySelectorAll('[data-task-row]')].map(row=>describe(JSON.parse(row.dataset.refs)));
+    const stats=taskProgress(items);
+    group.querySelector('[data-group-progress]').textContent=`${stats.done} / ${stats.total}`;
+    group.hidden=!group.querySelector('[data-task-row]:not([hidden])');
+  });
+  const empty=main.querySelector('[data-tasks-empty]');
+  if (empty) {
+    empty.hidden=Boolean(main.querySelector('[data-task-row]:not([hidden])'));
+    empty.textContent=t(taskFilter==='unavailable'?'noneUnavailable':'allDone');
+  }
 }
 function openDirectGuide(guideId,{sectionId='',scroll=true}={}) {
   if (!guideId || currentView!=='guides') return false;
@@ -534,8 +579,9 @@ function render({focus = false,preserve = false} = {}) {
   main.innerHTML = views[currentView]();
   if (open) main.querySelectorAll('[data-disclosure]').forEach(el=>{el.open=open.has(el.dataset.disclosure);});
   decorateGuidePreviews();
+  syncTaskState();
   syncChrome();
-  document.title = `${t(currentView==='admin'?'admin':currentView)} · RZSN Member Hub`;
+  document.title = `${t(currentView==='daily'?'tasks':currentView)} · RZSN Member Hub`;
   if (currentView==='guides') applyGuideFilters();
   const directGuide=openDirectGuide(route.guideId,{sectionId:route.sectionId,scroll:true});
   if (currentView==='guides') requestAnimationFrame(setupGuideContextBar);
@@ -549,7 +595,8 @@ function refreshClock() {
     state=next;
     const timer = document.querySelector('#countdown');
     if (timer) timer.textContent=countdown();
-    document.querySelectorAll('[data-arms-state]').forEach(el=>{el.textContent=t(armsWindow(state,DAILY_GUIDES[state.weekday]));});
+    document.querySelectorAll('[data-arms-state]').forEach(el=>{const phase=armsWindow(state,DAILY_GUIDES[state.weekday]);el.textContent=t(phase);el.dataset.state=phase;});
+    document.querySelectorAll('[data-reset-countdown]').forEach(el=>{el.textContent=remainingReset();});
   }
 }
 const languageEntries = Object.entries(LANGUAGES).sort(([a],[b])=>a==='en'?-1:b==='en'?1:0);
@@ -693,11 +740,8 @@ main.addEventListener('change',event=>{
     return;
   }
   if (!input.matches('[data-check]')) return;
-  const key=input.dataset.key;
-  const checks=checkedMap(storage.get(key));
-  if (input.checked) checks[input.dataset.check]=true;
-  else delete checks[input.dataset.check];
-  storage.set(key,checks);
+  const refs=JSON.parse(input.closest('[data-task-row]').dataset.refs);
+  writeTask(storage,refs,input.checked);
   const task=TASKS.find(task=>task.id===input.dataset.check);
   if (input.dataset.kind==='daily' && ['every_48h','every_2_days'].includes(task?.frequency)) {
     const previous=storage.get('rzsn-cadence',{});
@@ -705,24 +749,53 @@ main.addEventListener('change',event=>{
     if (input.checked) history[task.id]=state.now.getTime(); else delete history[task.id];
     storage.set('rzsn-cadence',history);
   }
-  // Update progress without replacing the focused checkbox or collapsing its group.
-  if (input.dataset.kind==='daily') {
-    const ids=dailyTasks().map(task=>task.id);
-    const done=ids.filter(id=>checks[id]).length;
-    document.querySelectorAll('[data-progress-label]').forEach(el=>{el.textContent=t('progress',{done,total:ids.length});});
-    document.querySelectorAll('[data-progress-bar]').forEach(el=>{el.value=done;el.max=ids.length || 1;});
+  syncTaskState();
+  if (currentView==='today') {
+    render({preserve:true});
+    main.querySelector('[data-check],.text-link')?.focus({preventScroll:true});
+  } else if (input.closest('[hidden]')) {
+    main.querySelector('[data-task-filter-button][aria-pressed="true"]')?.focus({preventScroll:true});
   }
+  showStorageError();
+});
+main.addEventListener('click',event=>{
+  const filter=event.target.closest('[data-task-filter-button]');
+  if (filter) {
+    taskFilter=filter.dataset.taskFilterButton;
+    main.querySelectorAll('[data-task-filter-button]').forEach(button=>button.setAttribute('aria-pressed',String(button===filter)));
+    main.querySelectorAll('[data-task-list]').forEach(list=>{list.dataset.taskFilter=taskFilter;});
+    syncTaskState();
+    if (!main.querySelector('[data-task-group][open]:not([hidden])')) {
+      const first=main.querySelector('[data-task-group]:not([hidden])');
+      if (first) first.open=true;
+    }
+  }
+  const button=event.target.closest('[data-unavailable-toggle]');
+  if (!button) return;
+  const key=`rzsn-unavailable-${button.dataset.date}`;
+  const unavailable=checkedMap(storage.get(key));
+  if (unavailable[button.dataset.token]) delete unavailable[button.dataset.token];
+  else unavailable[button.dataset.token]=true;
+  storage.set(key,unavailable);
+  syncTaskState();
+  if (currentView==='today') render({preserve:true});
+  if (!button.isConnected || button.closest('[hidden]')) main.querySelector('[data-task-filter-button][aria-pressed="true"],[data-check]:not(:disabled),.text-link')?.focus({preventScroll:true});
   showStorageError();
 });
 main.addEventListener('input',event=>{
   if (event.target.id!=='search') return;
   guideSearchQuery=event.target.value;
+  if (guideSearchQuery.trim() && guideFilter==='current') {
+    guideFilter='all';
+    main.querySelectorAll('[data-guide-filter]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.guideFilter===guideFilter)));
+  }
   applyGuideFilters();
   setupGuideContextBar();
 });
 main.addEventListener('click',event=>{
   const seasonJump=event.target.closest('[data-season-jump]');
   if (seasonJump) {
+    event.preventDefault();
     document.getElementById(seasonJump.dataset.seasonJump)?.scrollIntoView({behavior:'smooth',block:'start'});
     return;
   }
