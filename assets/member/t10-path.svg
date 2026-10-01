@@ -8,20 +8,20 @@
 <text x="48" y="109" fill="#b5c5cd" font-family="system-ui,sans-serif" font-size="19">LAST WAR · RESEARCH PATH</text>
 <text x="48" y="180" fill="#e9c985" font-family="system-ui,sans-serif" font-size="17" font-weight="700" letter-spacing="2">BASE</text>
 <circle cx="60" cy="226" r="11" fill="url(#gold)"/><text x="91" y="233" fill="#f5f3e9" font-family="system-ui,sans-serif" font-size="30" font-weight="650">HQ 30</text>
-<path d="M60 242V340M60 340H101M60 340V580M60 580H101" fill="none" stroke="#96b7c1" stroke-width="3"/>
-<circle cx="60" cy="340" r="5" fill="#96b7c1"/><circle cx="60" cy="580" r="5" fill="#96b7c1"/>
-<text x="102" y="322" fill="#f5f3e9" font-family="system-ui,sans-serif" font-size="27" font-weight="650">TECH CENTER 30</text>
-<text x="102" y="353" fill="#b5c5cd" font-family="system-ui,sans-serif" font-size="18">research access</text>
-<path d="M102 376V472" stroke="#96b7c1" stroke-width="3"/>
-<circle cx="102" cy="405" r="5" fill="#96b7c1"/>
-<text x="138" y="414" fill="#d8e7e9" font-family="system-ui,sans-serif" font-size="22" font-weight="600">SPECIAL FORCES</text>
-<text x="138" y="447" fill="#b5c5cd" font-family="system-ui,sans-serif" font-size="18">required nodes only</text>
-<circle cx="102" cy="486" r="11" fill="url(#gold)"/><text x="136" y="495" fill="#f3d397" font-family="system-ui,sans-serif" font-size="29" font-weight="700">UNIT X</text>
-<text x="102" y="561" fill="#f5f3e9" font-family="system-ui,sans-serif" font-size="27" font-weight="650">BARRACKS 30</text>
-<text x="102" y="593" fill="#b5c5cd" font-family="system-ui,sans-serif" font-size="18">training location</text>
-<path d="M102 510V672H340M102 610V672" fill="none" stroke="#96b7c1" stroke-width="3"/>
-<circle cx="340" cy="672" r="6" fill="#e9c985"/>
-<text x="366" y="683" fill="#f4d395" font-family="system-ui,sans-serif" font-size="37" font-weight="750">T10</text>
+<path d="M60 242V272H523M102 272V302M523 272V302" fill="none" stroke="#96b7c1" stroke-width="3"/>
+<circle cx="102" cy="272" r="5" fill="#96b7c1"/><circle cx="523" cy="272" r="5" fill="#96b7c1"/>
+<text x="102" y="343" fill="#f5f3e9" font-family="system-ui,sans-serif" font-size="27" font-weight="650">TECH CENTER 30</text>
+<text x="102" y="375" fill="#b5c5cd" font-family="system-ui,sans-serif" font-size="18">research access</text>
+<path d="M102 392V478" stroke="#96b7c1" stroke-width="3"/>
+<circle cx="102" cy="409" r="5" fill="#96b7c1"/>
+<text x="138" y="418" fill="#d8e7e9" font-family="system-ui,sans-serif" font-size="22" font-weight="600">SPECIAL FORCES</text>
+<text x="138" y="451" fill="#b5c5cd" font-family="system-ui,sans-serif" font-size="18">required nodes only</text>
+<circle cx="102" cy="492" r="11" fill="url(#gold)"/><text x="136" y="501" fill="#f3d397" font-family="system-ui,sans-serif" font-size="29" font-weight="700">UNIT X</text>
+<text x="426" y="343" fill="#f5f3e9" font-family="system-ui,sans-serif" font-size="25" font-weight="650">BARRACKS 30</text>
+<text x="426" y="375" fill="#b5c5cd" font-family="system-ui,sans-serif" font-size="18">training location</text>
+<path d="M102 515V641H345M523 391V641H375" fill="none" stroke="#96b7c1" stroke-width="3"/>
+<circle cx="360" cy="641" r="9" fill="#e9c985"/>
+<text x="297" y="712" fill="#f4d395" font-family="system-ui,sans-serif" font-size="37" font-weight="750">T10</text>
 <text x="48" y="808" fill="#d8e7e9" font-family="system-ui,sans-serif" font-size="19">GOLD · VALOR BADGES · RESEARCH TIME</text>
 <text x="48" y="841" fill="#aabdc5" font-family="system-ui,sans-serif" font-size="16">Check exact prerequisites in your game client.</text>
 </svg>
