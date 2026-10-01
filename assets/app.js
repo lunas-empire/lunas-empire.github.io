@@ -11,6 +11,7 @@ import { memberRoute, guideHash, guideUrl } from './guide-links.js';
 import { DAY_MS, WEEKDAYS, guideState, selectedDate, checklistKey, armsWindow, availableTask, enemyBusterPhase, seasonEventInstant } from './engine.js';
 import { createStorage, checkedMap } from './storage.js';
 import { OVERVIEW_COPY } from './overview-i18n.js';
+import { localizeTerms, armsPhase } from './terminology.js';
 import { taskReferences, taskDone, writeTask, availabilityKey, taskToken, taskProgress, taskVisible, seasonTaskUnlocked, nextReset, conciseTask, TASK_GUIDES } from './overview.js';
 
 const dictionary = {...UI,...COPY,...SEASON_COPY,...GUIDE_COPY,...SEASON_LIBRARY_COPY};
@@ -33,7 +34,9 @@ let guideFilter='current';
 let taskFilter='open';
 let guideSearchQuery='';
 let guideContextObserver=null;
-const t = (key, values={}) => OVERVIEW_COPY[lang]?.[key]?.replace(/\{(\w+)\}/g,(_,name)=>values[name]??`{${name}}`) ?? translate(dictionary,key,lang,values);
+const t = (key, values={}) => OVERVIEW_COPY[lang]?.[key] !== undefined
+  ? localizeTerms(OVERVIEW_COPY[lang][key],lang).replace(/\{(\w+)\}/g,(_,name)=>values[name]??`{${name}}`)
+  : translate(dictionary,key,lang,values);
 const tx = (key, values) => escape(t(key,values));
 const main = document.querySelector('main');
 const menu = document.querySelector('#menu');
@@ -104,7 +107,7 @@ function seasonLibraryDisclosure(id) {
   return `<details class="guide-disclosure" data-search data-filter-item data-guide-category="season" data-guide-current="${current}" data-guide-today="${today}" data-guide-label="${tx('today')}" data-guide-id="${escape(id)}" data-season-guide="${escape(id)}" data-search-extra="${escape(searchTerms)}"><summary data-guide-label="${tx('today')}">${escape(title)}</summary><article class="guide-card guide-card--inside guide-card--split"><div class="guide-card__info">${guideShareButton(id)}${guideTextBlocks(title,guide.blocks,{showTitle:false})}${profession}</div>${images}</article></details>`;
 }
 function techGuideDisclosure() {
-  return `<details class="guide-disclosure guide-disclosure--tech" data-search data-filter-item data-guide-id="tech" data-guide-category="tech" data-guide-current="false" data-tech-guide><summary>${escape(TECH_GUIDE_TITLE)}</summary><div class="tech-guide-shell">${guideShareButton('tech')}${techGuideHtml(lang,escape)}</div></details>`;
+  return `<details class="guide-disclosure guide-disclosure--tech" data-search data-filter-item data-guide-id="tech" data-guide-category="tech" data-guide-current="false" data-tech-guide><summary>${escape(localizeTerms(TECH_GUIDE_TITLE,lang))}</summary><div class="tech-guide-shell">${guideShareButton('tech')}${techGuideHtml(lang,escape)}</div></details>`;
 }
 function trainGuideDisclosure() {
   const title=trainGuideTitle(lang);
@@ -135,12 +138,12 @@ function arms(s, guide) {
   if (!guide.arms) return paragraph('unconfirmed');
   const hours=n=>`${String(n%24).padStart(2,'0')}:00`;
   const current=s.date===state.date;
-  return `<div class="arms-clock"><strong class="time">${hours(guide.arms.start)}–${hours(guide.arms.end)} ST</strong>${current?`<span class="time-status" data-arms-state data-state="${armsWindow(state,guide)}">${tx(armsWindow(state,guide))}</span>`:''}</div><small>${escape(guide.arms.type)}</small>`;
+  return `<div class="arms-clock"><strong class="time">${hours(guide.arms.start)}–${hours(guide.arms.end)} ST</strong>${current?`<span class="time-status" data-arms-state data-state="${armsWindow(state,guide)}">${tx(armsWindow(state,guide))}</span>`:''}</div><small>${escape(armsPhase(guide.arms.type,lang))}</small>`;
 }
 function shortGuideTitle(id) {
   if (id.startsWith('vs-') && WEEKDAYS.includes(id.slice(3))) return t(id.slice(3));
   if (id==='vs-secret-missions') return t('secretMissionsGuideTitle');
-  if (id==='tech') return TECH_GUIDE_TITLE;
+  if (id==='tech') return localizeTerms(TECH_GUIDE_TITLE,lang);
   if (id==='train') return trainGuideTitle(lang);
   return SEASON_LIBRARY_GUIDES[id]?t(SEASON_LIBRARY_GUIDES[id].title):guideAlt(MEMBER_MEDIA[id]);
 }
@@ -350,7 +353,7 @@ const REFERENCE_GROUPS = [
   {title:'guidePlanning',ids:['radarSave','star','ssr','chests']},
 ];
 function referenceLibrary() {
-  return `<div id="search-results" class="reference-groups">${REFERENCE_GROUPS.map(group=>`<section class="reference-group" data-search-group><h3>${tx(group.title)}</h3><dl class="reference-list">${group.ids.map(id=>`<div class="reference-note" data-search="${id}" data-filter-item data-guide-category="account" data-guide-current="false"><dt>${escape(REFERENCE_LABELS[id])}</dt><dd>${paragraph(id)}</dd></div>`).join('')}</dl></section>`).join('')}</div>`;
+  return `<div id="search-results" class="reference-groups">${REFERENCE_GROUPS.map(group=>`<section class="reference-group" data-search-group><h3>${tx(group.title)}</h3><dl class="reference-list">${group.ids.map(id=>`<div class="reference-note" data-search="${id}" data-filter-item data-guide-category="account" data-guide-current="false"><dt>${escape(localizeTerms(REFERENCE_LABELS[id],lang))}</dt><dd>${paragraph(id)}</dd></div>`).join('')}</dl></section>`).join('')}</div>`;
 }
 function seasonWeekIsCurrent(week) {
   if (typeof week==='number') return week===state.week;

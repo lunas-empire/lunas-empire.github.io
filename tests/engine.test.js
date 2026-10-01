@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { termLabel } from '../assets/terminology.js';
 import assert from 'node:assert/strict';
 import { ALLIANCE_CONFIG } from '../assets/config.js';
 import { guideState, checklistKey, armsWindow, availableTask, getGuideDate, resetInstant, seasonEventInstant, enemyBusterPhase } from '../assets/engine.js';
@@ -172,13 +173,13 @@ test('Day 1 season purchase recommendation uses the current three prices',()=>{
     const text=translate(SEASON_COPY,'pass',lang);
     assert.match(text,/1[ .,Â ]?000/,lang);
     assert.match(text,/2[ .,Â ]?000/,lang);
-    assert.ok(/Gold Bricks/i.test(text),lang);
+    assert.ok(text.includes(termLabel('bricks',lang)),lang);
   }
   const de=translate(SEASON_COPY,'pass','de');
   assert.ok(de.includes('Season-Wochenpass'));
   assert.ok(de.includes('1.000 Diamanten'));
-  assert.ok(de.includes('1.000 Gold Bricks'));
-  assert.ok(de.includes('2.000 Gold Bricks'));
+  assert.ok(de.includes('1.000 Goldziegel'));
+  assert.ok(de.includes('2.000 Goldziegel'));
   assert.doesNotMatch(de,/Optional fÃ¼r Farm 5/);
 });
 test('10 Pumpkin Skin likes are a daily Season checklist task',()=>{

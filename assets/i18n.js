@@ -1,3 +1,5 @@
+import { localizeTerms } from './terminology.js';
+import { terminologyCopy } from './terminology-copy.js';
 // Seven core languages stay in the main bundle; the remaining translations load on demand.
 export const LANGUAGES = {de:'Deutsch',en:'English',uk:'Українська',ja:'日本語',fr:'Français',it:'Italiano',id:'Bahasa Indonesia',ar:'العربية',ko:'한국어',sv:'Svenska',pt:'Português',nl:'Nederlands',th:'ไทย',km:'ខ្មែរ',fil:'Filipino'};
 export const LOCALES = {de:'de-DE',en:'en-GB',uk:'uk-UA',ja:'ja-JP',fr:'fr-FR',it:'it-IT',id:'id-ID',ar:'ar-SA-u-ca-gregory',ko:'ko-KR',sv:'sv-SE',pt:'pt-PT',nl:'nl-NL',th:'th-TH-u-ca-gregory',km:'km-KH-u-ca-gregory',fil:'fil-PH'};
@@ -127,7 +129,7 @@ export function translate(table, key, lang, values = {}) {
   if (!row) throw new Error(`Missing translation: ${key}`);
   const baseLanguages = ['de','en','uk','ja','fr','it','id'];
   const baseIndex = baseLanguages.indexOf(lang);
-  const value = baseIndex >= 0 ? row[baseIndex] : EXTRA_TRANSLATIONS[lang]?.[key];
+  const value = terminologyCopy(key,lang) ?? (baseIndex >= 0 ? row[baseIndex] : EXTRA_TRANSLATIONS[lang]?.[key]);
   if (typeof value !== 'string' || !value.trim()) throw new Error(`Missing translation: ${key} [${lang}]`);
-  return value.replace(/\{(\w+)\}/g, (_, k) => values[k] ?? `{${k}}`);
+  return localizeTerms(value,lang).replace(/\{(\w+)\}/g, (_, k) => values[k] ?? `{${k}}`);
 }

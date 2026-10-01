@@ -1,5 +1,5 @@
-const CACHE='rzsn-shell-v21';
-const SHELL=['/','/index.html','/assets/hub.css','/assets/overview.css','/assets/overview.js','/assets/overview-i18n.js','/assets/tokens.css','/assets/app.js','/assets/config.js','/assets/train-guide.js','/assets/member/train-guide-ui.webp','/assets/sun.svg','/manifest.webmanifest'];
+const CACHE='rzsn-shell-2026-10-01.1';
+const SHELL=["/","/index.html","/assets/app.js?v=2026-10-01.1","/assets/config.js?v=2026-10-01.1","/assets/content.js?v=2026-10-01.1","/assets/engine.js?v=2026-10-01.1","/assets/guide-links.js?v=2026-10-01.1","/assets/guide-text.js?v=2026-10-01.1","/assets/i18n-ar.js?v=2026-10-01.1","/assets/i18n-fil.js?v=2026-10-01.1","/assets/i18n-km.js?v=2026-10-01.1","/assets/i18n-ko.js?v=2026-10-01.1","/assets/i18n-nl.js?v=2026-10-01.1","/assets/i18n-pt.js?v=2026-10-01.1","/assets/i18n-sv.js?v=2026-10-01.1","/assets/i18n-th.js?v=2026-10-01.1","/assets/i18n.js?v=2026-10-01.1","/assets/overview-i18n.js?v=2026-10-01.1","/assets/overview.js?v=2026-10-01.1","/assets/priority.js?v=2026-10-01.1","/assets/profession-guide.js?v=2026-10-01.1","/assets/season-library.js?v=2026-10-01.1","/assets/season.js?v=2026-10-01.1","/assets/special-guide-i18n.js?v=2026-10-01.1","/assets/storage.js?v=2026-10-01.1","/assets/tech-guide.js?v=2026-10-01.1","/assets/terminology-copy.js?v=2026-10-01.1","/assets/terminology.js?v=2026-10-01.1","/assets/train-guide.js?v=2026-10-01.1","/assets/hub.css?v=2026-10-01.1","/assets/overview.css?v=2026-10-01.1","/assets/tokens.css?v=2026-10-01.1","/assets/member/train-guide-ui.webp","/assets/sun.svg","/manifest.webmanifest"];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()));
 });
@@ -20,7 +20,7 @@ self.addEventListener('fetch',event=>{
     return;
   }
   if(url.pathname.startsWith('/assets/')){
-    // Keep a complete code release together when an installed app is reopened.
+    // Versioned module URLs avoid mixed old/new code during worker upgrades.
     // Guide images can remain stale-while-revalidate; source files are network-first.
     if (/\.(?:js|css)$/.test(url.pathname)) {
       event.respondWith(fetch(event.request).then(response=>{

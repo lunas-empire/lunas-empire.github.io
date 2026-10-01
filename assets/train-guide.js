@@ -1,3 +1,4 @@
+import { localizeTerms } from './terminology.js';
 const COPY = {
   de:{
     section:'Allianz & Events', title:'Alliance Train: Gold, Tickets & bester Loot',
@@ -166,7 +167,7 @@ const EXTRA = {
     rule:'Tandaan: 5x Refresh hanggang Gold → kunin ang tickets → i-save ang best train → patuloy na pagandahin → i-check ulit sa huling oras.'
   }
 };
-const row=(lang,key)=>COPY[lang]?.[key] ?? EXTRA[lang]?.[key] ?? COPY.en[key];
+const row=(lang,key)=>localizeTerms(COPY[lang]?.[key] ?? EXTRA[lang]?.[key] ?? COPY.en[key],lang);
 export const TRAIN_GUIDE_SEARCH='train gold refresh tickets donated save load loot rating 50000 50k queue wagon invitation';
 export const trainGuideTitle=lang=>row(lang,'title');
 export const trainGuideSectionTitle=lang=>row(lang,'section');

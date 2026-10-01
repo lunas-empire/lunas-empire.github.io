@@ -1,3 +1,4 @@
+import { localizeTerms } from './terminology.js';
 export const SPECIAL_GUIDE_COPY={
 de:{
  techIntro:'Forschung ist eine der stärksten dauerhaften Power-Quellen. Halte beide Tech Center möglichst ständig aktiv und kombiniere große Forschungen mit VS- und Minister-Fenstern.',
@@ -255,4 +256,4 @@ fil:{
  profVerify:'Maaaring bahagyang mag-iba ang skill names depende sa client. Sundin ang kasalukuyang S1 live client.'
 }
 };
-export function specialGuideCopy(lang){return SPECIAL_GUIDE_COPY[lang]||SPECIAL_GUIDE_COPY.en;}
+export function specialGuideCopy(lang){return Object.fromEntries(Object.entries(SPECIAL_GUIDE_COPY[lang]||SPECIAL_GUIDE_COPY.en).map(([key,value])=>[key,localizeTerms(value,lang)]));}

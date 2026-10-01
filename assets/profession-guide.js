@@ -1,4 +1,5 @@
 import { specialGuideCopy } from './special-guide-i18n.js';
+import { localizeTerms } from './terminology.js';
 
 const S1=[
 ['Lv1','Combat Experience 3/3','MAX'],
@@ -37,19 +38,19 @@ const priorityCode=value=>({
   OPTIONAL:'OPT','MAX while leveling':'MAX ↑',REVIEW:'CAP',PRIORITY:'CORE',FILL:'FILL'
 }[value]||value);
 
-function rows(items,e){
-  return `<div class="profession-path__rows">${items.map(([level,skill,priority])=>`<div class="profession-path__row"><span class="profession-path__level">${e(level)}</span><div><div class="profession-path__skill"><strong>${e(skill)}</strong><span class="profession-path__priority">${e(priorityCode(priority))}</span></div></div></div>`).join('')}</div>`;
+function rows(items,e,lang){
+  return `<div class="profession-path__rows">${items.map(([level,skill,priority])=>`<div class="profession-path__row"><span class="profession-path__level">${e(level)}</span><div><div class="profession-path__skill"><strong>${e(localizeTerms(skill,lang))}</strong><span class="profession-path__priority">${e(priorityCode(priority))}</span></div></div></div>`).join('')}</div>`;
 }
 
 export function professionGuideHtml(lang,escape){
   const c=specialGuideCopy(lang);
   const e=value=>escape(value);
   return `<section class="profession-path" data-profession-path>
-<div class="profession-path__hero"><span class="badge">SEASON 1 · ENGINEER</span><h3>${e(c.profTitle)}</h3><p>${e(c.profIntro)}</p></div>
+<div class="profession-path__hero"><span class="badge">S1 · ${e(localizeTerms('Engineer',lang))}</span><h3>${e(c.profTitle)}</h3><p>${e(c.profIntro)}</p></div>
 <aside class="profession-path__cap"><strong>S1 · LV40</strong><p>${e(c.profCap)}</p></aside>
-<details class="profession-path__section" data-section-id="level-1-15"><summary>${e(c.profEarlyTitle)}</summary><div class="profession-path__body"><p class="profession-path__summary">${e(c.profEarlyText)}</p>${rows(S1,e)}</div></details>
-<details class="profession-path__section" data-section-id="level-20-35"><summary>${e(c.profMidTitle)}</summary><div class="profession-path__body"><p class="profession-path__summary">${e(c.profMidText)}</p>${rows(MID,e)}</div></details>
-<details class="profession-path__section" data-section-id="level-40"><summary>${e(c.profFinalTitle)}</summary><div class="profession-path__body"><p class="profession-path__summary">${e(c.profFinalText)}</p>${rows(CAP,e)}</div></details>
+<details class="profession-path__section" data-section-id="level-1-15"><summary>${e(c.profEarlyTitle)}</summary><div class="profession-path__body"><p class="profession-path__summary">${e(c.profEarlyText)}</p>${rows(S1,e,lang)}</div></details>
+<details class="profession-path__section" data-section-id="level-20-35"><summary>${e(c.profMidTitle)}</summary><div class="profession-path__body"><p class="profession-path__summary">${e(c.profMidText)}</p>${rows(MID,e,lang)}</div></details>
+<details class="profession-path__section" data-section-id="level-40"><summary>${e(c.profFinalTitle)}</summary><div class="profession-path__body"><p class="profession-path__summary">${e(c.profFinalText)}</p>${rows(CAP,e,lang)}</div></details>
 <details class="profession-path__tips-disclosure" data-section-id="usage-respec"><summary>${e(c.profUsageTitle)}</summary><div class="profession-path__tips"><article><p>${e(c.profUsageText)}</p></article><p class="profession-path__verify">${e(c.profVerify)}</p></div></details>
 </section>`;
 }
