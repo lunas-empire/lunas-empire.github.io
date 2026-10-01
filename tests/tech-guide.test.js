@@ -20,15 +20,18 @@ test('RZSN Tech Guide ships the requested research strategy',()=>{
   }
 });
 
-test('T10 is a standalone localized guide with research visual and calculator',()=>{
-  for(const lang of ['de','en','ja','ar','fil']){
+test('T10 is a standalone localized fastest-path guide with research visual',()=>{
+  for(const lang of ['de','en','uk','ja','fr','it','id','ar','ko','sv','pt','nl','th','km','fil']){
     const html=t10GuideHtml(lang,escape);
     assert.match(html,/t10-research-guide\.webp/);
     assert.match(html,/t10-special-forces/);
     assert.match(html,/Unit X/);
-    assert.match(html,/Barracks|Kaserne|HQ 30/);
+    assert.match(html,/3× Lv4/);
+    assert.match(html,/2× Lv1/);
+    assert.match(html,/3× MAX/);
     assert.ok(t10GuideTitle(lang).includes('Unit X'));
   }
   assert.match(t10GuideHtml('de',escape),/Wettrüsten/);
+  assert.match(t10GuideHtml('en',escape),/do NOT need to max everything/);
   assert.doesNotMatch(techGuideHtml('en',escape),/t10-research-guide\.webp/);
 });
