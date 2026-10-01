@@ -13,7 +13,7 @@ test('all public assets, including i18n, are served; private paths are not',asyn
     const memberEntries=await readdir(memberDir,{withFileTypes:true});
     for (const item of memberEntries.filter(item=>item.isFile())) {
       const response=await fetch(url+'/assets/member/'+item.name);
-      assert.equal(response.status,200,item.name);assert.equal(response.headers.get('content-type'),'image/webp');
+      assert.equal(response.status,200,item.name);assert.equal(response.headers.get('content-type'),item.name.endsWith('.svg')?'image/svg+xml':'image/webp');
     }
     const seasonMaster=await readdir(new URL('../assets/member/season-master/',import.meta.url));
     assert.equal(seasonMaster.length,29,'all Season 1 master images are public guide assets');

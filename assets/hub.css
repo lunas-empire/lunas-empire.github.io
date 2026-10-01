@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-01.3');
+@import url('./tokens.css?v=2026-10-01.4');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -212,3 +212,6 @@ html:lang(ja) .task-text,html:lang(ja) p{line-break:strict;word-break:normal}
   .status>div{min-width:0;max-width:100%}
   .status strong{max-width:100%;font-size:clamp(1.3rem,7vw,1.75rem);overflow-wrap:anywhere;word-break:break-word}
 }
+
+.t10-guide__copy h4{margin:0 0 .5rem;color:var(--color-ink);font-size:1.1rem}.t10-guide__copy p{margin:.8rem 0}.t10-guide__copy p:last-child{margin-bottom:0}.t10-guide__source{font-weight:700}.t10-guide__figure{margin:0;max-width:28rem}.t10-guide__figure a{display:block}.t10-guide__figure img{display:block;width:100%;height:auto;border-radius:var(--radius-sm)}
+@media(min-width:48rem){.tech-guide__phase-body--t10{grid-template-columns:minmax(0,1fr) minmax(15rem, .78fr);align-items:start;gap:clamp(1rem,3vw,2rem)}}

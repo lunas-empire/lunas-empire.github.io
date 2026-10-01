@@ -19,3 +19,14 @@ test('RZSN Tech Guide ships the requested research strategy',()=>{
     assert.ok(html.includes(`data-section-id="${section}"`),section);
   }
 });
+
+test('T10 path keeps localized guidance, image and resource calculator together',()=>{
+  for(const lang of ['de','en','ja','ar','fil']){
+    const html=techGuideHtml(lang,escape);
+    assert.match(html,/t10-path\.svg/);
+    assert.match(html,/t10-special-forces/);
+    assert.match(html,/UNIT X|Unit X/);
+    assert.match(html,/Barracks|Kaserne/);
+  }
+  assert.match(techGuideHtml('de',escape),/Wettrüsten/);
+});
