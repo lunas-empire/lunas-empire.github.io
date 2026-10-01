@@ -16,7 +16,7 @@ const css=await readFile(cssUrl,'utf8');
 await writeFile(cssUrl,css.replace(/@import\s+(?:url\()?(['"])(?:\.\/)?tokens\.css(?:\?v=[^'"]*)?\1\)?;/,`@import url('./tokens.css?v=${version}');`));
 const workerUrl=new URL('service-worker.js',root);
 let worker=await readFile(workerUrl,'utf8');
-worker=worker.replace(/^const CACHE=.*?;\nconst SHELL=.*?;/,`const CACHE='rzsn-shell-${version}';\nconst SHELL=${JSON.stringify(['/', '/index.html',...Object.values(imports),...['hub','overview','tokens'].map(name=>`/assets/${name}.css?v=${version}`),'/assets/member/train-guide-ui.webp','/assets/member/t10-path.svg','/assets/sun.svg','/manifest.webmanifest'])};`);
+worker=worker.replace(/^const CACHE=.*?;\r?\nconst SHELL=.*?;/,`const CACHE='rzsn-shell-${version}';\nconst SHELL=${JSON.stringify(['/', '/index.html',...Object.values(imports),...['hub','overview','tokens'].map(name=>`/assets/${name}.css?v=${version}`),'/assets/member/train-guide-ui.webp',`/assets/member/t10-path.svg?v=${version}`,'/assets/sun.svg','/manifest.webmanifest'])};`);
 worker=worker.replace('// Keep a complete code release together when an installed app is reopened.','// Versioned module URLs avoid mixed old/new code during worker upgrades.');
 await writeFile(workerUrl,worker);
 console.log(`Release assets stamped: ${version}; ${modules.length} modules.`);

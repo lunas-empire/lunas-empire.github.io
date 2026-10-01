@@ -1,3 +1,4 @@
+import { BUILD_VERSION_BASE } from './config.js';
 import { specialGuideCopy } from './special-guide-i18n.js';
 
 export const TECH_GUIDE_TITLE='RZSN Tech Guide';
@@ -33,7 +34,7 @@ const T10_COPY={
 
 function t10Html(lang,e){
   const [heading,buildings,research,resources,after,alt,calculator]=T10_COPY[lang]||T10_COPY.en;
-  return `<div class="tech-guide__phase-body tech-guide__phase-body--t10"><div class="t10-guide__copy"><h4>${e(heading)}</h4><p>${e(buildings)}</p><p>${e(research)}</p><p>${e(resources)}</p><p>${e(after)}</p><p class="t10-guide__source"><a href="https://cpt-hedge.com/de/calculators/research/t10-special-forces" target="_blank" rel="noopener noreferrer">${e(calculator)} ↗</a></p></div><figure class="t10-guide__figure"><a href="/assets/member/t10-path.svg" target="_blank" rel="noopener noreferrer"><img src="/assets/member/t10-path.svg" alt="${e(alt)}" loading="lazy" width="720" height="900"></a></figure></div>`;
+  return `<div class="tech-guide__phase-body tech-guide__phase-body--t10"><div class="t10-guide__copy"><h4>${e(heading)}</h4><p>${e(buildings)}</p><p>${e(research)}</p><p>${e(resources)}</p><p>${e(after)}</p><p class="t10-guide__source"><a href="https://cpt-hedge.com/de/calculators/research/t10-special-forces" target="_blank" rel="noopener noreferrer">${e(calculator)} ↗</a></p></div><figure class="t10-guide__figure"><a href="/assets/member/t10-path.svg?v=${BUILD_VERSION_BASE}" target="_blank" rel="noopener noreferrer"><img src="/assets/member/t10-path.svg?v=${BUILD_VERSION_BASE}" alt="${e(alt)}" loading="lazy" width="720" height="900"></a></figure></div>`;
 }
 
 export function techGuideHtml(lang,escape){
