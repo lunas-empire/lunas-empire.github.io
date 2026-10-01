@@ -79,7 +79,7 @@ const guideGallery = ids => ids.length ? `<div class="guide-gallery">${ids.map(g
 function guideDisclosure(id) {
   const title=shortGuideTitle(id);
   const current=id===`vs-${state.weekday}`;
-  return `<details class="guide-disclosure" data-search data-filter-item data-guide-category="vs" data-guide-current="${current}" data-guide-today="${current}" data-guide-label="${tx('today')}" data-guide-id="${escape(id)}"><summary data-guide-label="${tx('today')}">${escape(title)}</summary><article class="guide-card guide-card--inside guide-card--split"><div class="guide-card__info">${guideShareButton(id)}${guideText(id,{showTitle:false})}</div><div class="guide-card__visuals">${guideFigure(id)}</div></article></details>`;
+  return `<details class="guide-disclosure" data-search data-filter-item data-guide-category="vs" data-guide-current="${current}" data-guide-today="${current}" data-guide-label="${tx('today')}" data-guide-id="${escape(id)}"><summary data-guide-label="${tx('today')}">${escape(title)}</summary><article class="guide-card guide-card--inside guide-card--split"><div class="guide-card__info">${guideText(id,{showTitle:false})}${guideShareButton(id)}</div><div class="guide-card__visuals">${guideFigure(id)}</div></article></details>`;
 }
 function seasonLibraryFigure(code,title) {
   const media=SEASON_LIBRARY_MEDIA[code];
@@ -106,14 +106,14 @@ function seasonLibraryDisclosure(id) {
   const searchTerms=id==='profession'?` ${PROFESSION_GUIDE_SEARCH}`:'';
   const today=seasonGuideIsToday(id);
   const current=seasonGuideIsCurrent(id)||today;
-  return `<details class="guide-disclosure" data-search data-filter-item data-guide-category="season" data-guide-current="${current}" data-guide-today="${today}" data-guide-label="${tx('today')}" data-guide-id="${escape(id)}" data-season-guide="${escape(id)}" data-search-extra="${escape(searchTerms)}"><summary data-guide-label="${tx('today')}">${escape(title)}</summary><article class="guide-card guide-card--inside guide-card--split"><div class="guide-card__info">${guideShareButton(id)}${guideTextBlocks(title,guide.blocks,{showTitle:false})}${profession}</div>${images}</article></details>`;
+  return `<details class="guide-disclosure" data-search data-filter-item data-guide-category="season" data-guide-current="${current}" data-guide-today="${today}" data-guide-label="${tx('today')}" data-guide-id="${escape(id)}" data-season-guide="${escape(id)}" data-search-extra="${escape(searchTerms)}"><summary data-guide-label="${tx('today')}">${escape(title)}</summary><article class="guide-card guide-card--inside guide-card--split"><div class="guide-card__info">${guideTextBlocks(title,guide.blocks,{showTitle:false})}${profession}${guideShareButton(id)}</div>${images}</article></details>`;
 }
 function techGuideDisclosure() {
-  return `<details class="guide-disclosure guide-disclosure--tech" data-search data-filter-item data-guide-id="tech" data-guide-category="tech" data-guide-current="false" data-tech-guide><summary>${escape(localizeTerms(TECH_GUIDE_TITLE,lang))}</summary><div class="tech-guide-shell">${guideShareButton('tech')}${techGuideHtml(lang,escape)}</div></details>`;
+  return `<details class="guide-disclosure guide-disclosure--tech" data-search data-filter-item data-guide-id="tech" data-guide-category="tech" data-guide-current="false" data-tech-guide><summary>${escape(localizeTerms(TECH_GUIDE_TITLE,lang))}</summary><div class="tech-guide-shell">${techGuideHtml(lang,escape)}${guideShareButton('tech')}</div></details>`;
 }
 function trainGuideDisclosure() {
   const title=trainGuideTitle(lang);
-  return `<details class="guide-disclosure guide-disclosure--train" data-search data-filter-item data-guide-id="train" data-guide-category="account" data-guide-current="false" data-search-extra="${escape(TRAIN_GUIDE_SEARCH)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside guide-card--train">${guideShareButton('train')}${trainGuideHtml(lang,escape)}</article></details>`;
+  return `<details class="guide-disclosure guide-disclosure--train" data-search data-filter-item data-guide-id="train" data-guide-category="account" data-guide-current="false" data-search-extra="${escape(TRAIN_GUIDE_SEARCH)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside guide-card--train">${trainGuideHtml(lang,escape)}${guideShareButton('train')}</article></details>`;
 }
 function notice() {
   if (!LIVE_NOTICE.active) return '';
