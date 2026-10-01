@@ -96,6 +96,40 @@
 .guide-text__block,.tech-guide__phase,.tech-guide__topic{border-color:var(--color-rule-soft)}
 .guide-filters button{min-height:44px}
 .guide-share,.section-share{min-height:44px}
+/* A guide owns one surface. Inside it, spacing and rules carry the hierarchy. */
+.guide-disclosure{padding:0}
+.guide-disclosure .guide-card--inside{padding:1.15rem}
+.guide-disclosure .guide-card--inside.guide-card--split{gap:1.75rem}
+.guide-text__blocks{gap:1.6rem}
+.guide-text__block{border:0;background:transparent;border-radius:0}
+.guide-disclosure .tech-guide__phase,.guide-disclosure .profession-path__section,.guide-disclosure .profession-path__tips-disclosure{margin:0;padding:0;border:0;border-bottom:1px solid var(--color-rule-soft);border-radius:0;background:transparent;overflow:visible}
+.guide-disclosure .tech-guide__phase>summary,.guide-disclosure .profession-path__section>summary,.guide-disclosure .profession-path__tips-disclosure>summary{padding:1rem 0;font-size:1rem;min-height:54px}
+.guide-disclosure .tech-guide__phase[open]>summary,.guide-disclosure .profession-path__section[open]>summary,.guide-disclosure .profession-path__tips-disclosure[open]>summary{margin:0;border:0}
+.guide-disclosure .tech-guide__phase-body,.guide-disclosure .profession-path__body,.guide-disclosure .profession-path__tips{padding:0 0 1.35rem;line-height:1.65}
+.tech-guide__phase-body>p,.profession-path__summary{margin:0}
+.tech-guide__intro,.profession-path__hero{padding:0;border:0;border-radius:0;background:transparent;line-height:1.65}
+.profession-path__hero .badge{background:transparent;padding:0;border:0;letter-spacing:.03em}
+.profession-path__hero h3{font-size:1.2rem;line-height:1.4}
+.profession-path__cap{display:block;padding:.25rem 0 .25rem .8rem;border:0;border-inline-start:2px solid var(--color-warning);border-radius:0;background:transparent;line-height:1.6}
+[dir='rtl'] .profession-path__cap{padding:.25rem .8rem .25rem 0}
+.profession-path__cap strong{display:block;margin-bottom:.3rem}
+.profession-path__row{padding:.8rem 0;border-radius:0;background:transparent}
+.profession-path__row+.profession-path__row{border-top:1px solid var(--color-rule-soft)}
+.profession-path__priority{padding:0;border:0;border-radius:0;background:transparent;font-weight:600;color:var(--color-muted);letter-spacing:0}
+.profession-path__tips article{padding:0;border:0;border-radius:0;background:transparent}
+.guide-share,.section-share{padding:.25rem 0;border:0;border-radius:0;background:transparent;font-size:.78rem;font-weight:500;color:var(--color-muted);text-decoration:underline;text-underline-offset:3px}
+.guide-share-row,.section-share-row{padding:0}
+.guide-disclosure .disclosure-preview{filter:none;opacity:1;font-weight:400}
+details>.guide-gallery>.guide-card{padding:0;border:0;border-radius:0;background:transparent}
+[data-disclosure='season-week-details']>details{padding:0;border:0;border-top:1px solid var(--color-rule-soft);border-radius:0;background:transparent}
+.train-guide__content{gap:1.6rem}
+.train-guide__where,.train-step,.train-guide__rule{padding:0;border:0;border-radius:0;background:transparent;line-height:1.65}
+.train-guide__tap-grid{display:block}
+.train-guide__tap-grid>div{grid-template-columns:5rem minmax(0,1fr);gap:.8rem;padding:.65rem 0;border:0;border-bottom:1px solid var(--color-rule-soft);border-radius:0;background:transparent}
+.train-guide__tap-grid strong{color:var(--color-ink);font-size:.85rem;font-weight:600}
+.train-guide__rule{padding-top:1rem;border-top:1px solid var(--color-rule-soft)}
+.task-detail-body{border-top:1px solid var(--color-rule-soft);padding-top:.65rem}
+@media(max-width:30rem){.guide-disclosure .guide-card--inside,.tech-guide-shell{padding:1rem}.guide-text__block>h3,.guide-text__block>h4{font-size:.96rem}.guide-text__block p{font-size:.9rem;line-height:1.65}}
 .first-visit-note{background:transparent;border:0;padding:.35rem .8rem;font-size:.78rem;margin-bottom:0;justify-content:flex-end}
 .first-visit-note>span{flex:0 1 auto}
 .site-footer{border-color:var(--color-rule-soft);padding-block:1rem;margin-top:2rem}

@@ -9,7 +9,8 @@ const css=await readFile(new URL('../assets/hub.css',import.meta.url),'utf8');
 const escape=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 
 test('opened guides keep text concise while placing the visual beside it',()=>{
-  assert.match(app,/guide-text__block.*<summary>/);
+  assert.match(app,/<section class="guide-text__block/);
+  assert.doesNotMatch(app,/<details class="guide-text__block/);
   assert.match(app,/guide-card--inside guide-card--split/);
   assert.match(css,/\.guide-card__info,\.guide-card__visuals/);
   assert.doesNotMatch(app,/guide-media-disclosure/);

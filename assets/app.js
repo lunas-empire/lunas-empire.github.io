@@ -11,7 +11,7 @@ import { memberRoute, guideHash, guideUrl } from './guide-links.js';
 import { DAY_MS, WEEKDAYS, guideState, selectedDate, checklistKey, armsWindow, availableTask, enemyBusterPhase, seasonEventInstant } from './engine.js';
 import { createStorage, checkedMap } from './storage.js';
 import { OVERVIEW_COPY } from './overview-i18n.js';
-import { localizeTerms, armsPhase } from './terminology.js';
+import { localizeTerms, armsPhase, termLabel } from './terminology.js';
 import { taskReferences, taskDone, writeTask, availabilityKey, taskToken, taskProgress, taskVisible, seasonTaskUnlocked, nextReset, conciseTask, TASK_GUIDES } from './overview.js';
 
 const dictionary = {...UI,...COPY,...SEASON_COPY,...GUIDE_COPY,...SEASON_LIBRARY_COPY};
@@ -66,7 +66,9 @@ function guideFigure(id) {
   return `<figure class="guide-figure"><a href="${media.src}" target="_blank" rel="noopener" aria-label="${escape(alt)} ${tx('imageHint')}"><img src="${guidePreviewSrc(media.src)}" data-guide-image data-src="${guidePreviewSrc(media.src)}" width="${media.width}" height="${media.height}" loading="lazy" fetchpriority="low" decoding="async" alt="${escape(alt)}"></a><div class="guide-image-fallback" role="status" hidden><strong>${tx('imageUnavailable')}</strong><a href="${media.src}" target="_blank" rel="noopener">${tx('imageOpenOriginal')}</a></div><figcaption><strong>${escape(alt)}</strong><span>${tx('imageHint')}</span><small>${tx('imageLanguage')}</small></figcaption></figure>`;
 }
 function guideTextBlocks(title,blocks,{showTitle=true}={}) {
-  return `<section class="guide-text"><p class="guide-text__label">${tx('guideTextTitle')}</p>${showTitle?`<h3>${escape(title)}</h3>`:''}<div class="guide-text__blocks">${blocks.map(block=>`<details class="guide-text__block${block.tone==='warning'?' guide-text__block--warning':''}"><summary>${tx(block.heading)}</summary><div class="guide-text__block-body"><p>${tx(block.text)}</p></div></details>`).join('')}</div></section>`;
+  const headingTag=showTitle?'h4':'h3';
+  const terms={guideProteinUpgrade:'proteinFarms',guideVirusMax:'vri',guideVirusCost:'proteins',guideDayOneCrystals:'crystals'};
+  return `<section class="guide-text">${showTitle?`<h3>${escape(title)}</h3>`:''}<div class="guide-text__blocks">${blocks.map(block=>`<section class="guide-text__block${block.tone==='warning'?' guide-text__block--warning':''}">${blocks.length>1?`<${headingTag}>${terms[block.text]?escape(termLabel(terms[block.text],lang)):tx(block.heading)}</${headingTag}>`:''}<div class="guide-text__block-body"><p>${tx(block.text)}</p></div></section>`).join('')}</div></section>`;
 }
 function guideText(id,{showTitle=true}={}) {
   return guideTextBlocks(guideAlt(MEMBER_MEDIA[id]),GUIDE_TEXT[id],{showTitle});
@@ -467,7 +469,7 @@ function openDirectGuide(guideId,{sectionId='',scroll=true}={}) {
   return true;
 }
 function decorateGuidePreviews() {
-  const selectors='.guide-disclosure,.guide-text__block,.tech-guide__phase,.tech-guide__topic,.profession-path__section,.profession-path__tips-disclosure';
+  const selectors='.guide-disclosure,.tech-guide__phase,.tech-guide__topic,.profession-path__section,.profession-path__tips-disclosure';
   main.querySelectorAll(selectors).forEach(details=>{
     const summary=details.querySelector(':scope > summary');
     if (!summary || summary.querySelector(':scope > .disclosure-title')) return;
@@ -495,7 +497,7 @@ function decorateGuidePreviews() {
       const row=document.createElement('div');
       row.className='section-share-row';
       row.innerHTML=`<button type="button" class="section-share" data-share-section="${escape(sectionId)}" data-share-guide="${escape(guide.dataset.guideId)}">${tx('shareSection')}</button>`;
-      source.prepend(row);
+      source.append(row);
     }
   });
 }
@@ -553,7 +555,7 @@ function applyGuideFilters() {
       const titleMatch=!query || titleText.includes(query);
       const nested=item.querySelectorAll('.guide-text__block,.profession-path__section,.profession-path__tips-disclosure,.tech-guide__phase,.tech-guide__topic');
       nested.forEach(section=>{
-        section.open=false;
+        if (section.matches('details')) section.open=false;
         section.hidden=Boolean(query) && !titleMatch && !section.textContent.toLocaleLowerCase(LOCALES[lang]).includes(query);
       });
     } else {
