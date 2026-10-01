@@ -4,7 +4,7 @@ import { COPY, TASKS, DAILY_GUIDES } from './content.js';
 import { DAY_ONE_GROUP, SEASON_COPY, SEASON_CONTENT, SEASON_GUIDES, SEASON_ROADMAP, SEASON_GUIDE_ROADMAP, seasonTasks, seasonSynergies, seasonTodayTasks, seasonContext, isSeasonDailyTask, upcoming } from './season.js';
 import { GUIDE_COPY, GUIDE_TEXT, MEMBER_MEDIA } from './guide-text.js';
 import { SEASON_LIBRARY_COPY, SEASON_LIBRARY_GUIDES, SEASON_LIBRARY_MEDIA } from './season-library.js';
-import { TECH_GUIDE_TITLE, techGuideHtml } from './tech-guide.js';
+import { TECH_GUIDE_TITLE, techGuideHtml, t10GuideHtml, t10GuideTitle, T10_GUIDE_SEARCH } from './tech-guide.js';
 import { professionGuideHtml, PROFESSION_GUIDE_SEARCH } from './profession-guide.js';
 import { trainGuideHtml, trainGuideTitle, trainGuideSectionTitle, TRAIN_GUIDE_SEARCH } from './train-guide.js';
 import { memberRoute, guideHash, guideUrl } from './guide-links.js';
@@ -110,6 +110,10 @@ function seasonLibraryDisclosure(id) {
 }
 function techGuideDisclosure() {
   return `<details class="guide-disclosure guide-disclosure--tech" data-search data-filter-item data-guide-id="tech" data-guide-category="tech" data-guide-current="false" data-tech-guide><summary>${escape(localizeTerms(TECH_GUIDE_TITLE,lang))}</summary><div class="tech-guide-shell">${techGuideHtml(lang,escape)}${guideShareButton('tech')}</div></details>`;
+}
+function t10GuideDisclosure() {
+  const title=t10GuideTitle(lang);
+  return `<details class="guide-disclosure guide-disclosure--t10" data-search data-filter-item data-guide-id="t10" data-guide-category="tech" data-guide-current="false" data-search-extra="${escape(T10_GUIDE_SEARCH)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside guide-card--split">${t10GuideHtml(lang,escape,guideShareButton('t10'))}</article></details>`;
 }
 function trainGuideDisclosure() {
   const title=trainGuideTitle(lang);
@@ -386,7 +390,7 @@ function guides() {
   const currentVsGuide=`vs-${state.weekday}`;
   const vsGuides=[currentVsGuide,...WEEKDAYS.map(day=>`vs-${day}`).filter(id=>id!==currentVsGuide),'vs-secret-missions'];
   const search=`<label class="search">${tx('search')}<input type="search" id="search" autocomplete="off" value="${escape(guideSearchQuery)}"></label><p id="no-results" role="status" hidden>${tx('noResults')}</p>`;
-  const techLibrary=`<div class="guide-disclosures">${techGuideDisclosure()}</div>`;
+  const techLibrary=`<div class="guide-disclosures">${techGuideDisclosure()}${t10GuideDisclosure()}</div>`;
   const vsLibrary=`<div class="guide-disclosures">${vsGuides.map(guideDisclosure).join('')}</div>`;
   const trainLibrary=`<div class="guide-disclosures">${trainGuideDisclosure()}</div>`;
   const seasonLibrary=seasonGuideRoadmapLibrary();

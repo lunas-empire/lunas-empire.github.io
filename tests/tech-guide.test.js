@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { TECH_GUIDE_TITLE, techGuideHtml } from '../assets/tech-guide.js';
+import { TECH_GUIDE_TITLE, techGuideHtml, t10GuideHtml, t10GuideTitle } from '../assets/tech-guide.js';
 import { specialGuideCopy } from '../assets/special-guide-i18n.js';
 
 const escape=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
@@ -20,13 +20,15 @@ test('RZSN Tech Guide ships the requested research strategy',()=>{
   }
 });
 
-test('T10 path keeps localized guidance, image and resource calculator together',()=>{
+test('T10 is a standalone localized guide with research visual and calculator',()=>{
   for(const lang of ['de','en','ja','ar','fil']){
-    const html=techGuideHtml(lang,escape);
-    assert.match(html,/t10-path\.svg/);
+    const html=t10GuideHtml(lang,escape);
+    assert.match(html,/t10-research-guide\.webp/);
     assert.match(html,/t10-special-forces/);
-    assert.match(html,/UNIT X|Unit X/);
-    assert.match(html,/Barracks|Kaserne/);
+    assert.match(html,/Unit X/);
+    assert.match(html,/Barracks|Kaserne|HQ 30/);
+    assert.ok(t10GuideTitle(lang).includes('Unit X'));
   }
-  assert.match(techGuideHtml('de',escape),/Wettrüsten/);
+  assert.match(t10GuideHtml('de',escape),/Wettrüsten/);
+  assert.doesNotMatch(techGuideHtml('en',escape),/t10-research-guide\.webp/);
 });

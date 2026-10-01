@@ -2,6 +2,7 @@ import { BUILD_VERSION_BASE } from './config.js';
 import { specialGuideCopy } from './special-guide-i18n.js';
 
 export const TECH_GUIDE_TITLE='RZSN Tech Guide';
+export const T10_GUIDE_SEARCH='t10 tier 10 unit x special forces hq 30 tech center 30 barracks 30 valor badges gold research';
 
 const TECH_GUIDE_SECTIONS=[
   ['general','generalTitle','generalText'],
@@ -32,13 +33,17 @@ const T10_COPY={
   fil:['Daan tungo sa T10','Itaas ang HQ at Tech Center sa level 30. Sapat ang isang Barracks na level 30 para mag-train ng T10 doon.','Sa Special Forces, sundan lang ang prerequisites papuntang Unit X. Tingnan sa game ang kailangang level; hindi kailangang i-max ang buong tree. Binubuksan ng Unit X ang T10 training.','Maglaan ng Gold, Valor Badges at research speedups. Depende sa progreso mo ang gastos. Kung maaari, itapat ang pagtatapos sa VS Research Day at research phase ng Arms Race.','Pagkatapos, mag-train ng T10 o i-promote ang T9 sa Barracks level 30. Ilagay ang kasalukuyang levels sa calculator para sa natitira.','Diagram: HQ 30, Tech Center 30 at Barracks 30; ang Special Forces prerequisites ay patungo sa Unit X at T10.','Kalkulahin ang natitirang research']
 };
 
-function t10Html(lang,e){
-  const [heading,buildings,research,resources,after,alt,calculator]=T10_COPY[lang]||T10_COPY.en;
-  return `<div class="tech-guide__phase-body tech-guide__phase-body--t10"><div class="t10-guide__copy"><h4>${e(heading)}</h4><p>${e(buildings)}</p><p>${e(research)}</p><p>${e(resources)}</p><p>${e(after)}</p><p class="t10-guide__source"><a href="https://cpt-hedge.com/de/calculators/research/t10-special-forces" target="_blank" rel="noopener noreferrer">${e(calculator)} ↗</a></p></div><figure class="t10-guide__figure"><a href="/assets/member/t10-path.svg?v=${BUILD_VERSION_BASE}" target="_blank" rel="noopener noreferrer"><img src="/assets/member/t10-path.svg?v=${BUILD_VERSION_BASE}" alt="${e(alt)}" loading="lazy" width="720" height="900"></a></figure></div>`;
+export function t10GuideTitle(lang){
+  const [heading]=T10_COPY[lang]||T10_COPY.en;
+  return `${heading} · Unit X`;
+}
+export function t10GuideHtml(lang,e,share=''){
+  const [heading,buildings,research,resources,after,,calculator]=T10_COPY[lang]||T10_COPY.en;
+  return `<div class="guide-card__info t10-standalone__copy"><div class="t10-standalone__gates" aria-label="T10 requirements"><span>HQ 30</span><span>Tech Center 30</span><span>Barracks 30</span><span>Unit X</span></div><h4>${e(heading)}</h4><p>${e(buildings)}</p><p>${e(research)}</p><p>${e(resources)}</p><p>${e(after)}</p><div class="t10-standalone__links"><a href="https://cpt-hedge.com/de/calculators/research/t10-special-forces" target="_blank" rel="noopener noreferrer">${e(calculator)} ↗</a><a href="https://www.lastwarvault.com/guides/general/t10-troops-guide/" target="_blank" rel="noopener noreferrer">T10 requirements & path ↗</a></div>${share}</div><div class="guide-card__visuals t10-standalone__visual"><figure class="guide-figure"><a href="/assets/member/t10-research-guide.webp?v=${BUILD_VERSION_BASE}" target="_blank" rel="noopener noreferrer"><img src="/assets/member/t10-research-guide.webp?v=${BUILD_VERSION_BASE}" alt="${e(`${heading} · Special Forces → Unit X`)}" loading="lazy" width="509" height="1500"></a><figcaption>Research path graphic · <a href="https://www.lootbar.com/blog/en/how-to-get-t10-troops-in-last-war-survival.html" target="_blank" rel="noopener noreferrer">LootBar ↗</a></figcaption></figure></div>`;
 }
 
 export function techGuideHtml(lang,escape){
   const c=specialGuideCopy(lang);
   const e=value=>escape(value);
-  return `<article class="tech-guide"><p class="tech-guide__intro">${e(c.techIntro)}</p>${TECH_GUIDE_SECTIONS.map(([id,title,body])=>`<details class="tech-guide__phase${id==='special-forces'?' tech-guide__phase--warning':''}${id==='research-order'?' tech-guide__phase--summary':''}" data-section-id="${id}"><summary>${e(c[title])}</summary>${id==='special-forces'?t10Html(lang,e):`<div class="tech-guide__phase-body"><p>${e(c[body])}</p></div>`}</details>`).join('')}</article>`;
+  return `<article class="tech-guide"><p class="tech-guide__intro">${e(c.techIntro)}</p>${TECH_GUIDE_SECTIONS.map(([id,title,body])=>`<details class="tech-guide__phase${id==='special-forces'?' tech-guide__phase--warning':''}${id==='research-order'?' tech-guide__phase--summary':''}" data-section-id="${id}"><summary>${e(c[title])}</summary><div class="tech-guide__phase-body"><p>${e(c[body])}</p></div></details>`).join('')}</article>`;
 }
