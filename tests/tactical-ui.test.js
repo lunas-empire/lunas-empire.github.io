@@ -56,3 +56,14 @@ test('Last War skin uses framed event panels and orange active tabs without chan
   for(const selector of ['.command-hud__heading','.task-group>summary','.task-row[data-done=','.chapter-rail__week--current'])assert.ok(overview.includes(selector),selector);
   assert.match(hub,/@media\(prefers-reduced-motion:reduce\)/);
 });
+
+test('Season timeline color rules keep text readable on dark headers and pale cards',async()=>{
+ const css=await readFile(new URL('../assets/overview.css',import.meta.url),'utf8');
+ for(const token of [
+ '.roadmap-summary-copy>small{color:#ffe4a4',
+ '.roadmap-mini-item strong{color:#182638',
+ '.roadmap-mini-item small{color:#41546a',
+ '.chapter-rail__week--current small{color:#172434',
+ '.roadmap-item--past article{opacity:1',
+ ])assert.ok(css.includes(token),token);
+});

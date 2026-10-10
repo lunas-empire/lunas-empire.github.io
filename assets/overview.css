@@ -364,3 +364,18 @@ details>.guide-gallery>.guide-card{padding:0;border:0;border-radius:0;background
   .command-hud__heading h2{font-size:.83rem;letter-spacing:-.04em}
   .command-hud__heading{gap:.3rem}
 }
+
+/* Contrast repair: light event tiles sit inside a dark Season summary. */
+.roadmap-disclosure>summary .roadmap-summary-copy>small{color:#ffe4a4;text-shadow:0 1px 1px rgba(0,0,0,.32)}
+.roadmap-disclosure>summary::after{color:#ffcf74}
+.roadmap-disclosure>summary .roadmap-mini-item{background:#e7ecf2;border:1px solid #b2bcc9;color:#182638;box-shadow:inset 0 1px 0 #fff,0 1px 0 rgba(0,0,0,.14)}
+.roadmap-disclosure>summary .roadmap-mini-item strong{color:#182638;text-shadow:none}
+.roadmap-disclosure>summary .roadmap-mini-item small{color:#41546a;text-shadow:none}
+.chapter-rail__week--current,.chapter-rail__week--current span,.chapter-rail__week--current small{color:#172434;text-shadow:none}
+.chapter-rail__week:not(.chapter-rail__week--current) small{color:inherit}
+:root[data-theme='light'] .chapter-rail__week:not(.chapter-rail__week--current){background:#dce5ef;color:#233449}
+@media(prefers-color-scheme:light){:root:not([data-theme='dark']) .chapter-rail__week:not(.chapter-rail__week--current){background:#dce5ef;color:#233449}}
+.week-selector button[aria-pressed='true'] small,.task-filters button[aria-pressed='true'] small{color:#172434;opacity:1}
+.roadmap-here{color:#182536}
+.roadmap-here{background:#f7bd57;color:#172434;border:1px solid #916426}
+.roadmap-item--past article{opacity:1;background:color-mix(in srgb,var(--color-panel) 88%,var(--color-raised))}
