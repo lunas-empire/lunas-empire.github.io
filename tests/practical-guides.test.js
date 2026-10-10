@@ -6,6 +6,8 @@ import { LANGUAGES } from '../assets/i18n.js';
 import { guideHash, memberRoute } from '../assets/guide-links.js';
 import { PRACTICAL_GUIDE_COPY, PRACTICAL_GUIDE_IDS, PRACTICAL_LABELS } from '../assets/practical-guide-i18n.js';
 import { PRACTICAL_GUIDES, PRACTICAL_GUIDE_GROUPS, practicalGuideHtml } from '../assets/practical-guides.js';
+import { PRACTICAL_GUIDE_IMAGES } from '../assets/practical-guide-images.js';
+import { PRACTICAL_IMAGE_CAPTIONS } from '../assets/practical-guide-captions.js';
 
 const escape=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 
@@ -36,11 +38,15 @@ test('practical guide HTML is semantic, sourced and safe for narrow tables',()=>
     for(const id of PRACTICAL_GUIDE_IDS) {
       const html=practicalGuideHtml(id,lang,escape,{guideHref:guideHash,relatedTitle:related=>related});
       const fragment=JSDOM.fragment(html);
-      assert.equal(fragment.querySelectorAll('section').length,3,`${lang}/${id}: sections`);
-      assert.equal(fragment.querySelectorAll('section > h4').length,3,`${lang}/${id}: headings`);
-      assert.ok(fragment.querySelector('aside.practical-caution strong'),`${lang}/${id}: caution`);
+      assert.equal(fragment.querySelectorAll('section').length,0,`${lang}/${id}: no boilerplate sections`);
+      assert.ok(fragment.querySelector('figure.practical-photo img[loading="lazy"][width][height]'),`${lang}/${id}: screenshot`);
+      assert.ok(fragment.querySelector('figure.practical-photo figcaption a[target="_blank"]'),`${lang}/${id}: credit`);
+      assert.ok(fragment.querySelector('p.practical-lead'),`${lang}/${id}: short lead`);
+      assert.ok(fragment.querySelector('p.practical-advice'),`${lang}/${id}: action`);
+      assert.ok(fragment.querySelector('p.practical-note'),`${lang}/${id}: subtle note`);
+      assert.ok(!fragment.querySelector('.practical-caution,.practical-related strong'),`${lang}/${id}: no attention-grabbing callouts`);
       assert.ok(fragment.querySelector('footer.practical-sources a[target="_blank"][rel="noopener noreferrer"]'),`${lang}/${id}: source link`);
-      assert.equal(fragment.querySelectorAll('[data-section-id]').length,3,`${lang}/${id}: section anchors`);
+      assert.equal(fragment.querySelectorAll('[data-section-id]').length,0,`${lang}/${id}: no nested section anchors`);
       assert.ok(PRACTICAL_GUIDES[id].sources.length,`${id}: sources`);
     }
   }
@@ -130,4 +136,33 @@ test('Drone chip guide correctly maps each of the four slots in every language',
     const decision=PRACTICAL_GUIDE_COPY[lang]['drone-chips-components'].decision;
     for(const chip of ['Memory Ultra Fission','Gravitational Resonance Armor','Absolute Quantum Field','Lethal Firestorm'])assert.ok(decision.includes(chip),lang+' '+chip);
   }
+});
+
+
+test('12 local gameplay screenshots are optimized, credited and free of top-up-provider images',async()=>{
+  assert.deepEqual(Object.keys(PRACTICAL_GUIDE_IMAGES),PRACTICAL_GUIDE_IDS);
+  assert.deepEqual(Object.keys(PRACTICAL_IMAGE_CAPTIONS).sort(),Object.keys(LANGUAGES).sort());
+  for(const id of PRACTICAL_GUIDE_IDS){
+    const photo=PRACTICAL_GUIDE_IMAGES[id];
+    assert.match(photo.src,/^\/assets\/member\/practical-guides\/[a-z-]+\.webp$/);
+    assert.ok(photo.width>=400&&photo.height>=200,id+' useful original dimensions');
+    assert.doesNotMatch(photo.sourceUrl+' '+photo.sourceName,/lootbar|ldshop|packsify|midasbuy|top[\s-]?up/i,id);
+    const file=await readFile(new URL('..'+photo.src,import.meta.url));
+    assert.equal(file.subarray(0,4).toString(),'RIFF',id);
+    assert.equal(file.subarray(8,12).toString(),'WEBP',id);
+    assert.ok(file.byteLength>8000&&file.byteLength<250000,id);
+    for(const lang of Object.keys(LANGUAGES)){
+      const caption=PRACTICAL_IMAGE_CAPTIONS[lang]?.[id];
+      assert.ok(typeof caption==='string'&&caption.trim().length>=6,lang+'/'+id);
+      assert.ok(practicalGuideHtml(id,lang,escape).includes(escape(caption)),lang+'/'+id);
+    }
+  }
+});
+
+
+test('all 12 guide screenshots are included in the offline release shell',async()=>{
+ const worker=await readFile(new URL('../service-worker.js',import.meta.url),'utf8');
+ for(const id of PRACTICAL_GUIDE_IDS){
+   assert.ok(worker.includes(PRACTICAL_GUIDE_IMAGES[id].src),id+' missing offline image');
+ }
 });

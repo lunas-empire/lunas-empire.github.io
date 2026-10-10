@@ -1,4 +1,6 @@
 import { PRACTICAL_GUIDE_IDS, practicalGuideCopy, practicalLabels } from './practical-guide-i18n.js';
+import { PRACTICAL_GUIDE_IMAGES } from './practical-guide-images.js';
+import { practicalImageCaption } from './practical-guide-captions.js';
 
 const SOURCE_URLS={
   'hero-squad-formations':[
@@ -101,9 +103,12 @@ export function practicalGuideHtml(id,lang,escape,{guideHref,relatedTitle}={}){
   const copy=practicalGuideCopy(lang,id);
   const labels=practicalLabels(lang);
   const guide=PRACTICAL_GUIDES[id];
+  const photo=PRACTICAL_GUIDE_IMAGES[id];
   const e=escape;
+  const caption=practicalImageCaption(lang,id);
+  const picture=`<figure class="practical-photo"><a href="${e(photo.src)}" target="_blank" rel="noopener noreferrer" aria-label="${e(caption)}"><img src="${e(photo.src)}" width="${photo.width}" height="${photo.height}" alt="${e(caption)}" loading="lazy" decoding="async"></a><figcaption>${e(caption)} · <a href="${e(photo.sourceUrl)}" target="_blank" rel="noopener noreferrer">${e(photo.sourceName)}</a></figcaption></figure>`;
   const related=guide.related && guideHref && relatedTitle
-    ? `<p class="practical-related"><strong>${e(labels.related)}:</strong> <a href="${e(guideHref(guide.related))}">${e(relatedTitle(guide.related))}</a></p>`:'';
-  const sources=`<footer class="practical-sources"><strong>${e(labels.sources)}</strong>${guide.sources.map(([title,url])=>`<a href="${e(url)}" target="_blank" rel="noopener noreferrer">${e(title)}</a>`).join('')}</footer>`;
-  return `<div class="practical-guide"><section data-section-id="overview"><h4>${e(labels.overview)}</h4><p>${e(copy.overview)}</p></section>${comparison(id,lang,labels,e)}<section data-section-id="decision"><h4>${e(labels.decision)}</h4><p>${e(copy.decision)}</p></section><section data-section-id="check"><h4>${e(labels.check)}</h4><p>${e(copy.check)}</p></section><aside class="practical-caution"><strong>${e(labels.caution)}</strong><p>${e(copy.caution)}</p></aside>${related}${sources}</div>`;
+    ? `<p class="practical-related"><a href="${e(guideHref(guide.related))}">${e(relatedTitle(guide.related))} →</a></p>`:'';
+  const sources=`<footer class="practical-sources">${guide.sources.map(([title,url])=>`<a href="${e(url)}" target="_blank" rel="noopener noreferrer">${e(title)}</a>`).join(' · ')}</footer>`;
+  return `<div class="practical-guide">${picture}<p class="practical-lead">${e(copy.overview)}</p>${comparison(id,lang,labels,e)}<p class="practical-advice">${e(copy.decision)}</p><p class="practical-note">${e(copy.caution)}</p>${related}${sources}</div>`;
 }

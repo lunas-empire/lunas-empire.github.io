@@ -50,3 +50,11 @@ These are editorial research leads, not copied text. Where sources conflict, the
 ## RZSN General Trial policy
 
 RZSN recommends selecting the highest unlocked difficulty. If an enemy exceeds a member's solo power, ask for rally help in alliance chat; stronger members can lead or join the rally to defeat it together. Share difficulty and enemy level so helpers find the target. This alliance-specific approach overrides the older generic advice to select an easier difficulty. Included in all 15 languages and regression-tested.
+
+
+## Screenshot-first visual revision, October 10
+
+- The twelve practical guides now start with a relevant, attributed screenshot from independent community sources; no LDShop, Lootbar or other top-up-advertising imagery was used.
+- The previous repetitive Overview / Decision / Check / Caution blocks were replaced with a short lead, screenshot, advice, and one understated note. No colored warning cards.
+- All twelve captions have native copy in all 15 languages. The image assets are local, optimized WebP, and available offline through the service worker.
+- Photo attribution and the original image URLs are recorded in docs/guide-image-sources.md. Clicking an image opens the full-resolution local file.
