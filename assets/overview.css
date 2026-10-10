@@ -47,8 +47,8 @@
 .task-detail{margin:0;padding:0;border:0;background:transparent;align-self:start}
 .task-detail>summary{display:flex;align-items:center;list-style:none;min-height:52px;margin:0!important;padding:.65rem .3rem;color:var(--color-muted);font-size:.72rem;font-weight:500;max-width:7rem}
 .task-detail>summary::-webkit-details-marker{display:none}
-.task-detail[open]{display:contents}
-.task-detail[open]>summary{grid-column:2;grid-row:1;color:var(--color-accent)}
+.task-detail[open]{display:block}
+.task-detail[open]>summary{color:var(--color-accent)}
 .task-detail-body{grid-column:1/-1;padding:.1rem .5rem .9rem 2rem;font-size:.85rem;color:var(--color-muted)}
 .task-detail-body p{margin:0 0 .7rem}
 .task-guide{display:block;min-height:40px;padding:.5rem 0}
@@ -160,7 +160,7 @@ details>.guide-gallery>.guide-card{padding:0;border:0;border-radius:0;background
 .task-row[data-done='true']{background:color-mix(in srgb,var(--color-accent) 5%,transparent)}
 .task-row[data-done='true'] .mission-icon{border-color:var(--color-accent);background:color-mix(in srgb,var(--color-accent) 16%,var(--color-panel));color:var(--color-accent)}
 .task-row[data-done='true'] .mission-icon__glyph{display:none}.task-row[data-done='true'] .mission-icon__complete{display:block}
-.task-row[data-unavailable='true']{opacity:.74}.task-detail[open]>.task-detail-body{grid-column:1/-1}
+.task-row[data-unavailable='true']{opacity:.74}.task-detail[open]>.task-detail-body{min-width:0}
 
 /* Compact eight-chapter tracker */
 .chapter-rail{margin:.9rem 0 1rem;padding:.75rem 1rem;border:1px solid var(--color-rule);border-radius:var(--radius-sm);background:var(--color-panel);box-shadow:inset 0 1px var(--surface-highlight)}
@@ -379,3 +379,63 @@ details>.guide-gallery>.guide-card{padding:0;border:0;border-radius:0;background
 .roadmap-here{color:#182536}
 .roadmap-here{background:#f7bd57;color:#172434;border:1px solid #916426}
 .roadmap-item--past article{opacity:1;background:color-mix(in srgb,var(--color-panel) 88%,var(--color-raised))}
+
+/* Expanded mission details occupy their own full-width row.
+   Never use display:contents here: it pushed summary and text into a
+   narrow grid column and caused one-letter-per-line wrapping on iOS. */
+.task-line{min-width:0;align-items:start}
+.task-line>label{min-width:0}
+.task-line>label .task-text{min-width:0;overflow-wrap:break-word;word-break:normal}
+.task-line>.task-detail{min-width:0}
+.task-line>.task-detail[open]{
+  display:block;
+  grid-column:1 / -1;
+  grid-row:2;
+  width:100%;
+  min-width:0;
+  margin:0 0 .7rem;
+  padding:.55rem .65rem .65rem;
+  border:1px solid var(--color-rule-soft);
+  border-radius:4px;
+  background:color-mix(in srgb,var(--color-raised) 45%,var(--color-panel));
+}
+.task-line>.task-detail[open]>summary{
+  display:inline-flex;
+  grid-column:auto;
+  grid-row:auto;
+  min-height:34px;
+  max-width:none;
+  width:auto;
+  padding:.25rem .55rem;
+  margin:0 0 .45rem!important;
+  white-space:nowrap;
+  line-height:1.3;
+  color:var(--color-action);
+}
+.task-line>.task-detail .task-detail-body{
+  display:block;
+  grid-column:auto;
+  width:100%;
+  min-width:0;
+  padding:.6rem .15rem .2rem;
+  border-top:1px solid var(--color-rule-soft);
+  color:var(--color-ink);
+  font-size:.88rem;
+  line-height:1.5;
+  overflow-wrap:break-word;
+  word-break:normal;
+}
+.task-line>.task-detail .task-detail-body p{margin:0 0 .8rem}
+.task-line>.task-detail .task-guide{display:inline-block;max-width:100%;white-space:normal}
+.task-line>.task-detail .availability-toggle{
+  display:block;
+  width:fit-content;
+  max-width:100%;
+  margin-block:.3rem 0;
+  white-space:normal;
+  overflow-wrap:break-word;
+}
+@media(max-width:30rem){
+  .task-line>.task-detail[open]{padding:.5rem .6rem}
+  .task-line>.task-detail .task-detail-body{padding:.55rem .1rem .2rem}
+}
