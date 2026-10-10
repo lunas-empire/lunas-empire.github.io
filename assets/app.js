@@ -8,6 +8,8 @@ import { TECH_GUIDE_TITLE, techGuideHtml, t10GuideHtml, t10GuideTitle, T10_GUIDE
 import { blackMarketGuideHtml, blackMarketGuideTitle, BLACK_MARKET_SEARCH } from './black-market-guide.js';
 import { professionGuideHtml, PROFESSION_GUIDE_SEARCH } from './profession-guide.js';
 import { trainGuideHtml, trainGuideTitle, trainGuideSectionTitle, TRAIN_GUIDE_SEARCH } from './train-guide.js';
+import { PRACTICAL_GUIDES, PRACTICAL_GUIDE_GROUPS, practicalGuideHtml, practicalGuideTitle } from './practical-guides.js';
+import { practicalLabels } from './practical-guide-i18n.js';
 import { memberRoute, guideHash, guideUrl } from './guide-links.js';
 import { DAY_MS, WEEKDAYS, guideState, selectedDate, checklistKey, armsWindow, availableTask, enemyBusterPhase, seasonEventInstant } from './engine.js';
 import { createStorage, checkedMap } from './storage.js';
@@ -125,6 +127,18 @@ function trainGuideDisclosure() {
   const title=trainGuideTitle(lang);
   return `<details class="guide-disclosure guide-disclosure--train" data-search data-filter-item data-guide-id="train" data-guide-category="account" data-guide-current="false" data-search-extra="${escape(TRAIN_GUIDE_SEARCH)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside guide-card--train">${trainGuideHtml(lang,escape)}${guideShareButton('train')}</article></details>`;
 }
+function practicalGuideDisclosure(id) {
+  const title=practicalGuideTitle(lang,id);
+  const guide=PRACTICAL_GUIDES[id];
+  return `<details class="guide-disclosure guide-disclosure--practical" data-search data-filter-item data-guide-id="${escape(id)}" data-guide-category="${escape(guide.category)}" data-guide-current="false" data-search-extra="${escape(id)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside"><div class="guide-card__info">${practicalGuideHtml(id,lang,escape,{guideHref:guideHash,relatedTitle:shortGuideTitle})}${guideShareButton(id)}</div></article></details>`;
+}
+function practicalGuideSections() {
+  const labels=practicalLabels(lang);
+  return PRACTICAL_GUIDE_GROUPS.map(group=>{
+    const ids=Object.entries(PRACTICAL_GUIDES).filter(([,guide])=>guide.group===group).map(([id])=>id);
+    return `<section class="section guide-section--practical" data-search-group><h2>${escape(labels[group])}</h2><div class="guide-disclosures">${ids.map(practicalGuideDisclosure).join('')}</div></section>`;
+  }).join('');
+}
 function notice() {
   if (!LIVE_NOTICE.active) return '';
   return `<aside class="card warning" aria-label="${tx('call')}"><h2>${tx('call')}</h2><p>${escape(LIVE_NOTICE.message[lang])}</p></aside>`;
@@ -156,8 +170,10 @@ function shortGuideTitle(id) {
   if (id.startsWith('vs-') && WEEKDAYS.includes(id.slice(3))) return t(id.slice(3));
   if (id==='vs-secret-missions') return t('secretMissionsGuideTitle');
   if (id==='tech') return localizeTerms(TECH_GUIDE_TITLE,lang);
+  if (id==='t10') return t10GuideTitle(lang);
   if (id==='train') return trainGuideTitle(lang);
   if (id==='black-market') return blackMarketGuideTitle(lang);
+  if (PRACTICAL_GUIDES[id]) return practicalGuideTitle(lang,id);
   return SEASON_LIBRARY_GUIDES[id]?t(SEASON_LIBRARY_GUIDES[id].title):guideAlt(MEMBER_MEDIA[id]);
 }
 function taskTitle(task) {
@@ -405,7 +421,7 @@ function guides() {
   const seasonSection=`<section class="section guide-section--season"><h2>${tx('season')}</h2><div class="guide-disclosures">${blackMarketGuideDisclosure()}</div>${seasonGuidePosition()}${seasonLibrary}</section>`;
   const trainSection=`<section class="section guide-section--alliance"><h2>${escape(trainGuideSectionTitle(lang))}</h2>${trainLibrary}</section>`;
   const techSection=`<section class="section"><h2>${tx('filterTech')}</h2>${techLibrary}</section>`;
-  return `${guideContextBar()}<h1>${tx('guides')}</h1><p class="intro">${tx('guideIntro')}</p>${notice()}${search}${guideFilterBar()}<div class="guide-library">${vsSection}${seasonSection}${trainSection}${techSection}</div>${section('quickReference',referenceLibrary())}`;
+  return `${guideContextBar()}<h1>${tx('guides')}</h1><p class="intro">${tx('guideIntro')}</p>${notice()}${search}${guideFilterBar()}<div class="guide-library">${practicalGuideSections()}${vsSection}${seasonSection}${trainSection}${techSection}</div>${section('quickReference',referenceLibrary())}`;
 }
 const views = {today,daily,vs,season,guides,admin:()=>`<h1>${tx('admin')}</h1>${paragraph('adminPending')}`};
 function syncChrome() {
