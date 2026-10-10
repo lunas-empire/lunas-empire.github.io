@@ -1,4 +1,4 @@
-import { BUILD_VERSION, ALLIANCE_CONFIG, LIVE_NOTICE } from './config.js';
+import { BUILD_VERSION, GUIDE_CONFIG, ALLIANCE_CONFIG, LIVE_NOTICE } from './config.js';
 import { LANGUAGES, LOCALES, UI, resolveLanguagePreference, translate, loadLanguage } from './i18n.js';
 import { COPY, TASKS, DAILY_GUIDES } from './content.js';
 import { DAY_ONE_GROUP, SEASON_COPY, SEASON_CONTENT, SEASON_GUIDES, SEASON_ROADMAP, SEASON_GUIDE_ROADMAP, seasonTasks, seasonSynergies, seasonTodayTasks, seasonContext, isSeasonDailyTask, upcoming } from './season.js';
@@ -19,6 +19,8 @@ import { createStorage, checkedMap } from './storage.js';
 import { OVERVIEW_COPY } from './overview-i18n.js';
 import { localizeTerms, armsPhase, termLabel } from './terminology.js';
 import { taskReferences, taskDone, writeTask, availabilityKey, taskToken, taskProgress, taskVisible, seasonTaskUnlocked, nextReset, conciseTask, TASK_GUIDES } from './overview.js';
+import { hudText } from './hud-i18n.js';
+import { NAV_ICONS, icon, missionIconType } from './icons.js';
 
 const dictionary = {...UI,...COPY,...SEASON_COPY,...GUIDE_COPY,...SEASON_LIBRARY_COPY};
 const escape = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
@@ -200,6 +202,16 @@ function progressMarkup(items,label=t('routine')) {
   const {done,total}=taskProgress(items);
   return `<div class="task-progress" data-task-progress data-refs="${escape(JSON.stringify(items.map(item=>item.refs)))}"><div class="progress-row"><span>${escape(label)}</span><strong data-progress-label>${tx('progress',{done,total})}</strong></div><progress value="${done}" max="${total||1}" aria-label="${escape(label)}" data-progress-bar></progress></div>`;
 }
+function serverTime(s=state) {
+  const hours=Math.floor(s.serverMinute/60);
+  const minutes=s.serverMinute%60;
+  return `${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')} ST`;
+}
+function commandHud(items) {
+  const stats=taskProgress(items);
+  const points=new Intl.NumberFormat(LOCALES[lang],{notation:'compact',maximumFractionDigits:1}).format(ALLIANCE_CONFIG.vsDailyMinimum);
+  return `<section class="command-hud" aria-labelledby="command-hud-title"><div class="command-hud__heading"><div><span class="eyebrow">${escape(hudText(lang,'server'))} ${GUIDE_CONFIG.server}</span><h2 id="command-hud-title">${escape(hudText(lang,'commandCenter'))}</h2></div><span class="command-hud__season">${escape(hudText(lang,'season'))} · ${escape(phaseLabel(state))}</span></div><div class="command-hud__cells"><div class="command-hud__cell" data-hud-vs-target="${ALLIANCE_CONFIG.vsDailyMinimum}"><span>${escape(hudText(lang,'vsTarget'))}</span><strong>${escape(points)}</strong><small>${escape(hudText(lang,'allianceTarget'))}</small></div><div class="command-hud__cell" data-hud-tasks data-refs="${escape(JSON.stringify(items.map(item=>item.refs)))}"><span>${escape(hudText(lang,'tasksComplete'))}</span><strong data-hud-task-count>${stats.done} / ${stats.total}</strong><progress value="${stats.done}" max="${stats.total||1}" aria-label="${escape(hudText(lang,'tasksComplete'))}" data-hud-progress></progress></div><div class="command-hud__cell"><span>${escape(hudText(lang,'serverTime'))}</span><strong data-server-time data-server-minute="${state.serverMinute}">${serverTime()}</strong><small>${escape(hudText(lang,'timeAnchor'))}</small></div></div></section>`;
+}
 function remainingReset() {
   const minutes=Math.max(0,Math.ceil((nextReset(state)-state.now)/60000));
   return t('remaining',{h:Math.floor(minutes/60),m:minutes%60});
@@ -236,7 +248,8 @@ function checklist(kind, tasks, s = state, {filter='all', group=''}={}) {
     const title=taskTitle(task);
     const guideId=TASK_GUIDES[task.id];
     const frequency=frequencyText(task);
-    return `<li class="task-row" data-task-row data-done="${item.done}" data-unavailable="${item.unavailable}" data-refs="${escape(JSON.stringify(item.refs))}"${taskVisible(item,filter)?'':' hidden'}><div class="task-line"><label><input type="checkbox" data-check="${escape(task.id)}" data-key="${ref.key}" data-kind="${ref.kind}" data-origin-kind="${kind}" data-date="${s.date}"${item.done?' checked':''}${item.unavailable?' disabled':''}><span class="task-text">${escape(title)}${frequency?`<small>${escape(frequency)}</small>`:''}</span></label><details class="task-detail" data-disclosure="task-${group}-${kind}-${escape(task.id)}"><summary aria-label="${tx('details')} · ${escape(title)}">${tx('details')}</summary><div class="task-detail-body"><p>${tx(task.text||task.id)}</p>${guideId?`<a class="task-guide" href="${guideHash(guideId)}">${escape(shortGuideTitle(guideId))} →</a>`:''}<button type="button" class="availability-toggle" data-unavailable-toggle data-token="${escape(taskToken(ref))}" data-date="${s.date}">${tx(item.unavailable?'restoreTask':'skipToday')}</button></div></details></div></li>`;
+    const missionType=missionIconType(task);
+    return `<li class="task-row" data-task-row data-done="${item.done}" data-unavailable="${item.unavailable}" data-mission-type="${missionType}" data-refs="${escape(JSON.stringify(item.refs))}"${taskVisible(item,filter)?'':' hidden'}><div class="task-line"><span class="mission-icon" aria-hidden="true">${icon(missionType,'mission-icon__glyph')}${icon('complete','mission-icon__complete')}</span><label><input type="checkbox" data-check="${escape(task.id)}" data-key="${ref.key}" data-kind="${ref.kind}" data-origin-kind="${kind}" data-date="${s.date}"${item.done?' checked':''}${item.unavailable?' disabled':''}><span class="task-text">${escape(title)}${frequency?`<small>${escape(frequency)}</small>`:''}</span></label><details class="task-detail" data-disclosure="task-${group}-${kind}-${escape(task.id)}"><summary aria-label="${tx('details')} · ${escape(title)}">${tx('details')}</summary><div class="task-detail-body"><p>${tx(task.text||task.id)}</p>${guideId?`<a class="task-guide" href="${guideHash(guideId)}">${escape(shortGuideTitle(guideId))} →</a>`:''}<button type="button" class="availability-toggle" data-unavailable-toggle data-token="${escape(taskToken(ref))}" data-date="${s.date}">${tx(item.unavailable?'restoreTask':'skipToday')}</button></div></details></div></li>`;
   }).join('')}</ul>`;
 }
 function taskGroup(kind,tasks,title,id,{open=false,filter=taskFilter}={}) {
@@ -320,7 +333,7 @@ function today() {
   const quickTasks=pending.map(item=>checklist(item.kind,[item],state,{filter:'open',group:'today'})).join('');
   const related=[`vs-${state.weekday}`,...seasonSynergies(state).map(id=>TASK_GUIDES[id]),...(state.week>=1&&state.week<=8?['profession']:[])].filter(Boolean);
   const next=SEASON_ROADMAP.find(entry=>entry.day>state.seasonDay);
-  return `<header class="page-heading"><div><p class="eyebrow">${escape(longDate(state.date))}</p><h1>${tx('today')}</h1></div>${status()}</header>${notice()}${enemyBusterBanner(state)}
+  return `<header class="page-heading"><div><p class="eyebrow">${escape(longDate(state.date))}</p><h1>${tx('today')}</h1></div>${status()}</header>${notice()}${commandHud(routine)}${enemyBusterBanner(state)}
     <section class="focus-panel"><div class="focus-panel__main"><span class="eyebrow">${tx('focus')}</span><h2>${tx(state.weekday)}</h2><p>${tx(guide.focus)}</p>${minimum()}<a class="primary-link" href="#vs">${tx('doNow')} →</a></div><div class="focus-panel__time"><span class="eyebrow">${tx('bestArms')}</span>${arms(state,guide)}${resetCard()}</div><div class="focus-panel__save"><strong>${tx('save')}</strong><span>${guide.save.filter(permitted).map(id=>tx(id)).join(' · ')}</span></div></section>
     <div class="overview-columns"><section class="open-tasks"><div class="section-heading"><h2>${tx('doNow')}</h2><a href="#daily">${tx('tasks')} →</a></div>${progressMarkup(routine,t('tasks'))}${quickTasks||`<p class="empty-state">${tx('allDone')}</p>`}<p class="empty-state" data-today-empty hidden>${tx('allDone')}</p><a class="text-link" href="#daily">${tx('checklist')} →</a></section><aside class="overview-aside"><section><h2>${tx('relevantGuides')}</h2><div class="related-guides">${[...new Set(related)].slice(0,3).map(id=>`<a href="${guideHash(id)}"><span>${escape(shortGuideTitle(id))}</span><span aria-hidden="true">↗</span></a>`).join('')}</div></section><section class="next-preview"><span class="eyebrow">${tx('nextMilestone')}</span><h2>${next?tx(next.label):tx('post')}</h2>${next?`<p>${tx('seasonDay')} ${next.day} · ${tx('week')} ${Math.ceil(next.day/7)}</p>`:''}<a href="#season">${tx('season')} →</a></section></aside></div>`;
 }
@@ -364,7 +377,18 @@ function season() {
   const contextIds=seasonContext(state).filter(permitted);
   const todayItems=todayIds.map(id=>taskItem('season',{id}));
   const timeline=Object.entries(SEASON_CONTENT).map(([phase,items],index)=>details(index===0?t('pre'):index===9?t('post'):`${t('week')} ${index}`,list(items)+guideGallery(SEASON_GUIDES[phase]||[]),index===current,phase)).join('');
-  return `<header class="page-heading"><h1>${tx('season')}</h1>${status()}</header>${notice()}${seasonGuidePosition()}<nav class="section-links" aria-label="${tx('season')}"><a href="#season" data-season-jump="season-today">${tx('today')}</a><a href="#season" data-season-jump="season-week">${tx('thisWeek')}</a><a href="#season" data-season-jump="season-next">${tx('next')}</a></nav><div class="overview-columns season-columns"><div><section id="season-today"><div class="section-heading"><h2>${tx('today')}</h2><a href="#daily">${tx('tasks')} →</a></div>${progressMarkup(todayItems,t('season'))}${checklist('season',todayIds.map(id=>({id})),state,{group:'season'})}${state.seasonDay===1?first24({open:false}):''}</section><section class="section" id="season-week"><h2>${tx('thisWeek')}</h2>${weekIds.length?checklist('season',weekIds.map(id=>({id})),state,{group:'week'}):paragraph('allDone')}</section></div><aside id="season-next"><h2>${tx('nextMilestone')}</h2>${isPreSeason?first24({open:false})+nextCards(3,[DAY_ONE_GROUP.day]):nextCards()}</aside></div>${contextIds.length?details(t('important'),list(contextIds),false,'season-context'):''}${details(t('details'),timeline,false,'season-week-details')}${section('timeline',seasonRoadmapDisclosure())}`;
+  return `<header class="page-heading"><h1>${tx('season')}</h1>${status()}</header>${notice()}${seasonGuidePosition()}${chapterRail()}<nav class="section-links" aria-label="${tx('season')}"><a href="#season" data-season-jump="season-today">${tx('today')}</a><a href="#season" data-season-jump="season-week">${tx('thisWeek')}</a><a href="#season" data-season-jump="season-next">${tx('next')}</a></nav><div class="overview-columns season-columns"><div><section id="season-today"><div class="section-heading"><h2>${tx('today')}</h2><a href="#daily">${tx('tasks')} →</a></div>${progressMarkup(todayItems,t('season'))}${checklist('season',todayIds.map(id=>({id})),state,{group:'season'})}${state.seasonDay===1?first24({open:false}):''}</section><section class="section" id="season-week"><h2>${tx('thisWeek')}</h2>${weekIds.length?checklist('season',weekIds.map(id=>({id})),state,{group:'week'}):paragraph('allDone')}</section></div><aside id="season-next"><h2>${tx('nextMilestone')}</h2>${isPreSeason?first24({open:false})+nextCards(3,[DAY_ONE_GROUP.day]):nextCards()}</aside></div>${contextIds.length?details(t('important'),list(contextIds),false,'season-context'):''}${details(t('details'),timeline,false,'season-week-details')}${section('timeline',seasonRoadmapDisclosure())}`;
+}
+
+function chapterRail() {
+  const current=state.phase==='PRE_SEASON'?0:state.phase==='POST_SEASON'?9:state.week;
+  const weeks=Array.from({length:8},(_,index)=>{
+    const week=index+1;
+    const status=week<current?'past':week===current?'current':'future';
+    const label=`${t('week')} ${week} · ${hudText(lang,status)}`;
+    return `<li class="chapter-rail__week chapter-rail__week--${status}" data-chapter-week="${week}" data-chapter-state="${status}"${status==='current'?' aria-current="step"':''} aria-label="${escape(label)}"><span aria-hidden="true">W${week}</span><small>${escape(hudText(lang,status))}</small></li>`;
+  }).join('');
+  return `<section class="chapter-rail" aria-labelledby="chapter-rail-title"><h2 id="chapter-rail-title">${escape(hudText(lang,'chapterProgress'))}</h2><ol>${weeks}</ol></section>`;
 }
 
 const REFERENCE_LABELS = {
@@ -419,7 +443,13 @@ const views = {today,daily,vs,season,guides,admin:()=>`<h1>${tx('admin')}</h1>${
 function syncChrome() {
   document.documentElement.lang = lang;
   document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
-  document.querySelectorAll('[data-ui]').forEach(el=>{el.textContent = t(el.dataset.ui);});
+  document.querySelectorAll('[data-ui]').forEach(el=>{
+    if (!el.closest('.main-nav')) el.textContent = t(el.dataset.ui);
+  });
+  document.querySelectorAll('.main-nav a[data-ui]').forEach(anchor=>{
+    const view=anchor.hash.slice(1);
+    anchor.innerHTML=`${icon(NAV_ICONS[view],'nav-icon')}<span>${tx(anchor.dataset.ui)}</span>`;
+  });
   document.querySelector('#language').value = lang;
   document.querySelector('#override').textContent = t('override');
   document.querySelector('#honest').textContent = t('honest');
@@ -449,6 +479,12 @@ function syncTaskState() {
     const stats=taskProgress(JSON.parse(element.dataset.refs).map(describe));
     element.querySelector('[data-progress-label]').textContent=t('progress',stats);
     const bar=element.querySelector('progress');
+    bar.value=stats.done;bar.max=stats.total||1;
+  });
+  main.querySelectorAll('[data-hud-tasks]').forEach(element=>{
+    const stats=taskProgress(JSON.parse(element.dataset.refs).map(describe));
+    element.querySelector('[data-hud-task-count]').textContent=`${stats.done} / ${stats.total}`;
+    const bar=element.querySelector('[data-hud-progress]');
     bar.value=stats.done;bar.max=stats.total||1;
   });
   main.querySelectorAll('[data-task-row]').forEach(row=>{
@@ -587,6 +623,7 @@ function refreshClock() {
     if (timer) timer.textContent=countdown();
     document.querySelectorAll('[data-arms-state]').forEach(el=>{const phase=armsWindow(state,DAILY_GUIDES[state.weekday]);el.textContent=t(phase);el.dataset.state=phase;});
     document.querySelectorAll('[data-reset-countdown]').forEach(el=>{el.textContent=remainingReset();});
+    document.querySelectorAll('[data-server-time]').forEach(el=>{el.textContent=serverTime();el.dataset.serverMinute=String(state.serverMinute);});
   }
 }
 const languageEntries = Object.entries(LANGUAGES).sort(([a],[b])=>a==='en'?-1:b==='en'?1:0);
@@ -604,7 +641,7 @@ function updateSetupReady() {
 function syncThemeControls() {
   document.documentElement.dataset.theme=activeTheme;
   const nextTheme=activeTheme==='dark'?'light':'dark';
-  themeToggle.querySelector('span').textContent=activeTheme==='dark'?'🌙':'☀️';
+  themeToggle.innerHTML=icon(activeTheme,'theme-icon');
   const label=`${t('theme')} · ${t(nextTheme)}`;
   themeToggle.setAttribute('aria-label',label);
   themeToggle.title=label;

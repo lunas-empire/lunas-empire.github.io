@@ -3,12 +3,12 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-10.5');
+@import url('./tokens.css?v=2026-10-10.6');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
 body{margin:0;background:var(--color-paper);color:var(--color-ink);font:1rem/1.55 var(--font-body);padding-bottom:var(--nav-height,calc(5rem + env(safe-area-inset-bottom)))}
-a{color:var(--color-accent);text-underline-offset:4px}
+a{color:var(--color-action);text-underline-offset:4px}
 button,select,input{font:inherit}
 button,select,summary,a{touch-action:manipulation}
 button,select{min-height:44px;max-width:100%;border:1px solid var(--color-rule);border-radius:var(--radius-sm);background:var(--color-panel);color:var(--color-ink);padding:.5rem .75rem}
@@ -91,7 +91,7 @@ details[open]>summary{margin-bottom:.5rem}details>p:last-child{padding-bottom:.5
 .checklist{list-style:none;padding:0;margin:0 0 var(--space-sm)}.checklist li+li{border-top:1px solid var(--color-rule)}
 .checklist label{display:flex;align-items:flex-start;gap:.75rem;padding:var(--space-md) 0;cursor:pointer;min-height:56px}
 .checklist input{flex:0 0 22px;width:22px;height:22px;margin:2px 0;accent-color:var(--color-accent)}
-.checklist label:has(:checked) .task-text{text-decoration:line-through;color:var(--color-muted)}
+.checklist label:has(:checked) .task-text{color:var(--color-ink)}
 .task-text{overflow-wrap:anywhere;min-width:0}.task-text small{display:block;margin-top:.35rem;text-decoration:none}
 .week-selector{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:.4rem;margin:var(--space-lg) 0}
 .week-selector button{grid-column:span 3;display:grid;place-items:center;gap:.1rem;min-width:0;min-height:52px;padding:.35rem .2rem;white-space:nowrap;transition:background-color var(--dur-micro) var(--ease-out),color var(--dur-micro) var(--ease-out),transform var(--dur-micro) var(--ease-out)}
@@ -291,3 +291,25 @@ html:lang(ja) .task-text,html:lang(ja) p{line-break:strict;word-break:normal}
 /* Put guide-title matches ahead of incidental full-text search matches. */
 .guide-library--search{display:flex;flex-direction:column}
 .guide-library--search>.guide-topic-section{flex:0 0 auto}
+
+/* Tactical surface skin: restrained metal, crisp outlines, and purposeful state color. */
+.site-header{border-bottom:1px solid var(--color-rule-soft)}
+.brand{position:relative}.brand::after{content:'';position:absolute;inset-inline:0;bottom:-.35rem;height:2px;background:var(--color-identity)}
+.card,.priority-list>li,.enemy-buster,details,.guide-disclosure,.guide-roadmap-week,.guide-featured-links a,.guide-category-choice,.practical-table-scroll{
+  box-shadow:inset 0 1px var(--surface-highlight),0 5px 14px var(--surface-shadow);
+}
+button,select,.search input{box-shadow:inset 0 1px var(--surface-highlight)}
+.primary-link,.setup-continue{background:var(--color-action);border-color:var(--color-action);color:var(--color-action-ink)}
+.main-nav{box-shadow:inset 0 1px var(--surface-highlight),0 -.35rem 1rem var(--surface-shadow)}
+.main-nav a{flex-direction:column;gap:.2rem;padding:.35rem .25rem;border:1px solid transparent}
+.main-nav a[aria-current='page']{color:var(--color-action);border-color:color-mix(in srgb,var(--color-action) 45%,transparent);background:color-mix(in srgb,var(--color-action) 9%,var(--color-panel));text-decoration:none;box-shadow:inset 0 -2px var(--color-action)}
+.nav-icon{width:1.35rem;height:1.35rem;flex:none}.theme-icon{width:1.2rem;height:1.2rem;flex:none}
+.guide-category-choice{grid-template-columns:1.65rem minmax(0,1fr);column-gap:.6rem}
+.guide-category-icon{grid-row:1/3;width:1.35rem;height:1.35rem;color:var(--color-action);align-self:center}
+.guide-category-choice strong,.guide-category-choice span{grid-column:2}.guide-category-choice:hover,.guide-category-choice:focus-visible{border-color:var(--color-action)}
+.guide-topic-section>h2{display:flex;align-items:center;gap:.55rem;padding-bottom:.55rem;border-bottom:1px solid var(--color-rule)}
+.guide-heading-icon{width:1.25rem;height:1.25rem;color:var(--color-action);flex:none}
+.guide-disclosure>summary,.guide-roadmap-week>summary{box-shadow:inset 0 1px var(--surface-highlight)}
+.bm-table th,.practical-table th{background:var(--color-raised);color:var(--color-ink);letter-spacing:.035em;text-transform:uppercase}
+.bm-table tbody tr:nth-child(even),.practical-table tbody tr:nth-child(even){background:color-mix(in srgb,var(--color-raised) 42%,transparent)}
+@media(min-width:60rem){.main-nav a{flex-direction:row;gap:.55rem}.nav-icon{width:1.2rem;height:1.2rem}}

@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
 import { LANGUAGES } from '../assets/i18n.js';
 import { guideState, checklistKey } from '../assets/engine.js';
+import { ALLIANCE_CONFIG } from '../assets/config.js';
 
 test('member workflow: legacy checks, shared tasks, availability, guides, languages and reset',async()=>{
   const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
@@ -45,6 +46,12 @@ test('member workflow: legacy checks, shared tasks, availability, guides, langua
     assert.equal(q('h1').textContent,'Heute');
     assert.equal(q('[data-arms-state]').dataset.state,'ended');
     assert.equal(win.document.querySelectorAll('.main-nav a').length,5);
+    assert.equal(win.document.querySelectorAll('.main-nav .nav-icon').length,5);
+    assert.equal(Number(q('[data-hud-vs-target]').dataset.hudVsTarget),ALLIANCE_CONFIG.vsDailyMinimum);
+    assert.equal(Number(q('[data-server-time]').dataset.serverMinute),state.serverMinute);
+    assert.equal(q('[data-server-time]').textContent,'17:30 ST');
+    assert.equal(q('[data-hud-task-count]').textContent,q('[data-task-progress] [data-progress-label]').textContent.match(/\d+\s*\/\s*\d+/)?.[0]);
+    assert.ok(q('[data-task-row] .mission-icon'));
     await nav('#daily');
     assert.equal(q('h1').textContent,'Aufgaben');
     assert.ok(q('[data-check="radarClaim"]').checked,'old VS check appears in daily tasks');
@@ -66,6 +73,8 @@ test('member workflow: legacy checks, shared tasks, availability, guides, langua
     q('[data-check="tower"]').closest('li').querySelector('[data-unavailable-toggle]').click();
     assert.equal(Number(q('[data-task-progress] progress').max),total);
     await nav('#season');
+    assert.equal(win.document.querySelectorAll('[data-chapter-week]').length,8);
+    assert.equal(q('[data-chapter-week="2"]').getAttribute('aria-current'),'step');
     const nextTitles=[...win.document.querySelectorAll('.next-event summary strong')].map(el=>el.textContent);
     assert.equal(new Set(nextTitles.slice(0,2)).size,2,'same-day milestones have distinct titles');
     assert.equal(q('.roadmap-disclosure').open,false);
@@ -85,7 +94,7 @@ test('member workflow: legacy checks, shared tasks, availability, guides, langua
       for (const view of ['today','daily','vs','season','guides']) {
         await nav(`#${view}`);
         assert.ok(q('h1').textContent.trim(),`${lang} ${view}: heading`);
-        assert.ok(!q('main').textContent.includes('undefined'),`${lang} ${view}: missing text`);
+        assert.ok(!q('main').textContent.includes('undefined'),`${lang} ${view}: missing text in ${q('main').textContent}`);
         assert.equal(q('html').dir,lang==='ar'?'rtl':'ltr');
       }
     }

@@ -1,9 +1,10 @@
 import {GUIDE_TOPIC_ORDER,guideTopicCount} from './guide-library-nav.js';
 import {guideNavText} from './guide-library-nav-i18n.js';
+import {GUIDE_ICONS,icon} from './icons.js';
 
 export function guideLanding({lang,escape,t,guideHash,shortTitle,weekday,week,seasonGroups,weekdays}){
  const label=key=>escape(guideNavText(lang,key));
- const categories=GUIDE_TOPIC_ORDER.map(topic=>'<button type="button" class="guide-category-choice" data-guide-topic-select="'+topic+'"><strong>'+label(topic)+'</strong><span>'+guideTopicCount(topic,seasonGroups,weekdays)+' '+label('count')+'</span></button>').join('');
+ const categories=GUIDE_TOPIC_ORDER.map(topic=>'<button type="button" class="guide-category-choice" data-guide-topic-select="'+topic+'">'+icon(GUIDE_ICONS[topic],'guide-category-icon')+'<strong>'+label(topic)+'</strong><span>'+guideTopicCount(topic,seasonGroups,weekdays)+' '+label('count')+'</span></button>').join('');
  const seasonGroup=seasonGroups.find(group=>typeof group.week==='number'?group.week===week:String(group.week).split('-').map(Number).some(n=>week>=n&&week<=Math.max(...String(group.week).split('-').map(Number))));
  const currentSeason=seasonGroup?.guides?.[0];
  const vs='vs-'+weekday;
@@ -14,5 +15,5 @@ export function guideLanding({lang,escape,t,guideHash,shortTitle,weekday,week,se
  return featured+topics+controls;
 }
 export function guideTopicSection(topic,lang,escape,html){
- return '<section class="section guide-topic-section" data-guide-topic="'+topic+'" hidden><h2>'+escape(guideNavText(lang,topic))+'</h2>'+html+'</section>';
+ return '<section class="section guide-topic-section" data-guide-topic="'+topic+'" hidden><h2>'+icon(GUIDE_ICONS[topic],'guide-heading-icon')+'<span>'+escape(guideNavText(lang,topic))+'</span></h2>'+html+'</section>';
 }
