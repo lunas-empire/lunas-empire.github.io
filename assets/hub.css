@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-10.8');
+@import url('./tokens.css?v=2026-10-10.9');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -132,7 +132,7 @@ progress{display:block;width:100%;height:.65rem;border:0;accent-color:var(--colo
 .guide-disclosure[data-guide-today='true']{border-inline-start:3px solid var(--color-accent);border-block-color:color-mix(in oklch,var(--color-accent) 38%,var(--color-rule));border-inline-end-color:color-mix(in oklch,var(--color-accent) 38%,var(--color-rule))}.guide-disclosure[data-guide-today='true']>summary::before{content:attr(data-guide-label);flex:0 0 auto;padding:.15rem .4rem;border:1px solid color-mix(in oklch,var(--color-accent) 55%,var(--color-rule));border-radius:4px;color:var(--color-accent);font-size:.64rem;font-weight:800;line-height:1.25;letter-spacing:.08em;text-transform:uppercase}
 .guide-disclosure[open]>summary{border-bottom:1px solid var(--color-rule);color:var(--color-ink)}.guide-disclosure[open]>summary::after{content:'−';color:var(--color-accent)}
 .guide-disclosure--search-match{border-color:var(--color-accent)}.guide-disclosure--search-match>summary{color:var(--color-accent)}
-.disclosure-has-preview>summary{display:grid!important;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto;align-items:center;column-gap:var(--space-sm);row-gap:.22rem}.disclosure-has-preview>summary>.disclosure-title{grid-column:1;grid-row:1;min-width:0}.disclosure-has-preview>summary>.disclosure-preview{grid-column:1;grid-row:2;min-width:0;max-width:100%;overflow:hidden;color:var(--color-muted);font-size:.78rem;font-weight:500;line-height:1.3;letter-spacing:0;white-space:nowrap;opacity:.5;filter:blur(.45px);-webkit-mask-image:linear-gradient(90deg,#000 0%,#000 76%,transparent 100%);mask-image:linear-gradient(90deg,#000 0%,#000 76%,transparent 100%);pointer-events:none;user-select:none}.disclosure-has-preview>summary::after{grid-column:2;grid-row:1 / span 2;align-self:center;margin-inline-start:0!important}.disclosure-has-preview[data-guide-today='true']>summary{grid-template-columns:auto minmax(0,1fr) auto}.disclosure-has-preview[data-guide-today='true']>summary::before{grid-column:1;grid-row:1 / span 2}.disclosure-has-preview[data-guide-today='true']>summary>.disclosure-title,.disclosure-has-preview[data-guide-today='true']>summary>.disclosure-preview{grid-column:2}.disclosure-has-preview[data-guide-today='true']>summary::after{grid-column:3}.disclosure-has-preview[open]>summary>.disclosure-preview{display:none}
+.disclosure-has-preview>summary{display:grid!important;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto;align-items:center;column-gap:var(--space-sm);row-gap:.22rem}.disclosure-has-preview>summary>.disclosure-title{grid-column:1;grid-row:1;min-width:0}.disclosure-has-preview>summary>.disclosure-preview{grid-column:1;grid-row:2;min-width:0;max-width:100%;overflow:hidden;color:var(--color-muted);font-size:.78rem;font-weight:500;line-height:1.3;letter-spacing:0;white-space:nowrap;opacity:1;filter:none;-webkit-mask-image:none;mask-image:none;pointer-events:none;user-select:none}.disclosure-has-preview>summary::after{grid-column:2;grid-row:1 / span 2;align-self:center;margin-inline-start:0!important}.disclosure-has-preview[data-guide-today='true']>summary{grid-template-columns:auto minmax(0,1fr) auto}.disclosure-has-preview[data-guide-today='true']>summary::before{grid-column:1;grid-row:1 / span 2}.disclosure-has-preview[data-guide-today='true']>summary>.disclosure-title,.disclosure-has-preview[data-guide-today='true']>summary>.disclosure-preview{grid-column:2}.disclosure-has-preview[data-guide-today='true']>summary::after{grid-column:3}.disclosure-has-preview[open]>summary>.disclosure-preview{display:none}
 .guide-disclosure .guide-card--inside{grid-template-columns:minmax(0,1fr);gap:var(--space-lg);margin:0;border:0;border-radius:0;background:transparent;padding:clamp(.85rem,2vw,1.5rem)}.guide-disclosure .guide-card--inside>*{width:min(100%,58rem);margin-inline:auto}.guide-disclosure .guide-card--inside.guide-card--split{width:min(100%,58rem);margin-inline:auto}.guide-disclosure .guide-card--inside.guide-card--split>*{width:100%;margin-inline:0}.guide-disclosure .guide-card--inside.guide-card--train{grid-template-columns:minmax(0,1fr)}.guide-card__info,.guide-card__visuals{display:grid;align-content:start;gap:var(--space-md);min-width:0}.guide-card__visuals .guide-figure{margin:0}.guide-card__visuals .guide-figure+ .guide-figure{margin-top:var(--space-sm)}
 .season-library-images{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-md);min-width:0}
 .tech-guide-shell{padding:clamp(.85rem,2vw,1.5rem)}.tech-guide-shell>*{width:min(100%,58rem);margin-inline:auto}
@@ -466,4 +466,44 @@ input[type='checkbox'],input[type='radio']{accent-color:var(--color-game-orange)
   .guide-category-grid{grid-template-columns:minmax(0,1fr)}
   .guide-category-choice{min-height:66px}
   .guide-category-choice strong{white-space:normal;overflow-wrap:anywhere}
+}
+
+/* Guide summary previews: crisp light copy on the Last War steel header.
+   Previously 50% opacity + blur made the text unreadable in both themes. */
+.guide-disclosure.disclosure-has-preview>summary>.disclosure-preview{
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+  line-clamp:2;
+  white-space:normal;
+  overflow:hidden;
+  overflow-wrap:anywhere;
+  color:#e8f0fa;
+  font-size:.85rem;
+  font-weight:600;
+  line-height:1.42;
+  opacity:1;
+  filter:none;
+  text-shadow:0 1px 1px rgba(11,19,32,.65);
+  -webkit-mask-image:none;
+  mask-image:none;
+}
+.guide-disclosure.disclosure-has-preview[open]>summary>.disclosure-preview{
+  display:none;
+}
+.guide-disclosure.disclosure-has-preview>summary>.disclosure-title{
+  color:#ffffff;
+  text-shadow:0 1px 1px rgba(11,19,32,.65);
+}
+
+/* Expand/collapse and current-guide tags need the same high contrast as the preview. */
+.guide-disclosure>summary::after,
+.guide-disclosure[open]>summary::after{
+  color:#ffd47f;
+  text-shadow:0 1px 1px rgba(11,19,32,.7);
+}
+.guide-disclosure[data-guide-today='true']>summary::before{
+  color:#ffe0a0;
+  border-color:#dab16c;
+  background:rgba(18,28,43,.25);
 }

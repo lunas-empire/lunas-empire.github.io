@@ -23,8 +23,12 @@ test('closed guide accordions show a subtle real-content preview',()=>{
   assert.match(app,/preview\.className='disclosure-preview'/);
   assert.match(app,/preview\.setAttribute\('aria-hidden','true'\)/);
   assert.match(css,/\.disclosure-preview\{/);
-  assert.match(css,/filter:blur\(\.45px\)/);
-  assert.match(css,/opacity:\.5/);
+  assert.doesNotMatch(css,/filter:blur\(\.45px\)/);
+  assert.match(css,/\.guide-disclosure\.disclosure-has-preview>summary>\.disclosure-preview\{/);
+  assert.match(css,/color:#e8f0fa/);
+  assert.match(css,/opacity:1/);
+  assert.match(css,/-webkit-line-clamp:2/);
+  assert.match(css,/mask-image:none/);
   assert.match(css,/\.disclosure-has-preview\[open\]>summary>\.disclosure-preview\{display:none\}/);
 });
 
