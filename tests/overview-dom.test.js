@@ -70,7 +70,9 @@ test('member workflow: legacy checks, shared tasks, availability, guides, langua
     assert.equal(new Set(nextTitles.slice(0,2)).size,2,'same-day milestones have distinct titles');
     assert.equal(q('.roadmap-disclosure').open,false);
     await nav('#guides');
-    assert.equal(q('[data-guide-filter="current"]').getAttribute('aria-pressed'),'true');
+    assert.equal(win.document.querySelectorAll('[data-guide-topic-select]').length,5,'five topic categories replace old filters');
+    assert.equal(q('[data-guide-home]').hidden,false,'category selection visible initially');
+    assert.equal(q('[data-guide-topic="power"]').hidden,true,'topic guides initially collapsed');
     q('#search').value='Mason';q('#search').dispatchEvent(new win.Event('input',{bubbles:true}));
     assert.equal(q('[data-guide-id="mason"]').hidden,false);
     assert.equal(q('[data-guide-id="mason"]').open,false);

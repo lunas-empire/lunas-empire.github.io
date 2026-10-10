@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-10.4');
+@import url('./tokens.css?v=2026-10-10.5');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -256,3 +256,38 @@ html:lang(ja) .task-text,html:lang(ja) p{line-break:strict;word-break:normal}
 .practical-sources{padding-block-start:.65rem;border-block-start:1px solid var(--color-rule);color:var(--color-muted)}
 .practical-sources a{color:inherit}
 @media(max-width:30rem){.practical-guide{overflow-wrap:anywhere}.practical-photo img{max-height:340px}.practical-table{min-width:25rem}}
+
+
+/* Topic-first guide library: compact navigation, one topic at a time. */
+.guide-featured,.guide-home-topics{margin-block:1.3rem 1.6rem}
+.guide-featured h2,.guide-home-topics h2{margin:0 0 .65rem;font-size:1.03rem}
+.guide-featured-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}
+.guide-featured-links a{display:grid;align-content:center;gap:.22rem;min-height:74px;padding:.75rem .85rem;border:1px solid var(--color-rule);border-radius:var(--radius-sm);background:var(--color-panel);text-decoration:none}
+.guide-featured-links a span{color:var(--color-muted);font-size:.75rem}
+.guide-featured-links a strong{font-size:.91rem;line-height:1.3}
+.guide-category-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}
+.guide-category-choice{position:relative;display:grid;justify-items:start;align-content:center;gap:.28rem;min-height:93px;padding:.85rem 2rem .85rem .85rem;border:1px solid var(--color-rule);border-radius:var(--radius-sm);background:var(--color-panel);color:var(--color-ink);text-align:start}
+.guide-category-choice:hover,.guide-category-choice:focus-visible{border-color:var(--color-accent)}
+.guide-category-choice::after{content:'›';position:absolute;inset-inline-end:.8rem;top:50%;transform:translateY(-50%);color:var(--color-muted);font-size:1.25rem}
+.guide-category-choice strong{font-size:.94rem;line-height:1.2}
+.guide-category-choice span{color:var(--color-muted);font-size:.77rem}
+.guide-browse-controls{display:flex;align-items:center;justify-content:space-between;gap:.8rem;margin-block:.9rem}
+.guide-browse-controls button{padding:.35rem .1rem;border:0;background:transparent;color:var(--color-accent);font-size:.87rem;text-decoration:underline;text-underline-offset:3px}
+.guide-topic-section{scroll-margin-top:calc(var(--nav-height) + 12px)}
+.guide-topic-section>h2{font-size:1.25rem}
+.guide-roadmap{gap:.65rem}
+.guide-roadmap-week{border:1px solid var(--color-rule);border-radius:var(--radius-sm);background:var(--color-panel);overflow:hidden}
+.guide-roadmap-week>summary{padding:.8rem 1rem;cursor:pointer;font-weight:720;list-style:none}
+.guide-roadmap-week>summary::-webkit-details-marker{display:none}
+.guide-roadmap-week>summary::after{content:'+';float:inline-end;color:var(--color-muted)}
+.guide-roadmap-week[open]>summary::after{content:'−'}
+.guide-roadmap-week[open]>summary{border-bottom:1px solid var(--color-rule)}
+.guide-roadmap-week>.guide-disclosures{margin:.65rem}
+.guide-reference-extra{margin-top:1rem;padding:.55rem .75rem;border-top:1px solid var(--color-rule)}
+.guide-reference-extra>summary{padding:.4rem .1rem;font-size:.86rem;cursor:pointer}
+.guide-featured[hidden],.guide-home-topics[hidden],.guide-browse-controls[hidden],.guide-topic-section[hidden],.guide-roadmap-week[hidden]{display:none!important}
+@media(max-width:390px){.guide-featured-links{grid-template-columns:1fr}.guide-category-choice{min-height:85px;padding:.7rem 1.5rem .7rem .65rem}.guide-category-choice strong{font-size:.86rem}}
+
+/* Put guide-title matches ahead of incidental full-text search matches. */
+.guide-library--search{display:flex;flex-direction:column}
+.guide-library--search>.guide-topic-section{flex:0 0 auto}

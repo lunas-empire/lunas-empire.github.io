@@ -7,9 +7,12 @@ import { SEASON_LIBRARY_COPY, SEASON_LIBRARY_GUIDES, SEASON_LIBRARY_MEDIA } from
 import { TECH_GUIDE_TITLE, techGuideHtml, t10GuideHtml, t10GuideTitle, T10_GUIDE_SEARCH } from './tech-guide.js';
 import { blackMarketGuideHtml, blackMarketGuideTitle, BLACK_MARKET_SEARCH } from './black-market-guide.js';
 import { professionGuideHtml, PROFESSION_GUIDE_SEARCH } from './profession-guide.js';
-import { trainGuideHtml, trainGuideTitle, trainGuideSectionTitle, TRAIN_GUIDE_SEARCH } from './train-guide.js';
-import { PRACTICAL_GUIDES, PRACTICAL_GUIDE_GROUPS, practicalGuideHtml, practicalGuideTitle } from './practical-guides.js';
-import { practicalLabels } from './practical-guide-i18n.js';
+import { trainGuideHtml, trainGuideTitle, TRAIN_GUIDE_SEARCH } from './train-guide.js';
+import { PRACTICAL_GUIDES, practicalGuideHtml, practicalGuideTitle } from './practical-guides.js';
+import { GUIDE_TOPIC_ORDER, guideTopicOf, guideTopicCount, guideSearchExtra } from './guide-library-nav.js';
+import { guideNavText } from './guide-library-nav-i18n.js';
+import { guideLanding, guideTopicSection } from './guide-library-ui.js';
+import { updateGuideLibrary } from './guide-library-filter.js';
 import { memberRoute, guideHash, guideUrl } from './guide-links.js';
 import { DAY_MS, WEEKDAYS, guideState, selectedDate, checklistKey, armsWindow, availableTask, enemyBusterPhase, seasonEventInstant } from './engine.js';
 import { createStorage, checkedMap } from './storage.js';
@@ -33,7 +36,7 @@ if (languagePreference.detected) storage.set('rzsn-language',lang);
 let state = guideState();
 let selectedDay = state.weekdayIndex;
 let currentView = '';
-let guideFilter='current';
+let guideTopicSelected='';
 let taskFilter='open';
 let guideSearchQuery='';
 let guideContextObserver=null;
@@ -106,7 +109,7 @@ function seasonLibraryDisclosure(id) {
   const title=t(guide.title);
   const images=`<div class="guide-card__visuals season-library-images">${guide.media.map(code=>seasonLibraryFigure(code,title)).join('')}</div>`;
   const profession=id==='profession'?professionGuideHtml(lang,escape):'';
-  const searchTerms=id==='profession'?` ${PROFESSION_GUIDE_SEARCH}`:'';
+  const searchTerms=id==='profession'?` ${PROFESSION_GUIDE_SEARCH} ${guideSearchExtra(id)}`:guideSearchExtra(id);
   const today=seasonGuideIsToday(id);
   const current=seasonGuideIsCurrent(id)||today;
   return `<details class="guide-disclosure" data-search data-filter-item data-guide-category="season" data-guide-current="${current}" data-guide-today="${today}" data-guide-label="${tx('today')}" data-guide-id="${escape(id)}" data-season-guide="${escape(id)}" data-search-extra="${escape(searchTerms)}"><summary data-guide-label="${tx('today')}">${escape(title)}</summary><article class="guide-card guide-card--inside guide-card--split"><div class="guide-card__info">${guideTextBlocks(title,guide.blocks,{showTitle:false})}${profession}${guideShareButton(id)}</div>${images}</article></details>`;
@@ -130,14 +133,7 @@ function trainGuideDisclosure() {
 function practicalGuideDisclosure(id) {
   const title=practicalGuideTitle(lang,id);
   const guide=PRACTICAL_GUIDES[id];
-  return `<details class="guide-disclosure guide-disclosure--practical" data-search data-filter-item data-guide-id="${escape(id)}" data-guide-category="${escape(guide.category)}" data-guide-current="false" data-search-extra="${escape(id)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside"><div class="guide-card__info">${practicalGuideHtml(id,lang,escape,{guideHref:guideHash,relatedTitle:shortGuideTitle})}${guideShareButton(id)}</div></article></details>`;
-}
-function practicalGuideSections() {
-  const labels=practicalLabels(lang);
-  return PRACTICAL_GUIDE_GROUPS.map(group=>{
-    const ids=Object.entries(PRACTICAL_GUIDES).filter(([,guide])=>guide.group===group).map(([id])=>id);
-    return `<section class="section guide-section--practical" data-search-group><h2>${escape(labels[group])}</h2><div class="guide-disclosures">${ids.map(practicalGuideDisclosure).join('')}</div></section>`;
-  }).join('');
+  return `<details class="guide-disclosure guide-disclosure--practical" data-search data-filter-item data-guide-id="${escape(id)}" data-guide-category="${escape(guide.category)}" data-guide-current="false" data-search-extra="${escape(id+' '+guideSearchExtra(id))}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside"><div class="guide-card__info">${practicalGuideHtml(id,lang,escape,{guideHref:guideHash,relatedTitle:shortGuideTitle})}${guideShareButton(id)}</div></article></details>`;
 }
 function notice() {
   if (!LIVE_NOTICE.active) return '';
@@ -393,7 +389,7 @@ function seasonGuideRoadmapLibrary() {
   const groups=[...SEASON_GUIDE_ROADMAP].sort((a,b)=>Number(seasonWeekIsCurrent(b.week))-Number(seasonWeekIsCurrent(a.week)));
   return `<div class="guide-roadmap">${groups.map(group=>{
     const current=seasonWeekIsCurrent(group.week);
-    return `<section class="guide-roadmap-week${current?' guide-roadmap-week--current':''}" data-search-group data-season-current="${current}"><h3><span>${tx('week')} ${escape(group.week)}</span></h3><div class="guide-disclosures">${group.guides.map(seasonLibraryDisclosure).join('')}</div></section>`;
+    return `<details class="guide-roadmap-week${current?' guide-roadmap-week--current':''}" data-search-group data-season-current="${current}"${current?' open':''}><summary>${tx('week')} ${escape(group.week)}</summary><div class="guide-disclosures">${group.guides.map(seasonLibraryDisclosure).join('')}</div></details>`;
   }).join('')}</div>`;
 }
 function seasonGuidePosition() {
@@ -402,26 +398,22 @@ function seasonGuidePosition() {
   const progress=Math.max(0,Math.min(100,(state.seasonDay/56)*100));
   return `<div class="season-guide-position" aria-label="${tx('seasonDay')} ${state.seasonDay}, ${tx('week')} ${state.week}"><div class="season-guide-position__meta"><strong>${tx('seasonDay')} ${state.seasonDay}</strong><span>${tx('week')} ${state.week}</span>${milestone?`<small>${tx(milestone.label)}</small>`:''}</div><div class="season-guide-position__rail" aria-hidden="true"><span style="width:${progress.toFixed(2)}%"></span></div></div>`;
 }
-function guideFilterBar() {
-  const filters=[['all','filterAll'],['current','filterCurrent'],['season','filterSeason'],['vs','filterVs'],['tech','filterTech'],['account','filterAccount']];
-  return `<div class="guide-tools"><div class="guide-filters" role="group" aria-label="${tx('guides')}">${filters.map(([id,key])=>`<button type="button" data-guide-filter="${id}" aria-pressed="${id===guideFilter}">${tx(key)}</button>`).join('')}</div><span id="guide-results-count" class="guide-results-count"></span></div>`;
-}
 function guideContextBar() {
   return `<div id="guide-context-bar" class="guide-context-bar" hidden><a href="#guides">${tx('backToGuides')}</a><strong data-guide-context-title></strong><button type="button" data-guide-top aria-label="${tx('backToTop')}">↑</button></div>`;
 }
 function guides() {
-  const currentVsGuide=`vs-${state.weekday}`;
-  const vsGuides=[currentVsGuide,...WEEKDAYS.map(day=>`vs-${day}`).filter(id=>id!==currentVsGuide),'vs-secret-missions'];
+  const currentVsGuide='vs-'+state.weekday;
+  const vsGuides=[currentVsGuide,...WEEKDAYS.map(day=>'vs-'+day).filter(id=>id!==currentVsGuide),'vs-secret-missions'];
   const search=`<label class="search">${tx('search')}<input type="search" id="search" autocomplete="off" value="${escape(guideSearchQuery)}"></label><p id="no-results" role="status" hidden>${tx('noResults')}</p>`;
-  const techLibrary=`<div class="guide-disclosures">${techGuideDisclosure()}${t10GuideDisclosure()}</div>`;
-  const vsLibrary=`<div class="guide-disclosures">${vsGuides.map(guideDisclosure).join('')}</div>`;
-  const trainLibrary=`<div class="guide-disclosures">${trainGuideDisclosure()}</div>`;
-  const seasonLibrary=seasonGuideRoadmapLibrary();
-  const vsSection=`<section class="section guide-section--vs"><h2>${tx('vs')}</h2>${vsLibrary}</section>`;
-  const seasonSection=`<section class="section guide-section--season"><h2>${tx('season')}</h2><div class="guide-disclosures">${blackMarketGuideDisclosure()}</div>${seasonGuidePosition()}${seasonLibrary}</section>`;
-  const trainSection=`<section class="section guide-section--alliance"><h2>${escape(trainGuideSectionTitle(lang))}</h2>${trainLibrary}</section>`;
-  const techSection=`<section class="section"><h2>${tx('filterTech')}</h2>${techLibrary}</section>`;
-  return `${guideContextBar()}<h1>${tx('guides')}</h1><p class="intro">${tx('guideIntro')}</p>${notice()}${search}${guideFilterBar()}<div class="guide-library">${practicalGuideSections()}${vsSection}${seasonSection}${trainSection}${techSection}</div>${section('quickReference',referenceLibrary())}`;
+  const landing=guideLanding({lang,escape,t,guideHash,shortTitle:shortGuideTitle,weekday:state.weekday,week:state.week,seasonGroups:SEASON_GUIDE_ROADMAP,weekdays:WEEKDAYS});
+  const practical=topic=>Object.entries(PRACTICAL_GUIDES).filter(([id])=>guideTopicOf(id)===topic).map(([id])=>practicalGuideDisclosure(id)).join('');
+  const disclosures=html=>`<div class="guide-disclosures">${html}</div>`;
+  const alliance=guideTopicSection('alliance',lang,escape,disclosures(practical('alliance')+trainGuideDisclosure()));
+  const power=guideTopicSection('power',lang,escape,disclosures(practical('power')+techGuideDisclosure()+t10GuideDisclosure())+`<details class="guide-reference-extra" data-search-group><summary>${tx('quickReference')}</summary>${referenceLibrary()}</details>`);
+  const vs=guideTopicSection('vs',lang,escape,disclosures(vsGuides.map(guideDisclosure).join('')));
+  const season=guideTopicSection('season',lang,escape,seasonGuidePosition()+seasonGuideRoadmapLibrary());
+  const economy=guideTopicSection('economy',lang,escape,disclosures(practical('economy')+blackMarketGuideDisclosure()));
+  return `${guideContextBar()}<h1>${tx('guides')}</h1>${notice()}${search}${landing}<div class="guide-library">${alliance}${power}${vs}${season}${economy}</div>`;
 }
 const views = {today,daily,vs,season,guides,admin:()=>`<h1>${tx('admin')}</h1>${paragraph('adminPending')}`};
 function syncChrome() {
@@ -487,6 +479,10 @@ function openDirectGuide(guideId,{sectionId='',scroll=true}={}) {
   if (!target) return false;
   target.hidden=false;
   target.open=true;
+  for(let parent=target.parentElement;parent;parent=parent.parentElement){
+    if(parent.matches('.guide-roadmap-week'))parent.open=true;
+    if(parent.matches('[data-guide-topic]'))parent.hidden=false;
+  }
   let scrollTarget=target;
   if (sectionId) {
     const nested=[...target.querySelectorAll('[data-section-id]')].find(el=>el.dataset.sectionId===sectionId);
@@ -560,53 +556,15 @@ function highlightGuideLabel(element,query) {
   element.append(mark,document.createTextNode(base.slice(index+needle.length)));
 }
 function applyGuideFilters() {
-  if (currentView!=='guides') return;
-  const raw=guideSearchQuery.trim();
-  const query=raw.toLocaleLowerCase(LOCALES[lang]);
-  let found=0;
-  main.querySelectorAll('[data-filter-item]').forEach(item=>{
-    const filterMatch=guideFilter==='all'
-      || (guideFilter==='current' && item.dataset.guideCurrent==='true')
-      || item.dataset.guideCategory===guideFilter;
-    const haystack=(item.textContent+(item.dataset.searchExtra||'')).toLocaleLowerCase(LOCALES[lang]);
-    const searchMatch=!query || haystack.includes(query);
-    item.hidden=!(filterMatch && searchMatch);
-    if (!item.hidden) found++;
-
-    if (item.matches('.guide-disclosure')) {
-      item.classList.toggle('guide-disclosure--search-match',Boolean(query) && !item.hidden);
-      if (query) item.open=false;
-      const title=item.querySelector(':scope > summary > .disclosure-title');
-      highlightGuideLabel(title,raw);
-      const titleText=(title?.dataset.searchLabel || title?.textContent || '').toLocaleLowerCase(LOCALES[lang]);
-      const titleMatch=!query || titleText.includes(query);
-      const nested=item.querySelectorAll('.guide-text__block,.profession-path__section,.profession-path__tips-disclosure,.tech-guide__phase,.tech-guide__topic');
-      nested.forEach(section=>{
-        if (section.matches('details')) section.open=false;
-        section.hidden=Boolean(query) && !titleMatch && !section.textContent.toLocaleLowerCase(LOCALES[lang]).includes(query);
-      });
-    } else {
-      highlightGuideLabel(item.querySelector('dt'),raw);
-    }
-  });
-  main.querySelectorAll('[data-search-group]').forEach(group=>{
-    group.hidden=!group.querySelector('[data-filter-item]:not([hidden])');
-  });
-  main.querySelectorAll('.guide-library>.section').forEach(group=>{
-    group.hidden=!group.querySelector('[data-filter-item]:not([hidden])');
-  });
-  const referenceSection=main.querySelector('#search-results')?.closest('.section');
-  if (referenceSection) referenceSection.hidden=!referenceSection.querySelector('[data-filter-item]:not([hidden])');
-  const noResults=main.querySelector('#no-results');
-  if (noResults) noResults.hidden=found>0;
-  const count=main.querySelector('#guide-results-count');
-  if (count) count.textContent=t('resultsCount',{count:found});
+  if(currentView!=='guides')return;
+  updateGuideLibrary(main,{topic:guideTopicSelected,query:guideSearchQuery,locale:LOCALES[lang],resultText:guideNavText(lang,'count')});
 }
 function render({focus = false,preserve = false} = {}) {
   const route=memberRoute(location.hash);
   if (route.view === 'main') { main.focus(); return; }
   currentView = Object.hasOwn(views,route.view) ? route.view : 'today';
-  if (currentView==='guides' && route.guideId) { guideFilter='all'; guideSearchQuery=''; }
+  if(currentView==='guides' && route.guideId){guideTopicSelected=guideTopicOf(route.guideId);guideSearchQuery='';}
+  else if(currentView==='guides'&&!preserve){guideTopicSelected='';guideSearchQuery='';}
   const open = preserve ? new Set([...main.querySelectorAll('details[open][data-disclosure]')].map(el=>el.dataset.disclosure)) : null;
   main.innerHTML = views[currentView]();
   if (open) main.querySelectorAll('[data-disclosure]').forEach(el=>{el.open=open.has(el.dataset.disclosure);});
@@ -815,12 +773,8 @@ main.addEventListener('click',event=>{
   showStorageError();
 });
 main.addEventListener('input',event=>{
-  if (event.target.id!=='search') return;
+  if(event.target.id!=='search')return;
   guideSearchQuery=event.target.value;
-  if (guideSearchQuery.trim() && guideFilter==='current') {
-    guideFilter='all';
-    main.querySelectorAll('[data-guide-filter]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.guideFilter===guideFilter)));
-  }
   applyGuideFilters();
   setupGuideContextBar();
 });
@@ -831,12 +785,23 @@ main.addEventListener('click',event=>{
     document.getElementById(seasonJump.dataset.seasonJump)?.scrollIntoView({behavior:'smooth',block:'start'});
     return;
   }
-  const filter=event.target.closest('[data-guide-filter]');
-  if (filter) {
-    guideFilter=filter.dataset.guideFilter;
-    main.querySelectorAll('[data-guide-filter]').forEach(button=>button.setAttribute('aria-pressed',String(button===filter)));
+  const category=event.target.closest('[data-guide-topic-select]');
+  if(category){
+    guideTopicSelected=category.dataset.guideTopicSelect;
+    guideSearchQuery='';
+    const search=main.querySelector('#search');if(search)search.value='';
     applyGuideFilters();
-    setupGuideContextBar();
+    const heading=main.querySelector('[data-guide-topic="'+guideTopicSelected+'"] h2');
+    if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});heading.scrollIntoView({behavior:'smooth',block:'start'});}
+    return;
+  }
+  if(event.target.closest('[data-guide-browse-back]')){
+    guideTopicSelected='';guideSearchQuery='';
+    const search=main.querySelector('#search');if(search)search.value='';
+    applyGuideFilters();
+    const home=main.querySelector('[data-guide-home]');
+    const heading=home?.querySelector('h2');if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}
+    home?.scrollIntoView({behavior:'smooth',block:'start'});
     return;
   }
   const top=event.target.closest('[data-guide-top]');
