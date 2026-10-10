@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-10.10');
+@import url('./tokens.css?v=2026-10-10.11');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -255,6 +255,16 @@ html:lang(ja) .task-text,html:lang(ja) p{line-break:strict;word-break:normal}
 .practical-related a{text-decoration:underline;text-underline-offset:2px}
 .practical-sources{padding-block-start:.65rem;border-block-start:1px solid var(--color-rule);color:var(--color-muted)}
 .practical-sources a{color:inherit}
+.rzsn-strategy{display:grid;gap:.8rem;padding-block-start:.2rem}
+.rzsn-strategy h4,.rzsn-strategy h5{margin:0}
+.rzsn-strategy h4{padding-block-end:.45rem;border-block-end:1px solid var(--color-rule)}
+.rzsn-strategy p,.rzsn-strategy ul{margin:0}
+.rzsn-strategy ul{padding-inline-start:1.25rem}
+.rzsn-strategy li+li{margin-block-start:.35rem}
+.rzsn-strategy__roles{display:grid;gap:.9rem}
+.rzsn-strategy__roles>div{display:grid;gap:.55rem;padding:.75rem;border:1px solid var(--color-rule);border-radius:var(--radius-sm)}
+.rzsn-strategy__photo img{max-height:32rem}
+@media(min-width:52rem){.rzsn-strategy__roles{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}}
 @media(max-width:30rem){.practical-guide{overflow-wrap:anywhere}.practical-photo img{max-height:340px}.practical-table{min-width:25rem}}
 
 

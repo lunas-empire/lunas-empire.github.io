@@ -40,10 +40,15 @@ test('practical guide HTML is semantic, sourced and safe for narrow tables',()=>
       const fragment=JSDOM.fragment(html);
       assert.equal(fragment.querySelectorAll('section').length,0,`${lang}/${id}: no boilerplate sections`);
       assert.ok(fragment.querySelector('figure.practical-photo img[loading="lazy"][width][height]'),`${lang}/${id}: screenshot`);
-      assert.ok(fragment.querySelector('figure.practical-photo figcaption a[target="_blank"]'),`${lang}/${id}: credit`);
-      assert.ok(fragment.querySelector('p.practical-lead'),`${lang}/${id}: short lead`);
-      assert.ok(fragment.querySelector('p.practical-advice'),`${lang}/${id}: action`);
-      assert.ok(fragment.querySelector('p.practical-note'),`${lang}/${id}: subtle note`);
+      if(id==='desert-storm') {
+        assert.equal(fragment.querySelectorAll('.rzsn-strategy__photo img').length,5,`${lang}/${id}: five original RZSN images`);
+        assert.ok(fragment.querySelector('.rzsn-strategy .practical-note'),`${lang}/${id}: historical disclaimer`);
+      } else {
+        assert.ok(fragment.querySelector('figure.practical-photo figcaption a[target="_blank"]'),`${lang}/${id}: credit`);
+        assert.ok(fragment.querySelector('p.practical-lead'),`${lang}/${id}: short lead`);
+        assert.ok(fragment.querySelector('p.practical-advice'),`${lang}/${id}: action`);
+        assert.ok(fragment.querySelector('p.practical-note'),`${lang}/${id}: subtle note`);
+      }
       assert.ok(!fragment.querySelector('.practical-caution,.practical-related strong'),`${lang}/${id}: no attention-grabbing callouts`);
       assert.ok(fragment.querySelector('footer.practical-sources a[target="_blank"][rel="noopener noreferrer"]'),`${lang}/${id}: source link`);
       assert.equal(fragment.querySelectorAll('[data-section-id]').length,0,`${lang}/${id}: no nested section anchors`);
@@ -152,6 +157,7 @@ test('12 local gameplay screenshots are optimized, credited and free of top-up-p
     assert.equal(file.subarray(8,12).toString(),'WEBP',id);
     assert.ok(file.byteLength>8000&&file.byteLength<250000,id);
     for(const lang of Object.keys(LANGUAGES)){
+      if(id==='desert-storm')continue; // RZSN uses the five directly supplied alliance screenshots.
       const caption=PRACTICAL_IMAGE_CAPTIONS[lang]?.[id];
       assert.ok(typeof caption==='string'&&caption.trim().length>=6,lang+'/'+id);
       assert.ok(practicalGuideHtml(id,lang,escape).includes(escape(caption)),lang+'/'+id);

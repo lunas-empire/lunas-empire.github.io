@@ -1,6 +1,7 @@
 import { PRACTICAL_GUIDE_IDS, practicalGuideCopy, practicalLabels } from './practical-guide-i18n.js';
 import { PRACTICAL_GUIDE_IMAGES } from './practical-guide-images.js';
 import { practicalImageCaption } from './practical-guide-captions.js';
+import { desertStormRzsnHtml } from './desert-storm-rzsn.js';
 
 const SOURCE_URLS={
   'hero-squad-formations':[
@@ -107,8 +108,10 @@ export function practicalGuideHtml(id,lang,escape,{guideHref,relatedTitle}={}){
   const e=escape;
   const caption=practicalImageCaption(lang,id);
   const picture=`<figure class="practical-photo"><a href="${e(photo.src)}" target="_blank" rel="noopener noreferrer" aria-label="${e(caption)}"><img src="${e(photo.src)}" width="${photo.width}" height="${photo.height}" alt="${e(caption)}" loading="lazy" decoding="async"></a><figcaption>${e(caption)} · <a href="${e(photo.sourceUrl)}" target="_blank" rel="noopener noreferrer">${e(photo.sourceName)}</a></figcaption></figure>`;
+  const allianceStrategy=id==='desert-storm'?desertStormRzsnHtml(lang,e):'';
   const related=guide.related && guideHref && relatedTitle
     ? `<p class="practical-related"><a href="${e(guideHref(guide.related))}">${e(relatedTitle(guide.related))} →</a></p>`:'';
   const sources=`<footer class="practical-sources">${guide.sources.map(([title,url])=>`<a href="${e(url)}" target="_blank" rel="noopener noreferrer">${e(title)}</a>`).join(' · ')}</footer>`;
-  return `<div class="practical-guide">${picture}<p class="practical-lead">${e(copy.overview)}</p>${comparison(id,lang,labels,e)}<p class="practical-advice">${e(copy.decision)}</p><p class="practical-note">${e(copy.caution)}</p>${related}${sources}</div>`;
+  if(id==='desert-storm') return `<div class="practical-guide">${allianceStrategy}${related}${sources}</div>`;
+  return `<div class="practical-guide">${picture}<p class="practical-lead">${e(copy.overview)}</p>${comparison(id,lang,labels,e)}<p class="practical-advice">${e(copy.decision)}</p><p class="practical-note">${e(copy.caution)}</p>${allianceStrategy}${related}${sources}</div>`;
 }

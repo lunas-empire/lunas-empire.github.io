@@ -4,6 +4,15 @@ const root=new URL('../',import.meta.url);
 const version=BUILD_VERSION_BASE;
 const modules=(await readdir(new URL('assets/',root))).filter(name=>name.endsWith('.js')).sort();
 const guideImages=(await readdir(new URL('assets/member/practical-guides/',root))).filter(name=>name.endsWith('.webp')).sort().map(name=>`/assets/member/practical-guides/${name}`);
+async function optionalWebpImages(directory) {
+  try {
+    return (await readdir(new URL(directory,root))).filter(name=>name.endsWith('.webp')).sort().map(name=>`/${directory}${name}`);
+  } catch (error) {
+    if(error?.code==='ENOENT') return [];
+    throw error;
+  }
+}
+const desertStormImages=await optionalWebpImages('assets/member/rzsn-desert-storm/');
 const imports=Object.fromEntries(modules.map(name=>[`/assets/${name}`,`/assets/${name}?v=${version}`]));
 const map=`<script type="importmap" id="release-imports">${JSON.stringify({imports})}</script>`;
 const indexUrl=new URL('index.html',root);
@@ -17,7 +26,7 @@ const css=await readFile(cssUrl,'utf8');
 await writeFile(cssUrl,css.replace(/@import\s+(?:url\()?(['"])(?:\.\/)?tokens\.css(?:\?v=[^'"]*)?\1\)?;/,`@import url('./tokens.css?v=${version}');`));
 const workerUrl=new URL('service-worker.js',root);
 let worker=await readFile(workerUrl,'utf8');
-worker=worker.replace(/^const CACHE=.*?;\r?\nconst SHELL=.*?;/,`const CACHE='rzsn-shell-${version}';\nconst SHELL=${JSON.stringify(['/', '/index.html',...Object.values(imports),...['hub','overview','tokens'].map(name=>`/assets/${name}.css?v=${version}`),'/assets/member/train-guide-ui.webp',`/assets/member/t10-research-guide.webp?v=${version}`,...guideImages,'/assets/sun.svg','/manifest.webmanifest'])};`);
+worker=worker.replace(/^const CACHE=.*?;\r?\nconst SHELL=.*?;/,`const CACHE='rzsn-shell-${version}';\nconst SHELL=${JSON.stringify(['/', '/index.html',...Object.values(imports),...['hub','overview','tokens'].map(name=>`/assets/${name}.css?v=${version}`),'/assets/member/train-guide-ui.webp',`/assets/member/t10-research-guide.webp?v=${version}`,...guideImages,...desertStormImages,'/assets/sun.svg','/manifest.webmanifest'])};`);
 worker=worker.replace('// Keep a complete code release together when an installed app is reopened.','// Versioned module URLs avoid mixed old/new code during worker upgrades.');
 await writeFile(workerUrl,worker);
 console.log(`Release assets stamped: ${version}; ${modules.length} modules.`);
