@@ -5,6 +5,7 @@ import { DAY_ONE_GROUP, SEASON_COPY, SEASON_CONTENT, SEASON_GUIDES, SEASON_ROADM
 import { GUIDE_COPY, GUIDE_TEXT, MEMBER_MEDIA } from './guide-text.js';
 import { SEASON_LIBRARY_COPY, SEASON_LIBRARY_GUIDES, SEASON_LIBRARY_MEDIA } from './season-library.js';
 import { TECH_GUIDE_TITLE, techGuideHtml, t10GuideHtml, t10GuideTitle, T10_GUIDE_SEARCH } from './tech-guide.js';
+import { blackMarketGuideHtml, blackMarketGuideTitle, BLACK_MARKET_SEARCH } from './black-market-guide.js';
 import { professionGuideHtml, PROFESSION_GUIDE_SEARCH } from './profession-guide.js';
 import { trainGuideHtml, trainGuideTitle, trainGuideSectionTitle, TRAIN_GUIDE_SEARCH } from './train-guide.js';
 import { memberRoute, guideHash, guideUrl } from './guide-links.js';
@@ -115,6 +116,11 @@ function t10GuideDisclosure() {
   const title=t10GuideTitle(lang);
   return `<details class="guide-disclosure guide-disclosure--t10" data-search data-filter-item data-guide-id="t10" data-guide-category="tech" data-guide-current="false" data-search-extra="${escape(T10_GUIDE_SEARCH)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside guide-card--split">${t10GuideHtml(lang,escape,guideShareButton('t10'))}</article></details>`;
 }
+function blackMarketGuideDisclosure() {
+  const title=blackMarketGuideTitle(lang);
+  const current=state.seasonDay>=49;
+  return `<details class="guide-disclosure guide-disclosure--black-market" data-search data-filter-item data-guide-id="black-market" data-guide-category="season" data-guide-current="${current}" data-search-extra="${escape(BLACK_MARKET_SEARCH)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside">${blackMarketGuideHtml(lang,escape)}${guideShareButton('black-market')}</article></details>`;
+}
 function trainGuideDisclosure() {
   const title=trainGuideTitle(lang);
   return `<details class="guide-disclosure guide-disclosure--train" data-search data-filter-item data-guide-id="train" data-guide-category="account" data-guide-current="false" data-search-extra="${escape(TRAIN_GUIDE_SEARCH)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside guide-card--train">${trainGuideHtml(lang,escape)}${guideShareButton('train')}</article></details>`;
@@ -151,6 +157,7 @@ function shortGuideTitle(id) {
   if (id==='vs-secret-missions') return t('secretMissionsGuideTitle');
   if (id==='tech') return localizeTerms(TECH_GUIDE_TITLE,lang);
   if (id==='train') return trainGuideTitle(lang);
+  if (id==='black-market') return blackMarketGuideTitle(lang);
   return SEASON_LIBRARY_GUIDES[id]?t(SEASON_LIBRARY_GUIDES[id].title):guideAlt(MEMBER_MEDIA[id]);
 }
 function taskTitle(task) {
@@ -395,7 +402,7 @@ function guides() {
   const trainLibrary=`<div class="guide-disclosures">${trainGuideDisclosure()}</div>`;
   const seasonLibrary=seasonGuideRoadmapLibrary();
   const vsSection=`<section class="section guide-section--vs"><h2>${tx('vs')}</h2>${vsLibrary}</section>`;
-  const seasonSection=`<section class="section guide-section--season"><h2>${tx('season')}</h2>${seasonGuidePosition()}${seasonLibrary}</section>`;
+  const seasonSection=`<section class="section guide-section--season"><h2>${tx('season')}</h2><div class="guide-disclosures">${blackMarketGuideDisclosure()}</div>${seasonGuidePosition()}${seasonLibrary}</section>`;
   const trainSection=`<section class="section guide-section--alliance"><h2>${escape(trainGuideSectionTitle(lang))}</h2>${trainLibrary}</section>`;
   const techSection=`<section class="section"><h2>${tx('filterTech')}</h2>${techLibrary}</section>`;
   return `${guideContextBar()}<h1>${tx('guides')}</h1><p class="intro">${tx('guideIntro')}</p>${notice()}${search}${guideFilterBar()}<div class="guide-library">${vsSection}${seasonSection}${trainSection}${techSection}</div>${section('quickReference',referenceLibrary())}`;
