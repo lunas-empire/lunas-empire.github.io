@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-10.6');
+@import url('./tokens.css?v=2026-10-10.7');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -313,3 +313,157 @@ button,select,.search input{box-shadow:inset 0 1px var(--surface-highlight)}
 .bm-table th,.practical-table th{background:var(--color-raised);color:var(--color-ink);letter-spacing:.035em;text-transform:uppercase}
 .bm-table tbody tr:nth-child(even),.practical-table tbody tr:nth-child(even){background:color-mix(in srgb,var(--color-raised) 42%,transparent)}
 @media(min-width:60rem){.main-nav a{flex-direction:row;gap:.55rem}.nav-icon{width:1.2rem;height:1.2rem}}
+
+
+/* Last War-inspired interface skin. Presentation only; game data and routes stay untouched. */
+body{
+  background-image:linear-gradient(180deg,color-mix(in srgb,var(--color-game-bar) 22%,var(--color-paper)) 0,transparent 220px);
+}
+.site-header{
+  background:linear-gradient(180deg,color-mix(in srgb,var(--color-game-bar) 92%,white 8%),var(--color-game-bar));
+  border:1px solid var(--color-game-rim);
+  border-top:0;
+  border-radius:0 0 var(--radius-sm) var(--radius-sm);
+  box-shadow:inset 0 -3px 0 color-mix(in srgb,var(--color-game-shadow) 65%,transparent),0 3px 0 color-mix(in srgb,var(--color-game-shadow) 65%,transparent);
+}
+.site-header .brand,.site-header .brand small{color:#f6f8fc}
+.site-header .brand small{opacity:.83}
+.site-header .language select,.site-header .theme-toggle{
+  background:linear-gradient(180deg,#4b5d74,var(--color-game-bar));
+  border-color:#8598aa;
+  color:#fff;
+}
+.site-header #menu>summary{color:#fff;font-weight:800}
+.site-header .brand::after{background:var(--color-game-orange);height:3px}
+main h1{
+  font-family:var(--font-display);
+  font-weight:900;
+  letter-spacing:.012em;
+  text-shadow:0 2px 0 color-mix(in srgb,var(--color-game-shadow) 35%,transparent);
+}
+.section>h2,.guide-featured>h2,.guide-home-topics>h2{
+  padding-inline-start:.65rem;
+  border-inline-start:4px solid var(--color-game-orange);
+  font-family:var(--font-display);
+  letter-spacing:.012em;
+}
+.card,.priority-list>li,.guide-featured-links a,.guide-category-choice,.guide-disclosure,
+.guide-roadmap-week,.train-guide__where,.vs-plan,.practical-table-scroll,.bm-table-wrap{
+  border:1px solid var(--color-game-rim);
+  border-radius:var(--radius-sm);
+  box-shadow:inset 0 1px 0 var(--surface-highlight),
+    inset 0 0 0 2px color-mix(in srgb,var(--color-game-rim) 17%,transparent),
+    0 2px 0 color-mix(in srgb,var(--color-game-shadow) 45%,transparent);
+}
+button,select{
+  border-radius:var(--radius-sm);
+}
+button:not(.menu-action):not([data-guide-browse-back]):not(.theme-toggle){
+  box-shadow:inset 0 1px 0 var(--surface-highlight),0 2px 0 color-mix(in srgb,var(--color-game-shadow) 75%,transparent);
+}
+button:active{transform:translateY(2px)}
+.primary-link,.setup-continue{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:800;
+  text-align:center;
+  color:#1b2633;
+  background:linear-gradient(180deg,#ffd879 0%,var(--color-game-orange) 42%,#e8952b 100%);
+  border:2px solid #93601f;
+  border-bottom-width:4px;
+  border-radius:4px;
+  box-shadow:inset 0 1px 0 #fff3bb,0 2px 0 color-mix(in srgb,var(--color-game-shadow) 70%,transparent);
+  text-shadow:0 1px 0 rgba(255,255,255,.25);
+}
+.primary-link:hover,.setup-continue:hover{
+  filter:brightness(1.06);
+}
+.primary-link:active,.setup-continue:active{transform:translateY(2px);border-bottom-width:2px}
+.main-nav{
+  border:2px solid var(--color-game-rim);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--color-game-bar) 89%,white 11%),var(--color-game-bar));
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.11),0 -3px 8px var(--surface-shadow);
+}
+.main-nav a{
+  color:#d7e5f1;
+  font-weight:700;
+  border:1px solid transparent;
+  border-radius:3px;
+}
+.main-nav .nav-icon{color:#ccdfed}
+.main-nav a[aria-current='page']{
+  background:linear-gradient(180deg,#ffcf70 0%,var(--color-game-orange) 70%,#e5982f 100%);
+  color:#172133;
+  border:2px solid #9f692a;
+  border-bottom:3px solid #80501f;
+  box-shadow:inset 0 1px 0 #ffe8ae,0 -2px 0 rgba(0,0,0,.18);
+  text-decoration:none;
+}
+.main-nav a[aria-current='page'] .nav-icon{color:#172133}
+.guide-category-choice{
+  background:linear-gradient(180deg,color-mix(in srgb,var(--color-panel) 88%,white 12%),var(--color-panel));
+  border-bottom-width:3px;
+  text-align:start;
+}
+.guide-category-choice:hover,.guide-category-choice:focus-visible{border-color:var(--color-game-orange)}
+.guide-category-choice::after{color:var(--color-game-orange)}
+.guide-category-icon,.guide-heading-icon{color:var(--color-action)}
+.guide-featured-links a{
+  border-top:3px solid var(--color-game-orange);
+  background:var(--color-panel);
+}
+.guide-featured-links a span{font-weight:750;color:var(--color-muted)}
+.guide-featured-links a strong{color:var(--color-action)}
+.guide-disclosure>summary,.guide-roadmap-week>summary{
+  color:#f6f8fc;
+  background:linear-gradient(180deg,#495b74 0%,var(--color-game-bar) 100%);
+  border-bottom:2px solid color-mix(in srgb,var(--color-game-shadow) 45%,transparent);
+  text-shadow:0 1px 1px rgba(0,0,0,.35);
+  font-weight:800;
+}
+.guide-disclosure>summary .disclosure-title,
+.guide-roadmap-week>summary strong{color:#f6f8fc}
+.guide-disclosure[open]>summary,.guide-roadmap-week[open]>summary{
+  border-bottom-color:var(--color-game-orange);
+}
+.bm-table th,.practical-table th{
+  background:var(--color-game-bar);
+  color:#f6f8fc;
+  font-size:.78rem;
+  border-bottom:2px solid var(--color-game-orange);
+  text-shadow:0 1px 1px rgba(0,0,0,.22);
+}
+.practical-table tbody tr:nth-child(even),.bm-table tbody tr:nth-child(even){
+  background:color-mix(in srgb,var(--color-game-blue) 8%,var(--color-panel));
+}
+.guide-photo a,.guide-figure a,.practical-photo>a{border-color:var(--color-game-rim)}
+.menu-panel,.language-dialog{
+  border:2px solid var(--color-game-rim);
+  box-shadow:inset 0 2px 0 var(--surface-highlight),0 10px 24px var(--surface-shadow);
+}
+input[type='checkbox'],input[type='radio']{accent-color:var(--color-game-orange)}
+:root[data-theme='light'] main h1{ text-shadow:0 1px 0 rgba(255,255,255,.65) }
+@media (prefers-color-scheme:light){
+  :root:not([data-theme='dark']) main h1{text-shadow:0 1px 0 rgba(255,255,255,.65)}
+}
+@media (min-width:60rem){
+  .site-header{border-top:1px solid var(--color-game-rim)}
+  .main-nav{border-radius:var(--radius-sm)}
+  .main-nav a[aria-current='page']{border-bottom-width:3px}
+}
+@media (max-width:59.99rem){
+  .main-nav{border-inline:0;border-bottom:0}
+  .main-nav a{min-width:0;padding-inline:.15rem}
+}
+@media(prefers-reduced-motion:reduce){
+  button,.primary-link,.setup-continue{transition:none!important}
+}
+
+
+/* Small-phone readability: game-styled topic tiles must not truncate language labels. */
+@media(max-width:360px){
+  .guide-category-grid{grid-template-columns:minmax(0,1fr)}
+  .guide-category-choice{min-height:66px}
+  .guide-category-choice strong{white-space:normal;overflow-wrap:anywhere}
+}

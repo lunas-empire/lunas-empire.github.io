@@ -42,7 +42,17 @@ test('stable checklist keys and direct guide hashes remain unchanged',()=>{
 
 test('dark and light tactical tokens expose gold, cyan and crimson roles',async()=>{
   const css=await readFile(new URL('../assets/tokens.css',import.meta.url),'utf8');
-  for(const token of ['--color-accent:#edb75c','--color-action:#70cde3','--color-identity:#c94b47'])assert.ok(css.includes(token),token);
-  assert.match(css,/:root\[data-theme='light'\][\s\S]*--color-action:#066d86/);
+  for(const token of ['--color-accent:#ffbe54','--color-action:#89ddf2','--color-identity:#c94b47','--color-game-bar:#354358','--color-game-orange:#f7af43'])assert.ok(css.includes(token),token);
+  assert.match(css,/:root\[data-theme='light'\][\s\S]*--color-action:#086983/);
   assert.match(css,/@media\(prefers-color-scheme:light\)[\s\S]*--color-identity:#a93431/);
+});
+
+
+test('Last War skin uses framed event panels and orange active tabs without changing markup',async()=>{
+  const hub=await readFile(new URL('../assets/hub.css',import.meta.url),'utf8');
+  const overview=await readFile(new URL('../assets/overview.css',import.meta.url),'utf8');
+  for(const token of ['--color-game-bar','--color-game-rim','--color-game-orange'])assert.ok(hub.includes(token),token);
+  for(const selector of ['.main-nav a[aria-current=','.guide-category-choice','.guide-disclosure>summary','.primary-link','.practical-table th'])assert.ok(hub.includes(selector),selector);
+  for(const selector of ['.command-hud__heading','.task-group>summary','.task-row[data-done=','.chapter-rail__week--current'])assert.ok(overview.includes(selector),selector);
+  assert.match(hub,/@media\(prefers-reduced-motion:reduce\)/);
 });
