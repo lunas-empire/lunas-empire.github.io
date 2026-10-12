@@ -457,7 +457,7 @@ function syncChrome() {
   document.querySelector('.main-nav').setAttribute('aria-label',t('menu'));
   syncThemeControls();
   const adminUrl = ALLIANCE_CONFIG.adminUrl;
-  if (adminUrl && (/^https:\/\//i.test(adminUrl) || /^\/admin\/$/.test(adminUrl))) {
+  if (adminUrl && (/^https:\/\//i.test(adminUrl) || /^\/(?:admin|command-center)\/$/.test(adminUrl))) {
     document.querySelector('#admin-link').href = adminUrl;
     document.querySelector('#admin-link').rel = 'noreferrer';
   }

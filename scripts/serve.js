@@ -9,7 +9,9 @@ export function createPublicServer() {
     const path=(req.url || '/').split('?')[0];
     const adminFile=['/admin','/admin/','/admin/index.html'].includes(path)?'admin/index.html'
       : /^\/admin\/(?:app|crypto)\.js$/.test(path) || /^\/admin\/(?:styles|wiki-theme)\.css$/.test(path) || path==='/admin/data/manifest.json' || path==='/admin/data/wiki.bin' || /^\/admin\/data\/images\/(?:image|\d+)\.(?:png|jpg)\.bin$/.test(path)?path.slice(1):null;
-    const file=path==='/'?'index.html':['/s1','/s1/','/s1/index.html'].includes(path)?'s1/index.html':['/manifest.webmanifest','/service-worker.js'].includes(path)?path.slice(1):/^\/assets\/(?:[a-z0-9-]+\/)*[a-z0-9-]+\.(js|css|svg|webp|png)$/.test(path)?path.slice(1):adminFile;
+    const demoFile=['/command-center','/command-center/','/command-center/index.html'].includes(path)?'command-center/index.html'
+      : /^\/command-center\/(?:app|demo-api|review-ui)\.js$/.test(path) || /^\/command-center\/(?:styles|tokens)\.css$/.test(path) || path==='/command-center/sun.svg'?path.slice(1):null;
+    const file=path==='/'?'index.html':['/s1','/s1/','/s1/index.html'].includes(path)?'s1/index.html':['/manifest.webmanifest','/service-worker.js'].includes(path)?path.slice(1):/^\/assets\/(?:[a-z0-9-]+\/)*[a-z0-9-]+\.(js|css|svg|webp|png)$/.test(path)?path.slice(1):adminFile||demoFile;
     res.setHeader('Cache-Control','no-cache');
     res.setHeader('X-Content-Type-Options','nosniff');
     if (!file) {res.writeHead(404);return res.end('Not found.');}
