@@ -1,65 +1,23 @@
 <!doctype html>
-<html lang="de" data-theme="dark">
+<html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
-<meta name="color-scheme" content="dark light">
-<meta name="theme-color" content="#101821">
-<link rel="icon" href="./sun.svg" type="image/svg+xml">
-<title>RZSN Command Center · Demo auf Lunas Empire</title>
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./styles.css">
+<meta http-equiv="refresh" content="0;url=https://rzsn-command-center-staging.cynthiawong2837128.workers.dev/">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<title>RZSN Command Center · Geschützter Zugang</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#101821;color:#eaf2f7}
+body{min-height:90vh;display:grid;place-items:center;text-align:center;padding:1.5rem}
+a{color:#ffae56;font-weight:700}
+</style>
 </head>
 <body>
-<a class="skip" href="#workspace">Skip to command center</a>
-<header class="site-header">
-<a class="brand" href="https://lunas-empire.github.io/" target="_blank" rel="noopener noreferrer" aria-label="RZSN Member Hub (Staging)">
-<img src="./sun.svg" alt="" width="32" height="32"><span>RZSN <small>RISING SUN · 2261</small></span></a>
-<div class="header-controls">
-<span class="site-role">R4 / R5 · COMMAND CENTER</span>
-<button id="logout" class="hub-link" type="button" hidden>Abmelden</button>
-<button id="theme" type="button" class="theme-toggle" aria-label="Switch to light appearance" title="Change appearance">☀️</button>
-<a class="hub-link" href="https://lunas-empire.github.io/" target="_blank" rel="noopener noreferrer">Member Hub ↗</a>
-</div></header>
-<nav class="main-nav" aria-label="Command Center">
-<button type="button" data-tab="overview" class="active" aria-current="page">Overview</button>
-<button type="button" data-tab="members">Members</button>
-<button type="button" data-tab="vs">VS Duel</button>
-<button type="button" data-tab="review">OCR Review <b id="review-badge"></b></button>
-<button type="button" data-tab="train">Train Manager</button>
-</nav>
-<div class="demo-banner" role="status"><strong>VORSCHAU · FIKTIVE BEISPIELDATEN</strong><span>Alle Namen, Punkte und Prüfaufträge sind erfunden. Keine echten Allianz- oder Admin-Daten. Hier kannst du die Oberfläche testen; der geschützte R4/R5-Zugang folgt separat.</span><a href="/" aria-label="Zurück zur RZSN Startseite">← Zur Startseite</a></div>
-<div class="content">
-<header class="top"><div><span class="eyebrow">RZSN ADMIN · SERVER 2261</span><h1 id="page-title">Alliance Overview</h1></div>
-<div class="header-right"><span class="environment">ÖFFENTLICHE DEMO · BEISPIELDATEN</span><span id="snapshot-status" class="small">Awaiting connection</span></div></header>
-<div class="auth" id="auth-panel" hidden><div class="auth-inner"><span class="iconlarge">◆</span><h2>Private Command Center</h2><p>Gib den lokalen Einmal-Token ein, der im gestarteten Terminal angezeigt wird. Keine Mitgliederdaten werden ohne Anmeldung ausgeliefert.</p><form id="login"><label for="token">Local access token</label><input id="token" type="password" autocomplete="off" placeholder="Token einfügen" required><button class="primary" type="submit">Command Center öffnen →</button></form><p id="login-status" role="status"></p></div></div>
-<main id="workspace" hidden>
-<section data-panel="overview">
-<div class="stat-grid"><article class="stat"><span>ACTIVE MEMBERS</span><strong id="active">—</strong><small id="roster-status">Roster status</small></article>
-<article class="stat"><span>ALLIANCE POWER</span><strong id="power">—</strong><small id="power-note">Unconfirmed excluded</small></article>
-<article class="stat"><span>TOTAL KILLS</span><strong id="kills">—</strong><small id="kills-note">Latest snapshot</small></article>
-<article class="stat warn"><span>OCR REVIEW QUEUE</span><strong id="reviews">—</strong><small>Requires human verification</small></article></div>
-<div class="two-columns"><article class="panel"><div class="panel-heading"><div><div class="eyebrow">ROSTER BREAKDOWN</div><h2>Alliance Structure</h2></div><span class="tag">R1–R5</span></div><div id="ranks" class="ranks"></div><p class="footnote">R1 not eligible for trains. R4/R5 follow leadership rotation.</p></article>
-<article class="panel"><div class="panel-heading"><div><div class="eyebrow">LIVE DATA PIPELINE</div><h2>Data Integrity</h2></div><span class="tag orange">LOCAL ONLY</span></div><div id="integrity"></div></article></div>
-<article class="panel"><div class="panel-heading"><div><div class="eyebrow">VS HEALTH</div><h2>Weekly Compliance</h2></div><span class="tag">3.6M / DAY</span></div><div id="summary-weeks" class="weeks"></div></article>
-</section>
-<section data-panel="members" hidden><article class="panel"><div class="panel-heading"><div><div class="eyebrow">CURRENT ROSTER</div><h2>Member Intelligence</h2></div><label class="search"><span>SEARCH</span><input id="member-search" placeholder="Name filtern…"></label></div><div class="scroll-table"><table><thead><tr><th>Player</th><th>Rank</th><th>Power</th><th>Kills</th><th>Donation / day</th><th>Donation / week</th></tr></thead><tbody id="member-rows"></tbody></table></div><p class="footnote">Missing values remain unknown rather than zero. Verified corrections are displayed without changing the original OCR snapshot. Select a member for day-level VS history.</p></article><article class="panel" id="member-detail" hidden></article></section>
-<section data-panel="vs" hidden><article class="panel"><div class="panel-heading"><div><div class="eyebrow">PERFORMANCE OVER SCORE</div><h2>VS Intelligence</h2></div><span class="tag">3,600,000 GOAL</span></div><div id="vs-weeks" class="weeks"></div><p class="footnote">Weekly totals are historical source snapshots. Manual OCR corrections are shown separately in verified member-day trends; they do not silently rewrite these weekly totals. Week 41 is preliminary.</p></article></section>
-<section data-panel="review" hidden><article class="panel"><div class="panel-heading"><div><div class="eyebrow">HUMAN IN THE LOOP</div><h2>OCR Review Center</h2></div><span class="tag orange">MANUAL VALIDATION</span></div>
-<p class="footnote review-intro">Original OCR captures remain unchanged. Correct a numeric value only when you have verified it against the source. Identify historical names manually, or dismiss uncertain results with a reason. All decisions are audited.</p>
-<div class="review-toolbar">
-<label>Find player<input type="search" id="review-search" placeholder="Name or reason…" autocomplete="off"></label>
-<label>Category<select id="review-filter"><option value="all">All categories</option><option value="profile">Profile metrics</option><option value="vs_day">VS points</option><option value="identity">Player identity</option></select></label>
-<label>Status<select id="review-status"><option value="open">Open</option><option value="approved">Approved</option><option value="dismissed">Dismissed</option></select></label>
-</div>
-<p id="review-count" class="review-count" role="status"></p>
-<div id="review-list" class="review-list"></div></article></section>
-<section data-panel="train" hidden><article class="panel"><div class="panel-heading"><div><div class="eyebrow">ROTATION & FAIRNESS</div><h2>Train Manager</h2></div><span class="tag">MANUAL CONFIRMATION</span></div><div class="train-grid"><div><b>MON</b><span>R5</span></div><div><b>TUE</b><span>R4</span></div><div><b>WED</b><span>Members' Day</span></div><div><b>THU</b><span>Donation King</span></div><div><b>FRI</b><span>R4</span></div><div><b>SAT</b><span>Members' Day</span></div><div><b>SUN</b><span>VS Hero</span></div></div><p class="footnote">Historical Google Sheet is read-only. Drivers are never automatically assigned.</p><div id="train-list"></div></article></section>
+<main>
+<h1>RZSN Command Center</h1>
+<p>Du wirst zum passwortgeschützten Adminbereich weitergeleitet.</p>
+<p><a href="https://rzsn-command-center-staging.cynthiawong2837128.workers.dev/" rel="noreferrer">Geschütztes Command Center öffnen</a></p>
 </main>
-<footer class="bottom">RZSN · Rising Sun · Server 2261 · öffentliche Vorschau ohne Echtdaten</footer>
-</div>
-<script type="module" src="./app.js"></script>
 </body>
 </html>

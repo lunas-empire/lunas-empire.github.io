@@ -36,7 +36,7 @@ test('all public assets, including i18n, are served; private paths are not',asyn
     assert.ok(!encryptedWiki.includes(Buffer.from('Operation KABUM')),'encrypted wiki does not expose plaintext admin content');
     const homepage=await (await fetch(url+'/')).text();
     assert.ok(!homepage.includes('#faq'),'FAQ route is removed from the public navigation');
-    assert.ok(homepage.includes('id="admin-link" href="/command-center/"'),'Staging HTML links directly to the safe Command Center demo');
+    assert.ok(homepage.includes('id="admin-link" href="https://rzsn-command-center-staging.cynthiawong2837128.workers.dev/"'),'Staging links to password-protected Cloudflare Command Center');
     assert.ok(homepage.includes('id="language-dialog"'),'first-visit setup dialog is present');
     assert.ok(homepage.includes('id="setup-language"'),'first-visit language picker has a stable native-select mount point');
     assert.ok(!homepage.includes('id="language-options"'),'first visit does not render the old language-button wall');
@@ -50,7 +50,7 @@ test('all public assets, including i18n, are served; private paths are not',asyn
     const seasonLibrarySource=await (await fetch(url+'/assets/season-library.js')).text();
     const trainGuideSource=await (await fetch(url+'/assets/train-guide.js')).text();
     const techGuideSource=await (await fetch(url+'/assets/tech-guide.js')).text();
-    assert.ok(configSource.includes("'/command-center/'") && configSource.includes("'/admin/'"),'staging uses synthetic demo while production retains encrypted wiki');
+    assert.ok(configSource.includes("https://rzsn-command-center-staging.cynthiawong2837128.workers.dev/") && configSource.includes("'/admin/'"),'staging uses protected Cloudflare backend while production retains encrypted wiki');
     assert.ok(appSource.includes('trainGuideDisclosure') && trainGuideSource.includes('50,000 Train Rating'),'Alliance Train guide is shipped and rendered');
     assert.ok(trainGuideSource.includes('/assets/member/train-guide-ui.webp'),'Alliance Train guide includes the annotated screenshot');
     assert.ok(trainGuideSource.includes('Alliance & Events') && !trainGuideSource.includes('Alliance tools'),'Train guide lives under the clearer Alliance & Events section');
