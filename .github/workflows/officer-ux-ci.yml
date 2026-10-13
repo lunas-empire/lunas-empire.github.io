@@ -1,16 +1,20 @@
 name: Luna Native Officer UX CI
+# Do not test every intermediate feature-branch commit: those produced
+# avoidable failed-run emails while code/tests were still being edited.
+# Open a draft PR while working; mark ready once the change is cohesive.
 on:
-  push:
-    branches:
-      - 'feat/native-officer-*'
   pull_request:
-    branches:
-      - main
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
   workflow_dispatch:
+concurrency:
+  group: luna-officer-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
   web-ui:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
