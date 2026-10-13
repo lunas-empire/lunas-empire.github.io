@@ -892,3 +892,16 @@ input[type='checkbox'],input[type='radio']{accent-color:var(--color-game-orange)
 @media(prefers-reduced-motion:reduce){
  .native-admin button,.native-admin input,.native-admin select{scroll-behavior:auto;transition:none!important}
 }
+
+/* Thumb-friendly manual registry filters. No lifecycle changes from selection. */
+.native-admin .native-status-filter{display:flex;gap:.4rem;flex-wrap:wrap;margin:.5rem 0 .85rem}
+.native-admin .native-status-filter button{min-height:48px;padding:.5rem .85rem;
+ font-size:.82rem;font-weight:800;color:var(--color-ink);background:var(--color-panel);
+ border:1px solid var(--color-rule);border-radius:4px}
+.native-admin .native-status-filter button[aria-pressed="true"]{
+ background:#34475e;color:#f5f8fb;border-color:#d2a55e;
+ box-shadow:inset 0 -3px #f0b65c,0 2px 0 var(--surface-shadow)}
+@media(max-width:390px){
+ .native-admin .native-status-filter{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .native-admin .native-status-filter button{width:100%}
+}
