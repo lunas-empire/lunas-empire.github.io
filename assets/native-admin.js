@@ -534,7 +534,7 @@ export function initNativeAdmin(mount){
  if(mount.dataset.nativeReady)return;
  mount.dataset.nativeReady='1';
  mount.addEventListener('click',async event=>{
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick]');
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload]');
   if(!button)return;
   if(button.hasAttribute('data-officer-logout')){
    try{await request('/api/native-logout',{method:'POST',body:{}})}catch{}clearOfficer();await renderNativeAdmin(mount);return;
@@ -565,6 +565,29 @@ export function initNativeAdmin(mount){
     cache.registry=latest;renderRegistry(target,target.querySelector('#registry-search')?.value||'');
     editRegistry(target,form.dataset.id);
    }catch(err){form.querySelector('#native-form-message').textContent=err.message;button.disabled=false}
+   return;
+  }
+  if(button.dataset.nativeWatchPerson){
+   const id=button.dataset.nativeWatchPerson;
+   panel='members';await view(mount);
+   const memberTarget=mount.querySelector('#native-admin-content');
+   if(memberTarget?.querySelector('#native-person'))await showPerson(memberTarget,id);
+   return;
+  }
+  if(button.hasAttribute('data-native-diplomacy-new')){editDiplomacy(target);return}
+  if(button.dataset.nativeDiplomacyEdit){editDiplomacy(target,button.dataset.nativeDiplomacyEdit);return}
+  if(button.hasAttribute('data-native-diplomacy-cancel')){
+   const editor=target.querySelector('#native-diplomacy-form');if(editor)editor.innerHTML='';
+   return;
+  }
+  if(button.hasAttribute('data-native-diplomacy-reload')){
+   if(!window.confirm('Aktuellen Stand laden und ungespeicherte Diplomatie-Notizen verwerfen?'))return;
+   try{cache.diplomacy=await request('/api/diplomacy');renderDiplomacy(target);
+    const editor=target.querySelector('#native-diplomacy-form');if(editor)editor.innerHTML='';
+   }catch(err){
+    const message=target.querySelector('#native-diplomacy-message');
+    if(message)message.textContent='Aktualisierung fehlgeschlagen: '+err.message;
+   }
    return;
   }
   if(button.dataset.registryEdit){editRegistry(target,button.dataset.registryEdit);return}
@@ -627,6 +650,7 @@ export function initNativeAdmin(mount){
  mount.addEventListener('input',event=>{
   if(event.target.id==='native-member-search'){pageLimit=20;renderMembers(mount.querySelector('#native-admin-content'),event.target.value)}
   if(event.target.id==='registry-search'){pageLimit=20;renderRegistry(mount.querySelector('#native-admin-content'),event.target.value)}
+  if(event.target.id==='native-diplomacy-search')renderDiplomacy(mount.querySelector('#native-admin-content'),event.target.value);
   if(event.target.id==='activity-search')renderActivity(mount.querySelector('#native-admin-content'),event.target.value);
   if(event.target.id==='review-search-native'){historyLimit=20;renderReviews(mount.querySelector('#native-admin-content'),event.target.value)}
  });
@@ -640,6 +664,36 @@ export function initNativeAdmin(mount){
     const login=await request('/api/native-login',{method:'POST',body:{code:form.elements.namedItem('code').value}});
     sessionToken=login.token;officer=login;form.elements.namedItem('code').value='';await view(mount);
    }catch(err){form.querySelector('#native-login-status').textContent=err.message;button.disabled=false}
+   return;
+  }
+  if(form.id==='native-diplomacy-save'){
+   if(form.dataset.conflict==='1'||form.querySelector('[type=submit]').disabled)return;
+   const value=key=>form.elements.namedItem(key)?.value;
+   const payload={
+    server:Number(value('server')),tag:value('tag'),name:value('name'),
+    stance:value('stance'),war_support:value('war_support'),
+    attack_policy:value('attack_policy'),verification:value('verification'),
+    notes:value('notes'),active:form.elements.namedItem('active').checked,
+    reason:value('reason')
+   };
+   if(form.dataset.id){payload.id=form.dataset.id;payload.revision=Number(form.dataset.revision)}
+   const button=form.querySelector('[type=submit]');button.disabled=true;
+   const message=form.querySelector('#native-diplomacy-message');message.textContent='Wird gespeichert …';
+   try{
+    await request('/api/diplomacy',{method:'POST',body:payload});
+    cache.diplomacy=await request('/api/diplomacy');
+    const target=mount.querySelector('#native-admin-content');
+    renderDiplomacy(target,target.querySelector('#native-diplomacy-search')?.value||'');
+    target.querySelector('#native-diplomacy-form').innerHTML='<p role="status" class="native-confirmed">Vereinbarung protokolliert gespeichert.</p>';
+   }catch(err){
+    if(err.status===409){
+     form.dataset.conflict='1';
+     form.querySelector('[data-native-diplomacy-reload]').hidden=false;
+     message.textContent='Ein anderer Officer hat diesen Eintrag verändert. Deine Eingaben bleiben erhalten. Lade den aktuellen Stand ausdrücklich neu.';
+    }else{
+     button.disabled=false;message.textContent='Nicht gespeichert: '+err.message;
+    }
+   }
    return;
   }
   if(form.id==='registry-save'){
