@@ -3,8 +3,8 @@ import {ALLIANCE_CONFIG} from './config.js';
 import {icon} from './icons.js';
 const apiBase=ALLIANCE_CONFIG.commandCenterEmbedUrl.replace('/?embed=1','');
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
-let sessionToken='',officer=null,panel='overview',cache={},pageLimit=20,historyLimit=20;
-export function clearOfficer(){sessionToken='';officer=null;cache={};panel='overview';pageLimit=20;historyLimit=20;}
+let sessionToken='',officer=null,panel='overview',cache={},pageLimit=20,historyLimit=20,activityLimit=30;
+export function clearOfficer(){sessionToken='';officer=null;cache={};panel='overview';pageLimit=20;historyLimit=20;activityLimit=30;}
 export const hasOfficer=()=>Boolean(sessionToken);
 async function request(path,options={}){
  const headers={'Accept':'application/json',...(options.body?{'Content-Type':'application/json'}:{}),...(sessionToken?{'Authorization':'Bearer '+sessionToken}:{})};
@@ -186,7 +186,9 @@ function renderTrain(target){
   '<div><span class="native-kicker">'+(x.date===d.today?'HEUTE':e(x.date))+' · '+e(x.type||'Zug')+'</span>'+
   '<strong>'+e(x.entry?.driver||'Noch kein Fahrer eingetragen')+'</strong>'+
   '<small>'+e(x.entry?.status||'Offen')+(x.entry?.linked===false?' · Zuordnung nicht verifiziert':'')+'</small></div>'+
-  '<button type="button" data-native-train="'+e(x.date)+'">'+(x.entry?'Bearbeiten':'Fahrer wählen')+'</button></article>';
+  '<div class="native-train-actions"><button type="button" data-native-train="'+e(x.date)+'">'+(x.entry?'Bearbeiten':'Fahrer wählen')+'</button>'+
+  (x.entry?.status==='planned'&&x.entry?.member_id&&(d.members||[]).some(m=>m.id===x.entry.member_id)?
+   '<button type="button" data-native-copy-train="'+e(x.date)+'">Zugtext kopieren</button>':'')+'</div></article>';
  const toShow=upcoming.length?upcoming.map(slot).join(''):'<p class="native-muted">Für diese Woche liegen keine Zugdaten vor.</p>';
  target.querySelector('#native-train-body').innerHTML='<p class="native-muted">Fahrer ab R2 · historische Importe bleiben unverändert. Geplant, gefahren und noch nicht bestätigt sind unterschiedliche Zustände.</p>'+
   '<div class="native-train-highlights">'+cards([['Gefahren (Historie)',d.counts?.completed??'—'],['Geplant',d.counts?.planned??'—'],['Historische Lücken',d.counts?.missing_recent??'—']])+'</div>'+
@@ -271,9 +273,52 @@ function editRegistry(target,id){
   '<button type="submit">Änderung protokolliert speichern</button><button type="button" data-registry-reload hidden>Aktuellen Stand laden (Eingaben verwerfen)</button><p id="native-form-message" role="status"></p></form>';
  host.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
+export function formatOfficerTime(raw){
+ const value=String(raw||'').trim().replace(' ','T');
+ if(!value)return 'Zeit unbekannt';
+ const utc=/(Z|[+-]\d{2}:?\d{2})$/i.test(value)?value:value+'Z';
+ const date=new Date(utc);
+ if(!Number.isFinite(date.getTime()))return 'Zeit unbekannt';
+ return new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',dateStyle:'medium',timeStyle:'short'}).format(date);
+}
+const auditLabels={
+ rank_override:'Rang',rank:'Rang',lifecycle:'Status',blacklisted:'Blacklist',
+ title:'Titel',description:'Beschreibung',status:'Status',priority:'Priorität',due_date:'Frist',
+ assignee_id:'Zuständig',substitute_id:'Vertretung',member_id:'Spieler-ID',
+ date:'Datum',ride_date:'Zugdatum',driver_name:'Zugfahrer',note:'Notiz',
+ event_type:'Event',event_date:'Eventdatum',level:'Level',waves:'Wellen',
+ lead_id:'Leitung',attendance:'Teilnehmer',outcome:'Ergebnis',reason:'Begründung',
+ revision:'Revision',updated_by:'Bearbeitet von'
+};
+const safeAuditObject=value=>{
+ try{const item=typeof value==='string'?JSON.parse(value):value;return item&&typeof item==='object'&&!Array.isArray(item)?item:null}
+ catch{return null}
+};
+const auditValue=value=>value===null||value===undefined||value===''?'—':
+ typeof value==='boolean'?(value?'Ja':'Nein'):typeof value==='object'?'(Details)':String(value);
+export function auditChanges(entry){
+ const before=safeAuditObject(entry?.before_json),after=safeAuditObject(entry?.after_json);
+ if(!after)return [];
+ return Object.keys(auditLabels).filter(key=>Object.hasOwn(after,key)&&
+  (!before||JSON.stringify(before[key])!==JSON.stringify(after[key]))).map(key=>({
+  field:auditLabels[key],before:auditValue(before?.[key]),after:auditValue(after[key])
+ }));
+}
 function renderActivity(target,term){
- const matching=cache.activity.filter(x=>[x.actor,x.action,x.object_kind,x.object_id,x.before_json,x.after_json].some(y=>String(y||'').toLowerCase().includes(term.toLowerCase())));
- target.querySelector('#activity-list').innerHTML='<p class="native-muted">'+matching.length+' Einträge · Zeiten Europe/Berlin</p><div class="native-list">'+matching.map(x=>'<details><summary><strong>'+e(x.actor)+' · '+e(x.action)+'</strong><small>'+e(new Intl.DateTimeFormat('de-DE',{dateStyle:'medium',timeStyle:'medium',timeZone:'Europe/Berlin'}).format(new Date(x.at.replace(' ','T')+'Z')))+'</small></summary><p>Objekt: '+e(x.object_kind)+' · '+e(x.object_id)+'</p><p>Vorher: '+e(x.before_json||'—')+'</p><p>Nachher: '+e(x.after_json||'—')+'</p></details>').join('')+'</div>';
+ const matching=(cache.activity||[]).filter(x=>[x.actor,x.action,x.object_kind,x.object_id,x.before_json,x.after_json]
+  .some(y=>String(y||'').toLowerCase().includes(term.toLowerCase())));
+ const details=x=>{
+  const changes=auditChanges(x);
+  return '<details class="native-audit-entry"><summary><strong>'+e(x.actor||'Unbekannter Officer')+' · '+e(x.action||'Änderung')+
+   '</strong><small>'+e(formatOfficerTime(x.at))+' · '+e(x.object_kind||'Objekt')+'</small></summary>'+
+   '<div class="native-audit-body"><p class="native-muted">Objekt: '+e(x.object_id||'—')+'</p>'+
+   (changes.length?'<div class="native-audit-diff">'+changes.map(d=>'<div><b>'+e(d.field)+'</b><span>'+e(d.before)+' → '+e(d.after)+'</span></div>').join('')+'</div>':
+    '<p class="native-muted">Keine sicher lesbare Feldänderung in diesem Eintrag vorhanden.</p>')+
+   '</div></details>';
+ };
+ target.querySelector('#activity-list').innerHTML='<p class="native-muted">'+matching.length+' verfügbare Einträge · Anzeige Europe/Berlin · keine geheimen Sitzungsdaten</p>'+
+  '<div class="native-list">'+matching.slice(0,activityLimit).map(details).join('')+'</div>'+
+  (matching.length>activityLimit?'<button type="button" data-native-more="activity">Weitere 30 Änderungen</button>':'');
 }
 function renderReviews(target,term){
  const batch=target.querySelector('#review-batch-native')?.value||'';
@@ -304,12 +349,12 @@ export function initNativeAdmin(mount){
  if(mount.dataset.nativeReady)return;
  mount.dataset.nativeReady='1';
  mount.addEventListener('click',async event=>{
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-form-reload]');
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-form-reload],[data-native-copy-train]');
   if(!button)return;
   if(button.hasAttribute('data-officer-logout')){
    try{await request('/api/native-logout',{method:'POST',body:{}})}catch{}clearOfficer();await renderNativeAdmin(mount);return;
   }
-  if(button.dataset.officerTab){panel=button.dataset.officerTab;pageLimit=20;historyLimit=20;await view(mount);return}
+  if(button.dataset.officerTab){panel=button.dataset.officerTab;pageLimit=20;historyLimit=20;activityLimit=30;await view(mount);return}
   if(button.dataset.nativeAction){
    const action=button.dataset.nativeAction;
    panel=({ 'train-today':'train','event-planning':'events','member-find':'members','review-open':'reviews','tasks-open':'tasks'})[action]||'overview';
@@ -357,7 +402,7 @@ export function initNativeAdmin(mount){
     const history=await request('/api/activity?limit=100&member_id='+encodeURIComponent(button.dataset.nativeMemberLog));
     holder.innerHTML='<h4 class="native-section-heading">Änderungsprotokoll</h4>'+
      (history.length?'<div class="native-activity-brief">'+history.map(item=>
-      '<p><b>'+e(item.actor)+'</b> · '+e(item.action)+' · '+e(item.at)+'</p>').join('')+'</div>':'<p class="native-muted">Noch keine protokollierten Änderungen zu dieser Spieler-ID.</p>');
+      '<p><b>'+e(item.actor)+'</b> · '+e(item.action)+' · '+e(formatOfficerTime(item.at))+'</p>').join('')+'</div>':'<p class="native-muted">Noch keine protokollierten Änderungen zu dieser Spieler-ID.</p>');
    }catch(err){holder.textContent='Protokoll nicht verfügbar: '+err.message}
    return;
   }
@@ -365,6 +410,25 @@ export function initNativeAdmin(mount){
   if(button.dataset.nativeMore==='train'){historyLimit+=20;renderTrain(target);return}
   if(button.dataset.nativeMore==='registry'){pageLimit+=20;renderRegistry(target,target.querySelector('#registry-search')?.value||'');return}
   if(button.dataset.nativeMore==='reviews'){historyLimit+=20;renderReviews(target,target.querySelector('#review-search-native')?.value||'');return}
+  if(button.dataset.nativeMore==='activity'){activityLimit+=30;renderActivity(target,target.querySelector('#activity-search')?.value||'');return}
+  if(button.dataset.nativeCopyTrain){
+   const date=button.dataset.nativeCopyTrain;
+   const slot=(cache.trains?.calendar||[]).find(row=>row.date===date);
+   const member=(cache.trains?.members||[]).find(m=>m.id===slot?.entry?.member_id);
+   if(!member||slot?.entry?.status!=='planned')return;
+   // Use only an explicitly linked eligible driver, not an inferred name.
+   const message='RZSN train '+date+' ('+(slot.type||'Train')+'): '+member.name+
+    ' is our conductor today. Please join with 3 tickets. All aboard!';
+   try{
+    if(!window.navigator?.clipboard?.writeText)throw Error('Clipboard unavailable');
+    await window.navigator.clipboard.writeText(message);
+    button.textContent='Zugtext kopiert';
+   }catch{
+    const holder=target.querySelector('#native-train-form');
+    if(holder){holder.innerHTML='<label class="native-copy-fallback">Text für den Allianzchat<textarea rows="3" readonly>'+e(message)+'</textarea></label>';holder.querySelector('textarea')?.focus()}
+   }
+   return;
+  }
   if(button.dataset.nativeTrain){editTrain(target,button.dataset.nativeTrain);return}
   if(button.dataset.nativeNew==='train'){editTrain(target,cache.trains?.today||new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date()),true);return}
   if(button.dataset.nativeNew||button.dataset.nativeEdit){editRecord(target,panel,button.dataset.nativeEdit||'');return}
