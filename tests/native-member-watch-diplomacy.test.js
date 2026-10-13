@@ -81,6 +81,13 @@ test('Passively missing screenshots never blacklist or archive members',async t=
  assert.equal(ctx.mount.querySelector('#registry-save [name=blacklisted]').checked,false);
  assert.equal(ctx.mount.querySelector('#registry-save [name=lifecycle]').value,'active');
  assert.equal(writes.length,0);
+ ctx.mount.querySelector('[data-officer-tab=registry]').click();
+ await until(()=>ctx.mount.querySelector('[data-native-registry-filter=blacklist]'));
+ ctx.mount.querySelector('[data-native-registry-filter=blacklist]').click();
+ await until(()=>ctx.mount.querySelector('[data-native-registry-filter=blacklist]')?.getAttribute('aria-pressed')==='true');
+ assert.equal(ctx.mount.querySelectorAll('[data-registry-edit]').length,0);
+ ctx.mount.querySelector('[data-native-registry-filter=active]').click();
+ assert.equal(ctx.mount.querySelectorAll('[data-registry-edit]').length,1);
 });
 test('Diplomacy edits preserve alliance relation, separate war help and verified source',async t=>{
  const ctx=fresh();t.after(()=>ctx.close());const writes=mockFetch();
