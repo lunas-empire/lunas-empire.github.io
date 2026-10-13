@@ -1031,3 +1031,15 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
  .native-review-picture button,.native-review-controls button{width:100%;min-height:48px}
  .native-review-image img{max-height:55vh}
 }
+
+/* Contextual rotation editor: collapsed by default, 7 rows, no new navigation tab. */
+.native-rotation-form{display:grid;gap:.65rem}
+.native-rotation-grid{display:grid;gap:.45rem;grid-template-columns:repeat(2,minmax(0,1fr));grid-column:1/-1}
+.native-rotation-day{display:grid;gap:.35rem;padding:.7rem;background:var(--color-raised);border:1px solid var(--color-rule);border-radius:4px;min-width:0}
+.native-rotation-day>strong{font-size:.9rem;color:var(--color-ink)}
+.native-rotation-day>label{display:grid;gap:.2rem;font-size:.76rem;color:var(--color-muted)}
+.native-rotation-day select{width:100%;min-height:44px;color:var(--color-ink);background:var(--color-panel);border:1px solid var(--color-rule);border-radius:3px;font-size:.86rem}
+.native-rotation-form>.native-check,.native-rotation-form>label:last-of-type,.native-rotation-form>.native-form-help{grid-column:1/-1}
+.native-train-recommendation{font-size:.75rem;color:var(--color-action);font-weight:700}
+.native-rotation-form #native-rotation-message{grid-column:1/-1}
+@media(max-width:44rem){.native-rotation-grid{grid-template-columns:minmax(0,1fr)}}
