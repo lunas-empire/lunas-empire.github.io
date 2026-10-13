@@ -724,3 +724,43 @@ input[type='checkbox'],input[type='radio']{accent-color:var(--color-game-orange)
  .native-admin button{transition:none!important}
  .native-admin button:active{transform:none!important}
 }
+
+/* Native VS and train micro-interactions */
+.native-vs-brief>.native-muted{margin:.2rem 0 .8rem}
+.native-vs-day{min-height:93px;align-content:center;border-top:3px solid var(--color-game-orange)!important}
+.native-vs-day b{font-size:1rem;color:var(--color-action)}
+.native-vs-day span{font-size:.75rem;white-space:normal;overflow-wrap:anywhere}
+.native-vs-groups{display:grid;gap:.45rem;margin:1rem 0}
+.native-vs-group{margin:0}
+.native-vs-group>summary{display:flex;justify-content:space-between;gap:.4rem}
+.native-vs-group>summary>b{min-width:34px;text-align:center;color:var(--color-action);font-variant-numeric:tabular-nums}
+.native-vs-player{display:block!important}
+.native-vs-player>summary{padding:.5rem .3rem;min-height:44px;font-size:.86rem}
+.native-vs-player-days{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.35rem;padding:.3rem 0 .5rem}
+.native-vs-player-days>span{min-width:0;background:var(--color-raised);border:1px solid var(--color-rule);padding:.4rem;font-size:.74rem;overflow-wrap:anywhere}
+.native-vs-player-days b{color:var(--color-action)}
+.native-train-highlights .native-cards{grid-template-columns:repeat(3,minmax(0,1fr))}
+.native-train-week{margin-bottom:1rem}
+.native-train-week .native-train-item{border-left:3px solid var(--color-game-rim);min-height:82px;box-shadow:inset 0 1px var(--surface-highlight)}
+.native-train-week .native-train-today{border-left-color:var(--color-game-orange);background:color-mix(in srgb,var(--color-game-bar) 8%,var(--color-panel))}
+.native-train-item div{display:grid;gap:.12rem}
+.native-train-item strong{font-size:.95rem;overflow-wrap:anywhere}
+.native-train-item .native-kicker{font-size:.69rem}
+.native-train-item button{min-height:44px;background:var(--color-raised);border-color:var(--color-game-rim);font-size:.8rem;font-weight:750}
+.native-train-today button{background:linear-gradient(#ffd783,#efa843);color:#1c2939;border-color:#ab793d}
+.native-fast-form{align-items:start}
+.native-form-help{grid-column:1/-1;color:var(--color-muted);font-size:.78rem;margin:.1rem 0}
+.native-form-more{grid-column:1/-1;margin:.1rem 0;padding:.55rem;border:1px solid var(--color-rule);background:var(--color-raised);border-radius:4px}
+.native-form-more>summary{min-height:42px;display:flex;align-items:center;font-size:.85rem;font-weight:760;cursor:pointer}
+.native-form-more-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem;padding-top:.55rem}
+.native-form-more-fields label{display:grid;min-width:0}
+.native-form-more-fields label:last-child{grid-column:1/-1}
+.native-form-more-fields input{width:100%}
+.native-form button[data-native-form-reload]{background:var(--color-raised)}
+@media(max-width:45rem){
+ .native-vs-player-days{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .native-train-highlights .native-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .native-form-more-fields{grid-template-columns:minmax(0,1fr)}
+ .native-form-more-fields label:last-child{grid-column:1}
+ .native-train-week .native-train-item{align-items:start}
+}
