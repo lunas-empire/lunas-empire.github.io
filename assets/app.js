@@ -603,6 +603,7 @@ function render({focus = false,preserve = false} = {}) {
   const route=memberRoute(location.hash);
   if (route.view === 'main') { main.focus(); return; }
   currentView = Object.hasOwn(views,route.view) ? route.view : 'today';
+  document.documentElement.dataset.officerMode=String(currentView==='admin'&&location.hostname!=='rzsn-home.github.io');
   if(currentView==='guides' && route.guideId){guideTopicSelected=guideTopicOf(route.guideId);guideSearchQuery='';}
   else if(currentView==='guides'&&!preserve){guideTopicSelected='';guideSearchQuery='';}
   const open = preserve ? new Set([...main.querySelectorAll('details[open][data-disclosure]')].map(el=>el.dataset.disclosure)) : null;
