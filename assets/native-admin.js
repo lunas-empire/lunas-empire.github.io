@@ -243,12 +243,22 @@ export function initNativeAdmin(mount){
  if(mount.dataset.nativeReady)return;
  mount.dataset.nativeReady='1';
  mount.addEventListener('click',async event=>{
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload]');
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage]');
   if(!button)return;
   if(button.hasAttribute('data-officer-logout')){
    try{await request('/api/native-logout',{method:'POST',body:{}})}catch{}clearOfficer();await renderNativeAdmin(mount);return;
   }
   if(button.dataset.officerTab){panel=button.dataset.officerTab;pageLimit=20;historyLimit=20;await view(mount);return}
+  if(button.dataset.nativeAction){
+   const action=button.dataset.nativeAction;
+   panel=({ 'train-today':'train','event-planning':'events','member-find':'members','review-open':'reviews','tasks-open':'tasks'})[action]||'overview';
+   pageLimit=20;historyLimit=20;await view(mount);
+   const destination=mount.querySelector('#native-admin-content');
+   if(action==='train-today'&&cache.trains?.today&&Array.isArray(cache.trains.history))editTrain(destination,cache.trains.today);
+   if(action==='event-planning'&&cache.ops?.events)editRecord(destination,'events','');
+   if(action==='member-find')destination.querySelector('#native-member-search')?.focus();
+   return;
+  }
   if(button.hasAttribute('data-native-refresh')){await view(mount);return}
   const target=mount.querySelector('#native-admin-content');if(!target)return;
   if(button.hasAttribute('data-registry-reload')){
@@ -269,7 +279,7 @@ export function initNativeAdmin(mount){
   if(button.dataset.nativeMore==='registry'){pageLimit+=20;renderRegistry(target,target.querySelector('#registry-search')?.value||'');return}
   if(button.dataset.nativeMore==='reviews'){historyLimit+=20;renderReviews(target,target.querySelector('#review-search-native')?.value||'');return}
   if(button.dataset.nativeTrain){editTrain(target,button.dataset.nativeTrain);return}
-  if(button.dataset.nativeNew==='train'){editTrain(target,new Date().toISOString().slice(0,10));return}
+  if(button.dataset.nativeNew==='train'){editTrain(target,cache.trains?.today||new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date()));return}
   if(button.dataset.nativeNew||button.dataset.nativeEdit){editRecord(target,panel,button.dataset.nativeEdit||'');return}
  });
  mount.addEventListener('input',event=>{
