@@ -46,8 +46,13 @@ function nav(){
 function cards(items){return '<div class="native-cards">'+items.map(([name,value,sub])=>'<article><small>'+e(name)+'</small><strong>'+e(value)+'</strong><span>'+e(sub||'')+'</span></article>').join('')+'</div>'}
 function marker(status){return '<span class="native-status">'+e(status||'Unbekannt')+'</span>'}
 async function view(mount){
- const header='<header class="native-admin-top"><div class="native-command-identity"><span class="native-command-emblem" aria-hidden="true">'+icon('hero','native-emblem-icon')+'</span><div><span class="admin-eyebrow">RZSN · SERVER 2261 · OFFIZIERSZUGANG</span><h1>Allianz-Kommando</h1><p>Planen · Prüfen · Koordinieren</p></div></div><div class="native-officer-controls"><span class="native-officer-badge">'+e(officer?.role||'Offizier')+' · '+e(officer?.name||'')+'</span><button type="button" data-officer-logout>Abmelden</button></div></header>';
- mount.innerHTML='<section class="native-admin">'+header+nav()+'<div class="native-admin-content" id="native-admin-content"><p>Daten werden geladen …</p></div></section>';
+ // RZSN branding stays in the shared site header. Keep only officer identity here:
+ // never add a second hero banner or a competing member-navigation bar.
+ const header='<div class="native-officer-strip" role="group" aria-label="Offiziersbereich">'+
+  '<a class="native-return-link" href="#today">← Zur Website</a>'+
+  '<div class="native-officer-controls"><span class="native-officer-badge">'+e(officer?.role||'Offizier')+' · '+e(officer?.name||'')+
+  '</span><button type="button" data-officer-logout>Abmelden</button></div></div>';
+ mount.innerHTML='<section class="native-admin"><h1 class="sr-only">RZSN Command Center</h1>'+header+nav()+'<div class="native-admin-content" id="native-admin-content"><p>Daten werden geladen …</p></div></section>';
  const target=mount.querySelector('#native-admin-content');
  try{
   if(panel==='overview'){
