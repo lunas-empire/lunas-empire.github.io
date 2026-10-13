@@ -2,7 +2,7 @@ name: Luna Native Officer UX CI
 on:
   push:
     branches:
-      - 'feat/native-officer-*'
+      - 'feat/**'
   pull_request:
     branches:
       - main
