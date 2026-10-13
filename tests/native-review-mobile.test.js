@@ -29,6 +29,7 @@ test('Protected review workflow requires a screenshot, searchable member and exp
   const path=new URL(url).pathname;
   if(path==='/api/native-login')return Response.json({token:'synthetic-officer',name:'Synthetic Officer',role:'R4'});
   if(path==='/api/overview')return Response.json({active:2,reviews:2});
+  if(path==='/api/session')return Response.json({authenticated:true,reviewWritesEnabled:true});
   if(path==='/api/train-manager')return Response.json({today:'2026-10-13',counts:{missing_recent:0},calendar:[]});
   if(path==='/api/operations')return Response.json({tasks:[],events:[],absences:[],members:[]});
   if(path==='/api/reviews'&&opts.method!=='POST')return Response.json(cases);
