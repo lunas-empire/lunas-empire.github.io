@@ -126,16 +126,32 @@ function renderMembers(target,query){
 }
 async function showPerson(target,id){
  const p=await request('/api/member/'+encodeURIComponent(id));
- const s=p.stats.filter((x,i,a)=>a.findIndex(y=>x.metric===y.metric)===i);
+ const member=p.member||{},stats=(p.stats||[]).filter((x,i,a)=>a.findIndex(y=>x.metric===y.metric)===i);
+ const weeks=p.weeks||[];
  const node=target.querySelector('#native-person');
- node.innerHTML='<details class="native-fold" open><summary>'+e(p.member.name)+' · Spielerakte</summary><div class="native-fold-body">'+
-  '<p>Verwalteter Rang: '+e(p.member.rank||'Unbekannt')+' · Status: '+e(p.member.status)+(p.member.blacklisted?' · BLACKLIST':'')+'</p>'+
-  '<p>Datenquelle: '+(p.member.state_source==='registry'?'Mitgliederverwaltung · '+e(p.member.registry_updated_at)+' · '+e(p.member.registry_updated_by):'Import')+'</p>'+
-  (p.member.source_difference?'<p role="status">Abweichender Import: '+e(p.member.imported_rank||'Unbekannt')+' · '+e(p.member.source_status)+'. Die manuelle Verwaltung bleibt wirksam.</p>':'')+
-  cards(s.slice(0,8).map(x=>[x.metric.replaceAll('_',' '),['observed','corrected'].includes(x.quality)?Number(x.value).toLocaleString('de-DE'):'?',x.quality]))+
-  '<details class="native-fold"><summary>VS Verlauf</summary><div class="native-fold-body">'+p.weeks.map(w=>'<p>'+e(w.week)+': '+e(w.verified_goal_days)+' / '+e(w.verified_days)+' bestätigte Zieltage</p>').join('')+'</div></details></div></details>';
+ if(!node)return;
+ const qualityText={observed:'Abgelesen',corrected:'Manuell bestätigt',inferred:'Geschätzt',unknown:'Unbekannt',missing:'Fehlt'};
+ node.innerHTML='<section class="native-profile"><div class="native-profile-header">'+
+  '<button type="button" class="native-back" data-native-member-close>← Zur Spielerliste</button>'+
+  '<span class="native-profile-rank" aria-label="Allianzrang">'+e(member.rank||'?')+'</span><div class="native-profile-identity">'+
+  '<span class="native-kicker">SPIELERAKTE · '+e(member.status==='active'?'AKTIV':member.status==='former'?'ARCHIV':'STATUS UNGEKLÄRT')+'</span>'+
+  '<h3>'+e(member.name||'Unbekannt')+'</h3><p>'+e(member.blacklisted?'Manuell gesperrt · ':'')+
+  (member.state_source==='registry'?'Verwaltete Angaben':'Importierte Angaben')+'</p></div></div>'+
+  '<div class="native-profile-actions"><button type="button" class="native-game-primary" data-native-manage="'+e(id)+'">Rang & Status verwalten</button>'+
+  '<button type="button" data-native-member-log="'+e(id)+'">Änderungen anzeigen</button></div>'+
+  (member.source_difference?'<p class="native-evidence-note">Abweichender Import: '+e(member.imported_rank||'Unbekannt')+' · '+e(member.source_status||'unbekannt')+'. Der manuell verwaltete Stand bleibt aktiv.</p>':'')+
+  '<p class="native-muted">Datenquelle: '+(member.state_source==='registry'?'Mitgliederverwaltung · '+e(member.registry_updated_at||'')+' · '+e(member.registry_updated_by||''): 'Letzter verifizierter Import, falls vorhanden')+'</p>'+
+  '<h4 class="native-section-heading">Profil & Leistung</h4>'+
+  (stats.length?cards(stats.slice(0,8).map(x=>[x.metric.replaceAll('_',' '),
+   ['observed','corrected'].includes(x.quality)&&x.value!=null?Number(x.value).toLocaleString('de-DE'):'—',
+   qualityText[x.quality]||x.quality||'Nicht bestätigt'])):'<p class="native-muted">Noch keine verifizierten Profilwerte vorhanden.</p>')+
+  '<details class="native-fold"><summary>VS-Wochenverlauf · '+weeks.length+' Wochen</summary><div class="native-fold-body">'+
+  (weeks.length?weeks.map(w=>'<p><b>'+e(w.week)+'</b> · '+e(w.verified_goal_days)+' / '+e(w.verified_days)+' bestätigte Zieltage'+
+   (w.uncertain_days?' · '+e(w.uncertain_days)+' unklar':'')+'</p>').join(''):'<p>Keine bestätigten Wochen vorhanden.</p>')+
+  '</div></details><div id="native-person-log"></div><div id="registry-form"></div></section>';
  node.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
+
 function renderVs(target){
  const week=cache.vs.weeks.find(w=>w.week===target.querySelector('#native-vs-week').value)||cache.vs.weeks[0];
  target.querySelector('#native-vs-body').innerHTML=week?cards([['Verifiziert unter Ziel',week.failedDays],['Unklar / OCR',week.unknownDays],['6/6 geschafft',week.perfect],['Priorität 3+',week.priority]])+
@@ -243,7 +259,7 @@ export function initNativeAdmin(mount){
  if(mount.dataset.nativeReady)return;
  mount.dataset.nativeReady='1';
  mount.addEventListener('click',async event=>{
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage]');
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close]');
   if(!button)return;
   if(button.hasAttribute('data-officer-logout')){
    try{await request('/api/native-logout',{method:'POST',body:{}})}catch{}clearOfficer();await renderNativeAdmin(mount);return;
@@ -274,6 +290,28 @@ export function initNativeAdmin(mount){
   }
   if(button.dataset.registryEdit){editRegistry(target,button.dataset.registryEdit);return}
   if(button.dataset.nativeMember){await showPerson(target,button.dataset.nativeMember);return}
+  if(button.hasAttribute('data-native-member-close')){const node=target.querySelector('#native-person');if(node)node.innerHTML='';target.querySelector('#native-member-search')?.focus();return}
+  if(button.dataset.nativeManage){
+   const holder=target.querySelector('#registry-form');
+   if(!holder)return;
+   try{
+    cache.registry=await request('/api/member-registry');
+    editRegistry(target,button.dataset.nativeManage);
+   }catch(err){holder.textContent='Mitgliederverwaltung nicht verfügbar: '+err.message}
+   return;
+  }
+  if(button.dataset.nativeMemberLog){
+   const holder=target.querySelector('#native-person-log');
+   if(!holder)return;
+   holder.textContent='Änderungen werden geladen …';
+   try{
+    const history=await request('/api/activity?limit=100&member_id='+encodeURIComponent(button.dataset.nativeMemberLog));
+    holder.innerHTML='<h4 class="native-section-heading">Änderungsprotokoll</h4>'+
+     (history.length?'<div class="native-activity-brief">'+history.map(item=>
+      '<p><b>'+e(item.actor)+'</b> · '+e(item.action)+' · '+e(item.at)+'</p>').join('')+'</div>':'<p class="native-muted">Noch keine protokollierten Änderungen zu dieser Spieler-ID.</p>');
+   }catch(err){holder.textContent='Protokoll nicht verfügbar: '+err.message}
+   return;
+  }
   if(button.dataset.nativeMore==='members'){pageLimit+=20;renderMembers(target,target.querySelector('#native-member-search')?.value||'');return}
   if(button.dataset.nativeMore==='train'){historyLimit+=20;renderTrain(target);return}
   if(button.dataset.nativeMore==='registry'){pageLimit+=20;renderRegistry(target,target.querySelector('#registry-search')?.value||'');return}
