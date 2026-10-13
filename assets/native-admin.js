@@ -243,7 +243,7 @@ async function showPerson(target,id){
   '<h3>'+e(member.name||'Unbekannt')+'</h3><p>'+e(member.state_source==='registry'?'Verwalteter Rang':'Letzter importierter Rang')+
   (member.blacklisted?' · Manuell gesperrt':'')+'</p></div></div>'+
   (active.length?'<p class="native-absence-warning">Aktuell als abwesend eingetragen. Zugvorschläge berücksichtigen diesen Zeitraum.</p>':'')+
-  (member.source_difference?'<p class="native-evidence-note">Rang/Status unterscheiden sich vom letzten Import. Die bestätigte Verwaltung hat Vorrang.</p>':'')+
+  (member.source_difference?'<p class="native-evidence-note">Abweichender Import: '+e(member.imported_rank||'Rang unbekannt')+' · '+e(member.source_status||'Status ungeklärt')+'. Der bestätigte Verwaltungsstand hat Vorrang.</p>':'')+
   '<h4 class="native-section-heading">Werte & Entwicklung</h4>'+metricHtml+
   '<details class="native-fold"><summary>VS-Erfolge & Wochen · '+weeks.length+'</summary>'+
    '<div class="native-fold-body">'+weekSummary+'</div></details>'+
