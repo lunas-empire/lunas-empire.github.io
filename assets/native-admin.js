@@ -14,7 +14,7 @@ async function request(path,options={}){
 }
 const options=(members,value='')=>'<option value="">Nicht besetzt</option>'+members.map(m=>'<option value="'+e(m.id)+'" '+(m.id===value?'selected':'')+'>'+e(m.name)+' · '+e(m.rank)+'</option>').join('');
 function nav(){
- return '<nav class="native-admin-nav" aria-label="Offiziersbereiche">'+[['overview','Cockpit'],['members','Spieler'],['vs','VS'],['train','Züge'],['tasks','Aufgaben'],['absences','Abwesenheit'],['events','Events']].map(([key,text])=>'<button type="button" data-officer-tab="'+key+'" '+(panel===key?'aria-current="page"':'')+'>'+text+'</button>').join('')+'</nav>';
+ return '<nav class="native-admin-nav" aria-label="Offiziersbereiche">'+[['overview','Cockpit'],['members','Spieler'],['vs','VS'],['train','Züge'],['tasks','Aufgaben'],['absences','Abwesenheit'],['events','Events'],['reviews','OCR-Prüfung'],['registry','Archiv & Ränge'],['activity','Admin-Log']].map(([key,text])=>'<button type="button" data-officer-tab="'+key+'" '+(panel===key?'aria-current="page"':'')+'>'+text+'</button>').join('')+'</nav>';
 }
 function cards(items){return '<div class="native-cards">'+items.map(([name,value,sub])=>'<article><small>'+e(name)+'</small><strong>'+e(value)+'</strong><span>'+e(sub||'')+'</span></article>').join('')+'</div>'}
 function marker(status){return '<span class="native-status">'+e(status||'Unbekannt')+'</span>'}
@@ -32,6 +32,15 @@ async function view(mount){
     (pending.length?pending.slice(0,6).map(t=>'<p>'+e(t.title)+' '+marker(t.priority)+'</p>').join(''):'<p>Keine offenen Aufgaben erfasst.</p>')+
     '<p>'+missing+' fehlende Zugtage der letzten 14 Tage.</p></div></details>'+
     '<div class="native-shortcuts"><button data-officer-tab="tasks">Aufgaben verwalten</button><button data-officer-tab="train">Zugplanung</button><button data-officer-tab="events">Eventlevel erfassen</button></div>';
+  }else if(panel==='registry'){
+   cache.registry=await request('/api/member-registry');
+   target.innerHTML='<div class="native-row"><h2>Mitgliederverwaltung</h2><input id="registry-search" type="search" placeholder="Spieler suchen"></div>'+cards([['Aktiv',cache.registry.counts.active],['Archiv',cache.registry.counts.former],['Blacklist',cache.registry.counts.blacklisted]])+'<div id="registry-list"></div><div id="registry-form"></div>';renderRegistry(target,'');
+  }else if(panel==='activity'){
+   cache.activity=await request('/api/activity?limit=200');
+   target.innerHTML='<div class="native-row"><h2>Admin-Aktivitäten</h2><input id="activity-search" type="search" placeholder="Admin, Aktion, Spieler"></div><div id="activity-list"></div>';renderActivity(target,'');
+  }else if(panel==='reviews'){
+   cache.reviews=await request('/api/reviews?status=open');
+   target.innerHTML='<div class="native-row"><h2>OCR-Prüfung</h2><input id="review-search-native" type="search" placeholder="Fall suchen"></div><p class="native-muted">Original-Screenshots sind derzeit nicht zugeordnet. Prüfwerte bleiben unbearbeitet, bis Bildbelege verknüpft wurden.</p><div id="review-list-native"></div>';renderReviews(target,'');
   }else if(panel==='members'){
    const list=await request('/api/members');
    cache.members=list;
@@ -124,6 +133,33 @@ async function saveForm(mount,form){
   submit.disabled=false;
  }
 }
+function renderRegistry(target,query){
+ const list=cache.registry.members.filter(x=>(x.name+' '+x.rank+' '+x.lifecycle).toLowerCase().includes(query.toLowerCase()));
+ target.querySelector('#registry-list').innerHTML='<p class="native-muted">'+list.length+' Ergebnisse. Archiv und Blacklist werden nur manuell geändert.</p><div class="native-list">'+list.slice(0,pageLimit).map(x=>'<button data-registry-edit="'+e(x.id)+'"><strong>'+e(x.name)+' · '+e(x.rank)+'</strong><small>'+e(x.lifecycle)+(x.blacklisted?' · BLACKLIST':'')+' · zuletzt '+e(x.last_seen||'?')+'</small></button>').join('')+'</div>'+(list.length>pageLimit?'<button data-native-more="registry">Weitere Spieler</button>':'');
+}
+function editRegistry(target,id){
+ const m=cache.registry.members.find(x=>x.id===id);if(!m)return;
+ const ranks=['R1','R2','R3','R4','R5'];
+ const host=target.querySelector('#registry-form');
+ host.innerHTML='<form id="registry-save" class="native-form" data-id="'+e(id)+'"><h3>'+e(m.name)+' verwalten</h3>'+
+  '<label>Verwalteter Rang<select name="rank">'+ranks.map(x=>'<option '+(m.rank===x?'selected':'')+'>'+x+'</option>').join('')+'</select></label>'+
+  '<label>Status<select name="lifecycle"><option value="active" '+(m.lifecycle==='active'?'selected':'')+'>Aktiv</option><option value="former" '+(m.lifecycle==='former'?'selected':'')+'>Ehemalig / Archiv</option></select></label>'+
+  '<label class="native-check"><input type="checkbox" name="blacklisted" '+(m.blacklisted?'checked':'')+'>Manuelle Blacklist</label>'+
+  '<label>Begründung<input name="reason" maxlength="500" value="'+e(m.reason)+'" placeholder="Bei Archivierung oder Blacklist erforderlich"></label>'+
+  '<button type="submit">Änderung protokolliert speichern</button><p id="native-form-message"></p></form>';
+ host.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function renderActivity(target,term){
+ const matching=cache.activity.filter(x=>[x.actor,x.action,x.object_kind,x.object_id,x.before_json,x.after_json].some(y=>String(y||'').toLowerCase().includes(term.toLowerCase())));
+ target.querySelector('#activity-list').innerHTML='<p class="native-muted">'+matching.length+' Einträge · Zeiten Europe/Berlin</p><div class="native-list">'+matching.map(x=>'<details><summary><strong>'+e(x.actor)+' · '+e(x.action)+'</strong><small>'+e(new Intl.DateTimeFormat('de-DE',{dateStyle:'medium',timeStyle:'medium',timeZone:'Europe/Berlin'}).format(new Date(x.at.replace(' ','T')+'Z')))+'</small></summary><p>Objekt: '+e(x.object_kind)+' · '+e(x.object_id)+'</p><p>Vorher: '+e(x.before_json||'—')+'</p><p>Nachher: '+e(x.after_json||'—')+'</p></details>').join('')+'</div>';
+}
+function renderReviews(target,term){
+ const list=cache.reviews.filter(x=>(x.source_name+' '+x.category+' '+x.metric+' '+x.note).toLowerCase().includes(term.toLowerCase()));
+ const categories={};cache.reviews.forEach(x=>{categories[x.category]=(categories[x.category]||0)+1});
+ target.querySelector('#review-list-native').innerHTML=cards([['Offene Prüfungen',cache.reviews.length],...Object.entries(categories).slice(0,3)])+
+  '<div class="native-list">'+list.slice(0,historyLimit).map(x=>'<details><summary><strong>'+e(x.source_name||'Unbekannt')+' · '+e(x.metric||'')+'</strong><small>'+e(x.category)+' · '+e(x.source_batch||'')+'</small></summary><p>'+e(x.note||'')+'</p><p>Erkannt: '+e(x.source_value??'unbekannt')+'</p><p class="native-muted">Originalbild noch nicht verknüpft. Keine Freigabe ohne Beleg.</p></details>').join('')+'</div>'+(list.length>historyLimit?'<button data-native-more="reviews">Weitere Fälle</button>':'');
+}
+
 export async function renderNativeAdmin(mount){
  if(!sessionToken){
   mount.innerHTML='<section class="native-admin native-login"><div><span class="admin-eyebrow">RZSN / R4–R5</span><h1>Command Center</h1><p>Melde dich mit deinem Offizierscode an. Alle privaten Daten bleiben bei Cloudflare.</p><form id="native-officer-login"><label>Offizierscode<input type="password" name="code" autocomplete="off" required placeholder="RZSN-…"></label><button type="submit">Anmelden</button><p id="native-login-status" role="status"></p></form></div></section>';
@@ -135,7 +171,7 @@ export function initNativeAdmin(mount){
  if(mount.dataset.nativeReady)return;
  mount.dataset.nativeReady='1';
  mount.addEventListener('click',async event=>{
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh]');
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit]');
   if(!button)return;
   if(button.hasAttribute('data-officer-logout')){
    try{await request('/api/native-logout',{method:'POST',body:{}})}catch{}clearOfficer();await renderNativeAdmin(mount);return;
@@ -143,15 +179,21 @@ export function initNativeAdmin(mount){
   if(button.dataset.officerTab){panel=button.dataset.officerTab;pageLimit=20;historyLimit=20;await view(mount);return}
   if(button.hasAttribute('data-native-refresh')){await view(mount);return}
   const target=mount.querySelector('#native-admin-content');if(!target)return;
+  if(button.dataset.registryEdit){editRegistry(target,button.dataset.registryEdit);return}
   if(button.dataset.nativeMember){await showPerson(target,button.dataset.nativeMember);return}
   if(button.dataset.nativeMore==='members'){pageLimit+=20;renderMembers(target,target.querySelector('#native-member-search')?.value||'');return}
   if(button.dataset.nativeMore==='train'){historyLimit+=20;renderTrain(target);return}
+  if(button.dataset.nativeMore==='registry'){pageLimit+=20;renderRegistry(target,target.querySelector('#registry-search')?.value||'');return}
+  if(button.dataset.nativeMore==='reviews'){historyLimit+=20;renderReviews(target,target.querySelector('#review-search-native')?.value||'');return}
   if(button.dataset.nativeTrain){editTrain(target,button.dataset.nativeTrain);return}
   if(button.dataset.nativeNew==='train'){editTrain(target,new Date().toISOString().slice(0,10));return}
   if(button.dataset.nativeNew||button.dataset.nativeEdit){editRecord(target,panel,button.dataset.nativeEdit||'');return}
  });
  mount.addEventListener('input',event=>{
   if(event.target.id==='native-member-search'){pageLimit=20;renderMembers(mount.querySelector('#native-admin-content'),event.target.value)}
+  if(event.target.id==='registry-search'){pageLimit=20;renderRegistry(mount.querySelector('#native-admin-content'),event.target.value)}
+  if(event.target.id==='activity-search')renderActivity(mount.querySelector('#native-admin-content'),event.target.value);
+  if(event.target.id==='review-search-native'){historyLimit=20;renderReviews(mount.querySelector('#native-admin-content'),event.target.value)}
  });
  mount.addEventListener('change',event=>{if(event.target.id==='native-vs-week')renderVs(mount.querySelector('#native-admin-content'))});
  mount.addEventListener('submit',async event=>{
@@ -164,6 +206,13 @@ export function initNativeAdmin(mount){
     sessionToken=login.token;officer=login;form.elements.namedItem('code').value='';await view(mount);
    }catch(err){form.querySelector('#native-login-status').textContent=err.message;button.disabled=false}
    return;
+  }
+  if(form.id==='registry-save'){
+   const payload={member_id:form.dataset.id,rank:form.elements.namedItem('rank').value,lifecycle:form.elements.namedItem('lifecycle').value,blacklisted:form.elements.namedItem('blacklisted').checked,reason:form.elements.namedItem('reason').value};
+   if(!window.confirm('Mitgliedsänderung mit Audit-Log speichern?'))return;
+   const button=form.querySelector('[type=submit]');button.disabled=true;
+   try{await request('/api/member-registry',{method:'POST',body:payload});await view(mount)}
+   catch(err){form.querySelector('#native-form-message').textContent=err.message;button.disabled=false}return;
   }
   if(form.id==='native-train-save'){form.dataset.kind='train';await saveForm(mount,form)}
   if(form.id==='native-record-save')await saveForm(mount,form);
