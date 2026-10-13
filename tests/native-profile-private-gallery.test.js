@@ -22,7 +22,10 @@ test('A profile image is never linked before explicit image viewing and confirma
   if(path==='/api/reviews')return Response.json(reviews);
   if(path==='/api/identity-options')return Response.json([]);
   if(path==='/api/session')return Response.json({reviewWritesEnabled:true});
-  if(path==='/api/profile-captures')return Response.json(parsed.searchParams.get('metric')==='power'?[sample]:[]);
+  if(path==='/api/profile-captures'){
+   assert.notEqual(parsed.searchParams.get('metric'),'donations_daily','Daily donations must no longer load');
+   return Response.json(parsed.searchParams.get('metric')==='power'?[sample]:[]);
+  }
   if(path==='/api/profile-captures/power/2026-10-11-001/image')return new Response(bytes,{headers:{'Content-Type':'image/png'}});
   if(path==='/api/reviews/profile-review/evidence'&&opts.method==='PUT'){puts++;return Response.json({ok:true,sha256:sha})}
   if(path==='/api/reviews/profile-review/evidence')return new Response(bytes,{headers:{'Content-Type':'image/png'}});

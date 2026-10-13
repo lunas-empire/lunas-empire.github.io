@@ -135,7 +135,7 @@ async function view(mount){
    ]);
    cache.reviewWritesEnabled=session?.reviewWritesEnabled===true;
    cache.reviews=cases;cache.reviewMembers=Array.isArray(members)?members:members.members||[];
-   const profileMetrics=['power','kills','donations_daily','donations_weekly'];
+   const profileMetrics=['power','kills','donations_weekly'];
    cache.profileCaptures=Object.fromEntries(await Promise.all(profileMetrics.map(async metric=>{
     try {const rows=await request('/api/profile-captures?metric='+metric);return [metric,Array.isArray(rows)?rows:[]]}
     catch{return [metric,[]]}
@@ -172,8 +172,7 @@ async function view(mount){
  }catch(err){target.innerHTML='<p class="native-error" role="alert">'+e(err.message)+'</p><button data-native-refresh>Erneut laden</button>'}
 }
 const rankOrder=['R5','R4','R3','R2','R1','Ungeklärt'];
-const metricNames={power:'Stärke',kills:'Kills',donations_weekly:'Wöchentliche Spenden',
- donations_daily:'Tägliche Spenden',tech_donations:'Forschungsspenden'};
+const metricNames={power:'Stärke',kills:'Kills',donations_weekly:'Wöchentliche Spenden',tech_donations:'Forschungsspenden'};
 const metricQuality={observed:'Abgelesen',corrected:'Manuell bestätigt',inferred:'Geschätzt',
  unknown:'Nicht geprüft',missing:'Fehlt'};
 const numberText=value=>typeof value==='number'&&Number.isSafeInteger(value)?
