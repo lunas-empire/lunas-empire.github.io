@@ -36,7 +36,7 @@ test('all public assets, including i18n, are served; private paths are not',asyn
     assert.ok(!encryptedWiki.includes(Buffer.from('Operation KABUM')),'encrypted wiki does not expose plaintext admin content');
     const homepage=await (await fetch(url+'/')).text();
     assert.ok(!homepage.includes('#faq'),'FAQ route is removed from the public navigation');
-    assert.ok(homepage.includes('id="admin-link" href="https://rzsn-command-center-staging.cynthiawong2837128.workers.dev/"'),'Staging links to password-protected Cloudflare Command Center');
+    assert.ok(homepage.includes('id="admin-link" href="#admin"'),'Staging opens its protected Cloudflare Command Center inside the hub');
     assert.ok(homepage.includes('id="language-dialog"'),'first-visit setup dialog is present');
     assert.ok(homepage.includes('id="setup-language"'),'first-visit language picker has a stable native-select mount point');
     assert.ok(!homepage.includes('id="language-options"'),'first visit does not render the old language-button wall');

@@ -22,7 +22,12 @@ test('Lunas staging opens the protected Worker while RZSN production keeps the l
  const homepage=await readFile(new URL('../index.html',import.meta.url),'utf8');
  assert.ok(config.includes(worker));
  assert.ok(config.includes("? '/admin/' :"));
- assert.ok(homepage.includes('id="admin-link" href="'+worker+'"'));
+ assert.ok(homepage.includes('id="admin-link" href="#admin"'));
+ assert.ok(config.includes('commandCenterEmbedUrl'));
+ const hubApp=await readFile(new URL('../assets/app.js',import.meta.url),'utf8');
+ assert.ok(hubApp.includes('private-admin-frame'));
+ assert.ok(hubApp.includes('iframe class="admin-frame"'));
+ assert.ok(!homepage.includes('officer_credentials'));
  const server=createPublicServer();
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  const base='http://127.0.0.1:'+server.address().port;

@@ -439,7 +439,23 @@ function guides() {
   const economy=guideTopicSection('economy',lang,escape,disclosures(practical('economy')+blackMarketGuideDisclosure()));
   return `${guideContextBar()}<h1>${tx('guides')}</h1>${notice()}${search}${landing}<div class="guide-library">${alliance}${power}${vs}${season}${economy}</div>`;
 }
-const views = {today,daily,vs,season,guides,admin:()=>`<h1>${tx('admin')}</h1>${paragraph('adminPending')}`};
+function adminView(){
+  if(location.hostname==='rzsn-home.github.io')return `<h1>${tx('admin')}</h1>${paragraph('adminPending')}`;
+  const url=ALLIANCE_CONFIG.commandCenterEmbedUrl;
+  const copy=lang==='de'?{
+    title:'Geschütztes Command Center',
+    note:'Das R4/R5 Command Center läuft direkt hier im Mitglieder-Hub. Anmeldung per Offizierscode. Private Daten verbleiben bei Cloudflare.',
+    fallback:'Falls dein Browser die Anmeldung im eingebetteten Fenster blockiert, kannst du den geschützten Bereich separat öffnen.',
+    open:'Separat öffnen',demo:'Öffentliche Testdemo'
+  }:{
+    title:'Private Command Center',
+    note:'The R4/R5 Command Center opens inside this hub. Sign in with your officer code; private data stays on Cloudflare.',
+    fallback:'If your browser blocks sign-in inside the embedded view, open the private area separately.',
+    open:'Open separately',demo:'Public demo'
+  };
+  return `<section class="admin-shell"><div class="admin-heading"><div><span class="admin-eyebrow">RZSN · R4 / R5</span><h1>${escape(copy.title)}</h1><p>${escape(copy.note)}</p></div><div class="admin-actions"><a href="${escape(url.replace('?embed=1',''))}" target="_blank" rel="noopener noreferrer">${escape(copy.open)} ↗</a><a href="/command-center/" target="_blank" rel="noopener noreferrer">${escape(copy.demo)}</a></div></div><iframe class="admin-frame" id="private-admin-frame" src="${escape(url)}" title="RZSN R4/R5 Command Center" loading="eager" referrerpolicy="no-referrer" allow="clipboard-write" sandbox="allow-scripts allow-same-origin allow-forms allow-downloads"></iframe><p class="admin-fallback">${escape(copy.fallback)}</p></section>`;
+}
+const views = {today,daily,vs,season,guides,admin:adminView};
 function syncChrome() {
   document.documentElement.lang = lang;
   document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
@@ -457,7 +473,7 @@ function syncChrome() {
   document.querySelector('.main-nav').setAttribute('aria-label',t('menu'));
   syncThemeControls();
   const adminUrl = ALLIANCE_CONFIG.adminUrl;
-  if (adminUrl && (/^https:\/\//i.test(adminUrl) || /^\/(?:admin|command-center)\/$/.test(adminUrl))) {
+  if (adminUrl && (adminUrl==='#admin' || /^https:\/\//i.test(adminUrl) || /^\/(?:admin|command-center)\/$/.test(adminUrl))) {
     document.querySelector('#admin-link').href = adminUrl;
     document.querySelector('#admin-link').rel = 'noreferrer';
   }
