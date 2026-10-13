@@ -186,7 +186,9 @@ function renderTrain(target){
   '<div><span class="native-kicker">'+(x.date===d.today?'HEUTE':e(x.date))+' · '+e(x.type||'Zug')+'</span>'+
   '<strong>'+e(x.entry?.driver||'Noch kein Fahrer eingetragen')+'</strong>'+
   '<small>'+e(x.entry?.status||'Offen')+(x.entry?.linked===false?' · Zuordnung nicht verifiziert':'')+'</small></div>'+
-  '<button type="button" data-native-train="'+e(x.date)+'">'+(x.entry?'Bearbeiten':'Fahrer wählen')+'</button></article>';
+  '<div class="native-train-actions"><button type="button" data-native-train="'+e(x.date)+'">'+(x.entry?'Bearbeiten':'Fahrer wählen')+'</button>'+
+  (x.entry?.status==='planned'&&x.entry?.member_id&&(d.members||[]).some(m=>m.id===x.entry.member_id)?
+   '<button type="button" data-native-copy-train="'+e(x.date)+'">Zugtext kopieren</button>':'')+'</div></article>';
  const toShow=upcoming.length?upcoming.map(slot).join(''):'<p class="native-muted">Für diese Woche liegen keine Zugdaten vor.</p>';
  target.querySelector('#native-train-body').innerHTML='<p class="native-muted">Fahrer ab R2 · historische Importe bleiben unverändert. Geplant, gefahren und noch nicht bestätigt sind unterschiedliche Zustände.</p>'+
   '<div class="native-train-highlights">'+cards([['Gefahren (Historie)',d.counts?.completed??'—'],['Geplant',d.counts?.planned??'—'],['Historische Lücken',d.counts?.missing_recent??'—']])+'</div>'+
@@ -409,6 +411,24 @@ export function initNativeAdmin(mount){
   if(button.dataset.nativeMore==='registry'){pageLimit+=20;renderRegistry(target,target.querySelector('#registry-search')?.value||'');return}
   if(button.dataset.nativeMore==='reviews'){historyLimit+=20;renderReviews(target,target.querySelector('#review-search-native')?.value||'');return}
   if(button.dataset.nativeMore==='activity'){activityLimit+=30;renderActivity(target,target.querySelector('#activity-search')?.value||'');return}
+  if(button.dataset.nativeCopyTrain){
+   const date=button.dataset.nativeCopyTrain;
+   const slot=(cache.trains?.calendar||[]).find(row=>row.date===date);
+   const member=(cache.trains?.members||[]).find(m=>m.id===slot?.entry?.member_id);
+   if(!member||slot?.entry?.status!=='planned')return;
+   // Use only an explicitly linked eligible driver, not an inferred name.
+   const message='RZSN train '+date+' ('+(slot.type||'Train')+'): '+member.name+
+    ' is our conductor today. Please join with 3 tickets. All aboard!';
+   try{
+    if(!window.navigator?.clipboard?.writeText)throw Error('Clipboard unavailable');
+    await window.navigator.clipboard.writeText(message);
+    button.textContent='Zugtext kopiert';
+   }catch{
+    const holder=target.querySelector('#native-train-form');
+    if(holder){holder.innerHTML='<label class="native-copy-fallback">Text für den Allianzchat<textarea rows="3" readonly>'+e(message)+'</textarea></label>';holder.querySelector('textarea')?.focus()}
+   }
+   return;
+  }
   if(button.dataset.nativeTrain){editTrain(target,button.dataset.nativeTrain);return}
   if(button.dataset.nativeNew==='train'){editTrain(target,cache.trains?.today||new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date()),true);return}
   if(button.dataset.nativeNew||button.dataset.nativeEdit){editRecord(target,panel,button.dataset.nativeEdit||'');return}
