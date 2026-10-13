@@ -152,38 +152,124 @@ async function view(mount){
   }
  }catch(err){target.innerHTML='<p class="native-error" role="alert">'+e(err.message)+'</p><button data-native-refresh>Erneut laden</button>'}
 }
-function renderMembers(target,query){
- const list=cache.members.filter(m=>m.name.toLowerCase().includes(query.toLowerCase()));
- target.querySelector('#native-member-list').innerHTML='<p class="native-muted">'+list.length+' Spieler gefunden</p><div class="native-list">'+list.slice(0,pageLimit).map(m=>
-  '<button data-native-member="'+e(m.id)+'"><strong>'+e(m.name)+'</strong><small>'+e(m.rank||'?')+' · Power '+e(m.power?.toLocaleString('de-DE')??'unbekannt')+'</small></button>').join('')+'</div>'+
-  (list.length>pageLimit?'<button data-native-more="members">Weitere 20 Spieler</button>':'')+'<div id="native-person"></div>';
+const rankOrder=['R5','R4','R3','R2','R1','Ungeklärt'];
+const metricNames={power:'Stärke',kills:'Kills',donations_weekly:'Wöchentliche Spenden',
+ donations_daily:'Tägliche Spenden',tech_donations:'Forschungsspenden'};
+const metricQuality={observed:'Abgelesen',corrected:'Manuell bestätigt',inferred:'Geschätzt',
+ unknown:'Nicht geprüft',missing:'Fehlt'};
+const numberText=value=>typeof value==='number'&&Number.isSafeInteger(value)?
+ value.toLocaleString('de-DE'):'—';
+export function profileMetricChanges(stats){
+ const groups=new Map();
+ for(const row of Array.isArray(stats)?stats:[]){
+  if(!row||!['observed','corrected'].includes(row.quality)||!Number.isSafeInteger(row.value)||!row.captured_at)continue;
+  if(!groups.has(row.metric))groups.set(row.metric,[]);
+  const group=groups.get(row.metric);
+  if(!group.some(x=>x.captured_at===row.captured_at))group.push(row);
+ }
+ return [...groups.entries()].map(([metric,records])=>{
+  records.sort((a,b)=>String(b.captured_at).localeCompare(String(a.captured_at)));
+  const latest=records[0],previous=records[1]||null;
+  return {metric,label:metricNames[metric]||metric.replaceAll('_',' '),value:latest.value,
+   date:String(latest.captured_at).slice(0,10),quality:latest.quality,
+   previous:previous?.value??null,previousDate:previous?String(previous.captured_at).slice(0,10):null,
+   delta:previous?latest.value-previous.value:null};
+ });
+}
+function renderMembers(target,query=''){
+ const host=target.querySelector('#native-member-list');if(!host)return;
+ const records=Array.isArray(cache.members)?cache.members:[];
+ const text=String(query).trim().toLocaleLowerCase('de-DE');
+ const list=records.filter(m=>String(m.name||'').toLocaleLowerCase('de-DE').includes(text));
+ const opened=new Set([...host.querySelectorAll('details.native-rank-group[open]')].map(x=>x.dataset.rank));
+ const rankGroups=rankOrder.map(rank=>{
+  const group=list.filter(m=>(rankOrder.includes(m.rank)?m.rank:'Ungeklärt')===rank)
+   .sort((a,b)=>String(a.name).localeCompare(String(b.name),'de',{sensitivity:'base'}));
+  if(!group.length)return '';
+  const open=text.length>0||opened.has(rank);
+  const rows=group.map(m=>'<button type="button" data-native-member="'+e(m.id)+'">'+
+   '<span class="native-rank-tag">'+e(m.rank||'?')+'</span><span><strong>'+e(m.name)+'</strong>'+
+   '<small>Stärke '+numberText(m.power)+' · Kills '+numberText(m.kills)+
+   ' · Spenden '+numberText(m.donations_weekly)+'</small></span><span aria-hidden="true">›</span></button>').join('');
+  return '<details class="native-rank-group" data-rank="'+e(rank)+'" '+(open?'open':'')+'>'+
+   '<summary><span class="native-rank-tag">'+e(rank)+'</span><strong>'+e(rank==='Ungeklärt'?'Rang ungeklärt':'Rang '+rank)+'</strong>'+
+   '<span class="native-rank-count">'+group.length+' Spieler</span></summary>'+
+   '<div class="native-list native-rank-members">'+rows+'</div></details>';
+ }).join('');
+ host.innerHTML='<p class="native-muted">'+list.length+' Spieler'+(text?' für „'+e(query)+'“ gefunden':' · nach Allianzrang gruppiert')+'</p>'+
+  '<div class="native-member-folds">'+(rankGroups||'<p class="native-muted">Keine Spieler gefunden.</p>')+'</div>'+
+  '<div id="native-person"></div>';
+}
+function deltaLabel(n){
+ if(n===null)return 'Kein bestätigter Vergleich';
+ return (n>0?'+':'')+numberText(n)+' seit der vorherigen Aufnahme';
 }
 async function showPerson(target,id){
  const p=await request('/api/member/'+encodeURIComponent(id));
- const member=p.member||{},stats=(p.stats||[]).filter((x,i,a)=>a.findIndex(y=>x.metric===y.metric)===i);
- const weeks=p.weeks||[];
- const node=target.querySelector('#native-person');
- if(!node)return;
- const qualityText={observed:'Abgelesen',corrected:'Manuell bestätigt',inferred:'Geschätzt',unknown:'Unbekannt',missing:'Fehlt'};
+ const member=p.member||{},metrics=profileMetricChanges(p.stats||[]);
+ const weeks=(p.weeks||[]).slice().sort((a,b)=>String(b.week).localeCompare(String(a.week)));
+ const node=target.querySelector('#native-person');if(!node)return;
+ // The roster is still in the DOM so search state and expanded ranks survive Back.
+ const roster=target.querySelector('.native-member-folds');if(roster)roster.hidden=true;
+ const searchRow=target.querySelector('.native-row');if(searchRow)searchRow.hidden=true;
+ let absences=[];
+ try{
+  if(!cache.ops?.absences)cache.ops=await request('/api/operations');
+  absences=(cache.ops.absences||[]).filter(a=>a.member_id===id);
+ }catch{ /* Profile remains usable if operation permissions / endpoint are unavailable. */ }
+ const now=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date());
+ const active=absences.filter(a=>a.start_date<=now&&a.end_date>=now);
+ const attendance=absences.slice().sort((a,b)=>b.start_date.localeCompare(a.start_date)).slice(0,8);
+ const metricHtml=metrics.length?'<div class="native-profile-metrics">'+metrics.map(m=>
+  '<article><small>'+e(m.label)+'</small><strong>'+numberText(m.value)+'</strong>'+
+  '<span class="'+(m.delta===null?'':'native-metric-change')+'">'+e(deltaLabel(m.delta))+'</span>'+
+  '<small>'+e(metricQuality[m.quality]||'Bestätigt')+' · '+e(m.date)+
+  (m.previousDate?' / '+e(m.previousDate):'')+'</small></article>').join('')+'</div>':
+  '<p class="native-muted">Noch keine bestätigten Messungen. Fehlende Werte werden nicht als Null bewertet.</p>';
+ const weekSummary=weeks.length?'<div class="native-profile-weeks">'+weeks.map(w=>
+  '<article><b>'+e(w.week)+'</b><span>'+numberText(w.weekly_points)+' Wochenpunkte</span>'+
+  '<small>'+e(w.verified_goal_days??0)+' von '+e(w.verified_days??0)+' bestätigten Zieltagen'+
+  (w.uncertain_days?' · '+e(w.uncertain_days)+' unklar':'')+'</small></article>').join('')+'</div>':
+  '<p class="native-muted">Noch kein VS-Wochenverlauf vorhanden.</p>';
  node.innerHTML='<section class="native-profile"><div class="native-profile-header">'+
-  '<button type="button" class="native-back" data-native-member-close>← Zur Spielerliste</button>'+
-  '<span class="native-profile-rank" aria-label="Allianzrang">'+e(member.rank||'?')+'</span><div class="native-profile-identity">'+
-  '<span class="native-kicker">SPIELERAKTE · '+e(member.status==='active'?'AKTIV':member.status==='former'?'ARCHIV':'STATUS UNGEKLÄRT')+'</span>'+
-  '<h3>'+e(member.name||'Unbekannt')+'</h3><p>'+e(member.blacklisted?'Manuell gesperrt · ':'')+
-  (member.state_source==='registry'?'Verwaltete Angaben':'Importierte Angaben')+'</p></div></div>'+
-  '<div class="native-profile-actions"><button type="button" class="native-game-primary" data-native-manage="'+e(id)+'">Rang & Status verwalten</button>'+
-  '<button type="button" data-native-member-log="'+e(id)+'">Änderungen anzeigen</button></div>'+
-  (member.source_difference?'<p class="native-evidence-note">Abweichender Import: '+e(member.imported_rank||'Unbekannt')+' · '+e(member.source_status||'unbekannt')+'. Der manuell verwaltete Stand bleibt aktiv.</p>':'')+
-  '<p class="native-muted">Datenquelle: '+(member.state_source==='registry'?'Mitgliederverwaltung · '+e(member.registry_updated_at||'')+' · '+e(member.registry_updated_by||''): 'Letzter verifizierter Import, falls vorhanden')+'</p>'+
-  '<h4 class="native-section-heading">Profil & Leistung</h4>'+
-  (stats.length?cards(stats.slice(0,8).map(x=>[x.metric.replaceAll('_',' '),
-   ['observed','corrected'].includes(x.quality)&&x.value!=null?Number(x.value).toLocaleString('de-DE'):'—',
-   qualityText[x.quality]||x.quality||'Nicht bestätigt'])):'<p class="native-muted">Noch keine verifizierten Profilwerte vorhanden.</p>')+
-  '<details class="native-fold"><summary>VS-Wochenverlauf · '+weeks.length+' Wochen</summary><div class="native-fold-body">'+
-  (weeks.length?weeks.map(w=>'<p><b>'+e(w.week)+'</b> · '+e(w.verified_goal_days)+' / '+e(w.verified_days)+' bestätigte Zieltage'+
-   (w.uncertain_days?' · '+e(w.uncertain_days)+' unklar':'')+'</p>').join(''):'<p>Keine bestätigten Wochen vorhanden.</p>')+
-  '</div></details><div id="native-person-log"></div><div id="registry-form"></div></section>';
+  '<button type="button" class="native-back" data-native-member-close>← Alle Spieler</button>'+
+  '<span class="native-profile-rank" aria-label="Allianzrang">'+e(member.rank||'?')+'</span>'+
+  '<div class="native-profile-identity"><span class="native-kicker">SPIELERAKTE · '+e(member.status==='active'?'AKTIV':member.status==='former'?'ARCHIV':'STATUS UNGEKLÄRT')+'</span>'+
+  '<h3>'+e(member.name||'Unbekannt')+'</h3><p>'+e(member.state_source==='registry'?'Verwalteter Rang':'Letzter importierter Rang')+
+  (member.blacklisted?' · Manuell gesperrt':'')+'</p></div></div>'+
+  (active.length?'<p class="native-absence-warning">Aktuell als abwesend eingetragen. Zugvorschläge berücksichtigen diesen Zeitraum.</p>':'')+
+  (member.source_difference?'<p class="native-evidence-note">Rang/Status unterscheiden sich vom letzten Import. Die bestätigte Verwaltung hat Vorrang.</p>':'')+
+  '<h4 class="native-section-heading">Werte & Entwicklung</h4>'+metricHtml+
+  '<details class="native-fold"><summary>VS-Erfolge & Wochen · '+weeks.length+'</summary>'+
+   '<div class="native-fold-body">'+weekSummary+'</div></details>'+
+  '<section class="native-person-absence"><div class="native-inline-heading"><h4>Abwesenheit</h4>'+
+   '<button type="button" data-native-add-absence="'+e(id)+'">+ Eintragen</button></div>'+
+   (attendance.length?'<div class="native-person-absence-list">'+attendance.map(a=>
+     '<p><b>'+e(a.start_date)+' – '+e(a.end_date)+'</b>'+
+     (a.note?' · '+e(a.note):'')+'</p>').join('')+'</div>':
+     '<p class="native-muted">Keine Abwesenheit eingetragen.</p>')+
+   '<div id="native-person-absence-form"></div></section>'+
+  '<details class="native-fold"><summary>Verwaltung & Protokoll</summary>'+
+   '<div class="native-fold-body"><div class="native-profile-actions">'+
+    '<button type="button" data-native-manage="'+e(id)+'">Rang & Status bearbeiten</button>'+
+    '<button type="button" data-native-member-log="'+e(id)+'">Änderungen anzeigen</button></div>'+
+    '<div id="native-person-log"></div><div id="registry-form"></div></div></details></section>';
  node.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function editProfileAbsence(target,id){
+ const host=target.querySelector('#native-person-absence-form');if(!host)return;
+ const roster=cache.ops?.members||[];
+ const leaderPool=roster.filter(x=>['R3','R4','R5'].includes(x.rank)&&x.id!==id);
+ host.innerHTML='<form id="native-record-save" class="native-form native-absence-form" data-kind="absences" data-profile-id="'+e(id)+'">'+
+  '<h4>Abwesenheit erfassen</h4><input type="hidden" name="member_id" value="'+e(id)+'">'+
+  '<label>Von<input type="date" name="start_date" required></label>'+
+  '<label>Bis<input type="date" name="end_date" required></label>'+
+  '<label>Vertretung (optional)<select name="substitute_id">'+options(leaderPool)+'</select></label>'+
+  '<label>Notiz (optional)<input name="note" maxlength="300" placeholder="Nur was für die Planung notwendig ist"></label>'+
+  '<button type="submit" class="native-game-primary">Abwesenheit speichern</button>'+
+  '<button type="button" data-native-form-reload hidden>Aktuellen Stand laden</button>'+
+  '<p id="native-form-message" role="status"></p></form>';
+ host.querySelector('[name=start_date]')?.focus();
 }
 
 function renderVs(target){
