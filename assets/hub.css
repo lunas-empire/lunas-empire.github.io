@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-13.12');
+@import url('./tokens.css?v=2026-10-13.13');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -1028,6 +1028,11 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 .native-private-capture-gallery select{width:100%;min-width:0;max-width:100%;font:inherit}
 .native-private-capture-gallery button{width:100%;min-height:40px}
 .native-private-capture-gallery p{margin:0;font-size:.79rem}
+.native-evidence-replace{border:1px solid var(--color-rule);border-radius:4px;padding:.5rem;display:grid;gap:.5rem}
+.native-evidence-replace summary{cursor:pointer;font-size:.79rem;font-weight:700}
+.native-evidence-replace[open] label{display:grid;gap:.35rem;margin:.6rem 0;font-size:.79rem}
+.native-evidence-replace input{max-width:100%;width:100%}
+.native-evidence-replace button{width:100%;min-height:42px}
 @media(max-width:47rem){
  .native-review-columns{grid-template-columns:minmax(0,1fr)}
  .native-review-image{min-height:140px}

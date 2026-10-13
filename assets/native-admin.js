@@ -764,15 +764,18 @@ function renderReviews(target,term=''){
     (x.context?.warning?'<p class="native-evidence-note">'+e(x.context.warning)+'</p>':'')+
     '<div class="native-review-columns"><div class="native-review-picture">'+
      '<div class="native-review-image" role="img" aria-label="Geschütztes Belegbild">Bild öffnen, um Beleg zu laden.</div>'+
-     (linked?'<small>Privat hinterlegt · überprüfe die Anzeige vor dem Speichern.</small>':
+     (linked?'<small>Privat hinterlegt · überprüfe die Anzeige vor dem Speichern.</small>'+ 
+      '<details class="native-evidence-replace"><summary>Falschen oder abgeschnittenen Screenshot ersetzen</summary>'+ 
+      '<label>Neuen Original-Screenshot auswählen<input type="file" data-native-review-replace-file accept="image/png,image/jpeg,image/webp"></label>'+ 
+      '<button type="button" data-native-review-replace '+(writesEnabled?'':'disabled')+'>Bild nach Prüfung ersetzen</button></details>':
       '<label>Screenshot diesem Auftrag zuordnen<input type="file" data-native-review-file accept="image/png,image/jpeg,image/webp"></label>'+
       '<button type="button" data-native-review-upload '+(writesEnabled?'':'disabled')+'>Beleg sicher hochladen</button>')+
-     (!linked&&x.kind==='profile'&&(cache.profileCaptures?.[x.metric]||[]).length?
+     (x.kind==='profile'&&(cache.profileCaptures?.[x.metric]||[]).length?
       '<div class="native-private-capture-gallery"><p class="native-muted">Originalaufnahmen '+e(x.metric)+': '+cache.profileCaptures[x.metric].length+' private Bilder. Bild manuell prüfen, bevor du es zuordnest.</p>'+
       '<label>Aufnahme wählen<select data-native-capture-choice>'+cache.profileCaptures[x.metric].map(cap=>
         '<option value="'+e(cap.id)+'">'+e(cap.capture_day)+' · Aufnahme '+e(cap.capture_index)+'</option>').join('')+'</select></label>'+
       '<button type="button" data-native-capture-preview>Originalbild ansehen</button>'+
-      '<button type="button" data-native-capture-attach disabled>Geprüftes Bild diesem Fall zuordnen</button></div>':'' )+
+      '<button type="button" data-native-capture-attach disabled>'+(linked?'Geprüftes Bild als neuen Beleg verwenden':'Geprüftes Bild diesem Fall zuordnen')+'</button></div>':'' )+
     '</div><div class="native-review-entry">'+
      '<small>OCR erkannt: '+e(x.source_value??'unbekannt')+'</small>'+
      (identity?'<label>Spieler suchen<input type="search" data-native-review-search autocomplete="off" placeholder="Name eingeben"></label>'+
@@ -837,15 +840,19 @@ async function attachProfileCapture(card){
  const id=card.dataset.reviewId,record=(cache.reviews||[]).find(r=>r.id===id);
  const selection=selectedProfileCaptures.get(id);
  const message=card.querySelector('.native-review-message'),btn=card.querySelector('[data-native-capture-attach]');
- if(cache.reviewWritesEnabled!==true||!selection||!record||record.kind!=='profile'||record.evidence_sha)return;
+ if(cache.reviewWritesEnabled!==true||!selection||!record||record.kind!=='profile')return;
+ const replacing=Boolean(record.evidence_sha);
  if(card.querySelector('[data-native-capture-choice]')?.value!==selection.id){
   message.textContent='Andere Aufnahme gewählt. Bitte diese zuerst öffnen und kontrollieren.';return;
  }
  if(!window.confirm('Ist die Spielerzeile mit dem richtigen Wert vollständig sichtbar und gehört dieses Originalbild wirklich zu diesem Prüffall?'))return;
  btn.disabled=true;message.textContent='Bestätigte Originalaufnahme wird privat zugeordnet .';
  try{
+  const reason=card.querySelector('[data-native-review-reason]')?.value.trim()||'';
+  if(replacing&&reason.length<8)throw Error('Begründung für Bildtausch erforderlich');
   const response=await fetch(apiBase+'/api/reviews/'+encodeURIComponent(id)+'/evidence',{
-   method:'PUT',headers:{Authorization:'Bearer '+sessionToken,'Content-Type':'image/png'},
+   method:replacing?'PATCH':'PUT',headers:{Authorization:'Bearer '+sessionToken,'Content-Type':'image/png',
+    ...(replacing?{'If-Match':record.evidence_sha,'X-Evidence-Reason':encodeURIComponent(reason)}:{})},
    body:selection.blob,mode:'cors',credentials:'omit',cache:'no-store'});
   const result=await response.json();
   if(!response.ok||result.sha256!==selection.sha256)throw Error(result.error||'Abweichender Hash beim Verknüpfen');
@@ -858,9 +865,40 @@ async function attachProfileCapture(card){
   card.querySelector('[data-native-review-resolve="approve"]').disabled=Boolean(record.context?.warning);
   selectedProfileCaptures.delete(id);
   const old=reviewBlobUrls.get('candidate-'+id);if(old){URL.revokeObjectURL(old);reviewBlobUrls.delete('candidate-'+id)}
-  message.textContent='Beleg ist privat zugeordnet. Wert prüfen und separat speichern; keine automatische Freigabe.';
+  const previousUrl=reviewBlobUrls.get(id);if(previousUrl){URL.revokeObjectURL(previousUrl);reviewBlobUrls.delete(id)}
+  message.textContent=(replacing?'Bisheriges Bild ersetzt und protokolliert.':'Beleg privat zugeordnet.')+' Wert separat prüfen und speichern; keine automatische Freigabe.';
   await loadReviewImage(card);
  }catch(error){message.textContent='Nicht zugeordnet: '+error.message;btn.disabled=false}
+}
+async function replaceReviewScreenshot(card){
+ if(cache.reviewWritesEnabled!==true)return;
+ const id=card.dataset.reviewId,record=(cache.reviews||[]).find(x=>x.id===id);
+ const file=card.querySelector('[data-native-review-replace-file]')?.files?.[0];
+ const reason=card.querySelector('[data-native-review-reason]')?.value.trim()||'';
+ const message=card.querySelector('.native-review-message'),button=card.querySelector('[data-native-review-replace]');
+ if(!file||!record?.evidence_sha){message.textContent='Bitte Ersatzbild auswählen.';return}
+ if(reason.length<8){message.textContent='Bitte den Grund für den Bildtausch eintragen.';return}
+ if(!window.confirm('Dieses Bild ersetzt den bisherigen Beleg. Hast du Name, vollständig sichtbare Zeile und Wert geprüft?'))return;
+ button.disabled=true;message.textContent='Geprüften Ersatzbeleg sicher hinterlegen .';
+ try{
+  const payload=await normalizeReviewImage(file);
+  const response=await fetch(apiBase+'/api/reviews/'+encodeURIComponent(id)+'/evidence',{
+   method:'PATCH',
+   headers:{Authorization:'Bearer '+sessionToken,'Content-Type':payload.type,
+    'If-Match':record.evidence_sha,'X-Evidence-Reason':encodeURIComponent(reason)},
+   body:payload,mode:'cors',credentials:'omit',cache:'no-store'});
+  const result=await response.json();
+  if(!response.ok||!result.ok)throw Error(result.error||'Ersetzen fehlgeschlagen');
+  record.evidence_sha=result.sha256;
+  const url=reviewBlobUrls.get(id);if(url){URL.revokeObjectURL(url);reviewBlobUrls.delete(id)}
+  const candidate=reviewBlobUrls.get('candidate-'+id);if(candidate){URL.revokeObjectURL(candidate);reviewBlobUrls.delete('candidate-'+id)}
+  selectedProfileCaptures.delete(id);
+  card.querySelector('.native-review-evidence-status').textContent='Bild ersetzt';
+  card.querySelector('[data-native-review-replace-file]').value='';
+  message.textContent='Ersatzbild privat gespeichert und im Admin-Log protokolliert. Der Prüffall bleibt offen.';
+  await loadReviewImage(card);
+ }catch(error){message.textContent='Bild nicht ersetzt: '+error.message}
+ finally{button.disabled=false}
 }
 async function attachReviewScreenshot(card){
  if(cache.reviewWritesEnabled!==true)return;
@@ -936,7 +974,13 @@ export function initNativeAdmin(mount){
  if(mount.dataset.nativeReady)return;
  mount.dataset.nativeReady='1';
  mount.addEventListener('click',async event=>{
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-rotation-reload]');
+  const screenshot=event.target.closest?.('.native-review-image img');
+  if(screenshot){
+   const url=screenshot.getAttribute('src')||'';
+   if(url.startsWith('blob:'))window.open(url,'_blank','noopener,noreferrer');
+   return;
+  }
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload]');
   if(!button)return;
   if(button.hasAttribute('data-officer-logout')){
    try{await request('/api/native-logout',{method:'POST',body:{}})}catch{}clearOfficer();await renderNativeAdmin(mount);return;
@@ -1061,6 +1105,9 @@ export function initNativeAdmin(mount){
   }
   if(button.hasAttribute('data-native-capture-attach')){
    const card=button.closest('.native-review-card');if(card)await attachProfileCapture(card);return;
+  }
+  if(button.hasAttribute('data-native-review-replace')){
+   const card=button.closest('.native-review-card');if(card)await replaceReviewScreenshot(card);return;
   }
   if(button.hasAttribute('data-native-review-upload')){
    const card=button.closest('.native-review-card');
