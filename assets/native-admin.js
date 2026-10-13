@@ -135,6 +135,11 @@ async function view(mount){
    ]);
    cache.reviewWritesEnabled=session?.reviewWritesEnabled===true;
    cache.reviews=cases;cache.reviewMembers=Array.isArray(members)?members:members.members||[];
+   const profileMetrics=['power','kills','donations_daily','donations_weekly'];
+   cache.profileCaptures=Object.fromEntries(await Promise.all(profileMetrics.map(async metric=>{
+    try {const rows=await request('/api/profile-captures?metric='+metric);return [metric,Array.isArray(rows)?rows:[]]}
+    catch{return [metric,[]]}
+   })));
    const batches=[...new Set(cache.reviews.map(x=>x.source_batch).filter(Boolean))].sort();
    const withEvidence=cache.reviews.filter(x=>Boolean(x.evidence_sha)).length;
    const withoutEvidence=cache.reviews.length-withEvidence;
@@ -671,9 +676,11 @@ function renderActivity(target,term){
 // Evidence never receives a public URL. A protected Blob URL exists only for the
 // current officer's in-memory session and is revoked on navigation/logout.
 const reviewBlobUrls=new Map();
+const selectedProfileCaptures=new Map();
 function clearReviewImages(){
  for(const url of reviewBlobUrls.values())try{URL.revokeObjectURL(url)}catch{}
  reviewBlobUrls.clear();
+ selectedProfileCaptures.clear();
 }
 export function reviewMatchesMember(member,term){
  const query=String(term||'').trim().toLocaleLowerCase('de-DE');
@@ -760,12 +767,19 @@ function renderReviews(target,term=''){
      (linked?'<small>Privat hinterlegt · überprüfe die Anzeige vor dem Speichern.</small>':
       '<label>Screenshot diesem Auftrag zuordnen<input type="file" data-native-review-file accept="image/png,image/jpeg,image/webp"></label>'+
       '<button type="button" data-native-review-upload '+(writesEnabled?'':'disabled')+'>Beleg sicher hochladen</button>')+
+     (!linked&&x.kind==='profile'&&(cache.profileCaptures?.[x.metric]||[]).length?
+      '<div class="native-private-capture-gallery"><p class="native-muted">Originalaufnahmen '+e(x.metric)+': '+cache.profileCaptures[x.metric].length+' private Bilder. Bild manuell prüfen, bevor du es zuordnest.</p>'+
+      '<label>Aufnahme wählen<select data-native-capture-choice>'+cache.profileCaptures[x.metric].map(cap=>
+        '<option value="'+e(cap.id)+'">'+e(cap.capture_day)+' · Aufnahme '+e(cap.capture_index)+'</option>').join('')+'</select></label>'+
+      '<button type="button" data-native-capture-preview>Originalbild ansehen</button>'+
+      '<button type="button" data-native-capture-attach disabled>Geprüftes Bild diesem Fall zuordnen</button></div>':'' )+
     '</div><div class="native-review-entry">'+
      '<small>OCR erkannt: '+e(x.source_value??'unbekannt')+'</small>'+
      (identity?'<label>Spieler suchen<input type="search" data-native-review-search autocomplete="off" placeholder="Name eingeben"></label>'+
       '<input type="hidden" data-native-review-member><div class="native-review-people"></div>'+
       '<p class="native-review-selection" role="status">Noch kein Spieler ausgewählt.</p>':
-      numeric?'<label>Richtigen Wert eingeben<input inputmode="numeric" type="text" autocomplete="off" data-native-review-value maxlength="18" placeholder="Zahl vom Screenshot ablesen"></label>':
+      numeric?'<label>Richtigen Wert eingeben<input inputmode="numeric" type="text" autocomplete="off" data-native-review-value maxlength="18" placeholder="Zahl vom Screenshot ablesen"></label>'+
+      (x.kind==='vs_day'?'<button type="button" data-native-mark-zero>Sichtbare 0 im Screenshot übernehmen</button>':''):
       '<p class="native-evidence-note">Dieser Falltyp benötigt eine gesonderte fachliche Prüfung.</p>')+
      '<label>Prüfnotiz<input type="text" data-native-review-reason maxlength="500" placeholder="Was wurde am Bild bestätigt?" value="Screenshot manuell geprüft"></label>'+
      '<div class="native-review-controls">'+
@@ -786,6 +800,67 @@ function renderReviews(target,term=''){
    }
   });
  });
+}
+const profileCaptureUrl=(metric,id)=>'/api/profile-captures/'+encodeURIComponent(metric)+'/'+encodeURIComponent(id.slice(metric.length+1))+'/image';
+async function previewProfileCapture(card){
+ const id=card.dataset.reviewId,record=(cache.reviews||[]).find(r=>r.id===id);
+ const selection=card.querySelector('[data-native-capture-choice]')?.value;
+ const candidate=(cache.profileCaptures?.[record?.metric]||[]).find(row=>row.id===selection);
+ const message=card.querySelector('.native-review-message');
+ const button=card.querySelector('[data-native-capture-preview]'),attach=card.querySelector('[data-native-capture-attach]');
+ if(!candidate||record.kind!=='profile'){message.textContent='Aufnahme fehlt. Bitte neu auswählen.';return}
+ button.disabled=true;attach.disabled=true;
+ selectedProfileCaptures.delete(id);
+ message.textContent='Geschützte Originalaufnahme wird geladen .';
+ try{
+  const response=await fetch(apiBase+profileCaptureUrl(record.metric,candidate.id),{
+   headers:{Authorization:'Bearer '+sessionToken},mode:'cors',credentials:'omit',cache:'no-store'});
+  if(!response.ok)throw Error('Privates Bild nicht abrufbar (HTTP '+response.status+')');
+  const blob=await response.blob();
+  if(blob.type!=='image/png'||blob.size<50||blob.size>950000)throw Error('Ungültige Bilddaten');
+  const digest=await crypto.subtle.digest('SHA-256',await blob.arrayBuffer());
+  const hash=Array.from(new Uint8Array(digest),v=>v.toString(16).padStart(2,'0')).join('');
+  if(hash!==candidate.sha256)throw Error('Bild-Prüfsumme stimmt nicht überein');
+  if(card.querySelector('[data-native-capture-choice]')?.value!==candidate.id)return;
+  const old=reviewBlobUrls.get('candidate-'+id);if(old)URL.revokeObjectURL(old);
+  const url=URL.createObjectURL(blob);reviewBlobUrls.set('candidate-'+id,url);
+  const frame=card.querySelector('.native-review-image');
+  frame.innerHTML='<img alt="Geschützter vollständiger Original-Screenshot zur manuellen Prüfung">';
+  frame.querySelector('img').src=url;
+  selectedProfileCaptures.set(id,{id:candidate.id,sha256:hash,blob});
+  attach.disabled=false;
+  message.textContent='Bitte Spielerzeile und Wert im vollständigen Originalbild vergleichen. Erst danach zuordnen.';
+ }catch(error){message.textContent='Originalbild nicht verfügbar: '+error.message}
+ finally{button.disabled=false}
+}
+async function attachProfileCapture(card){
+ const id=card.dataset.reviewId,record=(cache.reviews||[]).find(r=>r.id===id);
+ const selection=selectedProfileCaptures.get(id);
+ const message=card.querySelector('.native-review-message'),btn=card.querySelector('[data-native-capture-attach]');
+ if(cache.reviewWritesEnabled!==true||!selection||!record||record.kind!=='profile'||record.evidence_sha)return;
+ if(card.querySelector('[data-native-capture-choice]')?.value!==selection.id){
+  message.textContent='Andere Aufnahme gewählt. Bitte diese zuerst öffnen und kontrollieren.';return;
+ }
+ if(!window.confirm('Ist die Spielerzeile mit dem richtigen Wert vollständig sichtbar und gehört dieses Originalbild wirklich zu diesem Prüffall?'))return;
+ btn.disabled=true;message.textContent='Bestätigte Originalaufnahme wird privat zugeordnet .';
+ try{
+  const response=await fetch(apiBase+'/api/reviews/'+encodeURIComponent(id)+'/evidence',{
+   method:'PUT',headers:{Authorization:'Bearer '+sessionToken,'Content-Type':'image/png'},
+   body:selection.blob,mode:'cors',credentials:'omit',cache:'no-store'});
+  const result=await response.json();
+  if(!response.ok||result.sha256!==selection.sha256)throw Error(result.error||'Abweichender Hash beim Verknüpfen');
+  record.evidence_sha=result.sha256;
+  card.querySelector('.native-review-evidence-status').textContent='Bild hinterlegt';
+  const panel=card.querySelector('.native-review-picture');
+  panel.querySelector('[data-native-review-file]')?.closest('label')?.remove();
+  panel.querySelector('[data-native-review-upload]')?.remove();
+  panel.querySelector('.native-private-capture-gallery')?.remove();
+  card.querySelector('[data-native-review-resolve="approve"]').disabled=Boolean(record.context?.warning);
+  selectedProfileCaptures.delete(id);
+  const old=reviewBlobUrls.get('candidate-'+id);if(old){URL.revokeObjectURL(old);reviewBlobUrls.delete('candidate-'+id)}
+  message.textContent='Beleg ist privat zugeordnet. Wert prüfen und separat speichern; keine automatische Freigabe.';
+  await loadReviewImage(card);
+ }catch(error){message.textContent='Nicht zugeordnet: '+error.message;btn.disabled=false}
 }
 async function attachReviewScreenshot(card){
  if(cache.reviewWritesEnabled!==true)return;
@@ -861,7 +936,7 @@ export function initNativeAdmin(mount){
  if(mount.dataset.nativeReady)return;
  mount.dataset.nativeReady='1';
  mount.addEventListener('click',async event=>{
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-rotation-reload]');
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-rotation-reload]');
   if(!button)return;
   if(button.hasAttribute('data-officer-logout')){
    try{await request('/api/native-logout',{method:'POST',body:{}})}catch{}clearOfficer();await renderNativeAdmin(mount);return;
@@ -974,6 +1049,19 @@ export function initNativeAdmin(mount){
    card.querySelectorAll('[data-native-review-pick]').forEach(x=>x.setAttribute('aria-pressed',String(x===button)));
    return;
   }
+  if(button.hasAttribute('data-native-mark-zero')){
+   const card=button.closest('.native-review-card');
+   const field=card?.querySelector('[data-native-review-value]');
+   if(field){field.value='0';field.focus();card.querySelector('[data-native-review-reason]').value='Sichtbare 0 im Original-Screenshot von Officer geprüft';
+    card.querySelector('.native-review-message').textContent='0 vorgemerkt. Bitte Originalbild prüfen und Korrektur ausdrücklich speichern.'}
+   return;
+  }
+  if(button.hasAttribute('data-native-capture-preview')){
+   const card=button.closest('.native-review-card');if(card)await previewProfileCapture(card);return;
+  }
+  if(button.hasAttribute('data-native-capture-attach')){
+   const card=button.closest('.native-review-card');if(card)await attachProfileCapture(card);return;
+  }
   if(button.hasAttribute('data-native-review-upload')){
    const card=button.closest('.native-review-card');
    if(card)await attachReviewScreenshot(card);
@@ -1024,7 +1112,13 @@ export function initNativeAdmin(mount){
    if(card)reviewMemberOptions(card,event.target.value);
   }
  });
- mount.addEventListener('change',event=>{if(event.target.name==='event_type'&&event.target.closest('#native-record-save'))updateEventForm(event.target.form);if(event.target.id==='native-vs-week')renderVs(mount.querySelector('#native-admin-content'));if(['review-image-native','review-batch-native','review-kind-native'].includes(event.target.id)){historyLimit=20;const target=mount.querySelector('#native-admin-content');renderReviews(target,target.querySelector('#review-search-native')?.value||'')}});
+ mount.addEventListener('change',event=>{
+  if(event.target.matches('[data-native-capture-choice]')){
+   const card=event.target.closest('.native-review-card');
+   if(card){selectedProfileCaptures.delete(card.dataset.reviewId);const attach=card.querySelector('[data-native-capture-attach]');if(attach)attach.disabled=true;
+    const message=card.querySelector('.native-review-message');if(message)message.textContent='Andere Aufnahme gewählt; bitte zuerst öffnen und kontrollieren.'}
+  }
+ if(event.target.name==='event_type'&&event.target.closest('#native-record-save'))updateEventForm(event.target.form);if(event.target.id==='native-vs-week')renderVs(mount.querySelector('#native-admin-content'));if(['review-image-native','review-batch-native','review-kind-native'].includes(event.target.id)){historyLimit=20;const target=mount.querySelector('#native-admin-content');renderReviews(target,target.querySelector('#review-search-native')?.value||'')}});
  mount.addEventListener('submit',async event=>{
   const form=event.target;event.preventDefault();
   if(form.id==='native-officer-login'){
