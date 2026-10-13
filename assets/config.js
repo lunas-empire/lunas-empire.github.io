@@ -3,12 +3,12 @@ export const GUIDE_CONFIG = {
   serverDayAnchor: { date: '2026-09-12', day: 144 },
   seasonStart: '2026-09-21T04:00:00+02:00', server: 2261,
 };
-export const BUILD_VERSION_BASE = '2026-10-12.3';
+export const BUILD_VERSION_BASE = '2026-10-13.1';
 const productionHost='rzsn-home.github.io';
 export const BUILD_VERSION = globalThis.location?.hostname===productionHost ? BUILD_VERSION_BASE : `${BUILD_VERSION_BASE}-staging`;
 export const ALLIANCE_CONFIG = {
   vsDailyMinimum: 3600000,
-  // Staging embeds the protected Cloudflare Worker in its #admin view. No private data on GitHub Pages.
+  // Staging renders a native admin view. Cloudflare D1 remains private behind officer bearer auth.
   // RZSN production retains its existing encrypted admin wiki.
   adminUrl: globalThis.location?.hostname===productionHost ? '/admin/' : '#admin',
   commandCenterEmbedUrl: 'https://rzsn-command-center-staging.cynthiawong2837128.workers.dev/?embed=1',
