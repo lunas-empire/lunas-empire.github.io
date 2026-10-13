@@ -3,8 +3,8 @@ import {ALLIANCE_CONFIG} from './config.js';
 import {icon} from './icons.js';
 const apiBase=ALLIANCE_CONFIG.commandCenterEmbedUrl.replace('/?embed=1','');
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
-let sessionToken='',officer=null,panel='overview',cache={},pageLimit=20,historyLimit=20,activityLimit=30;
-export function clearOfficer(){sessionToken='';officer=null;cache={};panel='overview';pageLimit=20;historyLimit=20;activityLimit=30;}
+let sessionToken='',officer=null,panel='overview',cache={},pageLimit=20,historyLimit=20,activityLimit=30,registryFilter='all';
+export function clearOfficer(){sessionToken='';officer=null;cache={};panel='overview';pageLimit=20;historyLimit=20;activityLimit=30;registryFilter='all';}
 export const hasOfficer=()=>Boolean(sessionToken);
 async function request(path,options={}){
  const headers={'Accept':'application/json',...(options.body?{'Content-Type':'application/json'}:{}),...(sessionToken?{'Authorization':'Bearer '+sessionToken}:{})};
@@ -86,7 +86,11 @@ async function view(mount){
     '</div>';
   }else if(panel==='registry'){
    cache.registry=await request('/api/member-registry');
-   target.innerHTML='<div class="native-row"><h2>Mitgliederverwaltung</h2><input id="registry-search" type="search" placeholder="Spieler suchen"></div>'+cards([['Aktiv',cache.registry.counts.active],['Archiv',cache.registry.counts.former],['Blacklist',cache.registry.counts.blacklisted]])+'<div id="registry-list"></div><div id="registry-form"></div>';renderRegistry(target,'');
+   target.innerHTML='<div class="native-row"><h2>Mitgliederverwaltung</h2><input id="registry-search" type="search" placeholder="Spieler suchen"></div>'+
+    '<nav class="native-status-filter" aria-label="Mitgliederstatus">'+[['all','Alle'],['active','Aktiv'],['former','Archiv'],['blacklist','Blacklist']].map(([key,label])=>
+    '<button type="button" data-native-registry-filter="'+key+'" aria-pressed="'+(registryFilter===key?'true':'false')+'">'+label+'</button>').join('')+'</nav>'+
+    cards([['Aktiv',cache.registry.counts.active],['Archiv',cache.registry.counts.former],['Blacklist',cache.registry.counts.blacklisted]])+
+    '<div id="registry-list"></div><div id="registry-form"></div>';renderRegistry(target,'');
   }else if(panel==='watch'){
    target.innerHTML='<div class="native-row"><div><h2>Mitglieder-Abgleich</h2><p class="native-muted">VS- und Stärke-Aufnahmen vergleichen. Kein automatischer Austritt und keine automatische Blacklist.</p></div></div><div id="native-watch-list" role="region" aria-label="Mitglieder zum Prüfen"></div>';
    try{cache.watch=await request('/api/membership-watch');renderMembershipWatch(target)}
@@ -443,7 +447,9 @@ function editDiplomacy(target,id=''){
 }
 
 function renderRegistry(target,query){
- const list=cache.registry.members.filter(x=>(x.name+' '+x.rank+' '+x.lifecycle).toLowerCase().includes(query.toLowerCase()));
+ const list=cache.registry.members.filter(x=>(registryFilter==='blacklist'?Boolean(x.blacklisted):
+  registryFilter==='all'||x.lifecycle===registryFilter)&&
+  (x.name+' '+x.rank+' '+x.lifecycle+' '+(x.blacklisted?'blacklist':'')).toLowerCase().includes(query.toLowerCase()));
  target.querySelector('#registry-list').innerHTML='<p class="native-muted">'+list.length+' Ergebnisse. Archiv und Blacklist werden nur manuell geändert.</p><div class="native-list">'+list.slice(0,pageLimit).map(x=>'<button data-registry-edit="'+e(x.id)+'"><strong>'+e(x.name)+' · '+e(x.rank)+'</strong><small>'+e(x.lifecycle)+(x.blacklisted?' · BLACKLIST':'')+' · zuletzt '+e(x.last_seen||'?')+'</small></button>').join('')+'</div>'+(list.length>pageLimit?'<button data-native-more="registry">Weitere Spieler</button>':'');
 }
 function editRegistry(target,id){
@@ -534,7 +540,7 @@ export function initNativeAdmin(mount){
  if(mount.dataset.nativeReady)return;
  mount.dataset.nativeReady='1';
  mount.addEventListener('click',async event=>{
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload]');
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter]');
   if(!button)return;
   if(button.hasAttribute('data-officer-logout')){
    try{await request('/api/native-logout',{method:'POST',body:{}})}catch{}clearOfficer();await renderNativeAdmin(mount);return;
@@ -556,6 +562,13 @@ export function initNativeAdmin(mount){
    return;
   }
   const target=mount.querySelector('#native-admin-content');if(!target)return;
+  if(button.dataset.nativeRegistryFilter){
+   registryFilter=button.dataset.nativeRegistryFilter;
+   target.querySelectorAll('[data-native-registry-filter]').forEach(item=>
+    item.setAttribute('aria-pressed',String(item.dataset.nativeRegistryFilter===registryFilter)));
+   pageLimit=20;renderRegistry(target,target.querySelector('#registry-search')?.value||'');
+   return;
+  }
   if(button.hasAttribute('data-registry-reload')){
    if(!window.confirm('Aktuellen Stand laden und eigene Eingaben verwerfen?'))return;
    const form=button.closest('form');button.disabled=true;
