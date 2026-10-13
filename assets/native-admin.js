@@ -125,10 +125,14 @@ async function view(mount){
    cache.activity=await request('/api/activity?limit=200');
    target.innerHTML='<div class="native-row"><h2>Admin-Aktivitäten</h2><input id="activity-search" type="search" placeholder="Admin, Aktion, Spieler"></div><div id="activity-list"></div>';renderActivity(target,'');
   }else if(panel==='reviews'){
-   cache.reviews=await request('/api/reviews?status=open');
+   const [cases,members]=await Promise.all([
+    request('/api/reviews?status=open'),
+    request('/api/identity-options').catch(()=>[])
+   ]);
+   cache.reviews=cases;cache.reviewMembers=Array.isArray(members)?members:members.members||[];
    const batches=[...new Set(cache.reviews.map(x=>x.source_batch).filter(Boolean))].sort();
    target.innerHTML='<div class="native-row"><h2>OCR-Prüfung</h2><input id="review-search-native" type="search" placeholder="Spieler oder Fall suchen"></div>'+
-    '<p class="native-muted">Original-Screenshots werden noch privat zugeordnet. Kein Prüfwert wird ohne Bildbeleg freigegeben.</p>'+
+    '<p class="native-muted">Öffne einen Prüfauftrag, kontrolliere das private Belegbild und korrigiere nur die nicht eindeutig erkannten Angaben. Kein Bild = keine Freigabe.</p>'+
     '<div class="native-row"><label>Quelle <select id="review-batch-native"><option value="">Alle Wochen und Profile</option>'+batches.map(b=>'<option value="'+e(b)+'">'+e(b)+'</option>').join('')+'</select></label>'+
     '<label>Prüftyp <select id="review-kind-native"><option value="">Alle</option><option value="vs_day">VS-Tageswert</option><option value="identity">Identität</option><option value="profile">Profilwert</option></select></label></div>'+
     '<div id="review-list-native"></div>';renderReviews(target,'');
@@ -621,22 +625,180 @@ function renderActivity(target,term){
   '<div class="native-list">'+matching.slice(0,activityLimit).map(details).join('')+'</div>'+
   (matching.length>activityLimit?'<button type="button" data-native-more="activity">Weitere 30 Änderungen</button>':'');
 }
-function renderReviews(target,term){
+// Evidence never receives a public URL. A protected Blob URL exists only for the
+// current officer's in-memory session and is revoked on navigation/logout.
+const reviewBlobUrls=new Map();
+function clearReviewImages(){
+ for(const url of reviewBlobUrls.values())try{URL.revokeObjectURL(url)}catch{}
+ reviewBlobUrls.clear();
+}
+export function reviewMatchesMember(member,term){
+ const query=String(term||'').trim().toLocaleLowerCase('de-DE');
+ return !query||(String(member.name||'')+' '+String(member.rank||'')).toLocaleLowerCase('de-DE').includes(query);
+}
+export function reviewNumericValue(raw){
+ const text=String(raw??'').trim().replace(/[\s.,]/g,'');
+ if(!/^\d{1,15}$/.test(text))return null;
+ const value=Number(text);
+ return Number.isSafeInteger(value)&&value<=1e14?value:null;
+}
+function reviewMemberOptions(card,term){
+ const root=card.querySelector('.native-review-people');
+ if(!root)return;
+ const members=(cache.reviewMembers||[]).filter(m=>reviewMatchesMember(m,term)).slice(0,12);
+ root.innerHTML=members.length?members.map(m=>
+  '<button type="button" data-native-review-pick="'+e(m.id)+'" aria-label="'+e(m.name)+' auswählen">'+
+  '<strong>'+e(m.name)+'</strong><span>'+e(m.rank||'Rang unbekannt')+'</span></button>').join(''):
+  '<p class="native-muted">Keine passenden Spieler. Versuche einen anderen Namen.</p>';
+}
+async function loadReviewImage(card){
+ const id=card.dataset.reviewId,preview=card.querySelector('.native-review-image');
+ if(!id||!preview||!card.isConnected)return;
+ const found=(cache.reviews||[]).find(x=>x.id===id);
+ if(!found?.evidence_sha){preview.textContent='Noch kein privat zugeordneter Beleg. Bitte Screenshot auswählen.';return}
+ if(reviewBlobUrls.has(id)){preview.querySelector('img').src=reviewBlobUrls.get(id);return}
+ preview.textContent='Geschütztes Belegbild wird geladen …';
+ try{
+  const response=await fetch(apiBase+'/api/reviews/'+encodeURIComponent(id)+'/evidence',{
+   headers:{Authorization:'Bearer '+sessionToken},mode:'cors',credentials:'omit',cache:'no-store'});
+  if(!response.ok)throw Error('Bild nicht verfügbar ('+response.status+')');
+  const blob=await response.blob();
+  if(!card.isConnected)return;
+  const imageURL=URL.createObjectURL(blob);
+  reviewBlobUrls.set(id,imageURL);
+  preview.innerHTML='<img alt="Privater Screenshot für diesen Prüfauftrag" loading="lazy" draggable="false">';
+  preview.querySelector('img').src=imageURL;
+ }catch(err){
+  if(card.isConnected)preview.textContent='Beleg konnte nicht geladen werden: '+err.message;
+ }
+}
+async function normalizeReviewImage(file){
+ if(!file||!['image/png','image/jpeg','image/webp'].includes(file.type))throw Error('PNG, JPG oder WebP auswählen');
+ if(file.size<=950000)return file;
+ if(typeof createImageBitmap!=='function')throw Error('Bild ist zu groß. Bitte zuerst einen Ausschnitt erstellen.');
+ const bitmap=await createImageBitmap(file);
+ try{
+  const scale=Math.min(1,1600/bitmap.width,2000/bitmap.height);
+  const canvas=document.createElement('canvas');
+  canvas.width=Math.max(1,Math.round(bitmap.width*scale));
+  canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+  canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);
+  for(const quality of [.82,.67,.50,.35]){
+   const result=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',quality));
+   if(result&&result.size<=950000)return result;
+  }
+  throw Error('Screenshot ist auch nach Verkleinerung zu groß. Bitte einen kleineren Ausschnitt wählen.');
+ }finally{bitmap.close()}
+}
+function renderReviews(target,term=''){
+ clearReviewImages();
  const batch=target.querySelector('#review-batch-native')?.value||'';
  const kind=target.querySelector('#review-kind-native')?.value||'';
- const list=cache.reviews.filter(x=>(!batch||x.source_batch===batch)&&(!kind||x.kind===kind)&&
-  [x.source_name,x.category,x.metric,x.note,x.source_batch].some(y=>String(y||'').toLowerCase().includes(term.toLowerCase())));
- const categories={};cache.reviews.forEach(x=>{categories[x.category]=(categories[x.category]||0)+1});
- const names={vs_uncertain:'VS-Wert unklar',inferred:'Geschätzter Wert',unmatched_name:'Name nicht zugeordnet',
-  historical_identity:'Historische Identität',missing:'Wert fehlt',ocr_alert:'OCR-Auffälligkeit'};
- target.querySelector('#review-list-native').innerHTML=cards([['Offene Prüfungen',cache.reviews.length],
-  ['Gefilterte Fälle',list.length],['VS unklar',categories.vs_uncertain||0],['Profilwerte',cache.reviews.filter(x=>x.kind==='profile').length]])+
-  '<p class="native-muted">Status: '+Object.entries(categories).map(([key,n])=>e(names[key]||key)+' '+n).join(' · ')+'</p>'+
-  '<div class="native-list">'+list.slice(0,historyLimit).map(x=>'<details><summary><strong>'+e(x.source_name||'Unbekannt')+' · '+e(x.metric||'')+'</strong><small>'+e(names[x.category]||x.category)+' · '+e(x.source_batch||'')+'</small></summary>'+
-  '<p>'+e(x.note||'')+'</p><p>Erkannt: '+e(x.source_value??'unbekannt')+'</p>'+
-  (x.context?.date?'<p>Spieltag: '+e(x.context.date)+'</p>':'')+
-  '<p class="native-muted">Originalbild noch nicht online verknüpft. Keine Freigabe ohne Beleg.</p></details>').join('')+'</div>'+
+ const list=(cache.reviews||[]).filter(x=>(!batch||x.source_batch===batch)&&(!kind||x.kind===kind)&&
+  [x.source_name,x.category,x.metric,x.note,x.source_batch].some(y=>String(y||'').toLowerCase().includes(String(term).toLowerCase())));
+ const names={vs_uncertain:'VS-Tageswert',inferred:'Wert nicht sicher',unmatched_name:'Spieler zuordnen',
+  historical_identity:'Namenszuordnung',missing:'Fehlender Wert',ocr_alert:'Bild erkennen'};
+ const card=x=>{
+  const identity=x.kind==='identity',numeric=x.kind==='profile'||x.kind==='vs_day';
+  const linked=Boolean(x.evidence_sha);
+  return '<details class="native-review-card" data-review-id="'+e(x.id)+'" data-review-kind="'+e(x.kind||'')+'">'+
+   '<summary><span class="native-review-summary"><strong>'+e(x.source_name||'Unbekannt')+'</strong>'+
+    '<small>'+e(names[x.category]||x.category)+' · '+e(x.metric||'')+
+    (x.context?.date?' · '+e(x.context.date):'')+'</small></span>'+
+    '<span class="native-review-evidence-status">'+(linked?'Bild hinterlegt':'Bild fehlt')+'</span></summary>'+
+   '<div class="native-review-body"><p class="native-muted">'+e(x.note||'')+'</p>'+
+    (x.context?.warning?'<p class="native-evidence-note">'+e(x.context.warning)+'</p>':'')+
+    '<div class="native-review-columns"><div class="native-review-picture">'+
+     '<div class="native-review-image" role="img" aria-label="Geschütztes Belegbild">Bild öffnen, um Beleg zu laden.</div>'+
+     (linked?'<small>Privat hinterlegt · überprüfe die Anzeige vor dem Speichern.</small>':
+      '<label>Screenshot diesem Auftrag zuordnen<input type="file" data-native-review-file accept="image/png,image/jpeg,image/webp"></label>'+
+      '<button type="button" data-native-review-upload>Beleg sicher hochladen</button>')+
+    '</div><div class="native-review-entry">'+
+     '<small>OCR erkannt: '+e(x.source_value??'unbekannt')+'</small>'+
+     (identity?'<label>Spieler suchen<input type="search" data-native-review-search autocomplete="off" placeholder="Name eingeben"></label>'+
+      '<input type="hidden" data-native-review-member><div class="native-review-people"></div>'+
+      '<p class="native-review-selection" role="status">Noch kein Spieler ausgewählt.</p>':
+      numeric?'<label>Richtigen Wert eingeben<input inputmode="numeric" type="text" autocomplete="off" data-native-review-value maxlength="18" placeholder="Zahl vom Screenshot ablesen"></label>':
+      '<p class="native-evidence-note">Dieser Falltyp benötigt eine gesonderte fachliche Prüfung.</p>')+
+     '<label>Prüfnotiz<input type="text" data-native-review-reason maxlength="500" placeholder="Was wurde am Bild bestätigt?" value="Screenshot manuell geprüft"></label>'+
+     '<div class="native-review-controls">'+
+      '<button type="button" class="native-game-primary" data-native-review-resolve="approve" '+(!linked||(!identity&&!numeric)||Boolean(x.context?.warning)?'disabled':'')+'>Korrektur speichern</button>'+
+      '<button type="button" data-native-review-resolve="dismiss">Ohne Korrektur schließen</button></div>'+
+     '<p class="native-review-message" role="status" aria-live="polite"></p></div></div></div></details>';
+ };
+ const host=target.querySelector('#review-list-native');if(!host)return;
+ host.innerHTML='<p class="native-muted">'+list.length+' von '+(cache.reviews||[]).length+
+  ' offenen Prüffällen · '+list.filter(x=>x.evidence_sha).length+' bereits mit Beleg</p>'+
+  '<div class="native-review-cards">'+list.slice(0,historyLimit).map(card).join('')+'</div>'+
   (list.length>historyLimit?'<button data-native-more="reviews">Weitere Fälle</button>':'');
+ host.querySelectorAll('.native-review-card').forEach(card=>{
+  card.addEventListener('toggle',()=>{
+   if(card.open){
+    loadReviewImage(card);
+    if(card.dataset.reviewKind==='identity')reviewMemberOptions(card,'');
+   }
+  });
+ });
+}
+async function attachReviewScreenshot(card){
+ const id=card.dataset.reviewId,file=card.querySelector('[data-native-review-file]')?.files?.[0];
+ const message=card.querySelector('.native-review-message');
+ if(!file){message.textContent='Bitte zuerst den passenden Screenshot auswählen.';return}
+ const upload=card.querySelector('[data-native-review-upload]');upload.disabled=true;
+ message.textContent='Bild wird privat gesichert …';
+ try{
+  const payload=await normalizeReviewImage(file);
+  const res=await fetch(apiBase+'/api/reviews/'+encodeURIComponent(id)+'/evidence',{
+   method:'PUT',headers:{Authorization:'Bearer '+sessionToken,'Content-Type':payload.type},
+   body:payload,mode:'cors',credentials:'omit',cache:'no-store'});
+  const body=await res.json();
+  if(!res.ok)throw Error(body.error||'Upload fehlgeschlagen');
+  const record=(cache.reviews||[]).find(x=>x.id===id);
+  if(record)record.evidence_sha=body.sha256;
+  card.querySelector('.native-review-evidence-status').textContent='Bild hinterlegt';
+  const panel=card.querySelector('.native-review-picture');
+  panel.querySelector('label')?.remove();upload.remove();
+  card.querySelector('[data-native-review-resolve="approve"]').disabled=
+   !['profile','vs_day','identity'].includes(record?.kind)||Boolean(record?.context?.warning);
+  message.textContent='Bild geschützt hinterlegt. Bitte ansehen, korrigieren und speichern.';
+  await loadReviewImage(card);
+ }catch(error){message.textContent='Nicht hochgeladen: '+error.message;upload.disabled=false}
+}
+async function completeReview(card,action){
+ const item=(cache.reviews||[]).find(x=>x.id===card.dataset.reviewId);
+ if(!item)return;
+ const message=card.querySelector('.native-review-message'),reason=card.querySelector('[data-native-review-reason]')?.value.trim();
+ if(!reason||reason.length<8){message.textContent='Bitte kurz begründen, was geprüft wurde.';return}
+ const body={action,reason};
+ if(action==='approve'){
+  if(!item.evidence_sha){message.textContent='Ohne Bildbeleg keine Freigabe.';return}
+  body.evidence_sha=item.evidence_sha;
+  if(item.kind==='identity'){
+   const chosen=card.querySelector('[data-native-review-member]')?.value;
+   if(!chosen){message.textContent='Bitte einen Spieler aus der Suche auswählen.';return}
+   body.member_id=chosen;
+  }else if(['profile','vs_day'].includes(item.kind)){
+   const value=reviewNumericValue(card.querySelector('[data-native-review-value]')?.value);
+   if(value===null){message.textContent='Bitte einen gültigen, bestätigten Wert eintragen.';return}
+   body.corrected_value=value;
+  }else{message.textContent='Dieser Falltyp kann nicht direkt freigegeben werden.';return}
+ }
+ if(!window.confirm(action==='approve'?'Wert nach Bildprüfung verbindlich speichern?':'Prüfauftrag mit Begründung schließen?'))return;
+ card.querySelectorAll('button').forEach(button=>button.disabled=true);
+ message.textContent='Wird gespeichert und protokolliert …';
+ try{
+  await request('/api/reviews/'+encodeURIComponent(item.id)+'/resolve',{method:'POST',body});
+  cache.reviews=cache.reviews.filter(x=>x.id!==item.id);
+  const target=card.closest('#native-admin-content');
+  renderReviews(target,target.querySelector('#review-search-native')?.value||'');
+  const status=target.querySelector('#native-review-finished');
+  if(status)status.textContent='Prüfauftrag erledigt und aus der offenen Liste entfernt.';
+ }catch(error){
+  message.textContent='Nicht gespeichert: '+error.message;
+  card.querySelectorAll('button').forEach(button=>button.disabled=false);
+  if(action==='approve'&&(!item.evidence_sha||item.context?.warning))
+   card.querySelector('[data-native-review-resolve="approve"]').disabled=true;
+ }
 }
 
 export async function renderNativeAdmin(mount){
