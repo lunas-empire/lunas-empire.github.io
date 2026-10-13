@@ -126,14 +126,17 @@ async function view(mount){
    cache.activity=await request('/api/activity?limit=200');
    target.innerHTML='<div class="native-row"><h2>Admin-Aktivitäten</h2><input id="activity-search" type="search" placeholder="Admin, Aktion, Spieler"></div><div id="activity-list"></div>';renderActivity(target,'');
   }else if(panel==='reviews'){
-   const [cases,members]=await Promise.all([
+   const [cases,members,session]=await Promise.all([
     request('/api/reviews?status=open'),
-    request('/api/identity-options').catch(()=>[])
+    request('/api/identity-options').catch(()=>[]),
+    request('/api/session').catch(()=>({reviewWritesEnabled:false}))
    ]);
+   cache.reviewWritesEnabled=session?.reviewWritesEnabled===true;
    cache.reviews=cases;cache.reviewMembers=Array.isArray(members)?members:members.members||[];
    const batches=[...new Set(cache.reviews.map(x=>x.source_batch).filter(Boolean))].sort();
    target.innerHTML='<div class="native-row"><h2>OCR-Prüfung</h2><input id="review-search-native" type="search" placeholder="Spieler oder Fall suchen"></div>'+
     '<p class="native-muted">Öffne einen Prüfauftrag, kontrolliere das private Belegbild und korrigiere nur die nicht eindeutig erkannten Angaben. Kein Bild = keine Freigabe.</p>'+
+    (!cache.reviewWritesEnabled?'<p class="native-evidence-note" role="status">Private Bild- und Korrekturfunktionen werden erst nach dem Cloudflare-Backend-Update freigeschaltet. Die bestehenden Prüffälle bleiben offen.</p>':'')+
     '<div class="native-row"><label>Quelle <select id="review-batch-native"><option value="">Alle Wochen und Profile</option>'+batches.map(b=>'<option value="'+e(b)+'">'+e(b)+'</option>').join('')+'</select></label>'+
     '<label>Prüftyp <select id="review-kind-native"><option value="">Alle</option><option value="vs_day">VS-Tageswert</option><option value="identity">Identität</option><option value="profile">Profilwert</option></select></label></div>'+
     '<p id="native-review-finished" role="status" aria-live="polite"></p><div id="review-list-native"></div>';renderReviews(target,'');
@@ -718,6 +721,7 @@ async function normalizeReviewImage(file){
 }
 function renderReviews(target,term=''){
  clearReviewImages();
+ const writesEnabled=cache.reviewWritesEnabled===true;
  const batch=target.querySelector('#review-batch-native')?.value||'';
  const kind=target.querySelector('#review-kind-native')?.value||'';
  const list=(cache.reviews||[]).filter(x=>(!batch||x.source_batch===batch)&&(!kind||x.kind===kind)&&
@@ -738,7 +742,7 @@ function renderReviews(target,term=''){
      '<div class="native-review-image" role="img" aria-label="Geschütztes Belegbild">Bild öffnen, um Beleg zu laden.</div>'+
      (linked?'<small>Privat hinterlegt · überprüfe die Anzeige vor dem Speichern.</small>':
       '<label>Screenshot diesem Auftrag zuordnen<input type="file" data-native-review-file accept="image/png,image/jpeg,image/webp"></label>'+
-      '<button type="button" data-native-review-upload>Beleg sicher hochladen</button>')+
+      '<button type="button" data-native-review-upload '+(writesEnabled?'':'disabled')+'>Beleg sicher hochladen</button>')+
     '</div><div class="native-review-entry">'+
      '<small>OCR erkannt: '+e(x.source_value??'unbekannt')+'</small>'+
      (identity?'<label>Spieler suchen<input type="search" data-native-review-search autocomplete="off" placeholder="Name eingeben"></label>'+
@@ -748,8 +752,8 @@ function renderReviews(target,term=''){
       '<p class="native-evidence-note">Dieser Falltyp benötigt eine gesonderte fachliche Prüfung.</p>')+
      '<label>Prüfnotiz<input type="text" data-native-review-reason maxlength="500" placeholder="Was wurde am Bild bestätigt?" value="Screenshot manuell geprüft"></label>'+
      '<div class="native-review-controls">'+
-      '<button type="button" class="native-game-primary" data-native-review-resolve="approve" '+(!linked||(!identity&&!numeric)||Boolean(x.context?.warning)?'disabled':'')+'>Korrektur speichern</button>'+
-      '<button type="button" data-native-review-resolve="dismiss">Ohne Korrektur schließen</button></div>'+
+      '<button type="button" class="native-game-primary" data-native-review-resolve="approve" '+(!writesEnabled||!linked||(!identity&&!numeric)||Boolean(x.context?.warning)?'disabled':'')+'>Korrektur speichern</button>'+
+      '<button type="button" data-native-review-resolve="dismiss" '+(writesEnabled?'':'disabled')+'>Ohne Korrektur schließen</button></div>'+
      '<p class="native-review-message" role="status" aria-live="polite"></p></div></div></div></details>';
  };
  const host=target.querySelector('#review-list-native');if(!host)return;
@@ -767,6 +771,7 @@ function renderReviews(target,term=''){
  });
 }
 async function attachReviewScreenshot(card){
+ if(cache.reviewWritesEnabled!==true)return;
  const id=card.dataset.reviewId,file=card.querySelector('[data-native-review-file]')?.files?.[0];
  const message=card.querySelector('.native-review-message');
  if(!file){message.textContent='Bitte zuerst den passenden Screenshot auswählen.';return}
@@ -791,6 +796,7 @@ async function attachReviewScreenshot(card){
  }catch(error){message.textContent='Nicht hochgeladen: '+error.message;upload.disabled=false}
 }
 async function completeReview(card,action){
+ if(cache.reviewWritesEnabled!==true)return;
  const item=(cache.reviews||[]).find(x=>x.id===card.dataset.reviewId);
  if(!item)return;
  const message=card.querySelector('.native-review-message'),reason=card.querySelector('[data-native-review-reason]')?.value.trim();
