@@ -9,7 +9,7 @@ async function request(path,options={}){
  const headers={'Accept':'application/json',...(options.body?{'Content-Type':'application/json'}:{}),...(sessionToken?{'Authorization':'Bearer '+sessionToken}:{})};
  const response=await fetch(apiBase+path,{method:options.method||'GET',headers,body:options.body?JSON.stringify(options.body):undefined,mode:'cors',credentials:'omit',cache:'no-store'});
  let result;try{result=await response.json()}catch{throw Error('Die Cloudflare-API antwortet nicht korrekt.')}
- if(!response.ok){if(response.status===401&&path!=='/api/native-login')clearOfficer();throw Error(result.error||'HTTP '+response.status)}
+ if(!response.ok){if(response.status===401&&path!=='/api/native-login')clearOfficer();throw Object.assign(Error(result.error||'HTTP '+response.status),{status:response.status})}
  return result;
 }
 const options=(members,value='')=>'<option value="">Nicht besetzt</option>'+members.map(m=>'<option value="'+e(m.id)+'" '+(m.id===value?'selected':'')+'>'+e(m.name)+' · '+e(m.rank)+'</option>').join('');
@@ -71,7 +71,11 @@ async function showPerson(target,id){
  const p=await request('/api/member/'+encodeURIComponent(id));
  const s=p.stats.filter((x,i,a)=>a.findIndex(y=>x.metric===y.metric)===i);
  const node=target.querySelector('#native-person');
- node.innerHTML='<details class="native-fold" open><summary>'+e(p.member.name)+' · Spielerakte</summary><div class="native-fold-body">'+cards(s.slice(0,8).map(x=>[x.metric.replaceAll('_',' '),['observed','corrected'].includes(x.quality)?Number(x.value).toLocaleString('de-DE'):'?',x.quality]))+
+ node.innerHTML='<details class="native-fold" open><summary>'+e(p.member.name)+' · Spielerakte</summary><div class="native-fold-body">'+
+  '<p>Verwalteter Rang: '+e(p.member.rank||'Unbekannt')+' · Status: '+e(p.member.status)+(p.member.blacklisted?' · BLACKLIST':'')+'</p>'+
+  '<p>Datenquelle: '+(p.member.state_source==='registry'?'Mitgliederverwaltung · '+e(p.member.registry_updated_at)+' · '+e(p.member.registry_updated_by):'Import')+'</p>'+
+  (p.member.source_difference?'<p role="status">Abweichender Import: '+e(p.member.imported_rank||'Unbekannt')+' · '+e(p.member.source_status)+'. Die manuelle Verwaltung bleibt wirksam.</p>':'')+
+  cards(s.slice(0,8).map(x=>[x.metric.replaceAll('_',' '),['observed','corrected'].includes(x.quality)?Number(x.value).toLocaleString('de-DE'):'?',x.quality]))+
   '<details class="native-fold"><summary>VS Verlauf</summary><div class="native-fold-body">'+p.weeks.map(w=>'<p>'+e(w.week)+': '+e(w.verified_goal_days)+' / '+e(w.verified_days)+' bestätigte Zieltage</p>').join('')+'</div></details></div></details>';
  node.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
@@ -141,12 +145,12 @@ function editRegistry(target,id){
  const m=cache.registry.members.find(x=>x.id===id);if(!m)return;
  const ranks=['R1','R2','R3','R4','R5'];
  const host=target.querySelector('#registry-form');
- host.innerHTML='<form id="registry-save" class="native-form" data-id="'+e(id)+'"><h3>'+e(m.name)+' verwalten</h3>'+
-  '<label>Verwalteter Rang<select name="rank">'+ranks.map(x=>'<option '+(m.rank===x?'selected':'')+'>'+x+'</option>').join('')+'</select></label>'+
-  '<label>Status<select name="lifecycle"><option value="active" '+(m.lifecycle==='active'?'selected':'')+'>Aktiv</option><option value="former" '+(m.lifecycle==='former'?'selected':'')+'>Ehemalig / Archiv</option></select></label>'+
+ host.innerHTML='<form id="registry-save" class="native-form" data-id="'+e(id)+'" data-revision="'+e(m.revision)+'"><h3>'+e(m.name)+' verwalten</h3>'+
+  '<label>Verwalteter Rang<select name="rank" required>'+(!m.rank?'<option value="" selected disabled>Rang verifizieren</option>':'')+ranks.map(x=>'<option '+(m.rank===x?'selected':'')+'>'+x+'</option>').join('')+'</select></label>'+
+  '<label>Status<select name="lifecycle" required>'+(m.lifecycle==='unverified'?'<option value="" selected disabled>Identität / Status verifizieren</option>':'')+'<option value="active" '+(m.lifecycle==='active'?'selected':'')+'>Aktiv</option><option value="former" '+(m.lifecycle==='former'?'selected':'')+'>Ehemalig / Archiv</option></select></label>'+
   '<label class="native-check"><input type="checkbox" name="blacklisted" '+(m.blacklisted?'checked':'')+'>Manuelle Blacklist</label>'+
-  '<label>Begründung<input name="reason" maxlength="500" value="'+e(m.reason)+'" placeholder="Bei Archivierung oder Blacklist erforderlich"></label>'+
-  '<button type="submit">Änderung protokolliert speichern</button><p id="native-form-message"></p></form>';
+  '<label>Begründung<input name="reason" required minlength="8" maxlength="500" value="'+e(m.reason)+'" placeholder="Für jede Änderung erforderlich (mindestens 8 Zeichen)"></label>'+
+  '<button type="submit">Änderung protokolliert speichern</button><button type="button" data-registry-reload hidden>Aktuellen Stand laden (Eingaben verwerfen)</button><p id="native-form-message" role="status"></p></form>';
  host.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function renderActivity(target,term){
@@ -171,7 +175,7 @@ export function initNativeAdmin(mount){
  if(mount.dataset.nativeReady)return;
  mount.dataset.nativeReady='1';
  mount.addEventListener('click',async event=>{
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit]');
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload]');
   if(!button)return;
   if(button.hasAttribute('data-officer-logout')){
    try{await request('/api/native-logout',{method:'POST',body:{}})}catch{}clearOfficer();await renderNativeAdmin(mount);return;
@@ -179,6 +183,17 @@ export function initNativeAdmin(mount){
   if(button.dataset.officerTab){panel=button.dataset.officerTab;pageLimit=20;historyLimit=20;await view(mount);return}
   if(button.hasAttribute('data-native-refresh')){await view(mount);return}
   const target=mount.querySelector('#native-admin-content');if(!target)return;
+  if(button.hasAttribute('data-registry-reload')){
+   if(!window.confirm('Aktuellen Stand laden und eigene Eingaben verwerfen?'))return;
+   const form=button.closest('form');button.disabled=true;
+   try{
+    const latest=await request('/api/member-registry');
+    if(!latest.members.some(m=>m.id===form.dataset.id))throw Error('Mitglied nicht mehr vorhanden. Eingaben bleiben erhalten.');
+    cache.registry=latest;renderRegistry(target,target.querySelector('#registry-search')?.value||'');
+    editRegistry(target,form.dataset.id);
+   }catch(err){form.querySelector('#native-form-message').textContent=err.message;button.disabled=false}
+   return;
+  }
   if(button.dataset.registryEdit){editRegistry(target,button.dataset.registryEdit);return}
   if(button.dataset.nativeMember){await showPerson(target,button.dataset.nativeMember);return}
   if(button.dataset.nativeMore==='members'){pageLimit+=20;renderMembers(target,target.querySelector('#native-member-search')?.value||'');return}
@@ -208,11 +223,16 @@ export function initNativeAdmin(mount){
    return;
   }
   if(form.id==='registry-save'){
-   const payload={member_id:form.dataset.id,rank:form.elements.namedItem('rank').value,lifecycle:form.elements.namedItem('lifecycle').value,blacklisted:form.elements.namedItem('blacklisted').checked,reason:form.elements.namedItem('reason').value};
+   if(form.dataset.conflict==='1'||form.querySelector('[type=submit]').disabled)return;
+   const payload={member_id:form.dataset.id,revision:form.dataset.revision,rank:form.elements.namedItem('rank').value,lifecycle:form.elements.namedItem('lifecycle').value,blacklisted:form.elements.namedItem('blacklisted').checked,reason:form.elements.namedItem('reason').value};
    if(!window.confirm('Mitgliedsänderung mit Audit-Log speichern?'))return;
    const button=form.querySelector('[type=submit]');button.disabled=true;
    try{await request('/api/member-registry',{method:'POST',body:payload});await view(mount)}
-   catch(err){form.querySelector('#native-form-message').textContent=err.message;button.disabled=false}return;
+   catch(err){
+    form.querySelector('#native-form-message').textContent=err.status===409?'Der Mitgliedsstand wurde geändert. Deine Eingaben bleiben erhalten. Lade den aktuellen Stand vor einer neuen Änderung.':err.message;
+    if(err.status===409){form.dataset.conflict='1';form.querySelector('[data-registry-reload]').hidden=false}
+    else button.disabled=false;
+   }return;
   }
   if(form.id==='native-train-save'){form.dataset.kind='train';await saveForm(mount,form)}
   if(form.id==='native-record-save')await saveForm(mount,form);
