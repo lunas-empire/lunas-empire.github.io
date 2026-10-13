@@ -4,7 +4,7 @@ import {icon} from './icons.js';
 const apiBase=ALLIANCE_CONFIG.commandCenterEmbedUrl.replace('/?embed=1','');
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
 let sessionToken='',officer=null,panel='overview',cache={},pageLimit=20,historyLimit=20,activityLimit=30,registryFilter='all';
-export function clearOfficer(){sessionToken='';officer=null;cache={};panel='overview';pageLimit=20;historyLimit=20;activityLimit=30;registryFilter='all';}
+export function clearOfficer(){clearReviewImages();sessionToken='';officer=null;cache={};panel='overview';pageLimit=20;historyLimit=20;activityLimit=30;registryFilter='all';}
 export const hasOfficer=()=>Boolean(sessionToken);
 async function request(path,options={}){
  const headers={'Accept':'application/json',...(options.body?{'Content-Type':'application/json'}:{}),...(sessionToken?{'Authorization':'Bearer '+sessionToken}:{})};
@@ -57,6 +57,7 @@ function nav(){
 function cards(items){return '<div class="native-cards">'+items.map(([name,value,sub])=>'<article><small>'+e(name)+'</small><strong>'+e(value)+'</strong><span>'+e(sub||'')+'</span></article>').join('')+'</div>'}
 function marker(status){return '<span class="native-status">'+e(status||'Unbekannt')+'</span>'}
 async function view(mount){
+ clearReviewImages();
  const header='<div class="native-officer-strip" role="group" aria-label="Offiziersbereich">'+
   '<a class="native-return-link" href="#today">← Zur Website</a>'+
   '<div class="native-officer-controls"><span class="native-officer-badge">'+e(officer?.role||'Offizier')+' · '+e(officer?.name||'')+
@@ -135,7 +136,7 @@ async function view(mount){
     '<p class="native-muted">Öffne einen Prüfauftrag, kontrolliere das private Belegbild und korrigiere nur die nicht eindeutig erkannten Angaben. Kein Bild = keine Freigabe.</p>'+
     '<div class="native-row"><label>Quelle <select id="review-batch-native"><option value="">Alle Wochen und Profile</option>'+batches.map(b=>'<option value="'+e(b)+'">'+e(b)+'</option>').join('')+'</select></label>'+
     '<label>Prüftyp <select id="review-kind-native"><option value="">Alle</option><option value="vs_day">VS-Tageswert</option><option value="identity">Identität</option><option value="profile">Profilwert</option></select></label></div>'+
-    '<div id="review-list-native"></div>';renderReviews(target,'');
+    '<p id="native-review-finished" role="status" aria-live="polite"></p><div id="review-list-native"></div>';renderReviews(target,'');
   }else if(panel==='members'){
    const list=await request('/api/members');
    cache.members=list;
@@ -812,7 +813,7 @@ export function initNativeAdmin(mount){
  if(mount.dataset.nativeReady)return;
  mount.dataset.nativeReady='1';
  mount.addEventListener('click',async event=>{
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter]');
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve]');
   if(!button)return;
   if(button.hasAttribute('data-officer-logout')){
    try{await request('/api/native-logout',{method:'POST',body:{}})}catch{}clearOfficer();await renderNativeAdmin(mount);return;
@@ -909,6 +910,26 @@ export function initNativeAdmin(mount){
   if(button.dataset.nativeMore==='train'){historyLimit+=20;renderTrain(target);return}
   if(button.dataset.nativeMore==='registry'){pageLimit+=20;renderRegistry(target,target.querySelector('#registry-search')?.value||'');return}
   if(button.dataset.nativeMore==='reviews'){historyLimit+=20;renderReviews(target,target.querySelector('#review-search-native')?.value||'');return}
+  if(button.dataset.nativeReviewPick){
+   const card=button.closest('.native-review-card');
+   if(!card)return;
+   const member=(cache.reviewMembers||[]).find(x=>x.id===button.dataset.nativeReviewPick);
+   if(!member)return;
+   card.querySelector('[data-native-review-member]').value=member.id;
+   card.querySelector('.native-review-selection').textContent='Ausgewählt: '+member.name+' · '+(member.rank||'?');
+   card.querySelectorAll('[data-native-review-pick]').forEach(x=>x.setAttribute('aria-pressed',String(x===button)));
+   return;
+  }
+  if(button.hasAttribute('data-native-review-upload')){
+   const card=button.closest('.native-review-card');
+   if(card)await attachReviewScreenshot(card);
+   return;
+  }
+  if(button.dataset.nativeReviewResolve){
+   const card=button.closest('.native-review-card');
+   if(card)await completeReview(card,button.dataset.nativeReviewResolve);
+   return;
+  }
   if(button.dataset.nativeMore==='activity'){activityLimit+=30;renderActivity(target,target.querySelector('#activity-search')?.value||'');return}
   if(button.dataset.nativeCopyTrain){
    const date=button.dataset.nativeCopyTrain;
@@ -944,6 +965,10 @@ export function initNativeAdmin(mount){
   if(event.target.id==='native-diplomacy-search')renderDiplomacy(mount.querySelector('#native-admin-content'),event.target.value);
   if(event.target.id==='activity-search')renderActivity(mount.querySelector('#native-admin-content'),event.target.value);
   if(event.target.id==='review-search-native'){historyLimit=20;renderReviews(mount.querySelector('#native-admin-content'),event.target.value)}
+  if(event.target.matches('[data-native-review-search]')){
+   const card=event.target.closest('.native-review-card');
+   if(card)reviewMemberOptions(card,event.target.value);
+  }
  });
  mount.addEventListener('change',event=>{if(event.target.name==='event_type'&&event.target.closest('#native-record-save'))updateEventForm(event.target.form);if(event.target.id==='native-vs-week')renderVs(mount.querySelector('#native-admin-content'));if(['review-batch-native','review-kind-native'].includes(event.target.id)){historyLimit=20;const target=mount.querySelector('#native-admin-content');renderReviews(target,target.querySelector('#review-search-native')?.value||'')}});
  mount.addEventListener('submit',async event=>{
