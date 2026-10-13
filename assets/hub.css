@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-13.6');
+@import url('./tokens.css?v=2026-10-13.7');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -826,3 +826,6 @@ input[type='checkbox'],input[type='radio']{accent-color:var(--color-game-orange)
  .native-event-summary{grid-template-columns:minmax(0,1fr)}
  .native-event-panel-head{flex-wrap:wrap}
 }
+
+.native-event-trend-label{margin:.75rem 0 -.3rem}
+.native-event-bar--failed{background:linear-gradient(#abb6c4,#778497);border-color:#68788b}
