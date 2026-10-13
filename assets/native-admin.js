@@ -364,6 +364,84 @@ async function saveForm(mount,form){
   else submit.disabled=false;
  }
 }
+// Read-only comparison: a person missing from a list is NOT a departure.
+export function membershipWatchSummary(data){
+ const list=Array.isArray(data?.candidates)?data.candidates:[];
+ return {count:list.length,both:list.filter(x=>x.priority==='cross_source').length,
+  profile:list.filter(x=>x.missing_profile).length,vs:list.filter(x=>x.missing_vs).length};
+}
+function renderMembershipWatch(target){
+ const data=cache.watch||{},host=target.querySelector('#native-watch-list');if(!host)return;
+ const count=membershipWatchSummary(data),list=data.candidates||[];
+ const snapshotInfo=(data.profile?.current?.captured_at?'Stärke '+data.profile.current.captured_at.slice(0,10):'Stärke ohne Vergleich')+
+  ' · '+(data.vs?.current?.week?'VS '+data.vs.current.week:'VS ohne Vergleich');
+ host.innerHTML='<p class="native-muted">'+e(snapshotInfo)+' · Quellen sind unterschiedlich vollständig</p>'+
+  cards([['Prüfkandidaten',count.count],['In beiden Listen fehlend',count.both],
+   ['Im Stärke-Snapshot fehlend',count.profile],['In VS-Liste fehlend',count.vs]])+
+  '<p class="native-evidence-note"><strong>Kein automatischer Austritt:</strong> Fehlt ein Spieler auf einem Screenshot, bleibt er aktiv. Bei fehlenden Daten ist keine Blacklist zulässig. Status und Blacklist werden ausschließlich manuell in der Spielerakte geändert.</p>'+
+  (data.state==='insufficient_history'?
+   '<p class="native-muted">Für einen verlässlichen Vergleich benötigen wir mindestens zwei vollständige Profil-Aufnahmen oder zwei abgeschlossene VS-Wochen.</p>':
+   list.length?'<div class="native-list native-watch-candidates">'+list.map(m=>
+    '<article class="native-watch-item"><div><span class="native-status">'+e(m.priority==='cross_source'?'Zwei Quellen':'Prüfen')+'</span>'+
+    '<h3>'+e(m.name)+' <small>'+e(m.rank)+'</small></h3>'+
+    '<p>'+e(m.missing_profile?'Neue Stärke-Aufnahme: nicht enthalten':'Stärke-Aufnahme: keine neue Abweichung')+'</p>'+
+    '<p>'+e(m.missing_vs?'Neue VS-Aufnahme: nicht enthalten':'VS-Aufnahme: keine neue Abweichung')+'</p>'+
+    '<small>Zuletzt gesehen: '+e(m.last_seen||'Unbekannt')+(m.blacklisted?' · Bereits manuell gesperrt':'')+'</small></div>'+
+    '<button type="button" data-native-watch-person="'+e(m.id)+'">Spielerakte prüfen</button></article>'
+   ).join('')+'</div>':
+   '<p class="native-muted">In den aktuell vergleichbaren Aufnahmen sind keine fehlenden Spieler aufgefallen. Das ist kein vollständiger Anwesenheitsnachweis.</p>');
+}
+const diplomacyLabels={
+ stance:{ally:'Verbündet',nap:'Nichtangriff',neutral:'Neutral',hostile:'Konflikt',unknown:'Ungeklärt'},
+ war_support:{assist:'Wir helfen',none:'Keine Kriegshilfe',oppose:'Gegenseite',unknown:'Ungeklärt'},
+ attack_policy:{no_attack:'Nicht angreifen',defend_only:'Nur verteidigen',open:'Keine Absprache',unknown:'Ungeklärt'},
+ verification:{confirmed:'Bestätigt',unconfirmed:'Unbestätigt',outdated:'Veraltet'}
+};
+const choices=(values,selected)=>Object.entries(values).map(([key,label])=>
+ '<option value="'+e(key)+'" '+(key===selected?'selected':'')+'>'+e(label)+'</option>').join('');
+function renderDiplomacy(target,term=''){
+ const host=target.querySelector('#native-diplomacy-list');if(!host)return;
+ const all=cache.diplomacy?.relations||[];
+ const list=all.filter(x=>(x.tag+' '+x.name+' '+x.server).toLowerCase().includes(term.toLowerCase()));
+ host.innerHTML='<p class="native-muted">'+list.length+' von '+all.length+' Allianzen. Alle Vereinbarungen beruhen auf manuellen Offiziersnotizen.</p>'+
+  (list.length?'<div class="native-diplomacy-cards">'+list.map(x=>
+    '<button type="button" class="native-diplomacy-card" data-native-diplomacy-edit="'+e(x.id)+'">'+
+    '<span class="native-diplomacy-tag">'+e(x.tag)+'</span><span class="native-diplomacy-details"><strong>'+e(x.name)+'</strong>'+
+    '<small>Server '+e(x.server)+' · '+e(diplomacyLabels.stance[x.stance]||'Ungeklärt')+
+     (x.active?'':' · Historisch')+'</small>'+
+    '<span>'+e(diplomacyLabels.war_support[x.war_support]||'Ungeklärt')+
+     ' · '+e(diplomacyLabels.attack_policy[x.attack_policy]||'Ungeklärt')+'</span>'+
+    '<small>'+e(diplomacyLabels.verification[x.verification]||'Unbestätigt')+
+     ' · zuletzt '+e(formatOfficerTime(x.updated_at))+'</small></span>'+
+    '<span class="native-diplomacy-chevron" aria-hidden="true">›</span></button>'
+   ).join('')+'</div>':
+   '<p class="native-muted">Noch keine Allianz eingetragen oder keine Suchtreffer.</p>');
+}
+function editDiplomacy(target,id=''){
+ const record=(cache.diplomacy?.relations||[]).find(x=>x.id===id)||{};
+ const host=target.querySelector('#native-diplomacy-form');if(!host)return;
+ host.innerHTML='<form id="native-diplomacy-save" class="native-form native-diplomacy-form" data-id="'+e(record.id||'')+
+  '" data-revision="'+e(record.revision||'')+'">'+
+  '<div class="native-form-heading"><h3>'+(id?'Allianzvereinbarung bearbeiten':'Allianz notieren')+'</h3>'+
+  '<button type="button" data-native-diplomacy-cancel aria-label="Editor schließen">Schließen</button></div>'+
+  '<p class="native-form-help">Internes Offiziersbuch. Eine Notiz begründet keine automatische Ingame-Unterstützung oder Angriffssperre.</p>'+
+  '<label>Server<input type="number" name="server" inputmode="numeric" min="1" max="99999" required value="'+e(record.server??2261)+'" '+(id?'readonly':'')+'></label>'+
+  '<label>Allianz-Tag<input name="tag" maxlength="12" minlength="2" pattern="[A-Za-z0-9]{2,12}" autocapitalize="characters" required value="'+e(record.tag||'')+'" '+(id?'readonly':'')+'></label>'+
+  '<label>Allianzname<input name="name" maxlength="120" minlength="2" required value="'+e(record.name||'')+'"></label>'+
+  '<label>Verhältnis<select name="stance">'+choices(diplomacyLabels.stance,record.stance||'unknown')+'</select></label>'+
+  '<label>Unterstützung im Krieg<select name="war_support">'+choices(diplomacyLabels.war_support,record.war_support||'unknown')+'</select></label>'+
+  '<label>Angriffsregel<select name="attack_policy">'+choices(diplomacyLabels.attack_policy,record.attack_policy||'unknown')+'</select></label>'+
+  '<label>Informationsstand<select name="verification">'+choices(diplomacyLabels.verification,record.verification||'unconfirmed')+'</select></label>'+
+  '<label class="native-check"><input type="checkbox" name="active" '+(record.active===0?'':'checked')+'>Aktuelle Beziehung (sonst historisch)</label>'+
+  '<label class="native-diplomacy-wide">Interne Notiz<textarea name="notes" maxlength="1200" rows="3" placeholder="Wer hat was zugesagt? Was gilt bei Krieg / Schild / Stadtbesetzung?">'+e(record.notes||'')+'</textarea></label>'+
+  '<label class="native-diplomacy-wide">Warum ändern wir die Vereinbarung?<textarea name="reason" rows="2" required minlength="8" maxlength="500" placeholder="Pflichtangabe für das Änderungsprotokoll"></textarea></label>'+
+  '<button type="submit" class="native-game-primary">Vereinbarung protokolliert speichern</button>'+
+  '<button type="button" data-native-diplomacy-reload hidden>Aktuellen Stand laden</button>'+
+  '<p id="native-diplomacy-message" role="status"></p></form>';
+ host.scrollIntoView({behavior:'smooth',block:'nearest'});
+ const focus=host.querySelector(id?'[name=stance]':'[name=tag]');focus?.focus({preventScroll:true});
+}
+
 function renderRegistry(target,query){
  const list=cache.registry.members.filter(x=>(x.name+' '+x.rank+' '+x.lifecycle).toLowerCase().includes(query.toLowerCase()));
  target.querySelector('#registry-list').innerHTML='<p class="native-muted">'+list.length+' Ergebnisse. Archiv und Blacklist werden nur manuell geändert.</p><div class="native-list">'+list.slice(0,pageLimit).map(x=>'<button data-registry-edit="'+e(x.id)+'"><strong>'+e(x.name)+' · '+e(x.rank)+'</strong><small>'+e(x.lifecycle)+(x.blacklisted?' · BLACKLIST':'')+' · zuletzt '+e(x.last_seen||'?')+'</small></button>').join('')+'</div>'+(list.length>pageLimit?'<button data-native-more="registry">Weitere Spieler</button>':'');
