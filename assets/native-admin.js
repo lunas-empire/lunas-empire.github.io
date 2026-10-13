@@ -239,7 +239,7 @@ export function summarizeAllianceEventRuns(source,type){
  const latest=historical[0]||null,previous=historical[1]||null;
  const number=x=>Number.isInteger(x)&&x>=1&&x<=999?x:null;
  const level=number(latest?.level),previousLevel=number(previous?.level);
- const validLevels=historical.map(x=>number(x.level)).filter(x=>x!==null);
+ const validLevels=completed.map(x=>number(x.level)).filter(x=>x!==null);
  const bestLevel=validLevels.length?Math.max(...validLevels):null;
  const waveValue=x=>Number.isInteger(x)&&x>=0&&x<=999?x:null;
  const waves=type==='zombie_siege'?waveValue(latest?.waves):null;
@@ -272,14 +272,14 @@ function renderEventRuns(target){
    '<div><small>Letztes Ergebnis</small><strong>'+e(last?.event_date||'—')+'</strong>'+
     '<span>'+e(last?allianceEventOutcomeLabels[last.outcome]:'Noch nicht dokumentiert')+'</span></div>'+
    '<div><small>Letztes Level</small><strong>'+e(latestLevel)+'</strong><span>'+e(diff)+'</span></div>'+
-   '<div><small>'+(type==='zombie_siege'?'Letzte Wellen':'Bisher bestes Level')+'</small>'+
+   '<div><small>'+(type==='zombie_siege'?'Letzte Wellen':'Höchstes abgeschlossenes Level')+'</small>'+
    '<strong>'+e(type==='zombie_siege'?data.waves??'—':data.bestLevel??'—')+'</strong>'+
    '<span>'+data.confirmedCount+' dokumentierte Ergebnisse</span></div></div>'+
    (upcoming?'<p class="native-event-next">Nächster eingetragener Termin: <b>'+e(upcoming.event_date)+'</b> · Level '+e(upcoming.level??'offen')+'</p>':
    '<p class="native-muted">Kein zukünftiger Termin eingetragen. Keine automatische Terminprognose.</p>')+
-   (bars.length?'<div class="native-event-trend" role="img" aria-label="'+e(type==='zombie_siege'?'Zombie Siege':'Marshall Guard')+
+   (bars.length?'<p class="native-muted native-event-trend-label">Dokumentierte Levelversuche · Grau = nicht geschafft</p><div class="native-event-trend" role="img" aria-label="'+e(type==='zombie_siege'?'Zombie Siege':'Marshall Guard')+
      ': aufgezeichnete Level '+bars.map(x=>e(x.event_date)+': '+e(x.level)).join(', ')+'">'+
-     bars.map(x=>'<div><span class="native-event-bar" style="height:'+Math.round(x.level/ceiling*100)+'%"></span>'+
+     bars.map(x=>'<div><span class="native-event-bar '+(x.outcome==='failed'?'native-event-bar--failed':'')+'" style="height:'+Math.round(x.level/ceiling*100)+'%"></span>'+
       '<b>'+e(x.level)+'</b><small>'+e(x.event_date.slice(5))+'</small></div>').join('')+'</div>':
     '<p class="native-muted">Noch keine bestätigten Level für einen Verlauf vorhanden.</p>')+
    '<details class="native-fold"><summary>Alle Durchgänge · '+data.entries.length+'</summary>'+
