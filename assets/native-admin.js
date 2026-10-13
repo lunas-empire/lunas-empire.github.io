@@ -838,7 +838,7 @@ export function initNativeAdmin(mount){
  if(mount.dataset.nativeReady)return;
  mount.dataset.nativeReady='1';
  mount.addEventListener('click',async event=>{
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve]');
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-rotation-reload]');
   if(!button)return;
   if(button.hasAttribute('data-officer-logout')){
    try{await request('/api/native-logout',{method:'POST',body:{}})}catch{}clearOfficer();await renderNativeAdmin(mount);return;
@@ -855,6 +855,12 @@ export function initNativeAdmin(mount){
    return;
   }
   if(button.hasAttribute('data-native-refresh')){await view(mount);return}
+  if(button.hasAttribute('data-native-rotation-reload')){
+   if(!window.confirm('Aktuelle Rotation laden und ungespeicherte Einstellungen verwerfen?'))return;
+   try{cache.rotation=await request('/api/train-rotation');renderTrainRotation(mount.querySelector('#native-admin-content'))}
+   catch(err){const text=mount.querySelector('#native-rotation-message');if(text)text.textContent=err.message}
+   return;
+  }
   if(button.hasAttribute('data-native-form-reload')){
    if(window.confirm('Aktuellen Stand laden und ungespeicherte Eingaben verwerfen?'))await view(mount);
    return;
@@ -1005,6 +1011,26 @@ export function initNativeAdmin(mount){
     const login=await request('/api/native-login',{method:'POST',body:{code:form.elements.namedItem('code').value}});
     sessionToken=login.token;officer=login;form.elements.namedItem('code').value='';await view(mount);
    }catch(err){form.querySelector('#native-login-status').textContent=err.message;button.disabled=false}
+   return;
+  }
+  if(form.id==='native-train-rotation-save'){
+   const types=trainWeekdays.map((_,i)=>form.elements.namedItem('type'+i).value);
+   const coordinators=trainWeekdays.map((_,i)=>form.elements.namedItem('coord'+i).value||null);
+   const body={types,coordinators,auto_suggest:form.elements.namedItem('auto_suggest').checked,
+    reason:form.elements.namedItem('reason').value,revision:Number(form.dataset.revision)};
+   const button=form.querySelector('[type=submit]'),message=form.querySelector('#native-rotation-message');
+   button.disabled=true;message.textContent='Rotation wird gespeichert …';
+   try{
+    await request('/api/train-rotation',{method:'POST',body});
+    const [rotation,trains]=await Promise.all([request('/api/train-rotation'),request('/api/train-manager')]);
+    cache.rotation=rotation;cache.trains=trains;renderTrain(mount.querySelector('#native-admin-content'));
+    const details=mount.querySelector('.native-train-rotation');if(details)details.open=true;
+    const result=mount.querySelector('#native-rotation-message');if(result)result.textContent='Neue Rotation und Zuständigkeiten gespeichert.';
+   }catch(err){
+    message.textContent=err.status===409?'Eine andere Person hat die Rotation geändert. Deine Eingaben bleiben erhalten.':'Nicht gespeichert: '+err.message;
+    if(err.status===409){form.dataset.conflict='1';form.querySelector('[data-native-rotation-reload]').hidden=false}
+    else button.disabled=false;
+   }
    return;
   }
   if(form.id==='native-diplomacy-save'){
