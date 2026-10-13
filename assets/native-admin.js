@@ -181,19 +181,38 @@ function renderVs(target){
   '<button type="button" data-native-action="member-find">Spielerakte öffnen</button></div></div>';
 }
 function renderTrain(target){
- const d=cache.trains,upcoming=d.calendar.filter(x=>x.date>=d.today).slice(0,7);
- target.querySelector('#native-train-body').innerHTML=cards([['Gefahren',d.counts.completed],['Geplant',d.counts.planned],['Offene Tage',d.counts.missing_recent]])+
-  '<div class="native-list">'+upcoming.map(x=>'<article class="native-train-item"><div><strong>'+e(x.date)+' · '+e(x.type)+'</strong><small>'+e(x.entry?.driver||'Noch offen')+'</small></div><button data-native-train="'+e(x.date)+'">Bearbeiten</button></article>').join('')+'</div>'+
-  '<div id="native-train-form"></div><details class="native-fold"><summary>Vergangene Züge ('+d.history.length+')</summary><div class="native-fold-body native-list">'+d.history.slice(0,historyLimit).map(x=>'<button data-native-train="'+e(x.date)+'">'+e(x.date)+' · '+e(x.driver)+' '+marker(x.status)+'</button>').join('')+(d.history.length>historyLimit?'<button data-native-more="train">Weitere 20 Fahrten</button>':'')+'</div></details>';
+ const d=cache.trains,upcoming=(d.calendar||[]).filter(x=>x.date>=d.today).slice(0,7);
+ const slot=x=>'<article class="native-train-item '+(x.date===d.today?'native-train-today':'')+'">'+
+  '<div><span class="native-kicker">'+(x.date===d.today?'HEUTE':e(x.date))+' · '+e(x.type||'Zug')+'</span>'+
+  '<strong>'+e(x.entry?.driver||'Noch kein Fahrer eingetragen')+'</strong>'+
+  '<small>'+e(x.entry?.status||'Offen')+(x.entry?.linked===false?' · Zuordnung nicht verifiziert':'')+'</small></div>'+
+  '<button type="button" data-native-train="'+e(x.date)+'">'+(x.entry?'Bearbeiten':'Fahrer wählen')+'</button></article>';
+ const toShow=upcoming.length?upcoming.map(slot).join(''):'<p class="native-muted">Für diese Woche liegen keine Zugdaten vor.</p>';
+ target.querySelector('#native-train-body').innerHTML='<p class="native-muted">Fahrer ab R2 · historische Importe bleiben unverändert. Geplant, gefahren und noch nicht bestätigt sind unterschiedliche Zustände.</p>'+
+  '<div class="native-train-highlights">'+cards([['Gefahren (Historie)',d.counts?.completed??'—'],['Geplant',d.counts?.planned??'—'],['Historische Lücken',d.counts?.missing_recent??'—']])+'</div>'+
+  '<h3 class="native-section-heading">Heute & diese Woche</h3><div class="native-list native-train-week">'+toShow+'</div>'+
+  '<div id="native-train-form"></div><details class="native-fold"><summary>Vergangene Züge · '+(d.history?.length||0)+'</summary>'+
+  '<div class="native-fold-body native-list">'+(d.history||[]).slice(0,historyLimit).map(x=>
+   '<button type="button" data-native-train="'+e(x.date)+'">'+e(x.date)+' · '+e(x.driver)+' '+marker(x.status)+'</button>').join('')+
+  ((d.history||[]).length>historyLimit?'<button type="button" data-native-more="train">Weitere 20 Fahrten</button>':'')+
+  '</div></details>';
 }
-function editTrain(target,date){
- const d=cache.trains,entry=d.history.find(x=>x.date===date);
- const optionsList=options(d.members,entry?.member_id);
+function editTrain(target,date,allowDateChange=false){
+ const d=cache.trains,entry=(d.history||[]).find(x=>x.date===date);
+ const optionsList=options(d.members||[],entry?.member_id);
  const editor=target.querySelector('#native-train-form');
- editor.innerHTML='<form id="native-train-save" class="native-form"><h3>Fahrer · '+e(date)+'</h3><label>Datum<input name="date" type="date" value="'+e(date)+'" required></label>'+
-  '<label>Fahrer aus Allianz<select name="member_id">'+optionsList+'</select></label><label>Oder manueller Name<input name="driver_name" maxlength="80" value="'+e(entry?.member_id?'':entry?.driver||'')+'"></label>'+
-  '<label>Status<select name="status">'+[['planned','Geplant'],['completed','Gefahren'],['cancelled','Abgesagt']].map(([v,l])=>'<option value="'+v+'" '+(v===(entry?.status||'planned')?'selected':'')+'>'+l+'</option>').join('')+'</select></label>'+
-  '<label>Notiz<input name="note" maxlength="300" value="'+e(entry?.note||'')+'"></label><button type="submit">Speichern</button><p id="native-form-message"></p></form>';
+ if(!editor)return;
+ editor.innerHTML='<form id="native-train-save" class="native-form native-fast-form"><h3>Zugfahrer · '+e(date)+'</h3>'+
+  '<p class="native-form-help">Nur bestätigte Zuordnungen speichern. R1-Spieler sind keine Zugfahrer.</p>'+
+  '<label>Fahrer aus Allianz<select name="member_id">'+optionsList+'</select></label>'+
+  '<label>Status<select name="status">'+[['planned','Geplant'],['completed','Gefahren'],['cancelled','Abgesagt']].map(([v,l])=>
+   '<option value="'+v+'" '+(v===(entry?.status||'planned')?'selected':'')+'>'+l+'</option>').join('')+'</select></label>'+
+  '<details class="native-form-more" '+(allowDateChange?'open':'')+'><summary>Datum, freie Namen & Notizen</summary><div class="native-form-more-fields">'+
+  '<label>Datum<input name="date" type="date" value="'+e(date)+'" required '+(allowDateChange?'':'readonly')+'></label>'+
+  '<label>Nur wenn keine sichere Zuordnung möglich ist: freier Name<input name="driver_name" maxlength="80" value="'+e(entry?.member_id?'':entry?.driver||'')+'"></label>'+
+  '<label>Notiz<input name="note" maxlength="300" value="'+e(entry?.note||'')+'"></label></div></details>'+
+  '<button type="submit" class="native-game-primary">Zugzuordnung speichern</button>'+
+  '<p id="native-form-message" role="status"></p></form>';
  editor.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function renderRecords(target){
@@ -338,7 +357,7 @@ export function initNativeAdmin(mount){
   if(button.dataset.nativeMore==='registry'){pageLimit+=20;renderRegistry(target,target.querySelector('#registry-search')?.value||'');return}
   if(button.dataset.nativeMore==='reviews'){historyLimit+=20;renderReviews(target,target.querySelector('#review-search-native')?.value||'');return}
   if(button.dataset.nativeTrain){editTrain(target,button.dataset.nativeTrain);return}
-  if(button.dataset.nativeNew==='train'){editTrain(target,cache.trains?.today||new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date()));return}
+  if(button.dataset.nativeNew==='train'){editTrain(target,cache.trains?.today||new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date()),true);return}
   if(button.dataset.nativeNew||button.dataset.nativeEdit){editRecord(target,panel,button.dataset.nativeEdit||'');return}
  });
  mount.addEventListener('input',event=>{
