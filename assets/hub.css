@@ -592,3 +592,135 @@ input[type='checkbox'],input[type='radio']{accent-color:var(--color-game-orange)
  .native-form h3,.native-form button,.native-form #native-form-message{grid-column:1}
  .native-admin-nav{margin-inline:-.2rem}
 }
+
+/* RZSN Command Center / Last-War-inspired officer experience.
+   Scoped to #admin: no global Guide, Roadmap or RZSN production skin changes. */
+.native-admin{--native-steel:#34465d;--native-steel-top:#51657d;--native-rim:#7e93ac;--native-amber:#ffbf5c;--native-cyan:#99e1f6;--native-ink:#f4f8fc}
+.native-admin-top{
+ align-items:center;padding:clamp(.85rem,2vw,1.3rem);border:2px solid var(--native-rim);
+ border-radius:6px;margin-bottom:.8rem;color:var(--native-ink);
+ background:linear-gradient(155deg,#52667f 0%,#33465d 38%,#243248 100%);
+ box-shadow:inset 0 2px rgba(255,255,255,.18),inset 0 -3px rgba(5,12,23,.25),0 6px 14px var(--surface-shadow);
+}
+.native-command-identity{display:flex;align-items:center;gap:.85rem;min-width:0}
+.native-command-emblem{display:grid;place-items:center;flex:0 0 52px;width:52px;height:52px;
+ background:linear-gradient(145deg,#fbd78d,#bb7833);border:2px solid #ffe4a0;
+ box-shadow:inset 0 -3px rgba(72,35,16,.24),0 2px 5px rgba(0,0,0,.22);clip-path:polygon(50% 0,95% 20%,95% 77%,50% 100%,5% 77%,5% 20%)}
+.native-emblem-icon{width:1.6rem;height:1.6rem;stroke:#213149}
+.native-admin-top .admin-eyebrow{color:#ffe4a6;font-size:.65rem}
+.native-admin-top h1{color:#fff;font-size:clamp(1.2rem,4vw,1.8rem);margin:.05rem 0;text-shadow:0 1px 1px #0b1a31}
+.native-admin-top p{color:#dbe8f7;font-size:.8rem}
+.native-officer-controls{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.native-officer-badge{display:inline-flex;align-items:center;min-height:34px;padding:.24rem .6rem;
+ color:#ffe3a1;font-weight:750;font-size:.75rem;border:1px solid #9a855e;border-radius:3px;background:#253447}
+.native-admin-top [data-officer-logout]{background:#293a50;color:#f4f8fc;border:1px solid #b1bfd1;font-size:.77rem;min-height:38px}
+.native-admin-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) minmax(62px,.78fr);
+ gap:.3rem;overflow:visible;margin:0 0 .45rem;padding:.28rem;border:1px solid var(--native-rim);
+ background:linear-gradient(180deg,#41556e,#26384f);border-radius:5px;scroll-snap-type:none;
+ box-shadow:inset 0 2px rgba(255,255,255,.12),0 2px 0 rgba(8,15,26,.24)}
+.native-admin-nav .native-primary-tab,.native-admin-more>summary{
+ display:flex;flex-direction:column;justify-content:center;align-items:center;gap:.24rem;
+ min-width:0;min-height:65px;padding:.35rem .2rem;white-space:normal;overflow-wrap:normal;
+ text-align:center;color:#e5eff8;font-size:.8rem;font-weight:780;background:linear-gradient(#344960,#293a50);
+ border:1px solid #566e85;border-bottom:3px solid #192838;border-radius:3px;
+ text-shadow:0 1px rgba(0,0,0,.3);line-height:1.15}
+.native-admin-nav .native-primary-tab[aria-current='page']{
+ color:#1c2836;background:linear-gradient(#ffe3a0,#f8bf56 58%,#df8a2e);
+ border-color:#c28c44;border-bottom-color:#8c5727;text-shadow:0 1px rgba(255,255,255,.25)}
+.native-admin-nav button[aria-current='page'] .native-tab-icon{color:#1d2c41}
+.native-tab-icon{width:1.35rem;height:1.35rem;color:#a9e6f7;flex:none}
+.native-admin-more{position:relative;margin:0;min-width:0;padding:0;border:0;background:transparent;box-shadow:none}
+.native-admin-more>summary{list-style:none;cursor:pointer;min-height:65px}
+.native-admin-more>summary::-webkit-details-marker{display:none}
+.native-admin-more>summary::before{content:'⋯';font-size:1.3rem;line-height:1;color:#a9e6f7}
+.native-admin-more[open]>summary{border-color:var(--native-amber)}
+.native-more-menu{position:absolute;z-index:30;right:0;top:calc(100% + .25rem);width:min(260px,85vw);padding:.5rem;display:grid;gap:.35rem;
+ background:#2c3d53;border:2px solid #8ea5be;border-radius:5px;box-shadow:0 12px 24px rgba(0,0,0,.32)}
+.native-more-menu button{color:#f3f7fa;background:#394e66;border:1px solid #8da5ba;min-height:44px;white-space:normal;text-align:start}
+.native-more-menu button[aria-current='page']{background:#f5ba62;color:#1d2939}
+.native-admin-subnav{display:flex;align-items:stretch;gap:.4rem;padding:.25rem .1rem .8rem;
+ max-width:100%;overflow-x:auto;scrollbar-width:thin;scroll-snap-type:x proximity}
+.native-admin-subnav button{min-height:43px;flex:0 0 auto;padding:.45rem .76rem;font-size:.78rem;font-weight:750;
+ border:1px solid var(--color-rule);background:var(--color-panel);color:var(--color-ink);border-radius:3px}
+.native-admin-subnav button[aria-current='page']{background:#354a62;border-color:#c99952;color:#fff3d5;box-shadow:inset 0 -3px #efa948}
+.native-admin-content{min-height:24rem}
+.native-dashboard-heading{display:flex;align-items:center;justify-content:space-between;gap:1rem;
+ border-left:4px solid var(--native-amber);padding:.2rem .1rem .5rem .7rem;margin-bottom:.65rem}
+.native-kicker{font-size:.68rem;font-weight:820;letter-spacing:.07em;color:var(--color-action);text-transform:uppercase}
+.native-dashboard-heading h2{margin:.1rem 0;font-family:var(--font-display)}
+.native-dashboard-heading p{margin:0}
+.native-daily-sigil{display:grid;place-items:center;flex:none;width:42px;height:42px;border:1px solid var(--color-rule);border-radius:5px;background:var(--color-panel)}
+.native-daily-sigil .native-emblem-icon{stroke:var(--color-action);width:1.4rem}
+.native-mission-stack{display:grid;gap:.5rem;margin-bottom:1rem}
+.native-mission{display:grid;grid-template-columns:46px minmax(0,1fr) 18px;align-items:center;gap:.7rem;width:100%;
+ min-height:88px;padding:.72rem;text-align:left;white-space:normal;
+ border:1px solid #8397ae;border-left:4px solid #e9a64d;border-bottom:3px solid #202d3f;border-radius:4px;
+ color:#f6f9fd;background:linear-gradient(110deg,#405672 0%,#2b3e56 100%);
+ box-shadow:inset 0 1px rgba(255,255,255,.15),0 3px 8px rgba(0,0,0,.13)}
+.native-mission-icon{display:grid;place-items:center;width:44px;height:44px;border:1px solid #8ba0b7;border-radius:3px;background:#22344a}
+.native-mission-svg{width:1.5rem;height:1.5rem;stroke:#abeaff}
+.native-mission-copy{display:grid;gap:.15rem;min-width:0}
+.native-mission-copy small{color:#ffdaa0;font-size:.69rem;letter-spacing:.08em;font-weight:800}
+.native-mission-copy strong{color:#fff;font-size:1.03rem;line-height:1.25;overflow-wrap:anywhere}
+.native-mission-copy>span{color:#dfebf7;font-size:.78rem;white-space:normal;overflow-wrap:anywhere;line-height:1.4}
+.native-mission-chevron{font-size:1.7rem;color:#ffce70}
+.native-mission:hover,.native-mission:focus-visible{border-left-color:#ffe4a0;filter:brightness(1.065)}
+.native-dashboard-summary .native-cards{grid-template-columns:repeat(3,minmax(0,1fr))}
+.native-dashboard-summary .native-cards article{border-top:3px solid var(--color-game-orange)}
+.native-dashboard-bottom{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem}
+.native-dashboard-panel{min-width:0;padding:.8rem;border:1px solid var(--color-rule);background:var(--color-panel);border-radius:4px}
+.native-dashboard-panel h3{margin:0 0 .65rem;font-size:1.05rem}
+.native-dashboard-panel p{font-size:.84rem}
+.native-dashboard-panel button{min-height:44px;max-width:100%;white-space:normal}
+.native-action-brief{display:grid;gap:.4rem;margin-bottom:.7rem}
+.native-action-brief>div{display:grid;gap:.15rem;border-bottom:1px solid var(--color-rule);padding-bottom:.4rem}
+.native-action-brief b{font-size:.87rem}
+.native-action-brief small{color:var(--color-muted)}
+.native-shortcuts{gap:.5rem}
+.native-shortcuts button:first-child,.native-game-primary{
+ background:linear-gradient(#ffdb83,#f1ad43 70%,#dd8e30);
+ color:#1b2a39;border:1px solid #ab762e;border-bottom:3px solid #895724;font-weight:820}
+.native-profile{margin:.9rem 0;padding:.9rem;border:1px solid var(--native-rim);border-radius:5px;background:var(--color-panel)}
+.native-profile-header{display:grid;grid-template-columns:auto auto minmax(0,1fr);align-items:center;gap:.75rem}
+.native-back{font-size:.8rem}
+.native-profile-rank{display:grid;place-items:center;width:50px;height:50px;flex:none;font-weight:900;font-size:1.15rem;
+ color:#243247;background:linear-gradient(#ffe3a6,#e2a349);border:2px solid #a87535;border-radius:6px;
+ box-shadow:inset 0 1px #fff2c3,0 2px 4px rgba(0,0,0,.16)}
+.native-profile-identity{min-width:0}
+.native-profile-identity h3{margin:.05rem 0;font-size:1.25rem;overflow-wrap:anywhere}
+.native-profile-identity p{font-size:.8rem;color:var(--color-muted);margin:.15rem 0}
+.native-profile-actions{display:flex;flex-wrap:wrap;gap:.5rem;margin:.85rem 0}
+.native-profile-actions button{min-height:44px;white-space:normal}
+.native-section-heading{border-bottom:1px solid var(--color-rule);padding-bottom:.45rem;margin:1.1rem 0 .65rem}
+.native-evidence-note{border-left:3px solid var(--color-game-orange);padding:.55rem .75rem;background:var(--color-raised);font-size:.82rem}
+.native-activity-brief{display:grid;gap:.35rem;font-size:.81rem}
+.native-activity-brief p{padding:.4rem;border-bottom:1px solid var(--color-rule);overflow-wrap:anywhere}
+.native-admin .native-form{scroll-margin-top:1rem}
+.native-admin .native-list>button:hover{border-color:var(--color-game-orange)}
+.native-admin button:focus-visible,.native-admin summary:focus-visible{outline:3px solid var(--color-focus);outline-offset:2px}
+.native-admin button:active{transform:translateY(2px)}
+@media(max-width:45rem){
+ .native-admin-top{gap:.65rem}
+ .native-command-emblem{width:42px;height:42px;flex-basis:42px}
+ .native-admin-nav{grid-template-columns:repeat(4,minmax(0,1fr)) minmax(48px,.76fr)}
+ .native-admin-nav .native-primary-tab,.native-admin-more>summary{min-height:68px;font-size:.68rem;padding:.24rem .08rem}
+ .native-tab-icon{width:1.18rem;height:1.18rem}
+ .native-dashboard-summary .native-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .native-dashboard-bottom{grid-template-columns:minmax(0,1fr)}
+ .native-profile-header{grid-template-columns:auto minmax(0,1fr)}
+ .native-profile-header .native-back{grid-column:1/-1;justify-self:start}
+ .native-mission{min-height:80px;grid-template-columns:38px minmax(0,1fr) 14px;gap:.5rem;padding:.6rem}
+ .native-mission-icon{width:38px;height:38px}
+ .native-mission-copy strong{font-size:.94rem}
+}
+@media(max-width:360px){
+ .native-admin-top h1{font-size:1.15rem}
+ .native-officer-badge{font-size:.7rem}
+ .native-admin-nav{gap:.14rem;padding:.16rem}
+ .native-admin-nav .native-primary-tab,.native-admin-more>summary{font-size:.62rem}
+ .native-mission-copy small{font-size:.63rem}
+}
+@media(prefers-reduced-motion:reduce){
+ .native-admin button{transition:none!important}
+ .native-admin button:active{transform:none!important}
+}
