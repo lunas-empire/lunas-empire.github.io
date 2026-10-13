@@ -17,6 +17,13 @@ test('Alliance event history preserves unknown levels, outcomes, waves and genui
  assert.equal(siege.latest.level,7);
  assert.equal(siege.deltaLevel,1);
  assert.equal(siege.bestLevel,7,'planned 99 is not an achieved level');
+ const trials=summarizeAllianceEventRuns([
+  {event_type:'marshall_guard',event_date:'2026-10-12',level:10,outcome:'failed'},
+  {event_type:'marshall_guard',event_date:'2026-10-10',level:8,outcome:'completed'},
+  {event_type:'marshall_guard',event_date:'2026-10-08',level:9,outcome:'completed'}
+ ],'marshall_guard');
+ assert.equal(trials.level,10,'latest attempted level remains visible');
+ assert.equal(trials.bestLevel,9,'higher failed level is not the best completed level');
  assert.equal(siege.waves,18);
  assert.equal(siege.planned.length,1);
  const guard=summarizeAllianceEventRuns(runs,'marshall_guard');
