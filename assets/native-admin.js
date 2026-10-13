@@ -244,6 +244,7 @@ async function showPerson(target,id){
   (member.blacklisted?' · Manuell gesperrt':'')+'</p></div></div>'+
   (active.length?'<p class="native-absence-warning">Aktuell als abwesend eingetragen. Zugvorschläge berücksichtigen diesen Zeitraum.</p>':'')+
   (member.source_difference?'<p class="native-evidence-note">Abweichender Import: '+e(member.imported_rank||'Rang unbekannt')+' · '+e(member.source_status||'Status ungeklärt')+'. Der bestätigte Verwaltungsstand hat Vorrang.</p>':'')+
+  (member.registry_updated_by?'<p class="native-muted">Letzte Rang-/Statusänderung: '+e(member.registry_updated_by)+' · '+e(formatOfficerTime(member.registry_updated_at))+'</p>':'')+
   '<h4 class="native-section-heading">Werte & Entwicklung</h4>'+metricHtml+
   '<details class="native-fold"><summary>VS-Erfolge & Wochen · '+weeks.length+'</summary>'+
    '<div class="native-fold-body">'+weekSummary+'</div></details>'+
