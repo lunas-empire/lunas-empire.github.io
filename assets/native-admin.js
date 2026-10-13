@@ -212,6 +212,7 @@ function editTrain(target,date,allowDateChange=false){
   '<label>Nur wenn keine sichere Zuordnung möglich ist: freier Name<input name="driver_name" maxlength="80" value="'+e(entry?.member_id?'':entry?.driver||'')+'"></label>'+
   '<label>Notiz<input name="note" maxlength="300" value="'+e(entry?.note||'')+'"></label></div></details>'+
   '<button type="submit" class="native-game-primary">Zugzuordnung speichern</button>'+
+  '<button type="button" data-native-form-reload hidden>Aktuellen Zugstand laden</button>'+
   '<p id="native-form-message" role="status"></p></form>';
  editor.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
@@ -228,13 +229,13 @@ function editRecord(target,kind,id){
   absences:'<label>Abwesend<select name="member_id" required>'+select('member_id')+'</select></label><label>Ersatz<select name="substitute_id">'+select('substitute_id')+'</select></label><label>Beginn<input name="start_date" type="date" required></label><label>Ende<input name="end_date" type="date" required></label><label>Notiz<input name="note" maxlength="300"></label>',
   events:'<label>Event<select name="event_type"><option value="marshall_guard">Marshall Guard</option><option value="zombie_siege">Zombie Siege</option><option value="desert_storm">Desert Storm</option></select></label><label>Datum<input name="event_date" type="date" required></label><label>Level<input name="level" type="number" min="1" max="999"></label><label>Wellen<input name="waves" type="number" min="0" max="999"></label><label>Verantwortlich<select name="lead_id">'+select('lead_id')+'</select></label><label>Ersatz<select name="substitute_id">'+select('substitute_id')+'</select></label><label>Teilnehmer<input name="attendance" type="number" min="0" max="100"></label><label>Ergebnis<select name="outcome"><option value="scheduled">Geplant</option><option value="completed">Erfolgreich</option><option value="failed">Nicht geschafft</option><option value="cancelled">Abgesagt</option></select></label><label>Notizen<input name="notes" maxlength="500"></label>'
  };
- const host=target.querySelector('#native-form');host.innerHTML='<form class="native-form" id="native-record-save" data-kind="'+kind+'" data-id="'+e(record.id||'')+'">'+fields[kind]+'<button type="submit">Speichern</button><p id="native-form-message"></p></form>';
+ const host=target.querySelector('#native-form');host.innerHTML='<form class="native-form" id="native-record-save" data-kind="'+kind+'" data-id="'+e(record.id||'')+'">'+fields[kind]+'<button type="submit">Speichern</button><button type="button" data-native-form-reload hidden>Aktuellen Stand laden</button><p id="native-form-message" role="status"></p></form>';
  const form=host.firstElementChild;
  for(const [key,value] of Object.entries(record)){if(form.elements.namedItem(key))form.elements.namedItem(key).value=value??''}
  form.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 async function saveForm(mount,form){
- const kind=form.dataset.kind;const body={};for(const [k,v] of new FormData(form))body[k]=v===''?null:['level','waves','attendance'].includes(k)?Number(v):v;
+ const kind=form.dataset.kind;const body={};for(const [k,v] of new FormData(form))body[k]=v===''?(kind==='train'&&['note','driver_name'].includes(k)?'':null):['level','waves','attendance'].includes(k)?Number(v):v;
  if(form.dataset.id)body.id=form.dataset.id;
  const action=kind==='train'?'train-assignments':'operations/'+kind;
  if(kind==='train'){
@@ -246,8 +247,12 @@ async function saveForm(mount,form){
   await request('/api/'+action,{method:'POST',body});
   await view(mount);
  }catch(err){
-  form.querySelector('#native-form-message').textContent='Nicht gespeichert: '+err.message;
-  submit.disabled=false;
+  const conflict=err.status===409;
+  form.querySelector('#native-form-message').textContent=conflict?
+   'Dieser Eintrag wurde inzwischen geändert. Deine Eingaben bleiben erhalten. Bitte vor erneutem Speichern neu laden.':
+   'Nicht gespeichert: '+err.message;
+  if(conflict){form.dataset.conflict='1';form.querySelector('[data-native-form-reload]').hidden=false}
+  else submit.disabled=false;
  }
 }
 function renderRegistry(target,query){
@@ -299,7 +304,7 @@ export function initNativeAdmin(mount){
  if(mount.dataset.nativeReady)return;
  mount.dataset.nativeReady='1';
  mount.addEventListener('click',async event=>{
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close]');
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-form-reload]');
   if(!button)return;
   if(button.hasAttribute('data-officer-logout')){
    try{await request('/api/native-logout',{method:'POST',body:{}})}catch{}clearOfficer();await renderNativeAdmin(mount);return;
@@ -316,6 +321,10 @@ export function initNativeAdmin(mount){
    return;
   }
   if(button.hasAttribute('data-native-refresh')){await view(mount);return}
+  if(button.hasAttribute('data-native-form-reload')){
+   if(window.confirm('Aktuellen Stand laden und ungespeicherte Eingaben verwerfen?'))await view(mount);
+   return;
+  }
   const target=mount.querySelector('#native-admin-content');if(!target)return;
   if(button.hasAttribute('data-registry-reload')){
    if(!window.confirm('Aktuellen Stand laden und eigene Eingaben verwerfen?'))return;
