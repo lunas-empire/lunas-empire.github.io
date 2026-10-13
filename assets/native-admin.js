@@ -218,7 +218,96 @@ function editTrain(target,date,allowDateChange=false){
   '<p id="native-form-message" role="status"></p></form>';
  editor.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
+const allianceEventLabels={
+ marshall_guard:'Marshall Guard · Allianzübung',
+ zombie_siege:'Zombie Siege · Zombiebelagerung',
+ desert_storm:'Desert Storm'
+};
+const allianceEventOutcomeLabels={
+ scheduled:'Geplant',completed:'Abgeschlossen',failed:'Nicht geschafft',cancelled:'Abgesagt'
+};
+// Preserve observations exactly. Unknown levels and wave values must not become zero,
+// and an upcoming run must never be mistaken for a successful historical attempt.
+export function summarizeAllianceEventRuns(source,type){
+ const entries=(Array.isArray(source)?source:[]).filter(x=>x&&x.event_type===type&&
+  typeof x.event_date==='string'&&/^20\\d{2}-\\d{2}-\\d{2}$/.test(x.event_date))
+  .sort((a,b)=>b.event_date.localeCompare(a.event_date)||
+    String(b.updated_at||'').localeCompare(String(a.updated_at||'')));
+ const historical=entries.filter(x=>x.outcome==='completed'||x.outcome==='failed');
+ const completed=entries.filter(x=>x.outcome==='completed');
+ const planned=entries.filter(x=>x.outcome==='scheduled');
+ const latest=historical[0]||null,previous=historical[1]||null;
+ const number=x=>Number.isInteger(x)&&x>=1&&x<=999?x:null;
+ const level=number(latest?.level),previousLevel=number(previous?.level);
+ const validLevels=historical.map(x=>number(x.level)).filter(x=>x!==null);
+ const bestLevel=validLevels.length?Math.max(...validLevels):null;
+ const waveValue=x=>Number.isInteger(x)&&x>=0&&x<=999?x:null;
+ const waves=type==='zombie_siege'?waveValue(latest?.waves):null;
+ return {type,entries,historical,completed,planned,latest,previous,
+  level,bestLevel,waves,deltaLevel:level!==null&&previousLevel!==null?level-previousLevel:null,
+  confirmedCount:historical.length};
+}
+function renderEventRuns(target){
+ const data=cache.ops,entries=data?.events||[];
+ const names=new Map((data?.members||[]).map(m=>[m.id,m.name]));
+ const eventRow=x=>'<button type="button" class="native-event-history-row" data-native-edit="'+e(x.id)+'">'+
+  '<span><b>'+e(x.event_date)+'</b><small>'+e(allianceEventOutcomeLabels[x.outcome]||'Nicht bestätigt')+'</small></span>'+
+  '<span><strong>'+e(x.level??'—')+'</strong><small>Level</small></span>'+
+  (x.event_type==='zombie_siege'?'<span><strong>'+e(x.waves??'—')+'</strong><small>Wellen</small></span>':'')+
+  '<span class="native-event-history-actor">'+e(names.get(x.lead_id)||'Leitung offen')+'</span></button>';
+ const groups=['zombie_siege','marshall_guard'].map(type=>{
+  const data=summarizeAllianceEventRuns(entries,type);
+  const last=data.latest,latestLevel=data.level??'—';
+  const diff=data.deltaLevel===null?'Noch kein direkter Vergleich':
+   data.deltaLevel===0?'Level unverändert':(data.deltaLevel>0?'+':'')+data.deltaLevel+' Level zum vorherigen Durchgang';
+  const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date());
+  const upcoming=data.planned.filter(x=>x.event_date>=today).sort((a,b)=>a.event_date.localeCompare(b.event_date))[0];
+  const bars=data.historical.slice(0,7).reverse().filter(x=>Number.isInteger(x.level)&&x.level>0);
+  const ceiling=Math.max(1,...bars.map(x=>x.level));
+  return '<section class="native-event-panel" aria-label="'+e(allianceEventLabels[type])+'">'+
+   '<div class="native-event-panel-head"><div><span class="native-kicker">ALLIANZ-EINSATZ</span>'+
+   '<h3>'+e(allianceEventLabels[type])+'</h3></div>'+
+   '<button type="button" class="native-game-primary" data-native-event-quick="'+type+'">+ Durchgang</button></div>'+
+   '<div class="native-event-summary">'+
+   '<div><small>Letztes Ergebnis</small><strong>'+e(last?.event_date||'—')+'</strong>'+
+    '<span>'+e(last?allianceEventOutcomeLabels[last.outcome]:'Noch nicht dokumentiert')+'</span></div>'+
+   '<div><small>Letztes Level</small><strong>'+e(latestLevel)+'</strong><span>'+e(diff)+'</span></div>'+
+   '<div><small>'+(type==='zombie_siege'?'Letzte Wellen':'Bisher bestes Level')+'</small>'+
+   '<strong>'+e(type==='zombie_siege'?data.waves??'—':data.bestLevel??'—')+'</strong>'+
+   '<span>'+data.confirmedCount+' dokumentierte Ergebnisse</span></div></div>'+
+   (upcoming?'<p class="native-event-next">Nächster eingetragener Termin: <b>'+e(upcoming.event_date)+'</b> · Level '+e(upcoming.level??'offen')+'</p>':
+   '<p class="native-muted">Kein zukünftiger Termin eingetragen. Keine automatische Terminprognose.</p>')+
+   (bars.length?'<div class="native-event-trend" role="img" aria-label="'+e(type==='zombie_siege'?'Zombie Siege':'Marshall Guard')+
+     ': aufgezeichnete Level '+bars.map(x=>e(x.event_date)+': '+e(x.level)).join(', ')+'">'+
+     bars.map(x=>'<div><span class="native-event-bar" style="height:'+Math.round(x.level/ceiling*100)+'%"></span>'+
+      '<b>'+e(x.level)+'</b><small>'+e(x.event_date.slice(5))+'</small></div>').join('')+'</div>':
+    '<p class="native-muted">Noch keine bestätigten Level für einen Verlauf vorhanden.</p>')+
+   '<details class="native-fold"><summary>Alle Durchgänge · '+data.entries.length+'</summary>'+
+    '<div class="native-fold-body native-event-history">'+(data.entries.length?data.entries.map(eventRow).join(''):
+    '<p class="native-muted">Noch keine erfassten Durchgänge.</p>')+'</div></details></section>';
+ }).join('');
+ const other=entries.filter(x=>x.event_type==='desert_storm');
+ target.querySelector('#native-records').innerHTML='<div class="native-event-intro"><p>Alle paar Tage erfassen: <strong>Level, Wellen, Ergebnis und Teilnahme</strong>. Jeder Durchgang bleibt mit Datum und verantwortlichem Officer erhalten.</p></div>'+
+  '<div class="native-event-panels">'+groups+'</div>'+
+  '<details class="native-fold"><summary>Weitere Events · Desert Storm ('+other.length+')</summary>'+
+  '<div class="native-fold-body native-event-history">'+(other.length?other.map(eventRow).join(''):
+   '<p class="native-muted">Noch keine Desert-Storm-Durchgänge dokumentiert.</p>')+'</div></details>';
+}
+function updateEventForm(form){
+ if(!form||form.dataset.kind!=='events')return;
+ const type=form.elements.namedItem('event_type')?.value;
+ const waveRow=form.querySelector('[data-event-waves]');
+ if(waveRow)waveRow.hidden=type!=='zombie_siege';
+ const wave=form.elements.namedItem('waves');if(wave)wave.disabled=type!=='zombie_siege';
+ const hint=form.querySelector('[data-event-guidance]');
+ if(hint)hint.textContent=type==='zombie_siege'?
+  'Schwierigkeit und tatsächlich erreichte Wellen eintragen (im üblichen Modus bis 20). Unbekannt bleibt leer.':
+  type==='marshall_guard'?
+   'Gewählte Stufe, Teilnahme und Abschluss festhalten. Gesamtschaden und Belohnungsphasen folgen in einer späteren Erweiterung.':
+   'Termin, Verantwortliche, Teamstärke und Ergebnis dokumentieren.';
+}
 function renderRecords(target){
+ if(panel==='events'){renderEventRuns(target);return}
  const d=cache.ops,entries=d[panel],names=new Map(d.members.map(m=>[m.id,m.name]));
  const title=x=>panel==='tasks'?x.title:panel==='absences'?(names.get(x.member_id)||'Unbekannt')+' · '+x.start_date+'–'+x.end_date:(x.event_type||'Event')+' · '+x.event_date;
  target.querySelector('#native-records').innerHTML=cards([[{tasks:'Aufgaben',absences:'Abwesenheiten',events:'Events'}[panel],entries.length]])+
@@ -229,11 +318,13 @@ function editRecord(target,kind,id){
  const fields={
   tasks:'<label>Aufgabe<input name="title" minlength="3" maxlength="160" required></label><label>Zuständig<select name="assignee_id">'+select('assignee_id')+'</select></label><label>Ersatz<select name="substitute_id">'+select('substitute_id')+'</select></label><label>Frist<input type="date" name="due_date"></label><label>Priorität<select name="priority"><option>normal</option><option>high</option><option>urgent</option><option>low</option></select></label><label>Status<select name="status"><option value="open">Offen</option><option value="in_progress">In Arbeit</option><option value="blocked">Blockiert</option><option value="done">Erledigt</option></select></label><label>Notiz<textarea name="description" maxlength="1000"></textarea></label>',
   absences:'<label>Abwesend<select name="member_id" required>'+select('member_id')+'</select></label><label>Ersatz<select name="substitute_id">'+select('substitute_id')+'</select></label><label>Beginn<input name="start_date" type="date" required></label><label>Ende<input name="end_date" type="date" required></label><label>Notiz<input name="note" maxlength="300"></label>',
-  events:'<label>Event<select name="event_type"><option value="marshall_guard">Marshall Guard</option><option value="zombie_siege">Zombie Siege</option><option value="desert_storm">Desert Storm</option></select></label><label>Datum<input name="event_date" type="date" required></label><label>Level<input name="level" type="number" min="1" max="999"></label><label>Wellen<input name="waves" type="number" min="0" max="999"></label><label>Verantwortlich<select name="lead_id">'+select('lead_id')+'</select></label><label>Ersatz<select name="substitute_id">'+select('substitute_id')+'</select></label><label>Teilnehmer<input name="attendance" type="number" min="0" max="100"></label><label>Ergebnis<select name="outcome"><option value="scheduled">Geplant</option><option value="completed">Erfolgreich</option><option value="failed">Nicht geschafft</option><option value="cancelled">Abgesagt</option></select></label><label>Notizen<input name="notes" maxlength="500"></label>'
+  events:'<label>Event<select name="event_type"><option value="marshall_guard">Marshall Guard / Allianzübung</option><option value="zombie_siege">Zombie Siege</option><option value="desert_storm">Desert Storm</option></select></label><label>Datum<input name="event_date" type="date" required></label><label>Schwierigkeit / Level<input name="level" type="number" min="1" max="999" placeholder="Nur bestätigen, wenn bekannt"></label><label data-event-waves>Erreichte Wellen<input name="waves" type="number" min="0" max="999" placeholder="Tatsächlich erreichte Welle"></label><label>Verantwortlich<select name="lead_id">'+select('lead_id')+'</select></label><label>Ersatz<select name="substitute_id">'+select('substitute_id')+'</select></label><label>Teilnehmer (Anzahl)<input name="attendance" type="number" min="0" max="100" placeholder="Falls belegt"></label><label>Ergebnis<select name="outcome"><option value="scheduled">Geplant</option><option value="completed">Abgeschlossen</option><option value="failed">Nicht geschafft</option><option value="cancelled">Abgesagt</option></select></label><label>Notizen<input name="notes" maxlength="500" placeholder="Optional: Kampfbericht / Schwierigkeiten"></label><p class="native-form-help" data-event-guidance></p>'
  };
  const host=target.querySelector('#native-form');host.innerHTML='<form class="native-form" id="native-record-save" data-kind="'+kind+'" data-id="'+e(record.id||'')+'">'+fields[kind]+'<button type="submit">Speichern</button><button type="button" data-native-form-reload hidden>Aktuellen Stand laden</button><p id="native-form-message" role="status"></p></form>';
  const form=host.firstElementChild;
  for(const [key,value] of Object.entries(record)){if(form.elements.namedItem(key))form.elements.namedItem(key).value=value??''}
+ if(kind==='events'&&!record.event_date)form.elements.namedItem('event_date').value=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date());
+ if(kind==='events')updateEventForm(form);
  form.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 async function saveForm(mount,form){
@@ -349,7 +440,7 @@ export function initNativeAdmin(mount){
  if(mount.dataset.nativeReady)return;
  mount.dataset.nativeReady='1';
  mount.addEventListener('click',async event=>{
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-form-reload],[data-native-copy-train]');
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick]');
   if(!button)return;
   if(button.hasAttribute('data-officer-logout')){
    try{await request('/api/native-logout',{method:'POST',body:{}})}catch{}clearOfficer();await renderNativeAdmin(mount);return;
@@ -429,6 +520,12 @@ export function initNativeAdmin(mount){
    }
    return;
   }
+  if(button.dataset.nativeEventQuick){
+   editRecord(target,'events','');
+   const form=target.querySelector('#native-record-save');
+   if(form){form.elements.namedItem('event_type').value=button.dataset.nativeEventQuick;updateEventForm(form)}
+   return;
+  }
   if(button.dataset.nativeTrain){editTrain(target,button.dataset.nativeTrain);return}
   if(button.dataset.nativeNew==='train'){editTrain(target,cache.trains?.today||new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date()),true);return}
   if(button.dataset.nativeNew||button.dataset.nativeEdit){editRecord(target,panel,button.dataset.nativeEdit||'');return}
@@ -439,7 +536,7 @@ export function initNativeAdmin(mount){
   if(event.target.id==='activity-search')renderActivity(mount.querySelector('#native-admin-content'),event.target.value);
   if(event.target.id==='review-search-native'){historyLimit=20;renderReviews(mount.querySelector('#native-admin-content'),event.target.value)}
  });
- mount.addEventListener('change',event=>{if(event.target.id==='native-vs-week')renderVs(mount.querySelector('#native-admin-content'));if(['review-batch-native','review-kind-native'].includes(event.target.id)){historyLimit=20;const target=mount.querySelector('#native-admin-content');renderReviews(target,target.querySelector('#review-search-native')?.value||'')}});
+ mount.addEventListener('change',event=>{if(event.target.name==='event_type'&&event.target.closest('#native-record-save'))updateEventForm(event.target.form);if(event.target.id==='native-vs-week')renderVs(mount.querySelector('#native-admin-content'));if(['review-batch-native','review-kind-native'].includes(event.target.id)){historyLimit=20;const target=mount.querySelector('#native-admin-content');renderReviews(target,target.querySelector('#review-search-native')?.value||'')}});
  mount.addEventListener('submit',async event=>{
   const form=event.target;event.preventDefault();
   if(form.id==='native-officer-login'){
