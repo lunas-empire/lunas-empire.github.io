@@ -30,15 +30,15 @@ test('OCR review filters show real source groups without unverified approval',as
  await wait(()=>q('[data-officer-tab=reviews]'));
  q('[data-officer-tab=reviews]').click();
  await wait(()=>q('#review-batch-native'));
- assert.match(q('#review-list-native').textContent,/Gefilterte Fälle3/);
+ assert.match(q('#review-list-native').textContent,/3 von 3 offenen Prüffällen/);
  const batch=q('#review-batch-native');
  batch.value='vs/2026-W40';batch.dispatchEvent(new dom.window.Event('change',{bubbles:true}));
- assert.match(q('#review-list-native').textContent,/Gefilterte Fälle1/);
+ assert.match(q('#review-list-native').textContent,/1 von 3 offenen Prüffällen/);
  assert.match(q('#review-list-native').textContent,/Test Player/);
  assert.doesNotMatch(q('#review-list-native').textContent,/Other Player/);
  const kind=q('#review-kind-native');
  kind.value='profile';kind.dispatchEvent(new dom.window.Event('change',{bubbles:true}));
- assert.match(q('#review-list-native').textContent,/Gefilterte Fälle0/);
+ assert.match(q('#review-list-native').textContent,/0 von 3 offenen Prüffällen/);
  batch.value='';batch.dispatchEvent(new dom.window.Event('change',{bubbles:true}));
  assert.match(q('#review-list-native').textContent,/Other Player/);
  assert.doesNotMatch(q('#review-list-native').textContent,/Test Player/);
