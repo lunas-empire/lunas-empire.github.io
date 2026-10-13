@@ -21,17 +21,17 @@ const primaryPanels=[
  ['members','Allianz','alliance'],['train','Einsätze','hero']
 ];
 const secondaryPanels=[
- ['reviews','Werte prüfen'],['registry','Ränge & Archiv'],
+ ['reviews','Werte prüfen'],['registry','Ränge & Archiv'],['diplomacy','Diplomatie'],
  ['tasks','Aufgaben'],['absences','Abwesenheiten'],['events','Events'],
  ['activity','Admin-Log']
 ];
 const parentPanel=key=>({
- overview:'overview',vs:'vs',reviews:'vs',members:'members',registry:'members',
- train:'train',tasks:'train',absences:'train',events:'train',activity:'activity'
+ overview:'overview',vs:'vs',reviews:'vs',members:'members',registry:'members',watch:'members',
+ train:'train',tasks:'train',absences:'train',events:'train',activity:'activity',diplomacy:'activity'
 }[key]||'overview');
 const sectionPanels={
  vs:[['vs','VS-Duell'],['reviews','Werte prüfen']],
- members:[['members','Spielerakten'],['registry','Ränge & Archiv']],
+ members:[['members','Spielerakten'],['watch','Fehlende prüfen'],['registry','Ränge & Archiv']],
  train:[['train','Züge'],['events','Events'],['tasks','Aufgaben'],['absences','Abwesenheiten']]
 };
 const navButton=([key,label],cls='')=>'<button type="button" class="'+cls+'" data-officer-tab="'+key+'" '+(panel===key?'aria-current="page"':'')+'>'+e(label)+'</button>';
@@ -87,6 +87,22 @@ async function view(mount){
   }else if(panel==='registry'){
    cache.registry=await request('/api/member-registry');
    target.innerHTML='<div class="native-row"><h2>Mitgliederverwaltung</h2><input id="registry-search" type="search" placeholder="Spieler suchen"></div>'+cards([['Aktiv',cache.registry.counts.active],['Archiv',cache.registry.counts.former],['Blacklist',cache.registry.counts.blacklisted]])+'<div id="registry-list"></div><div id="registry-form"></div>';renderRegistry(target,'');
+  }else if(panel==='watch'){
+   target.innerHTML='<div class="native-row"><div><h2>Mitglieder-Abgleich</h2><p class="native-muted">VS- und Stärke-Aufnahmen vergleichen. Kein automatischer Austritt und keine automatische Blacklist.</p></div></div><div id="native-watch-list" role="region" aria-label="Mitglieder zum Prüfen"></div>';
+   try{cache.watch=await request('/api/membership-watch');renderMembershipWatch(target)}
+   catch(error){
+    target.querySelector('#native-watch-list').innerHTML=
+     '<p class="native-evidence-note" role="status">Die automatische Erkennung wird erst nach dem geschützten Cloudflare-Update freigeschaltet. Die bestehende manuelle Mitgliederverwaltung funktioniert weiterhin.</p>';
+   }
+  }else if(panel==='diplomacy'){
+   target.innerHTML='<div class="native-row"><div><h2>Allianz-Diplomatie</h2><p class="native-muted">Private Offiziersnotizen, keine automatischen Ingame-Verträge oder Aktionen.</p></div><button type="button" data-native-diplomacy-new>+ Allianz</button></div>'+
+    '<label class="native-ios-search">Allianz suchen<input type="search" id="native-diplomacy-search" placeholder="Tag, Name oder Server" autocomplete="off"></label>'+
+    '<div id="native-diplomacy-form"></div><div id="native-diplomacy-list"></div>';
+   try{cache.diplomacy=await request('/api/diplomacy');renderDiplomacy(target)}
+   catch(error){
+    const newButton=target.querySelector('[data-native-diplomacy-new]');if(newButton)newButton.disabled=true;
+    target.querySelector('#native-diplomacy-list').innerHTML='<p class="native-evidence-note" role="status">Das private Diplomatiebuch ist vorbereitet, aber auf Cloudflare-Staging noch nicht aktiviert. Es wurden keine Bündnisse oder Zusagen gespeichert.</p>';
+   }
   }else if(panel==='activity'){
    cache.activity=await request('/api/activity?limit=200');
    target.innerHTML='<div class="native-row"><h2>Admin-Aktivitäten</h2><input id="activity-search" type="search" placeholder="Admin, Aktion, Spieler"></div><div id="activity-list"></div>';renderActivity(target,'');
