@@ -5,11 +5,11 @@ import {initNativeAdmin,renderNativeAdmin,clearOfficer} from '../assets/native-a
 
 test('Four destinations drive real cockpit, train and player dossier workflows',async t=>{
  const dom=new JSDOM('<main id="mount"></main>',{url:'https://lunas-empire.github.io/#admin'});
- const priorWindow=globalThis.window,priorFetch=globalThis.fetch;
- globalThis.window=dom.window;
+ const priorWindow=globalThis.window,priorFetch=globalThis.fetch,priorFormData=globalThis.FormData;
+ globalThis.window=dom.window;globalThis.FormData=dom.window.FormData;
  dom.window.confirm=()=>true;
  dom.window.HTMLElement.prototype.scrollIntoView=()=>{};
- t.after(()=>{clearOfficer();globalThis.window=priorWindow;globalThis.fetch=priorFetch;dom.window.close()});
+ t.after(()=>{clearOfficer();globalThis.window=priorWindow;globalThis.fetch=priorFetch;globalThis.FormData=priorFormData;dom.window.close()});
  const id='aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa';
  const train={today:'2026-10-13',counts:{completed:3,planned:1,missing_recent:1},
   members:[{id,name:'Synthetic Officer Driver',rank:'R4'}],history:[],
@@ -75,10 +75,10 @@ test('Four destinations drive real cockpit, train and player dossier workflows',
 
 test('Train concurrent conflict keeps inputs and offers explicit reload',async t=>{
  const dom=new JSDOM('<main id="mount"></main>',{url:'https://lunas-empire.github.io/#admin'});
- const priorWindow=globalThis.window,priorFetch=globalThis.fetch;
- globalThis.window=dom.window;dom.window.confirm=()=>true;
+ const priorWindow=globalThis.window,priorFetch=globalThis.fetch,priorFormData=globalThis.FormData;
+ globalThis.window=dom.window;globalThis.FormData=dom.window.FormData;dom.window.confirm=()=>true;
  dom.window.HTMLElement.prototype.scrollIntoView=()=>{};
- t.after(()=>{clearOfficer();globalThis.window=priorWindow;globalThis.fetch=priorFetch;dom.window.close()});
+ t.after(()=>{clearOfficer();globalThis.window=priorWindow;globalThis.fetch=priorFetch;globalThis.FormData=priorFormData;dom.window.close()});
  let saves=0;
  const train={today:'2026-10-13',history:[],calendar:[{date:'2026-10-13',type:'R4',entry:null}],members:[],counts:{completed:0,planned:0,missing_recent:0}};
  globalThis.fetch=async(url,opts={})=>{
