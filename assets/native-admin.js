@@ -40,7 +40,12 @@ async function view(mount){
    target.innerHTML='<div class="native-row"><h2>Admin-Aktivitäten</h2><input id="activity-search" type="search" placeholder="Admin, Aktion, Spieler"></div><div id="activity-list"></div>';renderActivity(target,'');
   }else if(panel==='reviews'){
    cache.reviews=await request('/api/reviews?status=open');
-   target.innerHTML='<div class="native-row"><h2>OCR-Prüfung</h2><input id="review-search-native" type="search" placeholder="Fall suchen"></div><p class="native-muted">Original-Screenshots sind derzeit nicht zugeordnet. Prüfwerte bleiben unbearbeitet, bis Bildbelege verknüpft wurden.</p><div id="review-list-native"></div>';renderReviews(target,'');
+   const batches=[...new Set(cache.reviews.map(x=>x.source_batch).filter(Boolean))].sort();
+   target.innerHTML='<div class="native-row"><h2>OCR-Prüfung</h2><input id="review-search-native" type="search" placeholder="Spieler oder Fall suchen"></div>'+
+    '<p class="native-muted">Original-Screenshots werden noch privat zugeordnet. Kein Prüfwert wird ohne Bildbeleg freigegeben.</p>'+
+    '<div class="native-row"><label>Quelle <select id="review-batch-native"><option value="">Alle Wochen und Profile</option>'+batches.map(b=>'<option value="'+e(b)+'">'+e(b)+'</option>').join('')+'</select></label>'+
+    '<label>Prüftyp <select id="review-kind-native"><option value="">Alle</option><option value="vs_day">VS-Tageswert</option><option value="identity">Identität</option><option value="profile">Profilwert</option></select></label></div>'+
+    '<div id="review-list-native"></div>';renderReviews(target,'');
   }else if(panel==='members'){
    const list=await request('/api/members');
    cache.members=list;
@@ -158,10 +163,21 @@ function renderActivity(target,term){
  target.querySelector('#activity-list').innerHTML='<p class="native-muted">'+matching.length+' Einträge · Zeiten Europe/Berlin</p><div class="native-list">'+matching.map(x=>'<details><summary><strong>'+e(x.actor)+' · '+e(x.action)+'</strong><small>'+e(new Intl.DateTimeFormat('de-DE',{dateStyle:'medium',timeStyle:'medium',timeZone:'Europe/Berlin'}).format(new Date(x.at.replace(' ','T')+'Z')))+'</small></summary><p>Objekt: '+e(x.object_kind)+' · '+e(x.object_id)+'</p><p>Vorher: '+e(x.before_json||'—')+'</p><p>Nachher: '+e(x.after_json||'—')+'</p></details>').join('')+'</div>';
 }
 function renderReviews(target,term){
- const list=cache.reviews.filter(x=>(x.source_name+' '+x.category+' '+x.metric+' '+x.note).toLowerCase().includes(term.toLowerCase()));
+ const batch=target.querySelector('#review-batch-native')?.value||'';
+ const kind=target.querySelector('#review-kind-native')?.value||'';
+ const list=cache.reviews.filter(x=>(!batch||x.source_batch===batch)&&(!kind||x.kind===kind)&&
+  [x.source_name,x.category,x.metric,x.note,x.source_batch].some(y=>String(y||'').toLowerCase().includes(term.toLowerCase())));
  const categories={};cache.reviews.forEach(x=>{categories[x.category]=(categories[x.category]||0)+1});
- target.querySelector('#review-list-native').innerHTML=cards([['Offene Prüfungen',cache.reviews.length],...Object.entries(categories).slice(0,3)])+
-  '<div class="native-list">'+list.slice(0,historyLimit).map(x=>'<details><summary><strong>'+e(x.source_name||'Unbekannt')+' · '+e(x.metric||'')+'</strong><small>'+e(x.category)+' · '+e(x.source_batch||'')+'</small></summary><p>'+e(x.note||'')+'</p><p>Erkannt: '+e(x.source_value??'unbekannt')+'</p><p class="native-muted">Originalbild noch nicht verknüpft. Keine Freigabe ohne Beleg.</p></details>').join('')+'</div>'+(list.length>historyLimit?'<button data-native-more="reviews">Weitere Fälle</button>':'');
+ const names={vs_uncertain:'VS-Wert unklar',inferred:'Geschätzter Wert',unmatched_name:'Name nicht zugeordnet',
+  historical_identity:'Historische Identität',missing:'Wert fehlt',ocr_alert:'OCR-Auffälligkeit'};
+ target.querySelector('#review-list-native').innerHTML=cards([['Offene Prüfungen',cache.reviews.length],
+  ['Gefilterte Fälle',list.length],['VS unklar',categories.vs_uncertain||0],['Profilwerte',cache.reviews.filter(x=>x.kind==='profile').length]])+
+  '<p class="native-muted">Status: '+Object.entries(categories).map(([key,n])=>e(names[key]||key)+' '+n).join(' · ')+'</p>'+
+  '<div class="native-list">'+list.slice(0,historyLimit).map(x=>'<details><summary><strong>'+e(x.source_name||'Unbekannt')+' · '+e(x.metric||'')+'</strong><small>'+e(names[x.category]||x.category)+' · '+e(x.source_batch||'')+'</small></summary>'+
+  '<p>'+e(x.note||'')+'</p><p>Erkannt: '+e(x.source_value??'unbekannt')+'</p>'+
+  (x.context?.date?'<p>Spieltag: '+e(x.context.date)+'</p>':'')+
+  '<p class="native-muted">Originalbild noch nicht online verknüpft. Keine Freigabe ohne Beleg.</p></details>').join('')+'</div>'+
+  (list.length>historyLimit?'<button data-native-more="reviews">Weitere Fälle</button>':'');
 }
 
 export async function renderNativeAdmin(mount){
@@ -210,7 +226,7 @@ export function initNativeAdmin(mount){
   if(event.target.id==='activity-search')renderActivity(mount.querySelector('#native-admin-content'),event.target.value);
   if(event.target.id==='review-search-native'){historyLimit=20;renderReviews(mount.querySelector('#native-admin-content'),event.target.value)}
  });
- mount.addEventListener('change',event=>{if(event.target.id==='native-vs-week')renderVs(mount.querySelector('#native-admin-content'))});
+ mount.addEventListener('change',event=>{if(event.target.id==='native-vs-week')renderVs(mount.querySelector('#native-admin-content'));if(['review-batch-native','review-kind-native'].includes(event.target.id)){historyLimit=20;const target=mount.querySelector('#native-admin-content');renderReviews(target,target.querySelector('#review-search-native')?.value||'')}});
  mount.addEventListener('submit',async event=>{
   const form=event.target;event.preventDefault();
   if(form.id==='native-officer-login'){
