@@ -4,7 +4,7 @@ import {icon} from './icons.js';
 const apiBase=ALLIANCE_CONFIG.commandCenterEmbedUrl.replace('/?embed=1','');
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
 let sessionToken='',officer=null,panel='overview',cache={},pageLimit=20,historyLimit=20;
-export function clearOfficer(){sessionToken='';officer=null;cache={};}
+export function clearOfficer(){sessionToken='';officer=null;cache={};panel='overview';pageLimit=20;historyLimit=20;}
 export const hasOfficer=()=>Boolean(sessionToken);
 async function request(path,options={}){
  const headers={'Accept':'application/json',...(options.body?{'Content-Type':'application/json'}:{}),...(sessionToken?{'Authorization':'Bearer '+sessionToken}:{})};
