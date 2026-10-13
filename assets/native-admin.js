@@ -1,5 +1,6 @@
 /** Native Luna officer workspace. Private data is held only in a live memory token. */
 import {ALLIANCE_CONFIG} from './config.js';
+import {icon} from './icons.js';
 const apiBase=ALLIANCE_CONFIG.commandCenterEmbedUrl.replace('/?embed=1','');
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
 let sessionToken='',officer=null,panel='overview',cache={},pageLimit=20,historyLimit=20;
@@ -13,13 +14,39 @@ async function request(path,options={}){
  return result;
 }
 const options=(members,value='')=>'<option value="">Nicht besetzt</option>'+members.map(m=>'<option value="'+e(m.id)+'" '+(m.id===value?'selected':'')+'>'+e(m.name)+' · '+e(m.rank)+'</option>').join('');
+// Keep the ten stable panel IDs for deep links and existing officer workflows,
+// but only expose four high-level destinations in the primary navigation.
+const primaryPanels=[
+ ['overview','Kommando','today'],['vs','VS & Daten','vs'],
+ ['members','Allianz','alliance'],['train','Einsätze','hero']
+];
+const secondaryPanels=[
+ ['reviews','Werte prüfen'],['registry','Ränge & Archiv'],
+ ['tasks','Aufgaben'],['absences','Abwesenheiten'],['events','Events'],
+ ['activity','Admin-Log']
+];
+const parentPanel=key=>({
+ overview:'overview',vs:'vs',reviews:'vs',members:'members',registry:'members',
+ train:'train',tasks:'train',absences:'train',events:'train',activity:'activity'
+}[key]||'overview');
+const sectionPanels={
+ vs:[['vs','VS-Duell'],['reviews','Werte prüfen']],
+ members:[['members','Spielerakten'],['registry','Ränge & Archiv']],
+ train:[['train','Züge'],['events','Events'],['tasks','Aufgaben'],['absences','Abwesenheiten']]
+};
+const navButton=([key,label],cls='')=>'<button type="button" class="'+cls+'" data-officer-tab="'+key+'" '+(panel===key?'aria-current="page"':'')+'>'+e(label)+'</button>';
 function nav(){
- return '<nav class="native-admin-nav" aria-label="Offiziersbereiche">'+[['overview','Cockpit'],['members','Spieler'],['vs','VS'],['train','Züge'],['tasks','Aufgaben'],['absences','Abwesenheit'],['events','Events'],['reviews','OCR-Prüfung'],['registry','Archiv & Ränge'],['activity','Admin-Log']].map(([key,text])=>'<button type="button" data-officer-tab="'+key+'" '+(panel===key?'aria-current="page"':'')+'>'+text+'</button>').join('')+'</nav>';
+ const parent=parentPanel(panel);
+ return '<nav class="native-admin-nav" aria-label="Command Center Hauptbereiche">'+
+  primaryPanels.map(([key,label,art])=>'<button type="button" class="native-primary-tab" data-officer-tab="'+key+'" '+(parent===key?'aria-current="page"':'')+'>'+icon(art,'native-tab-icon')+'<span>'+e(label)+'</span></button>').join('')+
+  '<details class="native-admin-more" '+(parent==='activity'?'open':'')+'><summary aria-label="Weitere Offizierswerkzeuge">Mehr</summary><div class="native-more-menu">'+
+  secondaryPanels.map(pair=>navButton(pair)).join('')+'</div></details></nav>'+
+  (sectionPanels[parent]?'<nav class="native-admin-subnav" aria-label="Unterbereiche">'+sectionPanels[parent].map(pair=>navButton(pair)).join('')+'</nav>':'');
 }
 function cards(items){return '<div class="native-cards">'+items.map(([name,value,sub])=>'<article><small>'+e(name)+'</small><strong>'+e(value)+'</strong><span>'+e(sub||'')+'</span></article>').join('')+'</div>'}
 function marker(status){return '<span class="native-status">'+e(status||'Unbekannt')+'</span>'}
 async function view(mount){
- const header='<div class="native-admin-top"><div><span class="admin-eyebrow">RZSN · SECURE OFFICER DESK</span><h1>Command Center</h1><p>Hallo '+e(officer?.name)+'. Deine Änderungen werden in Cloudflare protokolliert.</p></div><button type="button" data-officer-logout>Abmelden</button></div>';
+ const header='<header class="native-admin-top"><div class="native-command-identity"><span class="native-command-emblem" aria-hidden="true">'+icon('hero','native-emblem-icon')+'</span><div><span class="admin-eyebrow">RZSN · SERVER 2261 · OFFIZIERSZUGANG</span><h1>Allianz-Kommando</h1><p>Planen · Prüfen · Koordinieren</p></div></div><div class="native-officer-controls"><span class="native-officer-badge">'+e(officer?.role||'Offizier')+' · '+e(officer?.name||'')+'</span><button type="button" data-officer-logout>Abmelden</button></div></header>';
  mount.innerHTML='<section class="native-admin">'+header+nav()+'<div class="native-admin-content" id="native-admin-content"><p>Daten werden geladen …</p></div></section>';
  const target=mount.querySelector('#native-admin-content');
  try{
