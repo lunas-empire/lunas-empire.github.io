@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-13.7');
+@import url('./tokens.css?v=2026-10-13.8');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -829,3 +829,40 @@ input[type='checkbox'],input[type='radio']{accent-color:var(--color-game-orange)
 
 .native-event-trend-label{margin:.75rem 0 -.3rem}
 .native-event-bar--failed{background:linear-gradient(#abb6c4,#778497);border-color:#68788b}
+
+/* One-header officer shell: public nav yields to Command Center nav on Luna only. */
+html[data-officer-mode='true'] .main-nav{display:none!important}
+html[data-officer-mode='true'] body{padding-bottom:max(12px,env(safe-area-inset-bottom))}
+html[data-officer-mode='true'] main{padding-top:clamp(.5rem,2vw,.9rem)}
+html[data-officer-mode='true'] .first-visit-note{margin-bottom:0}
+.native-officer-strip{
+ display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.45rem 1rem;
+ padding:.25rem .1rem .6rem;margin-bottom:.45rem;
+ border-bottom:1px solid var(--color-rule-soft);background:transparent;box-shadow:none
+}
+.native-officer-strip .native-return-link{
+ display:inline-flex;align-items:center;min-height:40px;color:var(--color-action);
+ text-decoration:none;font-size:.82rem;font-weight:750;padding:.25rem .45rem;
+ border-radius:4px
+}
+.native-officer-strip .native-return-link:hover,.native-officer-strip .native-return-link:focus-visible{
+ background:var(--color-raised);text-decoration:underline
+}
+.native-officer-strip .native-officer-controls{display:flex;align-items:center;gap:.45rem;margin-left:auto}
+.native-officer-strip .native-officer-badge{
+ display:inline-flex;align-items:center;min-height:34px;padding:.2rem .5rem;
+ background:var(--color-panel);border:1px solid var(--color-game-rim);
+ color:var(--color-ink);border-radius:3px;font-size:.76rem;font-weight:760
+}
+.native-officer-strip [data-officer-logout]{
+ min-height:38px;background:var(--color-raised);border:1px solid var(--color-rule);
+ color:var(--color-ink);font-size:.76rem;padding:.32rem .55rem
+}
+html[data-officer-mode='true'] .native-admin-nav{margin-top:0}
+html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
+@media(max-width:400px){
+ .native-officer-strip{gap:.35rem;padding-block:.2rem .45rem}
+ .native-officer-strip .native-return-link{font-size:.75rem;padding-inline:.25rem}
+ .native-officer-strip .native-officer-badge{font-size:.7rem}
+ .native-officer-strip [data-officer-logout]{min-height:38px;font-size:.72rem;padding-inline:.4rem}
+}
