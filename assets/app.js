@@ -603,8 +603,6 @@ function render({focus = false,preserve = false} = {}) {
   const route=memberRoute(location.hash);
   if (route.view === 'main') { main.focus(); return; }
   currentView = Object.hasOwn(views,route.view) ? route.view : 'today';
-  // One site shell: the member navigation is replaced by native officer tabs only on Luna staging.
-  // RZSN production keeps its existing admin/wiki navigation unchanged.
   document.documentElement.dataset.officerMode=String(currentView==='admin'&&location.hostname!=='rzsn-home.github.io');
   if(currentView==='guides' && route.guideId){guideTopicSelected=guideTopicOf(route.guideId);guideSearchQuery='';}
   else if(currentView==='guides'&&!preserve){guideTopicSelected='';guideSearchQuery='';}
