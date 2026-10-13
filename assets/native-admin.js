@@ -154,10 +154,31 @@ async function showPerson(target,id){
 
 function renderVs(target){
  const week=cache.vs.weeks.find(w=>w.week===target.querySelector('#native-vs-week').value)||cache.vs.weeks[0];
- target.querySelector('#native-vs-body').innerHTML=week?cards([['Verifiziert unter Ziel',week.failedDays],['Unklar / OCR',week.unknownDays],['6/6 geschafft',week.perfect],['Priorität 3+',week.priority]])+
-  '<div class="native-weekdays">'+week.dayTotals.map(d=>'<div><b>'+['Mo','Di','Mi','Do','Fr','Sa'][d.weekday]+'</b><span>'+d.passed+' erreicht</span><span>'+d.failed+' unter Ziel</span><small>'+d.unknown+' unklar</small></div>').join('')+'</div>'+
-  '<details class="native-fold"><summary>'+week.members.length+' Spieler-Tageswerte anzeigen</summary><div class="native-fold-body"><div class="native-list">'+week.members.map(p=>'<details><summary>'+e(p.name)+' · '+p.failed+' unter Ziel / '+p.unknown+' unklar</summary><p>'+p.days.map((d,i)=>['Mo','Di','Mi','Do','Fr','Sa'][i]+': '+(d.verified?Number(d.points).toLocaleString('de-DE'):'Unklar')).join(' · ')+'</p></details>').join('')+'</div></div></details>':
-  '<p>Keine VS-Wochen vorhanden.</p>';
+ const host=target.querySelector('#native-vs-body');
+ if(!week){host.innerHTML='<p class="native-muted">Noch keine VS-Woche importiert.</p>';return}
+ const labels=['Mo','Di','Mi','Do','Fr','Sa'];
+ const members=week.members||[];
+ const groups=[
+  ['Unter Tagesziel · bestätigt',members.filter(m=>m.failed>0),'failed'],
+  ['Nicht sicher erkennbar',members.filter(m=>m.unknown>0),'unknown'],
+  ['Weitere Spieler',members.filter(m=>!m.failed&&!m.unknown),'verified']
+ ];
+ const groupMarkup=([name,players,kind])=>'<details class="native-fold native-vs-group" '+(kind==='failed'?'open':'')+'>'+
+  '<summary><span>'+e(name)+'</span><b>'+players.length+'</b></summary><div class="native-fold-body">'+
+  (players.length?'<div class="native-list">'+players.map(p=>'<details class="native-vs-player"><summary>'+e(p.name)+' · '+e(p.failed||0)+' unter Ziel / '+e(p.unknown||0)+' unklar</summary>'+
+   '<div class="native-vs-player-days">'+(p.days||[]).map((d,i)=>'<span><b>'+labels[i%6]+'</b> '+
+   (d.verified&&d.points!=null?e(Number(d.points).toLocaleString('de-DE')):'Unbekannt')+'</span>').join('')+'</div></details>').join('')+'</div>':
+   '<p class="native-muted">In dieser Gruppe keine Spieler.</p>')+'</div></details>';
+ host.innerHTML='<div class="native-vs-brief"><p class="native-muted">Nur bestätigte Werte zählen als über oder unter dem Tagesziel von 3,6 Mio. Unklare Ergebnisse werden nicht als Null gewertet.</p>'+
+  cards([['Bestätigt unter Ziel',week.failedDays??0],['Unklar / OCR',week.unknownDays??0],['Alle 6 Tage erreicht',week.perfect??0],['Wichtige Prüffälle',week.priority??0]])+
+  '<div class="native-weekdays" role="list" aria-label="Sechs Tage im Allianzduell">'+(week.dayTotals||[]).map(d=>{
+   const label=labels[d.weekday]||'—';
+   return '<div role="listitem" class="native-vs-day"><b>'+e(label)+'</b><span>'+e(d.passed??0)+' erreicht</span>'+
+    '<span>'+e(d.failed??0)+' unter Ziel</span><small>'+e(d.unknown??0)+' unklar</small></div>';
+  }).join('')+'</div>'+
+  '<div class="native-vs-groups">'+groups.map(groupMarkup).join('')+'</div>'+
+  '<div class="native-shortcuts"><button type="button" data-native-action="review-open">Unklare Werte prüfen</button>'+
+  '<button type="button" data-native-action="member-find">Spielerakte öffnen</button></div></div>';
 }
 function renderTrain(target){
  const d=cache.trains,upcoming=d.calendar.filter(x=>x.date>=d.today).slice(0,7);
