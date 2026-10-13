@@ -785,3 +785,44 @@ input[type='checkbox'],input[type='radio']{accent-color:var(--color-game-orange)
  .native-train-item .native-train-actions{justify-content:flex-start}
  .native-audit-diff>div{grid-template-columns:minmax(0,1fr)}
 }
+
+/* Repeatable Zombie Siege & Marshall Guard operations, scoped to Luna Officer Desk. */
+.native-event-intro{margin:0 0 .8rem;padding:.6rem .75rem;border-left:3px solid var(--color-game-orange);background:var(--color-panel);font-size:.86rem}
+.native-event-intro p{margin:.12rem 0;line-height:1.5}
+.native-event-panels{display:grid;gap:1rem}
+.native-event-panel{border:1px solid var(--color-game-rim);border-top:3px solid var(--color-game-orange);border-radius:5px;padding:clamp(.65rem,2vw,1rem);background:var(--color-panel);min-width:0}
+.native-event-panel-head{display:flex;justify-content:space-between;align-items:center;gap:.7rem;margin-bottom:.75rem}
+.native-event-panel-head h3{margin:.12rem 0;color:var(--color-ink);font-size:1.1rem}
+.native-event-panel-head button{min-height:44px;white-space:normal;flex-shrink:0;font-size:.8rem}
+.native-event-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.55rem}
+.native-event-summary>div{min-width:0;display:grid;align-content:start;gap:.12rem;padding:.65rem;border:1px solid var(--color-rule);border-radius:3px;background:var(--color-raised)}
+.native-event-summary small{font-size:.73rem;color:var(--color-muted)}
+.native-event-summary strong{font-weight:850;font-size:clamp(1.1rem,3vw,1.55rem);font-variant-numeric:tabular-nums;color:var(--color-ink);overflow-wrap:anywhere}
+.native-event-summary span{font-size:.72rem;color:var(--color-muted);line-height:1.35}
+.native-event-next{font-size:.78rem;border-left:3px solid var(--color-action);padding:.4rem .65rem;background:var(--color-raised)}
+.native-event-trend{height:145px;display:flex;gap:clamp(.25rem,1.4vw,.75rem);align-items:end;justify-content:space-evenly;margin:.85rem 0 .45rem;padding:.65rem .4rem 0;border-bottom:2px solid var(--color-rule);background:color-mix(in srgb,var(--color-game-bar) 5%,var(--color-panel))}
+.native-event-trend>div{flex:1;max-width:70px;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:.12rem}
+.native-event-bar{display:block;min-height:3px;width:min(70%,35px);background:linear-gradient(#ffde91,#e3a340);border:1px solid #bd8531;border-bottom:0}
+.native-event-trend b{font-size:.72rem;font-variant-numeric:tabular-nums}
+.native-event-trend small{font-size:.66rem;color:var(--color-muted)}
+.native-event-panel>.native-fold{margin:.75rem 0 0}
+.native-event-history{display:grid;gap:.4rem}
+.native-event-history-row{display:flex!important;align-items:center;justify-content:space-between;gap:.7rem;min-height:56px;white-space:normal;padding:.55rem .65rem;text-align:left;border:1px solid var(--color-rule);background:var(--color-panel);color:var(--color-ink)}
+.native-event-history-row>span{display:grid;gap:.1rem;min-width:0}
+.native-event-history-row strong{font-size:1rem;color:var(--color-action);font-variant-numeric:tabular-nums}
+.native-event-history-row small{font-size:.71rem;color:var(--color-muted)}
+.native-event-history-actor{font-size:.74rem;max-width:25%;overflow-wrap:anywhere}
+.native-form [data-event-waves][hidden]{display:none!important}
+.native-event-panel .native-muted{font-size:.78rem}
+@media(max-width:45rem){
+ .native-event-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .native-event-panel-head{align-items:start}
+ .native-event-panel-head h3{font-size:.98rem}
+ .native-event-panel-head button{padding:.45rem .5rem}
+ .native-event-history-row{flex-wrap:wrap}
+ .native-event-history-actor{max-width:100%}
+}
+@media(max-width:340px){
+ .native-event-summary{grid-template-columns:minmax(0,1fr)}
+ .native-event-panel-head{flex-wrap:wrap}
+}
