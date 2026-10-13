@@ -1,0 +1,28 @@
+name: Luna Native Officer UX CI
+on:
+  push:
+    branches:
+      - 'feat/native-officer-*'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  web-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Syntax, security and site validation
+        run: npm run lint
+      - name: Unit and DOM regressions
+        run: npm test
+      - name: Check officer module syntax directly
+        run: node --check assets/native-admin.js

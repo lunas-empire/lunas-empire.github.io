@@ -1,9 +1,10 @@
 /** Native Luna officer workspace. Private data is held only in a live memory token. */
 import {ALLIANCE_CONFIG} from './config.js';
+import {icon} from './icons.js';
 const apiBase=ALLIANCE_CONFIG.commandCenterEmbedUrl.replace('/?embed=1','');
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
 let sessionToken='',officer=null,panel='overview',cache={},pageLimit=20,historyLimit=20;
-export function clearOfficer(){sessionToken='';officer=null;cache={};}
+export function clearOfficer(){sessionToken='';officer=null;cache={};panel='overview';pageLimit=20;historyLimit=20;}
 export const hasOfficer=()=>Boolean(sessionToken);
 async function request(path,options={}){
  const headers={'Accept':'application/json',...(options.body?{'Content-Type':'application/json'}:{}),...(sessionToken?{'Authorization':'Bearer '+sessionToken}:{})};
@@ -13,25 +14,76 @@ async function request(path,options={}){
  return result;
 }
 const options=(members,value='')=>'<option value="">Nicht besetzt</option>'+members.map(m=>'<option value="'+e(m.id)+'" '+(m.id===value?'selected':'')+'>'+e(m.name)+' · '+e(m.rank)+'</option>').join('');
+// Keep the ten stable panel IDs for deep links and existing officer workflows,
+// but only expose four high-level destinations in the primary navigation.
+const primaryPanels=[
+ ['overview','Kommando','today'],['vs','VS & Daten','vs'],
+ ['members','Allianz','alliance'],['train','Einsätze','hero']
+];
+const secondaryPanels=[
+ ['reviews','Werte prüfen'],['registry','Ränge & Archiv'],
+ ['tasks','Aufgaben'],['absences','Abwesenheiten'],['events','Events'],
+ ['activity','Admin-Log']
+];
+const parentPanel=key=>({
+ overview:'overview',vs:'vs',reviews:'vs',members:'members',registry:'members',
+ train:'train',tasks:'train',absences:'train',events:'train',activity:'activity'
+}[key]||'overview');
+const sectionPanels={
+ vs:[['vs','VS-Duell'],['reviews','Werte prüfen']],
+ members:[['members','Spielerakten'],['registry','Ränge & Archiv']],
+ train:[['train','Züge'],['events','Events'],['tasks','Aufgaben'],['absences','Abwesenheiten']]
+};
+const navButton=([key,label],cls='')=>'<button type="button" class="'+cls+'" data-officer-tab="'+key+'" '+(panel===key?'aria-current="page"':'')+'>'+e(label)+'</button>';
 function nav(){
- return '<nav class="native-admin-nav" aria-label="Offiziersbereiche">'+[['overview','Cockpit'],['members','Spieler'],['vs','VS'],['train','Züge'],['tasks','Aufgaben'],['absences','Abwesenheit'],['events','Events'],['reviews','OCR-Prüfung'],['registry','Archiv & Ränge'],['activity','Admin-Log']].map(([key,text])=>'<button type="button" data-officer-tab="'+key+'" '+(panel===key?'aria-current="page"':'')+'>'+text+'</button>').join('')+'</nav>';
+ const parent=parentPanel(panel);
+ return '<nav class="native-admin-nav" aria-label="Command Center Hauptbereiche">'+
+  primaryPanels.map(([key,label,art])=>'<button type="button" class="native-primary-tab" data-officer-tab="'+key+'" '+(parent===key?'aria-current="page"':'')+'>'+icon(art,'native-tab-icon')+'<span>'+e(label)+'</span></button>').join('')+
+  '<details class="native-admin-more" '+(parent==='activity'?'open':'')+'><summary aria-label="Weitere Offizierswerkzeuge">Mehr</summary><div class="native-more-menu">'+
+  secondaryPanels.map(pair=>navButton(pair)).join('')+'</div></details></nav>'+
+  (sectionPanels[parent]?'<nav class="native-admin-subnav" aria-label="Unterbereiche">'+sectionPanels[parent].map(pair=>navButton(pair)).join('')+'</nav>':'');
 }
 function cards(items){return '<div class="native-cards">'+items.map(([name,value,sub])=>'<article><small>'+e(name)+'</small><strong>'+e(value)+'</strong><span>'+e(sub||'')+'</span></article>').join('')+'</div>'}
 function marker(status){return '<span class="native-status">'+e(status||'Unbekannt')+'</span>'}
 async function view(mount){
- const header='<div class="native-admin-top"><div><span class="admin-eyebrow">RZSN · SECURE OFFICER DESK</span><h1>Command Center</h1><p>Hallo '+e(officer?.name)+'. Deine Änderungen werden in Cloudflare protokolliert.</p></div><button type="button" data-officer-logout>Abmelden</button></div>';
+ const header='<header class="native-admin-top"><div class="native-command-identity"><span class="native-command-emblem" aria-hidden="true">'+icon('hero','native-emblem-icon')+'</span><div><span class="admin-eyebrow">RZSN · SERVER 2261 · OFFIZIERSZUGANG</span><h1>Allianz-Kommando</h1><p>Planen · Prüfen · Koordinieren</p></div></div><div class="native-officer-controls"><span class="native-officer-badge">'+e(officer?.role||'Offizier')+' · '+e(officer?.name||'')+'</span><button type="button" data-officer-logout>Abmelden</button></div></header>';
  mount.innerHTML='<section class="native-admin">'+header+nav()+'<div class="native-admin-content" id="native-admin-content"><p>Daten werden geladen …</p></div></section>';
  const target=mount.querySelector('#native-admin-content');
  try{
   if(panel==='overview'){
    const [summary,ops,trains]=await Promise.all([request('/api/overview'),request('/api/operations'),request('/api/train-manager')]);
    cache.ops=ops;cache.trains=trains;
-   const pending=ops.tasks.filter(x=>x.status!=='done'),missing=trains.counts.missing_recent;
-   target.innerHTML=cards([['Aktive Spieler',summary.active],['OCR zur Prüfung',summary.reviews],['Offene Aufgaben',pending.length],['Unbesetzte Zugtage',missing]])+
-    '<details class="native-fold" open><summary>Dringend & als Nächstes</summary><div class="native-fold-body">'+
-    (pending.length?pending.slice(0,6).map(t=>'<p>'+e(t.title)+' '+marker(t.priority)+'</p>').join(''):'<p>Keine offenen Aufgaben erfasst.</p>')+
-    '<p>'+missing+' fehlende Zugtage der letzten 14 Tage.</p></div></details>'+
-    '<div class="native-shortcuts"><button data-officer-tab="tasks">Aufgaben verwalten</button><button data-officer-tab="train">Zugplanung</button><button data-officer-tab="events">Eventlevel erfassen</button></div>';
+   const day=trains.today||new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+   const pending=(ops.tasks||[]).filter(x=>x.status!=='done').sort((a,b)=>
+    (a.due_date||'9999').localeCompare(b.due_date||'9999'));
+   const days=(trains.calendar||[]).filter(x=>x.date>=day);
+   const todayTrain=days.find(x=>x.date===day);
+   const tomorrowTrain=days.find(x=>x.date>day);
+   const nextEvent=(ops.events||[]).filter(x=>x.event_date>=day&&!['completed','cancelled'].includes(x.outcome))
+    .sort((a,b)=>a.event_date.localeCompare(b.event_date))[0];
+   const eventNames={marshall_guard:'Marshall Guard',zombie_siege:'Zombie Siege',desert_storm:'Desert Storm'};
+   const trainLine=slot=>slot?(slot.entry?.driver
+    ? e(slot.entry.driver)+' · '+e(slot.entry.status||'Unbestätigt')
+    : 'Fahrer noch nicht eingetragen'):'Kein Eintrag im Wochenplan';
+   const mission=(key,art,eyebrow,title,detail)=>'<button type="button" class="native-mission" data-native-action="'+key+'">'+
+    '<span class="native-mission-icon">'+icon(art,'native-mission-svg')+'</span><span class="native-mission-copy"><small>'+e(eyebrow)+'</small><strong>'+e(title)+'</strong><span>'+detail+'</span></span><span class="native-mission-chevron" aria-hidden="true">›</span></button>';
+   target.innerHTML='<div class="native-dashboard">'+
+    '<div class="native-dashboard-heading"><div><span class="native-kicker">OFFIZIERSÜBERSICHT</span><h2>Heute im Kommando</h2><p class="native-muted">Spieltag '+e(day)+' · Daten aus deinem privaten Allianzregister</p></div><span class="native-daily-sigil" aria-hidden="true">'+icon('today','native-emblem-icon')+'</span></div>'+
+    '<div class="native-mission-stack" aria-label="Wichtige Aktionen">'+
+    mission('train-today','season','ZUG · HEUTE',todayTrain?e(todayTrain.type||'Zugverwaltung'):'Tageszug',trainLine(todayTrain))+
+    mission('event-planning','hero','EINSATZ · NÄCHSTER TERMIN',nextEvent?e(eventNames[nextEvent.event_type]||nextEvent.event_type):'Eventplanung',
+     nextEvent?e(nextEvent.event_date)+' · '+(nextEvent.lead_id?'Leitung zugeordnet':'Leitung prüfen'):'Noch kein kommender Termin eingetragen')+
+    mission('review-open','vs','DATEN · PRÜFAUFTRÄGE',e(summary.reviews??0)+' offene Prüffälle',
+      'Unbestätigte Werte prüfen · nicht automatisch als Fehler gewertet')+
+    '</div>'+
+    '<div class="native-dashboard-summary">'+cards([['Allianz aktiv',summary.active??'—','Zuletzt importierter Stand'],['Offene Aufgaben',pending.length,'Officer Desk'],['Zugtage zur Klärung',trains.counts?.missing_recent??'—','Historische Lücken, nicht automatisch versäumt']])+'</div>'+
+    '<div class="native-dashboard-bottom"><section class="native-dashboard-panel"><h3>Deine nächsten Schritte</h3>'+
+    (pending.length?'<div class="native-action-brief">'+pending.slice(0,3).map(t=>'<div><b>'+e(t.title)+'</b><small>'+e(t.due_date||'Keine Frist')+' · '+e(t.priority||'normal')+'</small></div>').join('')+'</div>':'<p class="native-muted">Keine offenen Aufgaben eingetragen.</p>')+
+    '<button type="button" data-native-action="tasks-open">Aufgaben öffnen</button></section>'+
+    '<section class="native-dashboard-panel"><h3>Als Nächstes</h3><p><strong>'+e(tomorrowTrain?.date||'Nächster Zug')+'</strong> · '+e(tomorrowTrain?.type||'Kein weiterer Zugtag gefunden')+'</p><p class="native-muted">'+trainLine(tomorrowTrain)+'</p>'+
+    '<button type="button" data-native-action="member-find">Spieler suchen</button></section></div>'+
+    '<div class="native-shortcuts"><button type="button" data-native-action="train-today">+ Zug</button><button type="button" data-native-action="event-planning">+ Event</button><button type="button" data-native-action="member-find">Spieler suchen</button><button type="button" data-native-action="review-open">Werte prüfen</button></div>'+
+    '</div>';
   }else if(panel==='registry'){
    cache.registry=await request('/api/member-registry');
    target.innerHTML='<div class="native-row"><h2>Mitgliederverwaltung</h2><input id="registry-search" type="search" placeholder="Spieler suchen"></div>'+cards([['Aktiv',cache.registry.counts.active],['Archiv',cache.registry.counts.former],['Blacklist',cache.registry.counts.blacklisted]])+'<div id="registry-list"></div><div id="registry-form"></div>';renderRegistry(target,'');
@@ -74,37 +126,94 @@ function renderMembers(target,query){
 }
 async function showPerson(target,id){
  const p=await request('/api/member/'+encodeURIComponent(id));
- const s=p.stats.filter((x,i,a)=>a.findIndex(y=>x.metric===y.metric)===i);
+ const member=p.member||{},stats=(p.stats||[]).filter((x,i,a)=>a.findIndex(y=>x.metric===y.metric)===i);
+ const weeks=p.weeks||[];
  const node=target.querySelector('#native-person');
- node.innerHTML='<details class="native-fold" open><summary>'+e(p.member.name)+' · Spielerakte</summary><div class="native-fold-body">'+
-  '<p>Verwalteter Rang: '+e(p.member.rank||'Unbekannt')+' · Status: '+e(p.member.status)+(p.member.blacklisted?' · BLACKLIST':'')+'</p>'+
-  '<p>Datenquelle: '+(p.member.state_source==='registry'?'Mitgliederverwaltung · '+e(p.member.registry_updated_at)+' · '+e(p.member.registry_updated_by):'Import')+'</p>'+
-  (p.member.source_difference?'<p role="status">Abweichender Import: '+e(p.member.imported_rank||'Unbekannt')+' · '+e(p.member.source_status)+'. Die manuelle Verwaltung bleibt wirksam.</p>':'')+
-  cards(s.slice(0,8).map(x=>[x.metric.replaceAll('_',' '),['observed','corrected'].includes(x.quality)?Number(x.value).toLocaleString('de-DE'):'?',x.quality]))+
-  '<details class="native-fold"><summary>VS Verlauf</summary><div class="native-fold-body">'+p.weeks.map(w=>'<p>'+e(w.week)+': '+e(w.verified_goal_days)+' / '+e(w.verified_days)+' bestätigte Zieltage</p>').join('')+'</div></details></div></details>';
+ if(!node)return;
+ const qualityText={observed:'Abgelesen',corrected:'Manuell bestätigt',inferred:'Geschätzt',unknown:'Unbekannt',missing:'Fehlt'};
+ node.innerHTML='<section class="native-profile"><div class="native-profile-header">'+
+  '<button type="button" class="native-back" data-native-member-close>← Zur Spielerliste</button>'+
+  '<span class="native-profile-rank" aria-label="Allianzrang">'+e(member.rank||'?')+'</span><div class="native-profile-identity">'+
+  '<span class="native-kicker">SPIELERAKTE · '+e(member.status==='active'?'AKTIV':member.status==='former'?'ARCHIV':'STATUS UNGEKLÄRT')+'</span>'+
+  '<h3>'+e(member.name||'Unbekannt')+'</h3><p>'+e(member.blacklisted?'Manuell gesperrt · ':'')+
+  (member.state_source==='registry'?'Verwaltete Angaben':'Importierte Angaben')+'</p></div></div>'+
+  '<div class="native-profile-actions"><button type="button" class="native-game-primary" data-native-manage="'+e(id)+'">Rang & Status verwalten</button>'+
+  '<button type="button" data-native-member-log="'+e(id)+'">Änderungen anzeigen</button></div>'+
+  (member.source_difference?'<p class="native-evidence-note">Abweichender Import: '+e(member.imported_rank||'Unbekannt')+' · '+e(member.source_status||'unbekannt')+'. Der manuell verwaltete Stand bleibt aktiv.</p>':'')+
+  '<p class="native-muted">Datenquelle: '+(member.state_source==='registry'?'Mitgliederverwaltung · '+e(member.registry_updated_at||'')+' · '+e(member.registry_updated_by||''): 'Letzter verifizierter Import, falls vorhanden')+'</p>'+
+  '<h4 class="native-section-heading">Profil & Leistung</h4>'+
+  (stats.length?cards(stats.slice(0,8).map(x=>[x.metric.replaceAll('_',' '),
+   ['observed','corrected'].includes(x.quality)&&x.value!=null?Number(x.value).toLocaleString('de-DE'):'—',
+   qualityText[x.quality]||x.quality||'Nicht bestätigt'])):'<p class="native-muted">Noch keine verifizierten Profilwerte vorhanden.</p>')+
+  '<details class="native-fold"><summary>VS-Wochenverlauf · '+weeks.length+' Wochen</summary><div class="native-fold-body">'+
+  (weeks.length?weeks.map(w=>'<p><b>'+e(w.week)+'</b> · '+e(w.verified_goal_days)+' / '+e(w.verified_days)+' bestätigte Zieltage'+
+   (w.uncertain_days?' · '+e(w.uncertain_days)+' unklar':'')+'</p>').join(''):'<p>Keine bestätigten Wochen vorhanden.</p>')+
+  '</div></details><div id="native-person-log"></div><div id="registry-form"></div></section>';
  node.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
+
 function renderVs(target){
  const week=cache.vs.weeks.find(w=>w.week===target.querySelector('#native-vs-week').value)||cache.vs.weeks[0];
- target.querySelector('#native-vs-body').innerHTML=week?cards([['Verifiziert unter Ziel',week.failedDays],['Unklar / OCR',week.unknownDays],['6/6 geschafft',week.perfect],['Priorität 3+',week.priority]])+
-  '<div class="native-weekdays">'+week.dayTotals.map(d=>'<div><b>'+['Mo','Di','Mi','Do','Fr','Sa'][d.weekday]+'</b><span>'+d.passed+' erreicht</span><span>'+d.failed+' unter Ziel</span><small>'+d.unknown+' unklar</small></div>').join('')+'</div>'+
-  '<details class="native-fold"><summary>'+week.members.length+' Spieler-Tageswerte anzeigen</summary><div class="native-fold-body"><div class="native-list">'+week.members.map(p=>'<details><summary>'+e(p.name)+' · '+p.failed+' unter Ziel / '+p.unknown+' unklar</summary><p>'+p.days.map((d,i)=>['Mo','Di','Mi','Do','Fr','Sa'][i]+': '+(d.verified?Number(d.points).toLocaleString('de-DE'):'Unklar')).join(' · ')+'</p></details>').join('')+'</div></div></details>':
-  '<p>Keine VS-Wochen vorhanden.</p>';
+ const host=target.querySelector('#native-vs-body');
+ if(!week){host.innerHTML='<p class="native-muted">Noch keine VS-Woche importiert.</p>';return}
+ const labels=['Mo','Di','Mi','Do','Fr','Sa'];
+ const members=week.members||[];
+ const groups=[
+  ['Unter Tagesziel · bestätigt',members.filter(m=>m.failed>0),'failed'],
+  ['Nicht sicher erkennbar',members.filter(m=>m.unknown>0),'unknown'],
+  ['Weitere Spieler',members.filter(m=>!m.failed&&!m.unknown),'verified']
+ ];
+ const groupMarkup=([name,players,kind])=>'<details class="native-fold native-vs-group" '+(kind==='failed'?'open':'')+'>'+
+  '<summary><span>'+e(name)+'</span><b>'+players.length+'</b></summary><div class="native-fold-body">'+
+  (players.length?'<div class="native-list">'+players.map(p=>'<details class="native-vs-player"><summary>'+e(p.name)+' · '+e(p.failed||0)+' unter Ziel / '+e(p.unknown||0)+' unklar</summary>'+
+   '<div class="native-vs-player-days">'+(p.days||[]).map((d,i)=>'<span><b>'+labels[i%6]+'</b> '+
+   (d.verified&&d.points!=null?e(Number(d.points).toLocaleString('de-DE')):'Unbekannt')+'</span>').join('')+'</div></details>').join('')+'</div>':
+   '<p class="native-muted">In dieser Gruppe keine Spieler.</p>')+'</div></details>';
+ host.innerHTML='<div class="native-vs-brief"><p class="native-muted">Nur bestätigte Werte zählen als über oder unter dem Tagesziel von 3,6 Mio. Unklare Ergebnisse werden nicht als Null gewertet.</p>'+
+  cards([['Bestätigt unter Ziel',week.failedDays??0],['Unklar / OCR',week.unknownDays??0],['Alle 6 Tage erreicht',week.perfect??0],['Wichtige Prüffälle',week.priority??0]])+
+  '<div class="native-weekdays" role="list" aria-label="Sechs Tage im Allianzduell">'+(week.dayTotals||[]).map(d=>{
+   const label=labels[d.weekday]||'—';
+   return '<div role="listitem" class="native-vs-day"><b>'+e(label)+'</b><span>'+e(d.passed??0)+' erreicht</span>'+
+    '<span>'+e(d.failed??0)+' unter Ziel</span><small>'+e(d.unknown??0)+' unklar</small></div>';
+  }).join('')+'</div>'+
+  '<div class="native-vs-groups">'+groups.map(groupMarkup).join('')+'</div>'+
+  '<div class="native-shortcuts"><button type="button" data-native-action="review-open">Unklare Werte prüfen</button>'+
+  '<button type="button" data-native-action="member-find">Spielerakte öffnen</button></div></div>';
 }
 function renderTrain(target){
- const d=cache.trains,upcoming=d.calendar.filter(x=>x.date>=d.today).slice(0,7);
- target.querySelector('#native-train-body').innerHTML=cards([['Gefahren',d.counts.completed],['Geplant',d.counts.planned],['Offene Tage',d.counts.missing_recent]])+
-  '<div class="native-list">'+upcoming.map(x=>'<article class="native-train-item"><div><strong>'+e(x.date)+' · '+e(x.type)+'</strong><small>'+e(x.entry?.driver||'Noch offen')+'</small></div><button data-native-train="'+e(x.date)+'">Bearbeiten</button></article>').join('')+'</div>'+
-  '<div id="native-train-form"></div><details class="native-fold"><summary>Vergangene Züge ('+d.history.length+')</summary><div class="native-fold-body native-list">'+d.history.slice(0,historyLimit).map(x=>'<button data-native-train="'+e(x.date)+'">'+e(x.date)+' · '+e(x.driver)+' '+marker(x.status)+'</button>').join('')+(d.history.length>historyLimit?'<button data-native-more="train">Weitere 20 Fahrten</button>':'')+'</div></details>';
+ const d=cache.trains,upcoming=(d.calendar||[]).filter(x=>x.date>=d.today).slice(0,7);
+ const slot=x=>'<article class="native-train-item '+(x.date===d.today?'native-train-today':'')+'">'+
+  '<div><span class="native-kicker">'+(x.date===d.today?'HEUTE':e(x.date))+' · '+e(x.type||'Zug')+'</span>'+
+  '<strong>'+e(x.entry?.driver||'Noch kein Fahrer eingetragen')+'</strong>'+
+  '<small>'+e(x.entry?.status||'Offen')+(x.entry?.linked===false?' · Zuordnung nicht verifiziert':'')+'</small></div>'+
+  '<button type="button" data-native-train="'+e(x.date)+'">'+(x.entry?'Bearbeiten':'Fahrer wählen')+'</button></article>';
+ const toShow=upcoming.length?upcoming.map(slot).join(''):'<p class="native-muted">Für diese Woche liegen keine Zugdaten vor.</p>';
+ target.querySelector('#native-train-body').innerHTML='<p class="native-muted">Fahrer ab R2 · historische Importe bleiben unverändert. Geplant, gefahren und noch nicht bestätigt sind unterschiedliche Zustände.</p>'+
+  '<div class="native-train-highlights">'+cards([['Gefahren (Historie)',d.counts?.completed??'—'],['Geplant',d.counts?.planned??'—'],['Historische Lücken',d.counts?.missing_recent??'—']])+'</div>'+
+  '<h3 class="native-section-heading">Heute & diese Woche</h3><div class="native-list native-train-week">'+toShow+'</div>'+
+  '<div id="native-train-form"></div><details class="native-fold"><summary>Vergangene Züge · '+(d.history?.length||0)+'</summary>'+
+  '<div class="native-fold-body native-list">'+(d.history||[]).slice(0,historyLimit).map(x=>
+   '<button type="button" data-native-train="'+e(x.date)+'">'+e(x.date)+' · '+e(x.driver)+' '+marker(x.status)+'</button>').join('')+
+  ((d.history||[]).length>historyLimit?'<button type="button" data-native-more="train">Weitere 20 Fahrten</button>':'')+
+  '</div></details>';
 }
-function editTrain(target,date){
- const d=cache.trains,entry=d.history.find(x=>x.date===date);
- const optionsList=options(d.members,entry?.member_id);
+function editTrain(target,date,allowDateChange=false){
+ const d=cache.trains,entry=(d.history||[]).find(x=>x.date===date);
+ const optionsList=options(d.members||[],entry?.member_id);
  const editor=target.querySelector('#native-train-form');
- editor.innerHTML='<form id="native-train-save" class="native-form"><h3>Fahrer · '+e(date)+'</h3><label>Datum<input name="date" type="date" value="'+e(date)+'" required></label>'+
-  '<label>Fahrer aus Allianz<select name="member_id">'+optionsList+'</select></label><label>Oder manueller Name<input name="driver_name" maxlength="80" value="'+e(entry?.member_id?'':entry?.driver||'')+'"></label>'+
-  '<label>Status<select name="status">'+[['planned','Geplant'],['completed','Gefahren'],['cancelled','Abgesagt']].map(([v,l])=>'<option value="'+v+'" '+(v===(entry?.status||'planned')?'selected':'')+'>'+l+'</option>').join('')+'</select></label>'+
-  '<label>Notiz<input name="note" maxlength="300" value="'+e(entry?.note||'')+'"></label><button type="submit">Speichern</button><p id="native-form-message"></p></form>';
+ if(!editor)return;
+ editor.innerHTML='<form id="native-train-save" class="native-form native-fast-form"><h3>Zugfahrer · '+e(date)+'</h3>'+
+  '<p class="native-form-help">Nur bestätigte Zuordnungen speichern. R1-Spieler sind keine Zugfahrer.</p>'+
+  '<label>Fahrer aus Allianz<select name="member_id">'+optionsList+'</select></label>'+
+  '<label>Status<select name="status">'+[['planned','Geplant'],['completed','Gefahren'],['cancelled','Abgesagt']].map(([v,l])=>
+   '<option value="'+v+'" '+(v===(entry?.status||'planned')?'selected':'')+'>'+l+'</option>').join('')+'</select></label>'+
+  '<details class="native-form-more" '+(allowDateChange?'open':'')+'><summary>Datum, freie Namen & Notizen</summary><div class="native-form-more-fields">'+
+  '<label>Datum<input name="date" type="date" value="'+e(date)+'" required '+(allowDateChange?'':'readonly')+'></label>'+
+  '<label>Nur wenn keine sichere Zuordnung möglich ist: freier Name<input name="driver_name" maxlength="80" value="'+e(entry?.member_id?'':entry?.driver||'')+'"></label>'+
+  '<label>Notiz<input name="note" maxlength="300" value="'+e(entry?.note||'')+'"></label></div></details>'+
+  '<button type="submit" class="native-game-primary">Zugzuordnung speichern</button>'+
+  '<button type="button" data-native-form-reload hidden>Aktuellen Zugstand laden</button>'+
+  '<p id="native-form-message" role="status"></p></form>';
  editor.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function renderRecords(target){
@@ -120,13 +229,13 @@ function editRecord(target,kind,id){
   absences:'<label>Abwesend<select name="member_id" required>'+select('member_id')+'</select></label><label>Ersatz<select name="substitute_id">'+select('substitute_id')+'</select></label><label>Beginn<input name="start_date" type="date" required></label><label>Ende<input name="end_date" type="date" required></label><label>Notiz<input name="note" maxlength="300"></label>',
   events:'<label>Event<select name="event_type"><option value="marshall_guard">Marshall Guard</option><option value="zombie_siege">Zombie Siege</option><option value="desert_storm">Desert Storm</option></select></label><label>Datum<input name="event_date" type="date" required></label><label>Level<input name="level" type="number" min="1" max="999"></label><label>Wellen<input name="waves" type="number" min="0" max="999"></label><label>Verantwortlich<select name="lead_id">'+select('lead_id')+'</select></label><label>Ersatz<select name="substitute_id">'+select('substitute_id')+'</select></label><label>Teilnehmer<input name="attendance" type="number" min="0" max="100"></label><label>Ergebnis<select name="outcome"><option value="scheduled">Geplant</option><option value="completed">Erfolgreich</option><option value="failed">Nicht geschafft</option><option value="cancelled">Abgesagt</option></select></label><label>Notizen<input name="notes" maxlength="500"></label>'
  };
- const host=target.querySelector('#native-form');host.innerHTML='<form class="native-form" id="native-record-save" data-kind="'+kind+'" data-id="'+e(record.id||'')+'">'+fields[kind]+'<button type="submit">Speichern</button><p id="native-form-message"></p></form>';
+ const host=target.querySelector('#native-form');host.innerHTML='<form class="native-form" id="native-record-save" data-kind="'+kind+'" data-id="'+e(record.id||'')+'">'+fields[kind]+'<button type="submit">Speichern</button><button type="button" data-native-form-reload hidden>Aktuellen Stand laden</button><p id="native-form-message" role="status"></p></form>';
  const form=host.firstElementChild;
  for(const [key,value] of Object.entries(record)){if(form.elements.namedItem(key))form.elements.namedItem(key).value=value??''}
  form.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 async function saveForm(mount,form){
- const kind=form.dataset.kind;const body={};for(const [k,v] of new FormData(form))body[k]=v===''?null:['level','waves','attendance'].includes(k)?Number(v):v;
+ const kind=form.dataset.kind;const body={};for(const [k,v] of new FormData(form))body[k]=v===''?(kind==='train'&&['note','driver_name'].includes(k)?'':null):['level','waves','attendance'].includes(k)?Number(v):v;
  if(form.dataset.id)body.id=form.dataset.id;
  const action=kind==='train'?'train-assignments':'operations/'+kind;
  if(kind==='train'){
@@ -138,8 +247,12 @@ async function saveForm(mount,form){
   await request('/api/'+action,{method:'POST',body});
   await view(mount);
  }catch(err){
-  form.querySelector('#native-form-message').textContent='Nicht gespeichert: '+err.message;
-  submit.disabled=false;
+  const conflict=err.status===409;
+  form.querySelector('#native-form-message').textContent=conflict?
+   'Dieser Eintrag wurde inzwischen geändert. Deine Eingaben bleiben erhalten. Bitte vor erneutem Speichern neu laden.':
+   'Nicht gespeichert: '+err.message;
+  if(conflict){form.dataset.conflict='1';form.querySelector('[data-native-form-reload]').hidden=false}
+  else submit.disabled=false;
  }
 }
 function renderRegistry(target,query){
@@ -191,13 +304,27 @@ export function initNativeAdmin(mount){
  if(mount.dataset.nativeReady)return;
  mount.dataset.nativeReady='1';
  mount.addEventListener('click',async event=>{
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload]');
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-form-reload]');
   if(!button)return;
   if(button.hasAttribute('data-officer-logout')){
    try{await request('/api/native-logout',{method:'POST',body:{}})}catch{}clearOfficer();await renderNativeAdmin(mount);return;
   }
   if(button.dataset.officerTab){panel=button.dataset.officerTab;pageLimit=20;historyLimit=20;await view(mount);return}
+  if(button.dataset.nativeAction){
+   const action=button.dataset.nativeAction;
+   panel=({ 'train-today':'train','event-planning':'events','member-find':'members','review-open':'reviews','tasks-open':'tasks'})[action]||'overview';
+   pageLimit=20;historyLimit=20;await view(mount);
+   const destination=mount.querySelector('#native-admin-content');
+   if(action==='train-today'&&cache.trains?.today&&Array.isArray(cache.trains.history))editTrain(destination,cache.trains.today);
+   if(action==='event-planning'&&cache.ops?.events)editRecord(destination,'events','');
+   if(action==='member-find')destination.querySelector('#native-member-search')?.focus();
+   return;
+  }
   if(button.hasAttribute('data-native-refresh')){await view(mount);return}
+  if(button.hasAttribute('data-native-form-reload')){
+   if(window.confirm('Aktuellen Stand laden und ungespeicherte Eingaben verwerfen?'))await view(mount);
+   return;
+  }
   const target=mount.querySelector('#native-admin-content');if(!target)return;
   if(button.hasAttribute('data-registry-reload')){
    if(!window.confirm('Aktuellen Stand laden und eigene Eingaben verwerfen?'))return;
@@ -212,12 +339,34 @@ export function initNativeAdmin(mount){
   }
   if(button.dataset.registryEdit){editRegistry(target,button.dataset.registryEdit);return}
   if(button.dataset.nativeMember){await showPerson(target,button.dataset.nativeMember);return}
+  if(button.hasAttribute('data-native-member-close')){const node=target.querySelector('#native-person');if(node)node.innerHTML='';target.querySelector('#native-member-search')?.focus();return}
+  if(button.dataset.nativeManage){
+   const holder=target.querySelector('#registry-form');
+   if(!holder)return;
+   try{
+    cache.registry=await request('/api/member-registry');
+    editRegistry(target,button.dataset.nativeManage);
+   }catch(err){holder.textContent='Mitgliederverwaltung nicht verfügbar: '+err.message}
+   return;
+  }
+  if(button.dataset.nativeMemberLog){
+   const holder=target.querySelector('#native-person-log');
+   if(!holder)return;
+   holder.textContent='Änderungen werden geladen …';
+   try{
+    const history=await request('/api/activity?limit=100&member_id='+encodeURIComponent(button.dataset.nativeMemberLog));
+    holder.innerHTML='<h4 class="native-section-heading">Änderungsprotokoll</h4>'+
+     (history.length?'<div class="native-activity-brief">'+history.map(item=>
+      '<p><b>'+e(item.actor)+'</b> · '+e(item.action)+' · '+e(item.at)+'</p>').join('')+'</div>':'<p class="native-muted">Noch keine protokollierten Änderungen zu dieser Spieler-ID.</p>');
+   }catch(err){holder.textContent='Protokoll nicht verfügbar: '+err.message}
+   return;
+  }
   if(button.dataset.nativeMore==='members'){pageLimit+=20;renderMembers(target,target.querySelector('#native-member-search')?.value||'');return}
   if(button.dataset.nativeMore==='train'){historyLimit+=20;renderTrain(target);return}
   if(button.dataset.nativeMore==='registry'){pageLimit+=20;renderRegistry(target,target.querySelector('#registry-search')?.value||'');return}
   if(button.dataset.nativeMore==='reviews'){historyLimit+=20;renderReviews(target,target.querySelector('#review-search-native')?.value||'');return}
   if(button.dataset.nativeTrain){editTrain(target,button.dataset.nativeTrain);return}
-  if(button.dataset.nativeNew==='train'){editTrain(target,new Date().toISOString().slice(0,10));return}
+  if(button.dataset.nativeNew==='train'){editTrain(target,cache.trains?.today||new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date()),true);return}
   if(button.dataset.nativeNew||button.dataset.nativeEdit){editRecord(target,panel,button.dataset.nativeEdit||'');return}
  });
  mount.addEventListener('input',event=>{
