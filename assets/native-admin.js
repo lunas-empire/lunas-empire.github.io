@@ -434,7 +434,11 @@ function renderRecords(target){
   '<div class="native-list">'+entries.map(x=>'<button data-native-edit="'+e(x.id)+'"><strong>'+e(title(x))+'</strong><small>'+e(panel==='tasks'?x.status:panel==='events'?'Level '+(x.level??'?')+' · '+x.outcome:'Ersatz: '+(names.get(x.substitute_id)||'offen'))+'</small></button>').join('')+'</div>';
 }
 function editRecord(target,kind,id){
- const d=cache.ops,record=d[kind].find(x=>x.id===id)||{},select=(name)=>options(d.members,record[name]||'');
+ const d=cache.ops,record=d[kind].find(x=>x.id===id)||{},select=(name)=>{
+  // Tasks and covering/leading duties are limited to responsible R3–R5 players.
+  const high=kind==='tasks'||name==='substitute_id'||name==='lead_id';
+  return options(high?d.members.filter(m=>['R3','R4','R5'].includes(m.rank)):d.members,record[name]||'');
+ };
  const fields={
   tasks:'<label>Aufgabe<input name="title" minlength="3" maxlength="160" required></label><label>Zuständig<select name="assignee_id">'+select('assignee_id')+'</select></label><label>Ersatz<select name="substitute_id">'+select('substitute_id')+'</select></label><label>Frist<input type="date" name="due_date"></label><label>Priorität<select name="priority"><option>normal</option><option>high</option><option>urgent</option><option>low</option></select></label><label>Status<select name="status"><option value="open">Offen</option><option value="in_progress">In Arbeit</option><option value="blocked">Blockiert</option><option value="done">Erledigt</option></select></label><label>Notiz<textarea name="description" maxlength="1000"></textarea></label>',
   absences:'<label>Abwesend<select name="member_id" required>'+select('member_id')+'</select></label><label>Ersatz<select name="substitute_id">'+select('substitute_id')+'</select></label><label>Beginn<input name="start_date" type="date" required></label><label>Ende<input name="end_date" type="date" required></label><label>Notiz<input name="note" maxlength="300"></label>',
@@ -458,7 +462,13 @@ async function saveForm(mount,form){
  const submit=form.querySelector('[type=submit]');submit.disabled=true;
  try{
   await request('/api/'+action,{method:'POST',body});
-  await view(mount);
+  // Keep the officer on the same person's record after saving their absence.
+  const profileId=kind==='absences'?form.dataset.profileId:null;
+  if(profileId){
+   cache.ops=await request('/api/operations');
+   await view(mount);
+   await showPerson(mount.querySelector('#native-admin-content'),profileId);
+  }else await view(mount);
  }catch(err){
   const conflict=err.status===409;
   form.querySelector('#native-form-message').textContent=conflict?
@@ -640,7 +650,7 @@ export function initNativeAdmin(mount){
  if(mount.dataset.nativeReady)return;
  mount.dataset.nativeReady='1';
  mount.addEventListener('click',async event=>{
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter]');
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter]');
   if(!button)return;
   if(button.hasAttribute('data-officer-logout')){
    try{await request('/api/native-logout',{method:'POST',body:{}})}catch{}clearOfficer();await renderNativeAdmin(mount);return;
@@ -705,7 +715,13 @@ export function initNativeAdmin(mount){
   }
   if(button.dataset.registryEdit){editRegistry(target,button.dataset.registryEdit);return}
   if(button.dataset.nativeMember){await showPerson(target,button.dataset.nativeMember);return}
-  if(button.hasAttribute('data-native-member-close')){const node=target.querySelector('#native-person');if(node)node.innerHTML='';target.querySelector('#native-member-search')?.focus();return}
+  if(button.hasAttribute('data-native-member-close')){
+   const node=target.querySelector('#native-person');if(node)node.innerHTML='';
+   const roster=target.querySelector('.native-member-folds');if(roster)roster.hidden=false;
+   const header=target.querySelector('.native-row');if(header)header.hidden=false;
+   target.querySelector('#native-member-search')?.focus();return;
+  }
+  if(button.dataset.nativeAddAbsence){editProfileAbsence(target,button.dataset.nativeAddAbsence);return}
   if(button.dataset.nativeManage){
    const holder=target.querySelector('#registry-form');
    if(!holder)return;
