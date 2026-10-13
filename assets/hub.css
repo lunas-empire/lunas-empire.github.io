@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-13.9');
+@import url('./tokens.css?v=2026-10-13.10');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -1043,3 +1043,31 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 .native-train-recommendation{font-size:.75rem;color:var(--color-action);font-weight:700}
 .native-rotation-form #native-rotation-message{grid-column:1/-1}
 @media(max-width:44rem){.native-rotation-grid{grid-template-columns:minmax(0,1fr)}}
+
+/* Native VS and dashboard progressive disclosure — 2026-10-13 */
+.native-admin .native-vs-brief{display:grid;gap:.7rem}
+.native-admin .native-vs-heading{display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap}
+.native-admin .native-vs-heading h3{font-size:1.03rem;margin:0 0 .15rem}
+.native-admin .native-vs-heading p{margin:0;font-size:.76rem}
+.native-admin .native-vs-action{min-height:44px;padding:.48rem .75rem;background:var(--color-action);color:var(--color-action-ink);font-weight:750}
+.native-admin .native-vs-compact .native-cards{grid-template-columns:repeat(3,minmax(0,1fr));margin:0;gap:.45rem}
+.native-admin .native-vs-compact .native-cards article{min-width:0;padding:.6rem}
+.native-admin .native-vs-days>summary{display:flex;justify-content:space-between;align-items:center}
+.native-admin .native-vs-days>summary small{font-size:.74rem;color:var(--color-muted);font-weight:500}
+.native-admin .native-vs-list-title{font-size:.92rem;margin:.35rem 0 -.4rem}
+.native-admin .native-vs-groups{margin:0;gap:.4rem}
+.native-admin .native-vs-group>summary{align-items:center;min-height:49px}
+.native-admin .native-vs-group>summary>b{min-width:auto;font-size:.76rem;white-space:nowrap}
+.native-admin .native-vs-explainer{margin-top:.1rem}
+.native-admin .native-vs-explainer>.native-fold-body{margin:.2rem 0 .4rem}
+.native-admin .native-dashboard-stat-fold{margin:.55rem 0 .8rem}
+.native-admin .native-dashboard-stat-fold .native-cards{margin:.4rem 0 0}
+@media(max-width:40rem){
+ .native-admin .native-vs-compact .native-cards{grid-template-columns:repeat(3,minmax(0,1fr));gap:.3rem}
+ .native-admin .native-vs-compact .native-cards article{padding:.48rem .32rem}
+ .native-admin .native-vs-compact .native-cards strong{font-size:1.05rem}
+ .native-admin .native-vs-compact .native-cards small,.native-admin .native-vs-compact .native-cards span{font-size:.68rem}
+ .native-admin .native-vs-action{width:100%}
+}
+
+.native-admin .native-more-section-label{display:block;font-size:.68rem;font-weight:800;letter-spacing:.04em;color:#f6d28f;padding:.48rem .15rem .15rem;border-bottom:1px solid #647c95}

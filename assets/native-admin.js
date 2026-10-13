@@ -46,7 +46,9 @@ function nav(){
  return '<nav class="native-admin-nav" aria-label="Command Center Hauptbereiche">'+
   primaryPanels.map(([key,label,art])=>'<button type="button" class="native-primary-tab" data-officer-tab="'+key+'" '+(parent===key?'aria-current="page"':'')+'>'+icon(art,'native-tab-icon')+'<span>'+e(label)+'</span></button>').join('')+
   '<details class="native-admin-more" '+(parent==='activity'?'open':'')+'><summary aria-label="Weitere Offizierswerkzeuge">Mehr</summary><div class="native-more-menu">'+
-  secondaryPanels.map(pair=>navButton(pair)).join('')+'</div></details></nav>'+
+  '<span class="native-more-section-label">Daten & Mitglieder</span>'+secondaryPanels.slice(0,3).map(pair=>navButton(pair)).join('')+
+  '<span class="native-more-section-label">Planung</span>'+secondaryPanels.slice(3,6).map(pair=>navButton(pair)).join('')+
+  '<span class="native-more-section-label">System</span>'+secondaryPanels.slice(6).map(pair=>navButton(pair)).join('')+'</div></details></nav>'+
   (sectionPanels[parent]?'<nav class="native-admin-subnav" aria-label="Unterbereiche">'+
    sectionPanels[parent].map(pair=>navButton(pair)).join('')+
    (contextTools[parent]?'<details class="native-context-tools" '+(contextTools[parent].items.some(([k])=>k===panel)?'open':'')+
@@ -91,13 +93,13 @@ async function view(mount){
     mission('review-open','vs','DATEN · PRÜFAUFTRÄGE',e(summary.reviews??0)+' offene Prüffälle',
       'Unbestätigte Werte prüfen · nicht automatisch als Fehler gewertet')+
     '</div>'+
-    '<div class="native-dashboard-summary">'+cards([['Allianz aktiv',summary.active??'—','Zuletzt importierter Stand'],['Offene Aufgaben',pending.length,'Officer Desk'],['Zugtage zur Klärung',trains.counts?.missing_recent??'—','Historische Lücken, nicht automatisch versäumt']])+'</div>'+
+    '<details class="native-fold native-dashboard-stat-fold"><summary>Weitere Kennzahlen</summary><div class="native-fold-body native-dashboard-summary">'+cards([['Allianz aktiv',summary.active??'—','Zuletzt importierter Stand'],['Offene Aufgaben',pending.length,'Officer Desk'],['Zugtage zur Klärung',trains.counts?.missing_recent??'—','Historische Lücken, nicht automatisch versäumt']])+'</div></details>'+
     '<div class="native-dashboard-bottom"><section class="native-dashboard-panel"><h3>Deine nächsten Schritte</h3>'+
     (pending.length?'<div class="native-action-brief">'+pending.slice(0,3).map(t=>'<div><b>'+e(t.title)+'</b><small>'+e(t.due_date||'Keine Frist')+' · '+e(t.priority||'normal')+'</small></div>').join('')+'</div>':'<p class="native-muted">Keine offenen Aufgaben eingetragen.</p>')+
     '<button type="button" data-native-action="tasks-open">Aufgaben öffnen</button></section>'+
     '<section class="native-dashboard-panel"><h3>Als Nächstes</h3><p><strong>'+e(tomorrowTrain?.date||'Nächster Zug')+'</strong> · '+e(tomorrowTrain?.type||'Kein weiterer Zugtag gefunden')+'</p><p class="native-muted">'+trainLine(tomorrowTrain)+'</p>'+
     '<button type="button" data-native-action="member-find">Spieler suchen</button></section></div>'+
-    '<div class="native-shortcuts"><button type="button" data-native-action="train-today">+ Zug</button><button type="button" data-native-action="event-planning">+ Event</button><button type="button" data-native-action="member-find">Spieler suchen</button><button type="button" data-native-action="review-open">Werte prüfen</button></div>'+
+
     '</div>';
   }else if(panel==='registry'){
    cache.registry=await request('/api/member-registry');
@@ -283,32 +285,41 @@ function editProfileAbsence(target,id){
 }
 
 function renderVs(target){
- const week=cache.vs.weeks.find(w=>w.week===target.querySelector('#native-vs-week').value)||cache.vs.weeks[0];
- const host=target.querySelector('#native-vs-body');
- if(!week){host.innerHTML='<p class="native-muted">Noch keine VS-Woche importiert.</p>';return}
- const labels=['Mo','Di','Mi','Do','Fr','Sa'];
- const members=week.members||[];
- const groups=[
-  ['Unter Tagesziel · bestätigt',members.filter(m=>m.failed>0),'failed'],
-  ['Nicht sicher erkennbar',members.filter(m=>m.unknown>0),'unknown'],
-  ['Weitere Spieler',members.filter(m=>!m.failed&&!m.unknown),'verified']
- ];
- const groupMarkup=([name,players,kind])=>'<details class="native-fold native-vs-group" '+(kind==='failed'?'open':'')+'>'+
-  '<summary><span>'+e(name)+'</span><b>'+players.length+'</b></summary><div class="native-fold-body">'+
-  (players.length?'<div class="native-list">'+players.map(p=>'<details class="native-vs-player"><summary>'+e(p.name)+' · '+e(p.failed||0)+' unter Ziel / '+e(p.unknown||0)+' unklar</summary>'+
-   '<div class="native-vs-player-days">'+(p.days||[]).map((d,i)=>'<span><b>'+labels[i%6]+'</b> '+
-   (d.verified&&d.points!=null?e(Number(d.points).toLocaleString('de-DE')):'Unbekannt')+'</span>').join('')+'</div></details>').join('')+'</div>':
-   '<p class="native-muted">In dieser Gruppe keine Spieler.</p>')+'</div></details>';
- host.innerHTML='<div class="native-vs-brief"><p class="native-muted">Nur bestätigte Werte zählen als über oder unter dem Tagesziel von 3,6 Mio. Unklare Ergebnisse werden nicht als Null gewertet.</p>'+
-  cards([['Bestätigt unter Ziel',week.failedDays??0],['Unklar / OCR',week.unknownDays??0],['Alle 6 Tage erreicht',week.perfect??0],['Wichtige Prüffälle',week.priority??0]])+
-  '<div class="native-weekdays" role="list" aria-label="Sechs Tage im Allianzduell">'+(week.dayTotals||[]).map(d=>{
-   const label=labels[d.weekday]||'—';
-   return '<div role="listitem" class="native-vs-day"><b>'+e(label)+'</b><span>'+e(d.passed??0)+' erreicht</span>'+
-    '<span>'+e(d.failed??0)+' unter Ziel</span><small>'+e(d.unknown??0)+' unklar</small></div>';
-  }).join('')+'</div>'+
-  '<div class="native-vs-groups">'+groups.map(groupMarkup).join('')+'</div>'+
-  '<div class="native-shortcuts"><button type="button" data-native-action="review-open">Unklare Werte prüfen</button>'+
-  '<button type="button" data-native-action="member-find">Spielerakte öffnen</button></div></div>';
+  const week=cache.vs.weeks.find(w=>w.week===target.querySelector('#native-vs-week').value)||cache.vs.weeks[0];
+  const host=target.querySelector('#native-vs-body');
+  if(!week){host.innerHTML='<p class="native-muted">Noch keine VS-Woche importiert.</p>';return}
+  const labels=['Mo','Di','Mi','Do','Fr','Sa'];
+  const members=week.members||[];
+  const groups=[
+   ['Unter Tagesziel',members.filter(m=>m.failed>0)],
+   ['Werte noch unklar',members.filter(m=>m.unknown>0)],
+   ['Weitere Spieler',members.filter(m=>!m.failed&&!m.unknown)]
+  ];
+  // All player groups start collapsed, including "Unter Tagesziel".
+  const groupMarkup=([name,players])=>'<details class="native-fold native-vs-group">'+
+   '<summary><span>'+e(name)+'</span><b>'+players.length+' Spieler</b></summary><div class="native-fold-body">'+
+   (players.length?'<div class="native-list">'+players.map(p=>'<details class="native-vs-player"><summary>'+e(p.name)+' · '+e(p.failed||0)+' unter Ziel / '+e(p.unknown||0)+' unklar</summary>'+
+    '<div class="native-vs-player-days">'+(p.days||[]).map((d,i)=>'<span><b>'+labels[i%6]+'</b> '+
+    (d.verified&&d.points!=null?e(Number(d.points).toLocaleString('de-DE')):'Unbekannt')+'</span>').join('')+'</div></details>').join('')+'</div>':
+    '<p class="native-muted">Keine Spieler in dieser Gruppe.</p>')+'</div></details>';
+  const dayTiles='<div class="native-weekdays" role="list" aria-label="Sechs Tage im Allianzduell">'+(week.dayTotals||[]).map(d=>{
+    const label=labels[d.weekday]||'-';
+    return '<div role="listitem" class="native-vs-day"><b>'+e(label)+'</b><span>'+e(d.passed??0)+' erreicht</span>'+
+     '<span>'+e(d.failed??0)+' unter Ziel</span><small>'+e(d.unknown??0)+' unklar</small></div>';
+   }).join('')+'</div>';
+  host.innerHTML='<section class="native-vs-brief" aria-label="VS-Wochenübersicht">'+
+   '<div class="native-vs-heading"><div><h3>Wochenüberblick</h3><p class="native-muted">Tagesziel: 3,6 Mio. Punkte · Nur bestätigte Werte</p></div>'+
+   '<button type="button" class="native-vs-action" data-native-action="review-open">Prüffälle öffnen'+
+   (Number.isFinite(week.priority)?' ('+e(week.priority)+')':'')+'</button></div>'+
+   '<div class="native-vs-compact">'+cards([['Unter Ziel',week.failedDays??0,'bestätigte Tage'],
+    ['Noch unklar',week.unknownDays??0,'nicht als 0 gewertet'],['6 von 6',week.perfect??0,'Spieler mit erreichtem Ziel']])+'</div>'+
+   '<details class="native-fold native-vs-days"><summary>Tagesvergleich <small>Mo bis Sa</small></summary>'+
+   '<div class="native-fold-body">'+dayTiles+'</div></details>'+
+   '<h3 class="native-vs-list-title">Spieler nach Ergebnis</h3>'+
+   '<div class="native-vs-groups">'+groups.map(groupMarkup).join('')+'</div>'+
+   '<details class="native-fold native-vs-explainer"><summary>Wie werden die Werte bewertet?</summary>'+
+   '<p class="native-fold-body native-muted">Nur bestätigte Ergebnisse zählen als über oder unter dem Tagesziel. Nicht lesbare Screenshots bleiben unklar und werden nie als 0 Punkte erfasst. Öffne „Prüffälle“, um solche Werte nachzusehen.</p></details>'+
+   '</section>';
 }
 const trainWeekdays=['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
 const trainRideTypes=['R5','R4','Members Day','Donation King','VS Hero'];
