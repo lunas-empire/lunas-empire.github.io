@@ -149,6 +149,7 @@ async function view(mount){
     '<div id="native-vs-body"></div>';renderVs(target);
   }else if(panel==='train'){
    cache.trains=await request('/api/train-manager');
+   cache.rotation=await request('/api/train-rotation').catch(()=>null);
    target.innerHTML='<div class="native-row"><h2>Zugplanung</h2><button data-native-new="train">+ Fahrer / Datum</button></div><div id="native-train-body"></div>';renderTrain(target);
   }else if(['tasks','absences','events'].includes(panel)){
    cache.ops=await request('/api/operations');
@@ -306,12 +307,34 @@ function renderVs(target){
   '<div class="native-shortcuts"><button type="button" data-native-action="review-open">Unklare Werte prüfen</button>'+
   '<button type="button" data-native-action="member-find">Spielerakte öffnen</button></div></div>';
 }
+const trainWeekdays=['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
+const trainRideTypes=['R5','R4','Members Day','Donation King','VS Hero'];
+export const memberAbsentOn=(memberId,date,absences=[])=>Boolean(memberId&&date&&absences.some(x=>x.member_id===memberId&&x.start_date<=date&&x.end_date>=date));
+function renderTrainRotation(target){
+ const host=target.querySelector('#native-train-rotation-body');if(!host)return;
+ const data=cache.rotation;
+ if(!data){host.innerHTML='<p class="native-muted">Rotationsbearbeitung erst nach Aktivierung des privaten Cloudflare-Dienstes verfügbar. Der bestehende Zugplan bleibt unverändert.</p>';return}
+ const opts=(list,current,empty=false)=>(empty?'<option value="">Keine feste Koordination</option>':'')+
+  list.map(([value,label])=>'<option value="'+e(value)+'" '+(current===value?'selected':'')+'>'+e(label)+'</option>').join('');
+ const leaders=(cache.trains?.members||[]).filter(m=>['R4','R5'].includes(m.rank)).map(m=>[m.id,m.name+' · '+m.rank]);
+ host.innerHTML='<form id="native-train-rotation-save" class="native-form native-rotation-form" data-revision="'+e(data.revision)+'">'+
+  '<p class="native-form-help">Hier legst du fest, welcher Zugtyp an welchem Wochentag gilt und welcher Officer koordiniert. Die Fahrer bleiben manuell bestätigt.</p>'+
+  '<div class="native-rotation-grid">'+trainWeekdays.map((day,i)=>
+   '<div class="native-rotation-day"><strong>'+day+'</strong><label>Zugtyp<select name="type'+i+'">'+opts(trainRideTypes.map(x=>[x,x]),data.types[i])+'</select></label>'+
+   '<label>Koordination<select name="coord'+i+'">'+opts(leaders,data.coordinators[i]||'',true)+'</select></label></div>').join('')+'</div>'+
+  '<label class="native-check"><input type="checkbox" name="auto_suggest" '+(data.auto_suggest?'checked':'')+'>Fahrerempfehlungen anzeigen</label>'+
+  '<label>Warum ändern wir die Rotation?<input name="reason" minlength="8" maxlength="500" required placeholder="z.B. neue R4-Dienstverteilung"></label>'+
+  '<button type="submit" class="native-game-primary">Wochenrotation speichern</button>'+
+  '<button type="button" data-native-rotation-reload hidden>Aktuellen Stand laden</button>'+
+  '<p id="native-rotation-message" role="status"></p></form>';
+}
 function renderTrain(target){
  const d=cache.trains,upcoming=(d.calendar||[]).filter(x=>x.date>=d.today).slice(0,7);
+ const absent=(id,date)=>memberAbsentOn(id,date,d.absences||[]);
  const slot=x=>'<article class="native-train-item '+(x.date===d.today?'native-train-today':'')+'">'+
   '<div><span class="native-kicker">'+(x.date===d.today?'HEUTE':e(x.date))+' · '+e(x.type||'Zug')+'</span>'+
   '<strong>'+e(x.entry?.driver||'Noch kein Fahrer eingetragen')+'</strong>'+
-  '<small>'+e(x.entry?.status||'Offen')+(x.entry?.linked===false?' · Zuordnung nicht verifiziert':'')+'</small></div>'+
+  '<small>'+e(x.entry?.status||'Offen')+(x.entry?.linked===false?' · Zuordnung nicht verifiziert':'')+(x.unavailable_driver?' · Achtung: Abwesenheit eingetragen':'')+'</small>'+ (x.suggestions?.length?'<small class="native-train-recommendation">Vorschlag: '+e(x.suggestions[0].name)+' · '+e(x.suggestions[0].rank)+'</small>':'')+'</div>'+
   '<div class="native-train-actions"><button type="button" data-native-train="'+e(x.date)+'">'+(x.entry?'Bearbeiten':'Fahrer wählen')+'</button>'+
   (x.entry?.status==='planned'&&x.entry?.member_id&&(d.members||[]).some(m=>m.id===x.entry.member_id)?
    '<button type="button" data-native-copy-train="'+e(x.date)+'">Zugtext kopieren</button>':'')+'</div></article>';
@@ -323,15 +346,16 @@ function renderTrain(target){
   '<div class="native-fold-body native-list">'+(d.history||[]).slice(0,historyLimit).map(x=>
    '<button type="button" data-native-train="'+e(x.date)+'">'+e(x.date)+' · '+e(x.driver)+' '+marker(x.status)+'</button>').join('')+
   ((d.history||[]).length>historyLimit?'<button type="button" data-native-more="train">Weitere 20 Fahrten</button>':'')+
-  '</div></details>';
+  '</div></details><details class="native-fold native-train-rotation"><summary>Wochenrotation & Zuständigkeiten bearbeiten</summary><div class="native-fold-body" id="native-train-rotation-body"></div></details>';
+ renderTrainRotation(target);
 }
 function editTrain(target,date,allowDateChange=false){
  const d=cache.trains,entry=(d.history||[]).find(x=>x.date===date);
- const optionsList=options(d.members||[],entry?.member_id);
+ const optionsList=options((d.members||[]).filter(m=>!memberAbsentOn(m.id,date,d.absences||[])||m.id===entry?.member_id),entry?.member_id);
  const editor=target.querySelector('#native-train-form');
  if(!editor)return;
  editor.innerHTML='<form id="native-train-save" class="native-form native-fast-form"><h3>Zugfahrer · '+e(date)+'</h3>'+
-  '<p class="native-form-help">Nur bestätigte Zuordnungen speichern. R1-Spieler sind keine Zugfahrer.</p>'+
+  '<p class="native-form-help">Fahrer ab R2. Wer an diesem Tag als abwesend eingetragen ist, wird nicht vorgeschlagen und kann nicht neu geplant werden.</p>'+
   '<label>Fahrer aus Allianz<select name="member_id">'+optionsList+'</select></label>'+
   '<label>Status<select name="status">'+[['planned','Geplant'],['completed','Gefahren'],['cancelled','Abgesagt']].map(([v,l])=>
    '<option value="'+v+'" '+(v===(entry?.status||'planned')?'selected':'')+'>'+l+'</option>').join('')+'</select></label>'+
