@@ -230,7 +230,7 @@ const allianceEventOutcomeLabels={
 // and an upcoming run must never be mistaken for a successful historical attempt.
 export function summarizeAllianceEventRuns(source,type){
  const entries=(Array.isArray(source)?source:[]).filter(x=>x&&x.event_type===type&&
-  typeof x.event_date==='string'&&/^20\\d{2}-\\d{2}-\\d{2}$/.test(x.event_date))
+  typeof x.event_date==='string'&&/^20\d{2}-\d{2}-\d{2}$/.test(x.event_date))
   .sort((a,b)=>b.event_date.localeCompare(a.event_date)||
     String(b.updated_at||'').localeCompare(String(a.updated_at||'')));
  const historical=entries.filter(x=>x.outcome==='completed'||x.outcome==='failed');
