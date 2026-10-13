@@ -21,9 +21,9 @@ const primaryPanels=[
  ['members','Allianz','alliance'],['train','Einsätze','hero']
 ];
 const secondaryPanels=[
- ['reviews','Werte prüfen'],['registry','Ränge & Archiv'],['diplomacy','Diplomatie'],
- ['tasks','Aufgaben'],['absences','Abwesenheiten'],['events','Events'],
- ['activity','Admin-Log']
+ ['registry','Ränge & Archiv'],['watch','Mitglieder-Abgleich'],['diplomacy','Diplomatie'],
+ ['reviews','OCR-Prüffälle'],['tasks','Admin-Aufgaben'],['absences','Abwesenheiten'],['events','Allianz-Events'],
+ ['activity','Änderungsprotokoll']
 ];
 const parentPanel=key=>({
  overview:'overview',vs:'vs',reviews:'vs',members:'members',registry:'members',watch:'members',diplomacy:'members',
@@ -46,9 +46,9 @@ function nav(){
  return '<nav class="native-admin-nav" aria-label="Command Center Hauptbereiche">'+
   primaryPanels.map(([key,label,art])=>'<button type="button" class="native-primary-tab" data-officer-tab="'+key+'" '+(parent===key?'aria-current="page"':'')+'>'+icon(art,'native-tab-icon')+'<span>'+e(label)+'</span></button>').join('')+
   '<details class="native-admin-more" '+(parent==='activity'?'open':'')+'><summary aria-label="Weitere Offizierswerkzeuge">Mehr</summary><div class="native-more-menu">'+
-  '<span class="native-more-section-label">Daten & Mitglieder</span>'+secondaryPanels.slice(0,3).map(pair=>navButton(pair)).join('')+
-  '<span class="native-more-section-label">Planung</span>'+secondaryPanels.slice(3,6).map(pair=>navButton(pair)).join('')+
-  '<span class="native-more-section-label">System</span>'+secondaryPanels.slice(6).map(pair=>navButton(pair)).join('')+'</div></details></nav>'+
+  '<span class="native-more-section-label">ALLIANZ & SPIELER</span>'+secondaryPanels.slice(0,3).map(pair=>navButton(pair)).join('')+
+  '<span class="native-more-section-label">DATEN & EINSÄTZE</span>'+secondaryPanels.slice(3,7).map(pair=>navButton(pair)).join('')+
+  '<span class="native-more-section-label">SYSTEM</span>'+secondaryPanels.slice(7).map(pair=>navButton(pair)).join('')+'</div></details></nav>'+
   (sectionPanels[parent]?'<nav class="native-admin-subnav" aria-label="Unterbereiche">'+
    sectionPanels[parent].map(pair=>navButton(pair)).join('')+
    (contextTools[parent]?'<details class="native-context-tools" '+(contextTools[parent].items.some(([k])=>k===panel)?'open':'')+
@@ -110,7 +110,7 @@ async function view(mount){
     '<div id="registry-list"></div><div id="registry-form"></div>';renderRegistry(target,'');
   }else if(panel==='watch'){
    target.innerHTML='<div class="native-row"><div><h2>Mitglieder-Abgleich</h2><p class="native-muted">VS- und Stärke-Aufnahmen vergleichen. Kein automatischer Austritt und keine automatische Blacklist.</p></div></div><div id="native-watch-list" role="region" aria-label="Mitglieder zum Prüfen"></div>';
-   try{cache.watch=await request('/api/membership-watch');renderMembershipWatch(target)}
+   try{[cache.watch,cache.archiveEligibility]=await Promise.all([request('/api/membership-watch'),request('/api/archive-eligibility').catch(()=>null)]);renderMembershipWatch(target)}
    catch(error){
     target.querySelector('#native-watch-list').innerHTML=
      '<p class="native-evidence-note" role="status">Die automatische Erkennung wird erst nach dem geschützten Cloudflare-Update freigeschaltet. Die bestehende manuelle Mitgliederverwaltung funktioniert weiterhin.</p>';
@@ -161,9 +161,10 @@ async function view(mount){
    target.innerHTML='<div class="native-row"><h2>VS-Duell</h2><select id="native-vs-week">'+data.weeks.map(w=>'<option value="'+e(w.week)+'">'+e(w.week)+'</option>').join('')+'</select></div>'+
     '<div id="native-vs-body"></div>';renderVs(target);
   }else if(panel==='train'){
-   cache.trains=await request('/api/train-manager');
+   [cache.trains,cache.dice,cache.diceMembers]=await Promise.all([
+    request('/api/train-manager'),request('/api/train-dice').catch(()=>[]),request('/api/members').catch(()=>[])]);
    cache.rotation=await request('/api/train-rotation').catch(()=>null);
-   target.innerHTML='<div class="native-row"><h2>Zugplanung</h2><button data-native-new="train">+ Fahrer / Datum</button></div><div id="native-train-body"></div>';renderTrain(target);
+   target.innerHTML='<div class="native-row"><h2>Zugplanung</h2><div class="native-row-actions"><button type="button" data-native-dice-date="'+e(cache.trains.today)+'">🎲 Dice Game</button><button data-native-new="train">+ Fahrer / Datum</button></div></div><div id="native-train-body"></div>';renderTrain(target);
   }else if(['tasks','absences','events'].includes(panel)){
    cache.ops=await request('/api/operations');
    target.innerHTML='<div class="native-row"><h2>'+({tasks:'Admin-Aufgaben',absences:'Abwesenheiten & Vertretung',events:'Allianz-Events'}[panel])+'</h2><button data-native-new="'+panel+'">+ Eintragen</button></div><div id="native-form"></div><div id="native-records"></div>';
@@ -238,17 +239,40 @@ async function showPerson(target,id){
  const now=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date());
  const active=absences.filter(a=>a.start_date<=now&&a.end_date>=now);
  const attendance=absences.slice().sort((a,b)=>b.start_date.localeCompare(a.start_date)).slice(0,8);
- const metricHtml=metrics.length?'<div class="native-profile-metrics">'+metrics.map(m=>
-  '<article><small>'+e(m.label)+'</small><strong>'+numberText(m.value)+'</strong>'+
-  '<span class="'+(m.delta===null?'':'native-metric-change')+'">'+e(deltaLabel(m.delta))+'</span>'+
-  '<small>'+e(metricQuality[m.quality]||'Bestätigt')+' · '+e(m.date)+
-  (m.previousDate?' / '+e(m.previousDate):'')+'</small></article>').join('')+'</div>':
+ const safeStats=(p.stats||[]).filter(s=>['observed','corrected'].includes(s.quality)&&Number.isSafeInteger(s.value));
+ const metricHtml=metrics.length?'<div class="native-profile-metrics">'+metrics.map(m=>{
+  const timeline=safeStats.filter(s=>s.metric===m.metric).sort((a,b)=>String(b.captured_at).localeCompare(String(a.captured_at)));
+  return '<details class="native-profile-metric-card"><summary><small>'+e(m.label)+'</small><strong>'+numberText(m.value)+'</strong>'+
+   '<span class="'+(m.delta===null?'':'native-metric-change')+'">'+e(deltaLabel(m.delta))+'</span>'+
+   '<small>'+e(metricQuality[m.quality]||'Bestätigt')+' · '+e(m.date)+'</small><em>Alle '+timeline.length+' Messungen anzeigen ›</em></summary>'+
+   '<div class="native-profile-timeline">'+timeline.map((s,i)=>'<div><time>'+e(String(s.captured_at).slice(0,10))+'</time><b>'+numberText(s.value)+'</b>'+
+     '<small>'+e(i+1<timeline.length?deltaLabel(s.value-timeline[i+1].value):'Erste Messung')+'</small></div>').join('')+'</div></details>';
+ }).join('')+'</div>':
   '<p class="native-muted">Noch keine bestätigten Messungen. Fehlende Werte werden nicht als Null bewertet.</p>';
- const weekSummary=weeks.length?'<div class="native-profile-weeks">'+weeks.map(w=>
-  '<article><b>'+e(w.week)+'</b><span>'+numberText(w.weekly_points)+' Wochenpunkte</span>'+
-  '<small>'+e(w.verified_goal_days??0)+' von '+e(w.verified_days??0)+' bestätigten Zieltagen'+
-  (w.uncertain_days?' · '+e(w.uncertain_days)+' unklar':'')+'</small></article>').join('')+'</div>':
+ const weekdays=['Mo','Di','Mi','Do','Fr','Sa'];
+ const weekSummary=weeks.length?'<div class="native-profile-weeks">'+weeks.map(w=>{
+  const days=(p.days||[]).filter(d=>d.week===w.week);
+  return '<details class="native-profile-week"><summary><b>'+e(w.week)+'</b><span>'+numberText(w.weekly_points)+' Wochenpunkte</span>'+
+   '<small>'+e(w.verified_goal_days??0)+'/'+e(w.verified_days??0)+' bestätigte Zieltage'+
+   (w.uncertain_days?' · '+e(w.uncertain_days)+' unklar':'')+'</small></summary>'+
+   '<div class="native-profile-timeline">'+days.map(day=>'<div><span>'+e(weekdays[day.weekday]||'?')+'</span><b>'+
+    (['observed','corrected'].includes(day.quality)&&day.points!==null?numberText(day.points):'Unbekannt')+
+    '</b><small>'+e(day.quality||'nicht gelesen')+'</small></div>').join('')+'</div></details>';
+ }).join('')+'</div>':
   '<p class="native-muted">Noch kein VS-Wochenverlauf vorhanden.</p>';
+ const rides=(p.rides||[]).slice().sort((a,b)=>b.date.localeCompare(a.date));
+ const dice=(p.dice_wins||[]).slice().sort((a,b)=>b.ride_date.localeCompare(a.ride_date));
+ const achievements=p.achievements||[];
+ const line=(date,detail,sub)=>'<div><time>'+e(date)+'</time><b>'+e(detail)+'</b><small>'+e(sub||'')+'</small></div>';
+ const historyCards='<div class="native-profile-metrics native-player-history-cards">'+
+  '<details class="native-profile-metric-card"><summary><small>Zugfahrten</small><strong>'+rides.filter(x=>x.status==='completed').length+'</strong><span>Bestätigte Fahrten</span><em>Alle '+rides.length+' Einträge ansehen ›</em></summary>'+
+   '<div class="native-profile-timeline">'+(rides.length?rides.map(x=>line(x.date,x.type||'Zug',x.status||'')).join(''):'<p>Keine zugeordneten Fahrten</p>')+'</div></details>'+
+  '<details class="native-profile-metric-card"><summary><small>Dice Game</small><strong>'+dice.length+'</strong><span>Gewonnene Ziehungen</span><em>Gewinne anzeigen ›</em></summary>'+
+   '<div class="native-profile-timeline">'+(dice.length?dice.map(x=>line(x.ride_date,'Dice Game gewonnen',x.roll_value===null?'Wurf unbekannt':'Wurf: '+x.roll_value)).join(''):'<p>Noch kein bestätigter Gewinn</p>')+'</div></details></div>';
+ const achievementHtml=achievements.length?'<details class="native-fold"><summary>Erfolge & Meilensteine · '+achievements.length+'</summary>'+
+  '<div class="native-profile-timeline native-fold-body">'+achievements.map(a=>line(String(a.date).slice(0,10),a.title,
+   a.delta!==null&&a.delta!==undefined?deltaLabel(a.delta):'Bestätigte VS-Leistung')).join('')+'</div></details>':
+  '<p class="native-muted">Noch keine nachweisbaren Meilensteine (+100.000 Kills, +1 Mio. Stärke oder 6/6 VS).</p>';
  node.innerHTML='<section class="native-profile"><div class="native-profile-header">'+
   '<button type="button" class="native-back" data-native-member-close>← Alle Spieler</button>'+
   '<span class="native-profile-rank" aria-label="Allianzrang">'+e(member.rank||'?')+'</span>'+
@@ -261,6 +285,8 @@ async function showPerson(target,id){
   '<h4 class="native-section-heading">Werte & Entwicklung</h4>'+metricHtml+
   '<details class="native-fold"><summary>VS-Erfolge & Wochen · '+weeks.length+'</summary>'+
    '<div class="native-fold-body">'+weekSummary+'</div></details>'+
+  '<h4 class="native-section-heading">Züge & Dice Game</h4>'+historyCards+
+  '<h4 class="native-section-heading">Persönliche Erfolge</h4>'+achievementHtml+
   '<section class="native-person-absence"><div class="native-inline-heading"><h4>Abwesenheit</h4>'+
    '<button type="button" data-native-add-absence="'+e(id)+'">+ Eintragen</button></div>'+
    (attendance.length?'<div class="native-person-absence-list">'+attendance.map(a=>
@@ -357,13 +383,18 @@ function renderTrain(target){
   '<strong>'+e(x.entry?.driver||'Noch kein Fahrer eingetragen')+'</strong>'+
   '<small>'+e(x.entry?.status||'Offen')+(x.entry?.linked===false?' · Zuordnung nicht verifiziert':'')+(x.unavailable_driver?' · Achtung: Abwesenheit eingetragen':'')+'</small>'+ (x.suggestions?.length?'<small class="native-train-recommendation">Vorschlag: '+e(x.suggestions[0].name)+' · '+e(x.suggestions[0].rank)+'</small>':'')+'</div>'+
   '<div class="native-train-actions"><button type="button" data-native-train="'+e(x.date)+'">'+(x.entry?'Bearbeiten':'Fahrer wählen')+'</button>'+
+  '<button type="button" data-native-dice-date="'+e(x.date)+'">🎲 '+e((cache.dice||[]).find(d=>d.ride_date===x.date)?.winner_name||'Dice Game')+'</button>'+
   (x.entry?.status==='planned'&&x.entry?.member_id&&(d.members||[]).some(m=>m.id===x.entry.member_id)?
    '<button type="button" data-native-copy-train="'+e(x.date)+'">Zugtext kopieren</button>':'')+'</div></article>';
  const toShow=upcoming.length?upcoming.map(slot).join(''):'<p class="native-muted">Für diese Woche liegen keine Zugdaten vor.</p>';
  target.querySelector('#native-train-body').innerHTML='<p class="native-muted">Fahrer ab R2 · historische Importe bleiben unverändert. Geplant, gefahren und noch nicht bestätigt sind unterschiedliche Zustände.</p>'+
   '<div class="native-train-highlights">'+cards([['Gefahren (Historie)',d.counts?.completed??'—'],['Geplant',d.counts?.planned??'—'],['Historische Lücken',d.counts?.missing_recent??'—']])+'</div>'+
   '<h3 class="native-section-heading">Heute & diese Woche</h3><div class="native-list native-train-week">'+toShow+'</div>'+
-  '<div id="native-train-form"></div><details class="native-fold"><summary>Vergangene Züge · '+(d.history?.length||0)+'</summary>'+
+  '<div id="native-train-form"></div><details class="native-fold"><summary>Dice Game Gewinner · '+(cache.dice?.length||0)+'</summary>'+
+  '<div class="native-fold-body native-list">'+((cache.dice||[]).length?(cache.dice||[]).map(x=>
+   '<button type="button" data-native-dice-date="'+e(x.ride_date)+'">🎲 '+e(x.ride_date)+' · '+e(x.winner_name)+(x.roll_value?' · '+e(x.roll_value):'')+'</button>').join(''):
+   '<p class="native-muted">Noch keine Dice-Game-Gewinner eingetragen.</p>')+'</div></details>'+
+  '<details class="native-fold"><summary>Vergangene Züge · '+(d.history?.length||0)+'</summary>'+
   '<div class="native-fold-body native-list">'+(d.history||[]).slice(0,historyLimit).map(x=>
    '<button type="button" data-native-train="'+e(x.date)+'">'+e(x.date)+' · '+e(x.driver)+' '+marker(x.status)+'</button>').join('')+
   ((d.history||[]).length>historyLimit?'<button type="button" data-native-more="train">Weitere 20 Fahrten</button>':'')+
@@ -387,6 +418,22 @@ function editTrain(target,date,allowDateChange=false){
   '<button type="submit" class="native-game-primary">Zugzuordnung speichern</button>'+
   '<button type="button" data-native-form-reload hidden>Aktuellen Zugstand laden</button>'+
   '<p id="native-form-message" role="status"></p></form>';
+ editor.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function editDice(target,date){
+ const current=(cache.dice||[]).find(x=>x.ride_date===date);
+ const roster=(cache.diceMembers||[]).filter(m=>m.status==='active');
+ const editor=target.querySelector('#native-train-form');if(!editor)return;
+ editor.innerHTML='<form class="native-form native-fast-form" id="native-dice-save" data-revision="'+e(current?.revision||0)+'">'+
+  '<h3>🎲 Dice Game · '+e(date)+'</h3>'+
+  '<p class="native-form-help">Den tatsächlichen Gewinner eintragen. Fahrerauswahl und Zugrotation bleiben unabhängig.</p>'+
+  '<label>Datum<input type="date" name="date" value="'+e(date)+'" required></label>'+
+  '<label>Gewinner aus der Allianz<select name="winner_id" required>'+options(roster,current?.winner_id||'')+'</select></label>'+
+  '<label>Würfelwert (optional)<input type="number" name="roll_value" min="1" max="999" value="'+e(current?.roll_value??'')+'"></label>'+
+  '<label>Notiz (optional)<input name="note" maxlength="300" value="'+e(current?.note||'')+'"></label>'+
+  '<button type="submit" class="native-game-primary">Dice-Game-Gewinner speichern</button>'+
+  (current?'<button type="button" class="native-danger-action" data-native-dice-delete="'+e(date)+'" data-revision="'+e(current.revision)+'">Ziehung löschen</button>':'')+
+  '<p role="status" id="native-dice-message"></p></form>';
  editor.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 const allianceEventLabels={
@@ -479,23 +526,49 @@ function updateEventForm(form){
 }
 function renderRecords(target){
  if(panel==='events'){renderEventRuns(target);return}
- const d=cache.ops,entries=d[panel],names=new Map(d.members.map(m=>[m.id,m.name]));
- const title=x=>panel==='tasks'?x.title:panel==='absences'?(names.get(x.member_id)||'Unbekannt')+' · '+x.start_date+'–'+x.end_date:(x.event_type||'Event')+' · '+x.event_date;
- target.querySelector('#native-records').innerHTML=cards([[{tasks:'Aufgaben',absences:'Abwesenheiten',events:'Events'}[panel],entries.length]])+
-  '<div class="native-list">'+entries.map(x=>'<button data-native-edit="'+e(x.id)+'"><strong>'+e(title(x))+'</strong><small>'+e(panel==='tasks'?x.status:panel==='events'?'Level '+(x.level??'?')+' · '+x.outcome:'Ersatz: '+(names.get(x.substitute_id)||'offen'))+'</small></button>').join('')+'</div>';
+ const d=cache.ops,entries=d[panel]||[],names=new Map(d.members.map(m=>[m.id,m.name]));
+ const title=x=>panel==='tasks'?x.title:(names.get(x.member_id)||'Unbekannt')+' · '+x.start_date+'–'+x.end_date;
+ const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date());
+ const recordRow=x=>'<article class="native-operational-item"><button type="button" data-native-edit="'+e(x.id)+'">'+
+  '<strong>'+e(title(x))+'</strong><small>'+e(panel==='tasks'?
+    (x.priority||'normal')+' · '+(names.get(x.assignee_id)||'Noch ohne zuständigen R4/R5')+
+    (x.due_date?' · Frist '+x.due_date:''):
+    'Vertretung: '+(names.get(x.substitute_id)||'offen'))+'</small></button>'+
+  (panel==='tasks'?'<button type="button" class="native-task-check" data-native-task-toggle="'+e(x.id)+'" '+
+    'aria-label="'+(x.status==='done'?'Aufgabe wieder öffnen':'Aufgabe als erledigt abhaken')+'">'+
+    (x.status==='done'?'↻ Wieder öffnen':'✓ Erledigt')+'</button>':'')+'</article>';
+ let markup='';
+ if(panel==='tasks'){
+  const open=entries.filter(x=>x.status!=='done').sort((a,b)=>(a.due_date||'9999').localeCompare(b.due_date||'9999'));
+  const done=entries.filter(x=>x.status==='done');
+  markup=cards([['Offen',open.length],['Abgeschlossen',done.length]])+
+   '<section class="native-operation-group"><h3>Offene Aufgaben · '+open.length+'</h3>'+
+    (open.length?'<div class="native-list">'+open.map(recordRow).join('')+'</div>':'<p class="native-muted">Alle Aufgaben erledigt.</p>')+'</section>'+
+   '<details class="native-fold native-operation-group"><summary>Abgeschlossene Aufgaben · '+done.length+'</summary>'+
+    '<div class="native-fold-body native-list">'+(done.length?done.map(recordRow).join(''):'<p class="native-muted">Noch keine erledigten Aufgaben.</p>')+'</div></details>';
+ }else{
+  const current=entries.filter(x=>x.end_date>=today),past=entries.filter(x=>x.end_date<today);
+  markup=cards([['Geplant / aktiv',current.length],['Vergangen',past.length]])+
+   '<div class="native-operation-group"><h3>Aktuelle Abwesenheiten</h3>'+
+    (current.length?'<div class="native-list">'+current.map(recordRow).join('')+'</div>':'<p class="native-muted">Keine laufenden Abwesenheiten.</p>')+'</div>'+
+   '<details class="native-fold"><summary>Vergangene Abwesenheiten · '+past.length+'</summary>'+
+    '<div class="native-fold-body native-list">'+past.map(recordRow).join('')+'</div></details>';
+ }
+ target.querySelector('#native-records').innerHTML=markup;
 }
 function editRecord(target,kind,id){
  const d=cache.ops,record=d[kind].find(x=>x.id===id)||{},select=(name)=>{
-  // Tasks and covering/leading duties are limited to responsible R3–R5 players.
-  const high=kind==='tasks'||name==='substitute_id'||name==='lead_id';
-  return options(high?d.members.filter(m=>['R3','R4','R5'].includes(m.rank)):d.members,record[name]||'');
+  const ranks=kind==='tasks'?['R4','R5']:(name==='substitute_id'||name==='lead_id')?['R3','R4','R5']:null;
+  return options(ranks?d.members.filter(m=>ranks.includes(m.rank)):d.members,record[name]||'');
  };
  const fields={
   tasks:'<label>Aufgabe<input name="title" minlength="3" maxlength="160" required></label><label>Zuständig<select name="assignee_id">'+select('assignee_id')+'</select></label><label>Ersatz<select name="substitute_id">'+select('substitute_id')+'</select></label><label>Frist<input type="date" name="due_date"></label><label>Priorität<select name="priority"><option>normal</option><option>high</option><option>urgent</option><option>low</option></select></label><label>Status<select name="status"><option value="open">Offen</option><option value="in_progress">In Arbeit</option><option value="blocked">Blockiert</option><option value="done">Erledigt</option></select></label><label>Notiz<textarea name="description" maxlength="1000"></textarea></label>',
   absences:'<label>Abwesend<select name="member_id" required>'+select('member_id')+'</select></label><label>Ersatz<select name="substitute_id">'+select('substitute_id')+'</select></label><label>Beginn<input name="start_date" type="date" required></label><label>Ende<input name="end_date" type="date" required></label><label>Notiz<input name="note" maxlength="300"></label>',
   events:'<label>Event<select name="event_type"><option value="marshall_guard">Marshall Guard / Allianzübung</option><option value="zombie_siege">Zombie Siege</option><option value="desert_storm">Desert Storm</option></select></label><label>Datum<input name="event_date" type="date" required></label><label>Schwierigkeit / Level<input name="level" type="number" min="1" max="999" placeholder="Nur bestätigen, wenn bekannt"></label><label data-event-waves>Erreichte Wellen<input name="waves" type="number" min="0" max="999" placeholder="Tatsächlich erreichte Welle"></label><label>Verantwortlich<select name="lead_id">'+select('lead_id')+'</select></label><label>Ersatz<select name="substitute_id">'+select('substitute_id')+'</select></label><label>Teilnehmer (Anzahl)<input name="attendance" type="number" min="0" max="100" placeholder="Falls belegt"></label><label>Ergebnis<select name="outcome"><option value="scheduled">Geplant</option><option value="completed">Abgeschlossen</option><option value="failed">Nicht geschafft</option><option value="cancelled">Abgesagt</option></select></label><label>Notizen<input name="notes" maxlength="500" placeholder="Optional: Kampfbericht / Schwierigkeiten"></label><p class="native-form-help" data-event-guidance></p>'
  };
- const host=target.querySelector('#native-form');host.innerHTML='<form class="native-form" id="native-record-save" data-kind="'+kind+'" data-id="'+e(record.id||'')+'">'+fields[kind]+'<button type="submit">Speichern</button><button type="button" data-native-form-reload hidden>Aktuellen Stand laden</button><p id="native-form-message" role="status"></p></form>';
+ const host=target.querySelector('#native-form');host.innerHTML='<form class="native-form" id="native-record-save" data-kind="'+kind+'" data-id="'+e(record.id||'')+'">'+fields[kind]+'<button type="submit">Speichern</button>'+
+  (record.id?'<button type="button" class="native-danger-action" data-native-record-delete="'+e(record.id)+'" data-kind="'+kind+'">Eintrag löschen</button>':'')+
+  '<button type="button" data-native-form-reload hidden>Aktuellen Stand laden</button><p id="native-form-message" role="status"></p></form>';
  const form=host.firstElementChild;
  for(const [key,value] of Object.entries(record)){if(form.elements.namedItem(key))form.elements.namedItem(key).value=value??''}
  if(kind==='events'&&!record.event_date)form.elements.namedItem('event_date').value=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date());
@@ -538,9 +611,14 @@ export function membershipWatchSummary(data){
 function renderMembershipWatch(target){
  const data=cache.watch||{},host=target.querySelector('#native-watch-list');if(!host)return;
  const count=membershipWatchSummary(data),list=data.candidates||[];
+ const policy=cache.archiveEligibility;
+ const autoArchiveHint=policy?'<p class="native-evidence-note"><strong>Automatisches Archiv nach zwei Wochen:</strong> '+
+  (policy.ready?'W39/W40/W41-Regel aktiv: '+(policy.candidates?.length||0)+' bestätigte Kandidaten; Wochensnapshots final und Profilaufnahme vollständig.':
+    'Sicherheitsprüfung wartet: '+e(policy.reason||'Weitere finalisierte Vergleiche notwendig')+'.')+
+  ' Der nächtliche Staging-Abgleich archiviert nur nach zwei aufeinanderfolgenden fehlenden VS-Wochen und zusätzlichem Fehlen im vollständigen neuesten Mitglieder-Screenshot. R4/R5 werden niemals automatisch archiviert.</p>':'';
  const snapshotInfo=(data.profile?.current?.captured_at?'Stärke '+data.profile.current.captured_at.slice(0,10):'Stärke ohne Vergleich')+
   ' · '+(data.vs?.current?.week?'VS '+data.vs.current.week:'VS ohne Vergleich');
- host.innerHTML='<p class="native-muted">'+e(snapshotInfo)+' · Quellen sind unterschiedlich vollständig</p>'+
+ host.innerHTML='<p class="native-muted">'+e(snapshotInfo)+' · Quellen sind unterschiedlich vollständig</p>'+autoArchiveHint+
   cards([['Prüfkandidaten',count.count],['In beiden Listen fehlend',count.both],
    ['Im Stärke-Snapshot fehlend',count.profile],['In VS-Liste fehlend',count.vs]])+
   '<p class="native-evidence-note"><strong>Kein automatischer Austritt:</strong> Fehlt ein Spieler auf einem Screenshot, bleibt er aktiv. Bei fehlenden Daten ist keine Blacklist zulässig. Status und Blacklist werden ausschließlich manuell in der Spielerakte geändert.</p>'+
@@ -979,7 +1057,7 @@ export function initNativeAdmin(mount){
    if(url.startsWith('blob:'))window.open(url,'_blank','noopener,noreferrer');
    return;
   }
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload]');
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-dice-delete]');
   if(!button)return;
   if(button.hasAttribute('data-officer-logout')){
    try{await request('/api/native-logout',{method:'POST',body:{}})}catch{}clearOfficer();await renderNativeAdmin(mount);return;
@@ -996,6 +1074,28 @@ export function initNativeAdmin(mount){
    return;
   }
   if(button.hasAttribute('data-native-refresh')){await view(mount);return}
+  if(button.dataset.nativeTaskToggle){
+   const row=(cache.ops?.tasks||[]).find(x=>x.id===button.dataset.nativeTaskToggle);
+   if(!row)return;
+   button.disabled=true;
+   try{await request('/api/operations/tasks',{method:'POST',body:{id:row.id,title:row.title,status:row.status==='done'?'open':'done'}});
+    cache.ops=await request('/api/operations');renderRecords(mount.querySelector('#native-admin-content'))}
+   catch(err){button.disabled=false;window.alert('Aufgabe nicht aktualisiert: '+err.message)}
+   return;
+  }
+  if(button.dataset.nativeRecordDelete){
+   const kind=button.dataset.kind,id=button.dataset.nativeRecordDelete;
+   const row=(cache.ops?.[kind]||[]).find(x=>x.id===id);
+   if(!row)return;
+   const reason=window.prompt('Diesen Eintrag wirklich löschen? Bitte Grund für das Admin-Protokoll eintragen (mindestens 8 Zeichen).');
+   if(reason===null)return;
+   if(reason.trim().length<8){window.alert('Bitte einen aussagekräftigen Löschgrund eingeben.');return}
+   button.disabled=true;
+   try{await request('/api/operations/'+kind+'/delete',{method:'POST',body:{id,reason}});
+    cache.ops=await request('/api/operations');await view(mount)}
+   catch(err){button.disabled=false;window.alert('Nicht gelöscht: '+err.message)}
+   return;
+  }
   if(button.hasAttribute('data-native-rotation-reload')){
    if(!window.confirm('Aktuelle Rotation laden und ungespeicherte Einstellungen verwerfen?'))return;
    try{cache.rotation=await request('/api/train-rotation');renderTrainRotation(mount.querySelector('#native-admin-content'))}
@@ -1143,6 +1243,18 @@ export function initNativeAdmin(mount){
    if(form){form.elements.namedItem('event_type').value=button.dataset.nativeEventQuick;updateEventForm(form)}
    return;
   }
+  if(button.dataset.nativeDiceDelete){
+   const reason=window.prompt('Dice-Game-Eintrag löschen? Bitte Grund für das Admin-Protokoll nennen.');
+   if(reason===null)return;
+   if(reason.trim().length<8){window.alert('Bitte mindestens 8 Zeichen Begründung.');return}
+   button.disabled=true;
+   try{await request('/api/train-dice/delete',{method:'POST',body:{date:button.dataset.nativeDiceDelete,
+     expected_revision:Number(button.dataset.revision),reason}});
+    cache.dice=await request('/api/train-dice');renderTrain(target)}
+   catch(err){window.alert('Dice Game nicht gelöscht: '+err.message);button.disabled=false}
+   return;
+  }
+  if(button.dataset.nativeDiceDate){editDice(target,button.dataset.nativeDiceDate);return}
   if(button.dataset.nativeTrain){editTrain(target,button.dataset.nativeTrain);return}
   if(button.dataset.nativeNew==='train'){editTrain(target,cache.trains?.today||new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date()),true);return}
   if(button.dataset.nativeNew||button.dataset.nativeEdit){editRecord(target,panel,button.dataset.nativeEdit||'');return}
@@ -1174,6 +1286,19 @@ export function initNativeAdmin(mount){
     const login=await request('/api/native-login',{method:'POST',body:{code:form.elements.namedItem('code').value}});
     sessionToken=login.token;officer=login;form.elements.namedItem('code').value='';await view(mount);
    }catch(err){form.querySelector('#native-login-status').textContent=err.message;button.disabled=false}
+   return;
+  }
+  if(form.id==='native-dice-save'){
+   const payload={date:form.elements.namedItem('date').value,
+    winner_id:form.elements.namedItem('winner_id').value,
+    roll_value:form.elements.namedItem('roll_value').value?Number(form.elements.namedItem('roll_value').value):null,
+    note:form.elements.namedItem('note').value,expected_revision:Number(form.dataset.revision)};
+   const submit=form.querySelector('[type=submit]'),status=form.querySelector('#native-dice-message');
+   submit.disabled=true;status.textContent='Dice Game wird gespeichert …';
+   try{await request('/api/train-dice',{method:'POST',body:payload});
+    cache.dice=await request('/api/train-dice');renderTrain(mount.querySelector('#native-admin-content'));
+    const info=mount.querySelector('#native-train-form');if(info)info.textContent='Gewinner gespeichert und im Admin-Log protokolliert.';
+   }catch(err){submit.disabled=false;status.textContent='Nicht gespeichert: '+err.message}
    return;
   }
   if(form.id==='native-train-rotation-save'){
