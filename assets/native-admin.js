@@ -53,12 +53,37 @@ async function view(mount){
   if(panel==='overview'){
    const [summary,ops,trains]=await Promise.all([request('/api/overview'),request('/api/operations'),request('/api/train-manager')]);
    cache.ops=ops;cache.trains=trains;
-   const pending=ops.tasks.filter(x=>x.status!=='done'),missing=trains.counts.missing_recent;
-   target.innerHTML=cards([['Aktive Spieler',summary.active],['OCR zur Prüfung',summary.reviews],['Offene Aufgaben',pending.length],['Unbesetzte Zugtage',missing]])+
-    '<details class="native-fold" open><summary>Dringend & als Nächstes</summary><div class="native-fold-body">'+
-    (pending.length?pending.slice(0,6).map(t=>'<p>'+e(t.title)+' '+marker(t.priority)+'</p>').join(''):'<p>Keine offenen Aufgaben erfasst.</p>')+
-    '<p>'+missing+' fehlende Zugtage der letzten 14 Tage.</p></div></details>'+
-    '<div class="native-shortcuts"><button data-officer-tab="tasks">Aufgaben verwalten</button><button data-officer-tab="train">Zugplanung</button><button data-officer-tab="events">Eventlevel erfassen</button></div>';
+   const day=trains.today||new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+   const pending=(ops.tasks||[]).filter(x=>x.status!=='done').sort((a,b)=>
+    (a.due_date||'9999').localeCompare(b.due_date||'9999'));
+   const days=(trains.calendar||[]).filter(x=>x.date>=day);
+   const todayTrain=days.find(x=>x.date===day);
+   const tomorrowTrain=days.find(x=>x.date>day);
+   const nextEvent=(ops.events||[]).filter(x=>x.event_date>=day&&!['completed','cancelled'].includes(x.outcome))
+    .sort((a,b)=>a.event_date.localeCompare(b.event_date))[0];
+   const eventNames={marshall_guard:'Marshall Guard',zombie_siege:'Zombie Siege',desert_storm:'Desert Storm'};
+   const trainLine=slot=>slot?(slot.entry?.driver
+    ? e(slot.entry.driver)+' · '+e(slot.entry.status||'Unbestätigt')
+    : 'Fahrer noch nicht eingetragen'):'Kein Eintrag im Wochenplan';
+   const mission=(key,art,eyebrow,title,detail)=>'<button type="button" class="native-mission" data-native-action="'+key+'">'+
+    '<span class="native-mission-icon">'+icon(art,'native-mission-svg')+'</span><span class="native-mission-copy"><small>'+e(eyebrow)+'</small><strong>'+e(title)+'</strong><span>'+detail+'</span></span><span class="native-mission-chevron" aria-hidden="true">›</span></button>';
+   target.innerHTML='<div class="native-dashboard">'+
+    '<div class="native-dashboard-heading"><div><span class="native-kicker">OFFIZIERSÜBERSICHT</span><h2>Heute im Kommando</h2><p class="native-muted">Spieltag '+e(day)+' · Daten aus deinem privaten Allianzregister</p></div><span class="native-daily-sigil" aria-hidden="true">'+icon('today','native-emblem-icon')+'</span></div>'+
+    '<div class="native-mission-stack" aria-label="Wichtige Aktionen">'+
+    mission('train-today','season','ZUG · HEUTE',todayTrain?e(todayTrain.type||'Zugverwaltung'):'Tageszug',trainLine(todayTrain))+
+    mission('event-planning','hero','EINSATZ · NÄCHSTER TERMIN',nextEvent?e(eventNames[nextEvent.event_type]||nextEvent.event_type):'Eventplanung',
+     nextEvent?e(nextEvent.event_date)+' · '+(nextEvent.lead_id?'Leitung zugeordnet':'Leitung prüfen'):'Noch kein kommender Termin eingetragen')+
+    mission('review-open','vs','DATEN · PRÜFAUFTRÄGE',e(summary.reviews??0)+' offene Prüffälle',
+      'Unbestätigte Werte prüfen · nicht automatisch als Fehler gewertet')+
+    '</div>'+
+    '<div class="native-dashboard-summary">'+cards([['Allianz aktiv',summary.active??'—','Zuletzt importierter Stand'],['Offene Aufgaben',pending.length,'Officer Desk'],['Zugtage zur Klärung',trains.counts?.missing_recent??'—','Historische Lücken, nicht automatisch versäumt']])+'</div>'+
+    '<div class="native-dashboard-bottom"><section class="native-dashboard-panel"><h3>Deine nächsten Schritte</h3>'+
+    (pending.length?'<div class="native-action-brief">'+pending.slice(0,3).map(t=>'<div><b>'+e(t.title)+'</b><small>'+e(t.due_date||'Keine Frist')+' · '+e(t.priority||'normal')+'</small></div>').join('')+'</div>':'<p class="native-muted">Keine offenen Aufgaben eingetragen.</p>')+
+    '<button type="button" data-native-action="tasks-open">Aufgaben öffnen</button></section>'+
+    '<section class="native-dashboard-panel"><h3>Als Nächstes</h3><p><strong>'+e(tomorrowTrain?.date||'Nächster Zug')+'</strong> · '+e(tomorrowTrain?.type||'Kein weiterer Zugtag gefunden')+'</p><p class="native-muted">'+trainLine(tomorrowTrain)+'</p>'+
+    '<button type="button" data-native-action="member-find">Spieler suchen</button></section></div>'+
+    '<div class="native-shortcuts"><button type="button" data-native-action="train-today">+ Zug</button><button type="button" data-native-action="event-planning">+ Event</button><button type="button" data-native-action="member-find">Spieler suchen</button><button type="button" data-native-action="review-open">Werte prüfen</button></div>'+
+    '</div>';
   }else if(panel==='registry'){
    cache.registry=await request('/api/member-registry');
    target.innerHTML='<div class="native-row"><h2>Mitgliederverwaltung</h2><input id="registry-search" type="search" placeholder="Spieler suchen"></div>'+cards([['Aktiv',cache.registry.counts.active],['Archiv',cache.registry.counts.former],['Blacklist',cache.registry.counts.blacklisted]])+'<div id="registry-list"></div><div id="registry-form"></div>';renderRegistry(target,'');
