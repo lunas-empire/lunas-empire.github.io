@@ -26,14 +26,20 @@ const secondaryPanels=[
  ['activity','Admin-Log']
 ];
 const parentPanel=key=>({
- overview:'overview',vs:'vs',reviews:'vs',members:'members',registry:'members',watch:'members',
- train:'train',tasks:'train',absences:'train',events:'train',activity:'activity',diplomacy:'activity'
+ overview:'overview',vs:'vs',reviews:'vs',members:'members',registry:'members',watch:'members',diplomacy:'members',
+ train:'train',tasks:'train',absences:'train',events:'train',activity:'activity'
 }[key]||'overview');
 const sectionPanels={
- vs:[['vs','VS-Duell'],['reviews','Werte prüfen']],
- members:[['members','Spielerakten'],['watch','Fehlende prüfen'],['registry','Ränge & Archiv']],
- train:[['train','Züge'],['events','Events'],['tasks','Aufgaben'],['absences','Abwesenheiten']]
+ vs:[['vs','VS-Duell']],
+ members:[['members','Mitglieder'],['diplomacy','Diplomatie']],
+ train:[['train','Züge'],['events','Allianz-Events']]
 };
+const contextTools={
+ vs:{label:'Werte prüfen',items:[['reviews','Prüffälle öffnen']]},
+ members:{label:'Weitere Mitglieder-Werkzeuge',items:[['watch','Mitglieder-Abgleich'],['registry','Ränge & Archiv']]},
+ train:{label:'Aufgaben & Abwesenheiten',items:[['tasks','Aufgaben'],['absences','Abwesenheiten']]}
+};
+
 const navButton=([key,label],cls='')=>'<button type="button" class="'+cls+'" data-officer-tab="'+key+'" '+(panel===key?'aria-current="page"':'')+'>'+e(label)+'</button>';
 function nav(){
  const parent=parentPanel(panel);
@@ -41,13 +47,21 @@ function nav(){
   primaryPanels.map(([key,label,art])=>'<button type="button" class="native-primary-tab" data-officer-tab="'+key+'" '+(parent===key?'aria-current="page"':'')+'>'+icon(art,'native-tab-icon')+'<span>'+e(label)+'</span></button>').join('')+
   '<details class="native-admin-more" '+(parent==='activity'?'open':'')+'><summary aria-label="Weitere Offizierswerkzeuge">Mehr</summary><div class="native-more-menu">'+
   secondaryPanels.map(pair=>navButton(pair)).join('')+'</div></details></nav>'+
-  (sectionPanels[parent]?'<nav class="native-admin-subnav" aria-label="Unterbereiche">'+sectionPanels[parent].map(pair=>navButton(pair)).join('')+'</nav>':'');
+  (sectionPanels[parent]?'<nav class="native-admin-subnav" aria-label="Unterbereiche">'+
+   sectionPanels[parent].map(pair=>navButton(pair)).join('')+
+   (contextTools[parent]?'<details class="native-context-tools" '+(contextTools[parent].items.some(([k])=>k===panel)?'open':'')+
+    '><summary>'+e(contextTools[parent].label)+'</summary><div>'+
+     contextTools[parent].items.map(pair=>navButton(pair)).join('')+'</div></details>':'')+
+   '</nav>':'');
 }
 function cards(items){return '<div class="native-cards">'+items.map(([name,value,sub])=>'<article><small>'+e(name)+'</small><strong>'+e(value)+'</strong><span>'+e(sub||'')+'</span></article>').join('')+'</div>'}
 function marker(status){return '<span class="native-status">'+e(status||'Unbekannt')+'</span>'}
 async function view(mount){
- const header='<header class="native-admin-top"><div class="native-command-identity"><span class="native-command-emblem" aria-hidden="true">'+icon('hero','native-emblem-icon')+'</span><div><span class="admin-eyebrow">RZSN · SERVER 2261 · OFFIZIERSZUGANG</span><h1>Allianz-Kommando</h1><p>Planen · Prüfen · Koordinieren</p></div></div><div class="native-officer-controls"><span class="native-officer-badge">'+e(officer?.role||'Offizier')+' · '+e(officer?.name||'')+'</span><button type="button" data-officer-logout>Abmelden</button></div></header>';
- mount.innerHTML='<section class="native-admin">'+header+nav()+'<div class="native-admin-content" id="native-admin-content"><p>Daten werden geladen …</p></div></section>';
+ const header='<div class="native-officer-strip" role="group" aria-label="Offiziersbereich">'+
+  '<a class="native-return-link" href="#today">← Zur Website</a>'+
+  '<div class="native-officer-controls"><span class="native-officer-badge">'+e(officer?.role||'Offizier')+' · '+e(officer?.name||'')+
+  '</span><button type="button" data-officer-logout>Abmelden</button></div></div>';
+ mount.innerHTML='<section class="native-admin"><h1 class="sr-only">RZSN Command Center</h1>'+header+nav()+'<div class="native-admin-content" id="native-admin-content"><p>Daten werden geladen …</p></div></section>';
  const target=mount.querySelector('#native-admin-content');
  try{
   if(panel==='overview'){
@@ -121,16 +135,16 @@ async function view(mount){
   }else if(panel==='members'){
    const list=await request('/api/members');
    cache.members=list;
-   target.innerHTML='<div class="native-row"><h2>Spielerübersicht</h2><input id="native-member-search" type="search" placeholder="Spieler suchen" autocomplete="off"></div>'+
-    '<p class="native-muted">Wähle einen Spieler für die vollständige Akte. Es werden anfangs nur 20 gezeigt.</p><div id="native-member-list"></div>';
+   target.innerHTML='<div class="native-row"><h2>Allianzmitglieder</h2><input id="native-member-search" type="search" placeholder="Spieler suchen" autocomplete="off"></div>'+
+    '<p class="native-muted">Nach Rang geordnet. Tippe auf einen Rang und danach auf einen Spieler für die Akte.</p><div id="native-member-list"></div>';
    renderMembers(target,'');
   }else if(panel==='vs'){
    const data=await request('/api/vs-intelligence');cache.vs=data;
-   target.innerHTML='<div class="native-row"><h2>VS Intelligence</h2><select id="native-vs-week">'+data.weeks.map(w=>'<option value="'+e(w.week)+'">'+e(w.week)+'</option>').join('')+'</select></div>'+
+   target.innerHTML='<div class="native-row"><h2>VS-Duell</h2><select id="native-vs-week">'+data.weeks.map(w=>'<option value="'+e(w.week)+'">'+e(w.week)+'</option>').join('')+'</select></div>'+
     '<div id="native-vs-body"></div>';renderVs(target);
   }else if(panel==='train'){
    cache.trains=await request('/api/train-manager');
-   target.innerHTML='<div class="native-row"><h2>Zugmanager</h2><button data-native-new="train">+ Fahrer / Datum</button></div><div id="native-train-body"></div>';renderTrain(target);
+   target.innerHTML='<div class="native-row"><h2>Zugplanung</h2><button data-native-new="train">+ Fahrer / Datum</button></div><div id="native-train-body"></div>';renderTrain(target);
   }else if(['tasks','absences','events'].includes(panel)){
    cache.ops=await request('/api/operations');
    target.innerHTML='<div class="native-row"><h2>'+({tasks:'Admin-Aufgaben',absences:'Abwesenheiten & Vertretung',events:'Allianz-Events'}[panel])+'</h2><button data-native-new="'+panel+'">+ Eintragen</button></div><div id="native-form"></div><div id="native-records"></div>';
