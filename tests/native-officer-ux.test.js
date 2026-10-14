@@ -48,7 +48,7 @@ test('Four destinations drive real cockpit, train and player dossier workflows',
  assert.equal(mount.querySelectorAll('.native-officer-strip').length,1,'One compact officer session bar');
  assert.equal(q('.native-return-link')?.getAttribute('href'),'#today','Return to member hub remains obvious');
  assert.equal(mount.querySelectorAll('h1').length,1,'Accessible admin title exists but is not a second hero');
- assert.equal(mount.querySelectorAll('.native-mission').length,3);
+ assert.equal(mount.querySelectorAll('.native-mission').length,4,'Cockpit keeps only four open cases in this fixture');
  assert.match(q('.native-dashboard').textContent,/2 offene Prüffälle/);
  q('[data-officer-tab=more]').click();
  assert.ok(q('[data-officer-tab=registry]'),'Roster archive is one tile away');

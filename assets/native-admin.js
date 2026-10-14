@@ -2,6 +2,7 @@
 import {ALLIANCE_CONFIG} from './config.js';
 import {icon} from './icons.js';
 import {localizeOfficerTree,officerLanguage,officerLocale} from './native-admin-i18n.js';
+import {buildOfficerActions} from './officer-cockpit.js';
 const apiBase=ALLIANCE_CONFIG.commandCenterEmbedUrl.replace('/?embed=1','');
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
 let sessionToken='',officer=null,panel='overview',cache={},pageLimit=20,historyLimit=20,activityLimit=30,registryFilter='all',activityCategory='all',activityGroupBy='type';
@@ -111,16 +112,14 @@ async function view(mount){
    const trainLine=slot=>slot?(slot.entry?.driver
     ? e(slot.entry.driver)+' · '+e(slot.entry.status||'Unbestätigt')
     : 'Fahrer noch nicht eingetragen'):'Kein Eintrag im Wochenplan';
+   const actions=buildOfficerActions({today:day,summary,operations:ops,trains,vs:cache.vs,donations:cache.donations});
    const mission=(key,art,eyebrow,title,detail)=>'<button type="button" class="native-mission" data-native-action="'+key+'">'+
     '<span class="native-mission-icon">'+icon(art,'native-mission-svg')+'</span><span class="native-mission-copy"><small>'+e(eyebrow)+'</small><strong>'+e(title)+'</strong><span>'+detail+'</span></span><span class="native-mission-chevron" aria-hidden="true">›</span></button>';
    target.innerHTML='<div class="native-dashboard">'+
     '<div class="native-dashboard-heading"><div><span class="native-kicker">OFFIZIERSÜBERSICHT</span><h2>Heute im Kommando</h2><p class="native-muted">Spieltag '+e(day)+' · Daten aus deinem privaten Allianzregister</p></div><span class="native-daily-sigil" aria-hidden="true">'+icon('today','native-emblem-icon')+'</span></div>'+
     '<div class="native-mission-stack" aria-label="Wichtige Aktionen">'+
-    mission('train-today','season','ZUG · HEUTE',todayTrain?e(todayTrain.type||'Zugverwaltung'):'Tageszug',trainLine(todayTrain))+
-    mission('event-planning','hero','EINSATZ · NÄCHSTER TERMIN',nextEvent?e(eventNames[nextEvent.event_type]||nextEvent.event_type):'Eventplanung',
-     nextEvent?e(nextEvent.event_date)+' · '+(nextEvent.lead_id?'Leitung zugeordnet':'Leitung prüfen'):'Noch kein kommender Termin eingetragen')+
-    mission('review-open','vs','DATEN · PRÜFAUFTRÄGE',e(summary.reviews??0)+' offene Prüffälle',
-      'Unbestätigte Werte prüfen · nicht automatisch als Fehler gewertet')+
+    (actions.length?actions.map(item=>mission(item.action,item.art,item.eyebrow,item.title,e(item.detail))).join(''):
+      '')+
     '</div>'+
     '<details class="native-fold native-dashboard-stat-fold"><summary>Weitere Kennzahlen</summary><div class="native-fold-body native-dashboard-summary">'+cards([['Allianz aktiv',summary.active??'—','Zuletzt importierter Stand'],['Offene Aufgaben',pending.length,'Officer Desk'],['Zugtage zur Klärung',trains.counts?.missing_recent??'—','Historische Lücken, nicht automatisch versäumt']])+'</div></details>'+
     '<div class="native-dashboard-bottom"><section class="native-dashboard-panel"><h3>Deine nächsten Schritte</h3>'+
@@ -1447,7 +1446,7 @@ export function initNativeAdmin(mount){
    return}
   if(button.dataset.nativeAction){
    const action=button.dataset.nativeAction;
-   panel=({ 'train-today':'train','event-planning':'events','member-find':'members','review-open':'reviews','tasks-open':'tasks'})[action]||'overview';
+   panel=({ 'train-today':'train','event-planning':'events','member-find':'members','review-open':'reviews','tasks-open':'tasks','absences-open':'absences','vs-open':'vs','donations-open':'donations'})[action]||'overview';
    pageLimit=20;historyLimit=20;await view(mount);
    const destination=mount.querySelector('#native-admin-content');
    if(action==='train-today'&&cache.trains?.today&&Array.isArray(cache.trains.history))editTrain(destination,cache.trains.today);
