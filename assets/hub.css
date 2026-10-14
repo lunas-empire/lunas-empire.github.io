@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-14.16');
+@import url('./tokens.css?v=2026-10-14.17');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -1140,3 +1140,23 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 .native-admin .native-train-candidates span{font-size:.75rem;line-height:1.45;color:var(--color-ink)}
 .native-admin .native-train-candidates button{min-height:44px;min-width:90px}
 @media(max-width:30rem){.native-admin .native-train-item .native-train-actions{width:100%;justify-content:flex-start}.native-admin .native-train-item .native-train-actions button{flex:1 1 125px}.native-admin .native-train-candidates button{flex:0 0 auto}}
+
+/* Member dossier access and VS warning vs OCR review distinction. */
+.native-admin .native-vs-priority-note{margin:.35rem 0 .65rem;padding:.6rem .75rem;border-left:3px solid var(--color-game-orange);border-radius:3px;background:var(--color-raised);color:var(--color-ink);font-size:.82rem;line-height:1.5;overflow-wrap:anywhere}
+.native-admin .native-vs-open-person{display:block;width:100%;max-width:100%;margin:.55rem 0;min-height:44px;text-align:left;white-space:normal;overflow-wrap:anywhere;background:var(--color-raised);color:var(--color-action);font-weight:750;border:1px solid var(--color-game-rim)}
+.native-admin .native-rank-members .native-member-open{display:inline-flex;align-items:center;white-space:nowrap;font-size:.75rem;font-weight:750;color:var(--color-action)}
+.native-admin .native-profile-week .native-week-change{color:var(--color-action);font-weight:750}
+.native-admin .native-profile-metric-card>summary small,.native-admin .native-profile-week>summary small{overflow-wrap:anywhere}
+@media(max-width:31rem){.native-admin .native-rank-members>button{flex-wrap:wrap;gap:.35rem}.native-admin .native-rank-members .native-member-open{margin-left:auto}.native-admin .native-profile-metrics{grid-template-columns:minmax(0,1fr)}.native-admin .native-vs-heading{flex-wrap:wrap}.native-admin .native-vs-action{min-height:44px;white-space:normal}}
+
+/* R4/R5 credential controls and member registry on narrow iPhones. */
+.native-admin .native-officer-controls{flex-wrap:wrap;justify-content:flex-end;gap:.4rem;min-width:0}
+.native-admin .native-officer-controls button{min-height:44px}
+.native-admin .native-access-secret{padding:1rem;margin:.7rem 0;border:1px solid var(--color-rule);background:var(--color-raised);border-radius:6px;min-width:0}
+.native-admin .native-access-secret input{width:100%;max-width:100%;min-height:46px;font-family:ui-monospace,Consolas,monospace;letter-spacing:.035em;overflow-wrap:anywhere}
+.native-admin .native-access-account{display:flex;flex-direction:column;gap:.25rem;min-width:0;padding:.55rem .7rem;border-bottom:1px solid var(--color-rule)}
+.native-admin .native-access-account strong,.native-admin .native-access-account small{overflow-wrap:anywhere}
+.native-admin #native-access-form select,.native-admin #native-access-form input,.native-admin #registry-form input,.native-admin #registry-form select{max-width:100%}
+.native-admin #registry-form .native-row,.native-admin #native-access-form .native-row{flex-wrap:wrap}
+.native-admin #registry-form .native-row button{min-height:44px;white-space:normal;flex:1 1 115px}
+@media(max-width:30rem){.native-admin .native-officer-controls{width:100%;justify-content:flex-start}.native-admin .native-officer-controls>.native-officer-badge{flex:1 1 100%;max-width:100%}.native-admin .native-officer-controls button{flex:1 1 110px}.native-admin .native-row #registry-search{flex:1 1 100%;min-width:0}}

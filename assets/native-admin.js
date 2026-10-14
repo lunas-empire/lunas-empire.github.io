@@ -23,11 +23,11 @@ const primaryPanels=[
 const secondaryPanels=[
  ['registry','Ränge & Archiv'],['watch','Mitglieder-Abgleich'],['diplomacy','Diplomatie'],
  ['reviews','OCR-Prüffälle'],['tasks','Admin-Aufgaben'],['absences','Abwesenheiten'],['events','Allianz-Events'],
- ['activity','Änderungsprotokoll']
+ ['activity','Änderungsprotokoll'],['access','Zugangscodes']
 ];
 const parentPanel=key=>({
  overview:'overview',vs:'vs',reviews:'vs',members:'members',registry:'members',watch:'members',diplomacy:'members',
- train:'train',tasks:'train',absences:'train',events:'train',activity:'activity'
+ train:'train',tasks:'train',absences:'train',events:'train',activity:'activity',access:'activity'
 }[key]||'overview');
 const sectionPanels={
  vs:[['vs','VS-Duell']],
@@ -63,7 +63,7 @@ async function view(mount){
  const header='<div class="native-officer-strip" role="group" aria-label="Offiziersbereich">'+
   '<a class="native-return-link" href="#today">← Zur Website</a>'+
   '<div class="native-officer-controls"><span class="native-officer-badge">'+e(officer?.role||'Offizier')+' · '+e(officer?.name||'')+
-  '</span><button type="button" data-officer-logout>Abmelden</button></div></div>';
+  '</span><button type="button" data-officer-tab="access">Mein Zugang</button><button type="button" data-officer-logout>Abmelden</button></div></div>';
  mount.innerHTML='<section class="native-admin"><h1 class="sr-only">RZSN Command Center</h1>'+header+nav()+'<div class="native-admin-content" id="native-admin-content"><p>Daten werden geladen …</p></div></section>';
  const target=mount.querySelector('#native-admin-content');
  try{
@@ -101,9 +101,20 @@ async function view(mount){
     '<button type="button" data-native-action="member-find">Spieler suchen</button></section></div>'+
 
     '</div>';
+  }else if(panel==='access'){
+   cache.access=await request('/api/officer-access');
+   cache.registry=officer.role==='R5'?await request('/api/member-registry'):null;
+   target.innerHTML='<div class="native-row"><h2>Offizierszugänge</h2></div>'+
+    '<p class="native-muted">Nur R4 und R5 können sich anmelden. Codes werden nur einmal gezeigt und nie dauerhaft angezeigt. Bei Änderungen werden bisherige Sitzungen ungültig.</p>'+
+    '<div class="native-row"><button type="button" data-native-access-mode="self">Eigenen Code ändern</button>'+
+    (officer.role==='R5'?'<button type="button" data-native-access-mode="issue">Neuen Admin hinzufügen</button><button type="button" data-native-access-mode="reset">Code eines Admins zurücksetzen</button>':'')+'</div>'+
+    '<div id="native-access-form"></div><div id="native-access-result" role="status"></div>'+
+    '<details class="native-fold"><summary>Aktive Offizierszugänge ('+e(cache.access.accounts.filter(x=>x.enabled).length)+')</summary>'+
+     '<div class="native-fold-body native-list">'+cache.access.accounts.map(x=>'<div class="native-access-account"><strong>'+e(x.ingame_name)+' · '+e(x.role)+'</strong>'+
+      '<small>'+(x.member_id?'Mit Mitglied verknüpft':'Älterer Zugang · Verknüpfung prüfen')+'</small></div>').join('')+'</div></details>';
   }else if(panel==='registry'){
    cache.registry=await request('/api/member-registry');
-   target.innerHTML='<div class="native-row"><h2>Mitgliederverwaltung</h2><input id="registry-search" type="search" placeholder="Spieler suchen"></div>'+
+   target.innerHTML='<div class="native-row"><h2>Mitgliederverwaltung</h2><button type="button" data-native-member-create>+ Mitglied anlegen</button><input id="registry-search" type="search" placeholder="Spieler suchen"></div>'+
     '<nav class="native-status-filter" aria-label="Mitgliederstatus">'+[['all','Alle'],['active','Aktiv'],['former','Archiv'],['blacklist','Blacklist']].map(([key,label])=>
     '<button type="button" data-native-registry-filter="'+key+'" aria-pressed="'+(registryFilter===key?'true':'false')+'">'+label+'</button>').join('')+'</nav>'+
     cards([['Aktiv',cache.registry.counts.active],['Archiv',cache.registry.counts.former],['Blacklist',cache.registry.counts.blacklisted]])+
@@ -144,9 +155,9 @@ async function view(mount){
    const withEvidence=cache.reviews.filter(x=>Boolean(x.evidence_sha)).length;
    const withoutEvidence=cache.reviews.length-withEvidence;
    target.innerHTML='<div class="native-row"><h2>OCR-Prüfung</h2><input id="review-search-native" type="search" placeholder="Spieler oder Fall suchen"></div>'+
-    '<p class="native-muted"><strong>'+withEvidence+' mit Screenshot</strong> · '+withoutEvidence+' ohne Screenshot. Die Belegfälle stehen zuerst. Bilder werden erst beim Öffnen privat geladen; keine automatische Freigabe.</p>'+ 
+    '<p class="native-muted"><strong>'+withEvidence+' mit Screenshot</strong> · '+withoutEvidence+' ohne Screenshot. Die Belegfälle stehen zuerst. Bilder werden erst beim Öffnen privat geladen; keine automatische Freigabe.</p>'+
     (!cache.reviewWritesEnabled?'<p class="native-evidence-note" role="status">Private Bild- und Korrekturfunktionen werden erst nach dem Cloudflare-Backend-Update freigeschaltet. Die bestehenden Prüffälle bleiben offen.</p>':'')+
-    '<div class="native-row"><label>Bildstatus <select id="review-image-native"><option value="all">Alle Fälle ('+cache.reviews.length+')</option><option value="with">Mit Bild ('+withEvidence+')</option><option value="without">Ohne Bild ('+withoutEvidence+')</option></select></label>'+ 
+    '<div class="native-row"><label>Bildstatus <select id="review-image-native"><option value="all">Alle Fälle ('+cache.reviews.length+')</option><option value="with">Mit Bild ('+withEvidence+')</option><option value="without">Ohne Bild ('+withoutEvidence+')</option></select></label>'+
      '<label>Quelle <select id="review-batch-native"><option value="">Alle Wochen und Profile</option>'+batches.map(b=>'<option value="'+e(b)+'">'+e(b)+'</option>').join('')+'</select></label>'+
     '<label>Prüftyp <select id="review-kind-native"><option value="">Alle</option><option value="vs_day">VS-Tageswert</option><option value="identity">Identität</option><option value="profile">Profilwert</option></select></label></div>'+
     '<p id="native-review-finished" role="status" aria-live="polite"></p><div id="review-list-native"></div>';renderReviews(target,'');
@@ -154,10 +165,11 @@ async function view(mount){
    const list=await request('/api/members');
    cache.members=list;
    target.innerHTML='<div class="native-row"><h2>Allianzmitglieder</h2><input id="native-member-search" type="search" placeholder="Spieler suchen" autocomplete="off"></div>'+
-    '<p class="native-muted">Nach Rang geordnet. Tippe auf einen Rang und danach auf einen Spieler für die Akte.</p><div id="native-member-list"></div>';
+    '<p class="native-muted">Nach Rang sortiert. Spieler antippen: Profil, Messwerte, Wochenverlauf, Erfolge und Zug-Historie.</p><div id="native-member-list"></div>';
    renderMembers(target,'');
   }else if(panel==='vs'){
-   const data=await request('/api/vs-intelligence');cache.vs=data;
+   const [data,summary]=await Promise.all([request('/api/vs-intelligence'),request('/api/overview')]);
+   cache.vs=data;cache.overview=summary;
    target.innerHTML='<div class="native-row"><h2>VS-Duell</h2><select id="native-vs-week">'+data.weeks.map(w=>'<option value="'+e(w.week)+'">'+e(w.week)+'</option>').join('')+'</select></div>'+
     '<div id="native-vs-body"></div>';renderVs(target);
   }else if(panel==='train'){
@@ -192,6 +204,8 @@ export function profileMetricChanges(stats){
   return {metric,label:metricNames[metric]||metric.replaceAll('_',' '),value:latest.value,
    date:String(latest.captured_at).slice(0,10),quality:latest.quality,
    previous:previous?.value??null,previousDate:previous?String(previous.captured_at).slice(0,10):null,
+   first:records.at(-1)?.value??null,firstDate:String(records.at(-1)?.captured_at||'').slice(0,10),
+   count:records.length,deltaSinceFirst:records.length>1?latest.value-records.at(-1).value:null,
    delta:previous?latest.value-previous.value:null};
  });
 }
@@ -201,15 +215,17 @@ function renderMembers(target,query=''){
  const text=String(query).trim().toLocaleLowerCase('de-DE');
  const list=records.filter(m=>String(m.name||'').toLocaleLowerCase('de-DE').includes(text));
  const opened=new Set([...host.querySelectorAll('details.native-rank-group[open]')].map(x=>x.dataset.rank));
+ const initial=!host.querySelector('.native-rank-group');
+ const firstRank=rankOrder.find(rank=>list.some(m=>(rankOrder.includes(m.rank)?m.rank:'Ungeklärt')===rank));
  const rankGroups=rankOrder.map(rank=>{
   const group=list.filter(m=>(rankOrder.includes(m.rank)?m.rank:'Ungeklärt')===rank)
    .sort((a,b)=>String(a.name).localeCompare(String(b.name),'de',{sensitivity:'base'}));
   if(!group.length)return '';
-  const open=text.length>0||opened.has(rank);
+  const open=text.length>0||opened.has(rank)||(initial&&rank===firstRank);
   const rows=group.map(m=>'<button type="button" data-native-member="'+e(m.id)+'">'+
    '<span class="native-rank-tag">'+e(m.rank||'?')+'</span><span><strong>'+e(m.name)+'</strong>'+
    '<small>Stärke '+numberText(m.power)+' · Kills '+numberText(m.kills)+
-   ' · Spenden '+numberText(m.donations_weekly)+'</small></span><span aria-hidden="true">›</span></button>').join('');
+   ' · Spenden '+numberText(m.donations_weekly)+'</small></span><span class="native-member-open" aria-hidden="true">Profil ›</span></button>').join('');
   return '<details class="native-rank-group" data-rank="'+e(rank)+'" '+(open?'open':'')+'>'+
    '<summary><span class="native-rank-tag">'+e(rank)+'</span><strong>'+e(rank==='Ungeklärt'?'Rang ungeklärt':'Rang '+rank)+'</strong>'+
    '<span class="native-rank-count">'+group.length+' Spieler</span></summary>'+
@@ -224,10 +240,17 @@ function deltaLabel(n){
  return (n>0?'+':'')+numberText(n)+' seit der vorherigen Aufnahme';
 }
 async function showPerson(target,id){
- const p=await request('/api/member/'+encodeURIComponent(id));
+ const node=target.querySelector('#native-person');if(!node)return;
+ node.innerHTML='<p role="status" class="native-muted">Spielerakte wird geladen …</p>';
+ let p;
+ try{p=await request('/api/member/'+encodeURIComponent(id))}
+ catch(error){
+  node.innerHTML='<p class="native-error" role="alert">Spielerakte konnte nicht geladen werden: '+e(error.message)+'</p>'+
+   '<button type="button" data-native-member="'+e(id)+'">Erneut versuchen</button>';
+  return;
+ }
  const member=p.member||{},metrics=profileMetricChanges(p.stats||[]);
  const weeks=(p.weeks||[]).slice().sort((a,b)=>String(b.week).localeCompare(String(a.week)));
- const node=target.querySelector('#native-person');if(!node)return;
  // The roster is still in the DOM so search state and expanded ranks survive Back.
  const roster=target.querySelector('.native-member-folds');if(roster)roster.hidden=true;
  const searchRow=target.querySelector('.native-row');if(searchRow)searchRow.hidden=true;
@@ -244,17 +267,24 @@ async function showPerson(target,id){
   const timeline=safeStats.filter(s=>s.metric===m.metric).sort((a,b)=>String(b.captured_at).localeCompare(String(a.captured_at)));
   return '<details class="native-profile-metric-card"><summary><small>'+e(m.label)+'</small><strong>'+numberText(m.value)+'</strong>'+
    '<span class="'+(m.delta===null?'':'native-metric-change')+'">'+e(deltaLabel(m.delta))+'</span>'+
+   '<small>'+e(m.deltaSinceFirst===null?'Erst eine bestätigte Aufnahme – noch kein Langzeitvergleich':
+    'Seit '+m.firstDate+': '+(m.deltaSinceFirst>0?'+':'')+numberText(m.deltaSinceFirst))+'</small>'+
    '<small>'+e(metricQuality[m.quality]||'Bestätigt')+' · '+e(m.date)+'</small><em>Alle '+timeline.length+' Messungen anzeigen ›</em></summary>'+
    '<div class="native-profile-timeline">'+timeline.map((s,i)=>'<div><time>'+e(String(s.captured_at).slice(0,10))+'</time><b>'+numberText(s.value)+'</b>'+
      '<small>'+e(i+1<timeline.length?deltaLabel(s.value-timeline[i+1].value):'Erste Messung')+'</small></div>').join('')+'</div></details>';
  }).join('')+'</div>':
   '<p class="native-muted">Noch keine bestätigten Messungen. Fehlende Werte werden nicht als Null bewertet.</p>';
  const weekdays=['Mo','Di','Mi','Do','Fr','Sa'];
- const weekSummary=weeks.length?'<div class="native-profile-weeks">'+weeks.map(w=>{
+ const weekSummary=weeks.length?'<div class="native-profile-weeks">'+weeks.map((w,i)=>{
   const days=(p.days||[]).filter(d=>d.week===w.week);
+  const older=weeks[i+1]||null;
+  const comparable=w.state==='final'&&older?.state==='final'&&
+   Number.isSafeInteger(w.weekly_points)&&Number.isSafeInteger(older.weekly_points);
+  const weeklyDelta=comparable?w.weekly_points-older.weekly_points:null;
   return '<details class="native-profile-week"><summary><b>'+e(w.week)+'</b><span>'+numberText(w.weekly_points)+' Wochenpunkte</span>'+
-   '<small>'+e(w.verified_goal_days??0)+'/'+e(w.verified_days??0)+' bestätigte Zieltage'+
-   (w.uncertain_days?' · '+e(w.uncertain_days)+' unklar':'')+'</small></summary>'+
+   '<small>'+e(w.state==='final'?'Finalisiert':'Vorläufig / unvollständig')+' · '+e(w.verified_goal_days??0)+'/'+e(w.verified_days??0)+' bestätigte Zieltage'+
+   (w.uncertain_days?' · '+e(w.uncertain_days)+' unklar':'')+'</small>'+
+   (weeklyDelta!==null?'<small class="native-week-change">'+(weeklyDelta>0?'+':'')+numberText(weeklyDelta)+' zum '+e(older.week)+'</small>':'')+'</summary>'+
    '<div class="native-profile-timeline">'+days.map(day=>'<div><span>'+e(weekdays[day.weekday]||'?')+'</span><b>'+
     (['observed','corrected'].includes(day.quality)&&day.points!==null?numberText(day.points):'Unbekannt')+
     '</b><small>'+e(day.quality||'nicht gelesen')+'</small></div>').join('')+'</div></details>';
@@ -332,6 +362,7 @@ function renderVs(target){
   const groupMarkup=([name,players])=>'<details class="native-fold native-vs-group">'+
    '<summary><span>'+e(name)+'</span><b>'+players.length+' Spieler</b></summary><div class="native-fold-body">'+
    (players.length?'<div class="native-list">'+players.map(p=>'<details class="native-vs-player"><summary>'+e(p.name)+' · '+e(p.failed||0)+' unter Ziel / '+e(p.unknown||0)+' unklar</summary>'+
+    '<button type="button" class="native-vs-open-person" data-native-member="'+e(p.id)+'">Spielerakte & Entwicklung öffnen ›</button>'+
     '<div class="native-vs-player-days">'+(p.days||[]).map((d,i)=>'<span><b>'+labels[i%6]+'</b> '+
     (d.verified&&d.points!=null?e(Number(d.points).toLocaleString('de-DE')):'Unbekannt')+'</span>').join('')+'</div></details>').join('')+'</div>':
     '<p class="native-muted">Keine Spieler in dieser Gruppe.</p>')+'</div></details>';
@@ -342,8 +373,8 @@ function renderVs(target){
    }).join('')+'</div>';
   host.innerHTML='<section class="native-vs-brief" aria-label="VS-Wochenübersicht">'+
    '<div class="native-vs-heading"><div><h3>Wochenüberblick</h3><p class="native-muted">Tagesziel: 3,6 Mio. Punkte · Nur bestätigte Werte</p></div>'+
-   '<button type="button" class="native-vs-action" data-native-action="review-open">Prüffälle öffnen'+
-   (Number.isFinite(week.priority)?' ('+e(week.priority)+')':'')+'</button></div>'+
+   '<button type="button" class="native-vs-action" data-native-action="review-open">OCR-Prüffälle ('+e(cache.overview?.reviews??'—')+')</button></div>'+
+   (Number.isFinite(week.priority)&&week.priority>0?'<p class="native-vs-priority-note">'+e(week.priority)+' Spieler mit mindestens 3 bestätigten Tagen unter dem VS-Ziel. Das sind keine offenen OCR-Prüffälle.</p>':'')+
    '<div class="native-vs-compact">'+cards([['Unter Ziel',week.failedDays??0,'bestätigte Tage'],
     ['Noch unklar',week.unknownDays??0,'nicht als 0 gewertet'],['6 von 6',week.perfect??0,'Spieler mit erreichtem Ziel']])+'</div>'+
    '<details class="native-fold native-vs-days"><summary>Tagesvergleich <small>Mo bis Sa</small></summary>'+
@@ -710,13 +741,47 @@ function renderRegistry(target,query){
   (x.name+' '+x.rank+' '+x.lifecycle+' '+(x.blacklisted?'blacklist':'')).toLowerCase().includes(query.toLowerCase()));
  target.querySelector('#registry-list').innerHTML='<p class="native-muted">'+list.length+' Ergebnisse. Archiv und Blacklist werden nur manuell geändert.</p><div class="native-list">'+list.slice(0,pageLimit).map(x=>'<button data-registry-edit="'+e(x.id)+'"><strong>'+e(x.name)+' · '+e(x.rank)+'</strong><small>'+e(x.lifecycle)+(x.blacklisted?' · BLACKLIST':'')+' · zuletzt '+e(x.last_seen||'?')+'</small></button>').join('')+'</div>'+(list.length>pageLimit?'<button data-native-more="registry">Weitere Spieler</button>':'');
 }
+function createMemberForm(target){
+ const host=target.querySelector('#registry-form');if(!host)return;
+ const ranks=officer?.role==='R5'?['R1','R2','R3','R4','R5']:['R1','R2','R3'];
+ host.innerHTML='<form id="native-member-create-save" class="native-form"><h3>Mitglied manuell anlegen</h3>'+
+  '<p class="native-muted">Nur die bestätigte Identität wird angelegt. Keine Power-, Kills-, Spenden- oder VS-Werte werden erfunden.</p>'+
+  '<label>Ingame-Spielername<input name="name" maxlength="80" minlength="2" required autocomplete="off"></label>'+
+  '<label>Rang<select name="rank">'+ranks.map(r=>'<option>'+r+'</option>').join('')+'</select></label>'+
+  '<label>Warum manuell anlegen?<input name="reason" required minlength="8" maxlength="500" placeholder="Begründung für das Admin-Protokoll"></label>'+
+  '<button type="submit" class="native-game-primary">Mitglied protokolliert anlegen</button><p role="status" id="native-member-create-message"></p></form>';
+ host.querySelector('[name=name]').focus();
+}
+function accessForm(target,mode){
+ const host=target.querySelector('#native-access-form');if(!host)return;
+ const reason='<label>Grund (Audit-Log)<input name="reason" required minlength="8" maxlength="500" placeholder="Warum wird der Zugang verändert?"></label>';
+ const accountChoices=(cache.access?.accounts||[]).filter(a=>a.enabled&&a.ingame_name!==officer?.name);
+ const eligible=(cache.registry?.members||[]).filter(m=>m.lifecycle==='active'&&!m.blacklisted&&['R4','R5'].includes(m.rank)&&
+  !(cache.access?.accounts||[]).some(a=>a.member_id===m.id||a.ingame_name.toLocaleLowerCase()===m.name.toLocaleLowerCase()));
+ const self=mode==='self',issue=mode==='issue';
+ host.innerHTML='<form id="native-access-save" class="native-form" data-mode="'+e(mode)+'"><h3>'+
+  (self?'Eigenen Code ändern':issue?'Neuen Admin-Zugang erstellen':'Vergessenen Code zurücksetzen')+'</h3>'+
+  '<p class="native-muted">'+(self?'Der aktuelle Code muss bestätigt werden.':'Nur R5 darf Codes anderer Offiziere verwalten.')+
+  ' Der neue zufällige Zugangscode erscheint genau einmal; alle bisherigen Sitzungen des betroffenen Offiziers werden beendet.</p>'+
+  (self?'<label>Aktueller Zugangscode<input type="password" name="current_code" required autocomplete="off"></label>':
+  '<label>'+(issue?'R4/R5-Mitglied':'Offizier')+' auswählen<select name="'+(issue?'member_id':'officer_id')+'" required><option value="">Bitte auswählen</option>'+
+  (issue?eligible.map(m=>'<option value="'+e(m.id)+'">'+e(m.name)+' · '+e(m.rank)+'</option>'):
+   accountChoices.map(a=>'<option value="'+e(a.id)+'">'+e(a.ingame_name)+' · '+e(a.role)+'</option>')).join('')+'</select></label>')+
+  reason+'<button type="submit" class="native-game-primary">'+(self?'Neuen persönlichen Code erzeugen':issue?'Zugang erstellen':'Code zurücksetzen')+
+  '</button><p role="status" id="native-access-message"></p></form>';
+}
 function editRegistry(target,id){
  const m=cache.registry.members.find(x=>x.id===id);if(!m)return;
- const ranks=['R1','R2','R3','R4','R5'];
  const host=target.querySelector('#registry-form');
+ if(officer?.role!=='R5'&&['R4','R5'].includes(m.rank)){
+  host.innerHTML='<p class="native-evidence-note">Offiziersrang, Archiv und Blacklist dieses Mitglieds dürfen nur durch R5 geändert werden.</p>';
+  return;
+ }
+ const ranks=officer?.role==='R5'?['R1','R2','R3','R4','R5']:['R1','R2','R3'];
  host.innerHTML='<form id="registry-save" class="native-form" data-id="'+e(id)+'" data-revision="'+e(m.revision)+'"><h3>'+e(m.name)+' verwalten</h3>'+
   '<label>Verwalteter Rang<select name="rank" required>'+(!m.rank?'<option value="" selected disabled>Rang verifizieren</option>':'')+ranks.map(x=>'<option '+(m.rank===x?'selected':'')+'>'+x+'</option>').join('')+'</select></label>'+
   '<label>Status<select name="lifecycle" required>'+(m.lifecycle==='unverified'?'<option value="" selected disabled>Identität / Status verifizieren</option>':'')+'<option value="active" '+(m.lifecycle==='active'?'selected':'')+'>Aktiv</option><option value="former" '+(m.lifecycle==='former'?'selected':'')+'>Ehemalig / Archiv</option></select></label>'+
+  '<div class="native-row"><button type="button" data-native-registry-quick="archive">Ins Archiv vormerken</button><button type="button" data-native-registry-quick="blacklist">Blacklist vormerken</button><button type="button" data-native-registry-quick="active">Aktiv vormerken</button></div>'+
   '<label class="native-check"><input type="checkbox" name="blacklisted" '+(m.blacklisted?'checked':'')+'>Manuelle Blacklist</label>'+
   '<label>Begründung<input name="reason" required minlength="8" maxlength="500" value="'+e(m.reason)+'" placeholder="Für jede Änderung erforderlich (mindestens 8 Zeichen)"></label>'+
   '<button type="submit">Änderung protokolliert speichern</button><button type="button" data-registry-reload hidden>Aktuellen Stand laden (Eingaben verwerfen)</button><p id="native-form-message" role="status"></p></form>';
@@ -860,9 +925,9 @@ function renderReviews(target,term=''){
     (x.context?.warning?'<p class="native-evidence-note">'+e(x.context.warning)+'</p>':'')+
     '<div class="native-review-columns"><div class="native-review-picture">'+
      '<div class="native-review-image" role="img" aria-label="Geschütztes Belegbild">Bild öffnen, um Beleg zu laden.</div>'+
-     (linked?'<small>Privat hinterlegt · überprüfe die Anzeige vor dem Speichern.</small>'+ 
-      '<details class="native-evidence-replace"><summary>Falschen oder abgeschnittenen Screenshot ersetzen</summary>'+ 
-      '<label>Neuen Original-Screenshot auswählen<input type="file" data-native-review-replace-file accept="image/png,image/jpeg,image/webp"></label>'+ 
+     (linked?'<small>Privat hinterlegt · überprüfe die Anzeige vor dem Speichern.</small>'+
+      '<details class="native-evidence-replace"><summary>Falschen oder abgeschnittenen Screenshot ersetzen</summary>'+
+      '<label>Neuen Original-Screenshot auswählen<input type="file" data-native-review-replace-file accept="image/png,image/jpeg,image/webp"></label>'+
       '<button type="button" data-native-review-replace '+(writesEnabled?'':'disabled')+'>Bild nach Prüfung ersetzen</button></details>':
       '<label>Screenshot diesem Auftrag zuordnen<input type="file" data-native-review-file accept="image/png,image/jpeg,image/webp"></label>'+
       '<button type="button" data-native-review-upload '+(writesEnabled?'':'disabled')+'>Beleg sicher hochladen</button>')+
@@ -1076,7 +1141,7 @@ export function initNativeAdmin(mount){
    if(url.startsWith('blob:'))window.open(url,'_blank','noopener,noreferrer');
    return;
   }
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-dice-delete],[data-native-train-choice]');
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-dice-delete],[data-native-train-choice],[data-native-access-mode],[data-native-access-copy],[data-native-access-signout],[data-native-member-create],[data-native-registry-quick]');
   if(!button)return;
   if(button.hasAttribute('data-officer-logout')){
    try{await request('/api/native-logout',{method:'POST',body:{}})}catch{}clearOfficer();await renderNativeAdmin(mount);return;
@@ -1167,8 +1232,31 @@ export function initNativeAdmin(mount){
    }
    return;
   }
+  if(button.hasAttribute('data-native-member-create')){createMemberForm(target);return}
+  if(button.dataset.nativeRegistryQuick){
+   const form=button.closest('#registry-save');if(!form)return;
+   const status=form.elements.namedItem('lifecycle'),blacklist=form.elements.namedItem('blacklisted');
+   if(button.dataset.nativeRegistryQuick==='archive')status.value='former';
+   if(button.dataset.nativeRegistryQuick==='blacklist')blacklist.checked=true;
+   if(button.dataset.nativeRegistryQuick==='active'){status.value='active';blacklist.checked=false}
+   form.elements.namedItem('reason').focus();return;
+  }
+  if(button.dataset.nativeAccessMode){accessForm(target,button.dataset.nativeAccessMode);return}
+  if(button.hasAttribute('data-native-access-signout')){clearOfficer();await renderNativeAdmin(mount);return}
+  if(button.hasAttribute('data-native-access-copy')){
+   const output=target.querySelector('#native-credential-output');if(!output)return;
+   output.select();
+   try{if(window.navigator.clipboard?.writeText)await window.navigator.clipboard.writeText(output.value)}catch{}
+   return;
+  }
   if(button.dataset.registryEdit){editRegistry(target,button.dataset.registryEdit);return}
-  if(button.dataset.nativeMember){await showPerson(target,button.dataset.nativeMember);return}
+  if(button.dataset.nativeMember){
+   if(panel!=='members'){
+    const id=button.dataset.nativeMember;panel='members';await view(mount);
+    await showPerson(mount.querySelector('#native-admin-content'),id);
+   }else await showPerson(target,button.dataset.nativeMember);
+   return;
+  }
   if(button.hasAttribute('data-native-member-close')){
    const node=target.querySelector('#native-person');if(node)node.innerHTML='';
    const roster=target.querySelector('.native-member-folds');if(roster)roster.hidden=false;
@@ -1374,6 +1462,36 @@ export function initNativeAdmin(mount){
      button.disabled=false;message.textContent='Nicht gespeichert: '+err.message;
     }
    }
+   return;
+  }
+  if(form.id==='native-member-create-save'){
+   const button=form.querySelector('[type=submit]'),message=form.querySelector('#native-member-create-message');
+   button.disabled=true;
+   try{
+    await request('/api/member-registry/create',{method:'POST',body:{name:form.elements.namedItem('name').value,rank:form.elements.namedItem('rank').value,reason:form.elements.namedItem('reason').value}});
+    registryFilter='active';await view(mount);
+   }catch(error){message.textContent='Nicht angelegt: '+error.message;button.disabled=false}
+   return;
+  }
+  if(form.id==='native-access-save'){
+   const mode=form.dataset.mode;
+   const body={reason:form.elements.namedItem('reason').value};
+   if(mode==='self'){
+    body.action='change_self';body.current_code=form.elements.namedItem('current_code').value;
+   }else if(mode==='issue')body.member_id=form.elements.namedItem('member_id').value;
+   else{body.action='reset_other';body.officer_id=form.elements.namedItem('officer_id').value}
+   const button=form.querySelector('[type=submit]'),message=form.querySelector('#native-access-message');
+   button.disabled=true;
+   try{
+    const result=await request(mode==='issue'?'/api/officer-access/issue':'/api/officer-access/rotate',{method:'POST',body});
+    form.remove();
+    const host=mount.querySelector('#native-access-result');
+    host.innerHTML='<section class="native-access-secret" role="status"><h3>Neuer Code für '+e(result.ingame_name)+'</h3>'+
+      '<p>Nur jetzt sichtbar. Sicher an den betroffenen Offizier übermitteln. Alter Code und alte Sitzungen sind'+(mode==='issue'?' nicht vorhanden.':' gesperrt.')+'</p>'+
+      '<label>Einmaliger Zugangscode<input id="native-credential-output" type="text" readonly autocomplete="off" spellcheck="false" value="'+e(result.code)+'"></label>'+
+      '<button type="button" data-native-access-copy>Code markieren / kopieren</button>'+
+      (mode==='self'?'<button type="button" data-native-access-signout>Mit neuem Code anmelden</button>':'')+'</section>';
+   }catch(error){message.textContent='Nicht gespeichert: '+error.message;button.disabled=false}
    return;
   }
   if(form.id==='registry-save'){
