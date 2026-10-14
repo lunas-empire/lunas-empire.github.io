@@ -6,6 +6,8 @@ import {buildOfficerActions} from './officer-cockpit.js';
 import {createStatEvidenceViewer} from './native-stat-evidence.js';
 import {renderEvidenceRow} from './native-evidence-row.js';
 import {dailyOfficerBrief,vsWeeklyMail,donationsWeeklyMail,safeMailText,ALLIANCE_MAIL_LIMIT} from './officer-reports.js';
+import {diceHistory} from './dice-winners.js';
+import {vsSupportChatReport} from './vs-support-report.js';
 const apiBase=ALLIANCE_CONFIG.commandCenterEmbedUrl.replace('/?embed=1','');
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
 let sessionToken='',officer=null,panel='overview',cache={},pageLimit=20,historyLimit=20,activityLimit=30,registryFilter='all',activityCategory='all',activityGroupBy='type';
@@ -100,6 +102,16 @@ function reportPanel(message){
   '<div class="native-row"><small class="native-report-counter">'+mail.length+'/'+ALLIANCE_MAIL_LIMIT+' characters</small>'+
   '<button type="button" data-native-copy-report>Copy report</button></div>'+
   '<p role="status" class="native-report-copy-status"></p></div></details>';
+}
+function chatReportPanel(week,allWeeks){
+ const report=vsSupportChatReport(week,allWeeks);
+ return '<details class="native-fold native-report-panel native-chat-report-panel">'+
+ '<summary>VS support report · Chat (editable)</summary><div class="native-fold-body">'+
+ '<p class="native-muted">For alliance chat or officer coordination. Review and edit before sending; no automatic DMs.</p>'+
+ '<textarea rows="13" maxlength="15000" aria-label="Edit English VS chat report">'+e(report)+'</textarea>'+
+ '<div class="native-row"><small class="native-report-counter">'+report.length+'/15000 characters</small>'+
+ '<button type="button" data-native-copy-report>Copy chat report</button></div>'+
+ '<p role="status" class="native-report-copy-status"></p></div></details>';
 }
 function marker(status){return '<span class="native-status">'+e(status||'Unbekannt')+'</span>'}
 async function view(mount){
@@ -631,6 +643,7 @@ function renderVs(target){
    '<h3 class="native-vs-list-title">Spieler nach Ergebnis</h3>'+
    '<div class="native-vs-groups">'+groups.map(groupMarkup).join('')+'</div>'+
    reportPanel(vsWeeklyMail(week,policy))+
+   chatReportPanel(week,cache.vs.weeks)+
    '<details class="native-fold native-vs-explainer"><summary>Wie werden die Werte bewertet?</summary>'+
    '<p class="native-fold-body native-muted">Nur bestätigte Ergebnisse zählen als über oder unter dem Tagesziel. Nicht lesbare Screenshots bleiben unklar und werden nie als 0 Punkte erfasst. Öffne „Prüffälle“, um solche Werte nachzusehen.</p></details>'+
    '</section>';
@@ -690,8 +703,8 @@ function renderTrain(target){
  target.querySelector('#native-train-body').innerHTML='<p class="native-muted">Fahrer ab R2 · historische Importe bleiben unverändert. Geplant, gefahren und noch nicht bestätigt sind unterschiedliche Zustände.</p>'+
   '<div class="native-train-highlights">'+cards([['Gefahren (Historie)',d.counts?.completed??'—'],['Geplant',d.counts?.planned??'—'],['Historische Lücken',d.counts?.missing_recent??'—']])+'</div>'+
   '<h3 class="native-section-heading">Heute & diese Woche</h3><div class="native-list native-train-week">'+toShow+'</div>'+
-  '<div id="native-train-form"></div><details class="native-fold"><summary>Dice Game Gewinner · '+(cache.dice?.length||0)+'</summary>'+
-  '<div class="native-fold-body native-list">'+((cache.dice||[]).length?(cache.dice||[]).map(x=>
+  '<div id="native-train-form"></div><details class="native-fold"><summary>Dice Game Gewinner · '+diceHistory(cache.dice).length+'</summary>'+
+  '<div class="native-fold-body native-list">'+(diceHistory(cache.dice).length?diceHistory(cache.dice).map(x=>
    '<button type="button" data-native-dice-date="'+e(x.ride_date)+'">🎲 '+e(x.ride_date)+' · '+e(x.winner_name)+(x.roll_value?' · '+e(x.roll_value):'')+'</button>').join(''):
    '<p class="native-muted">Noch keine Dice-Game-Gewinner eingetragen.</p>')+'</div></details>'+
   '<details class="native-fold"><summary>Vergangene Züge · '+(d.history?.length||0)+'</summary>'+
@@ -1512,8 +1525,9 @@ export function initNativeAdmin(mount){
    const field=area?.querySelector('textarea');
    const note=area?.querySelector('.native-report-copy-status');
    if(!field||!note)return;
-   if(safeMailText(field.value)===null||!field.value.trim()){
-    note.textContent='Please keep your report within 500 characters.';return;
+   const limit=area?.classList.contains('native-chat-report-panel')?15000:ALLIANCE_MAIL_LIMIT;
+   if(!field.value.trim()||field.value.length>limit){
+    note.textContent='Please keep your report within '+limit+' characters.';return;
    }
    try {
     if(!window.navigator.clipboard?.writeText)throw Error('Clipboard unavailable');
@@ -1772,7 +1786,7 @@ export function initNativeAdmin(mount){
   if(event.target.matches('.native-report-panel textarea')){
    const panel=event.target.closest('.native-report-panel');
    const counter=panel?.querySelector('.native-report-counter');
-   if(counter)counter.textContent=event.target.value.length+'/500 characters';
+   if(counter)counter.textContent=event.target.value.length+'/'+(panel?.classList.contains('native-chat-report-panel')?15000:500)+' characters';
    const status=panel?.querySelector('.native-report-copy-status');
    if(status)status.textContent='';
   }

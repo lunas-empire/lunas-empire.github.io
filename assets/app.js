@@ -8,6 +8,7 @@ import { TECH_GUIDE_TITLE, techGuideHtml, t10GuideHtml, t10GuideTitle, T10_GUIDE
 import { blackMarketGuideHtml, blackMarketGuideTitle, BLACK_MARKET_SEARCH } from './black-market-guide.js';
 import { professionGuideHtml, PROFESSION_GUIDE_SEARCH } from './profession-guide.js';
 import { trainGuideHtml, trainGuideTitle, TRAIN_GUIDE_SEARCH } from './train-guide.js';
+import {diceDisclosure,HISTORY} from './dice-winners.js';
 import { PRACTICAL_GUIDES, practicalGuideHtml, practicalGuideTitle } from './practical-guides.js';
 import { GUIDE_TOPIC_ORDER, guideTopicOf, guideTopicCount, guideSearchExtra } from './guide-library-nav.js';
 import { guideNavText } from './guide-library-nav-i18n.js';
@@ -324,6 +325,16 @@ function nextRoadmapText(s=state) {
   const next=SEASON_ROADMAP.find(entry=>entry.day>s.seasonDay);
   return next ? `${t('seasonDay')} ${next.day} · ${t(next.label)}` : t('post');
 }
+function diceHome(){
+ return '<details class="guide-disclosure guide-disclosure--dice-home">'+
+ '<summary>'+(lang==='de'?'Dice Gewinner':'Dice Game Winners')+' · '+HISTORY.length+'</summary>'+
+ '<div class="guide-card guide-card--inside"><p>'+
+ escape(lang==='de'?'Bestätigte Gewinner aus der Zugliste. Ohne Namen kein bestätigter Gewinn.':
+ 'Confirmed winners from the train sheet; unnamed entries are not counted.')+'</p>'+
+ '<ul class="dice-winners-list">'+[...HISTORY].reverse().map(w=>
+ '<li><time datetime="'+escape(w.ride_date)+'">'+escape(w.ride_date)+'</time> — <strong>'+
+ escape(w.winner_name)+'</strong></li>').join('')+'</ul></div></details>';
+}
 function today() {
   const guide=DAILY_GUIDES[state.weekday];
   const routine=allTaskItems();
@@ -335,7 +346,7 @@ function today() {
   const next=SEASON_ROADMAP.find(entry=>entry.day>state.seasonDay);
   return `<header class="page-heading"><div><p class="eyebrow">${escape(longDate(state.date))}</p><h1>${tx('today')}</h1></div>${status()}</header>${notice()}${commandHud(routine)}${enemyBusterBanner(state)}
     <section class="focus-panel"><div class="focus-panel__main"><span class="eyebrow">${tx('focus')}</span><h2>${tx(state.weekday)}</h2><p>${tx(guide.focus)}</p>${minimum()}<a class="primary-link" href="#vs">${tx('doNow')} →</a></div><div class="focus-panel__time"><span class="eyebrow">${tx('bestArms')}</span>${arms(state,guide)}${resetCard()}</div><div class="focus-panel__save"><strong>${tx('save')}</strong><span>${guide.save.filter(permitted).map(id=>tx(id)).join(' · ')}</span></div></section>
-    <div class="overview-columns"><section class="open-tasks"><div class="section-heading"><h2>${tx('doNow')}</h2><a href="#daily">${tx('tasks')} →</a></div>${progressMarkup(routine,t('tasks'))}${quickTasks||`<p class="empty-state">${tx('allDone')}</p>`}<p class="empty-state" data-today-empty hidden>${tx('allDone')}</p><a class="text-link" href="#daily">${tx('checklist')} →</a></section><aside class="overview-aside"><section><h2>${tx('relevantGuides')}</h2><div class="related-guides">${[...new Set(related)].slice(0,3).map(id=>`<a href="${guideHash(id)}"><span>${escape(shortGuideTitle(id))}</span><span aria-hidden="true">↗</span></a>`).join('')}</div></section><section class="next-preview"><span class="eyebrow">${tx('nextMilestone')}</span><h2>${next?tx(next.label):tx('post')}</h2>${next?`<p>${tx('seasonDay')} ${next.day} · ${tx('week')} ${Math.ceil(next.day/7)}</p>`:''}<a href="#season">${tx('season')} →</a></section></aside></div>`;
+    <div class="overview-columns"><section class="open-tasks"><div class="section-heading"><h2>${tx('doNow')}</h2><a href="#daily">${tx('tasks')} →</a></div>${progressMarkup(routine,t('tasks'))}${quickTasks||`<p class="empty-state">${tx('allDone')}</p>`}<p class="empty-state" data-today-empty hidden>${tx('allDone')}</p><a class="text-link" href="#daily">${tx('checklist')} →</a></section><aside class="overview-aside"><section><h2>${tx('relevantGuides')}</h2><div class="related-guides">${[...new Set(related)].slice(0,3).map(id=>`<a href="${guideHash(id)}"><span>${escape(shortGuideTitle(id))}</span><span aria-hidden="true">↗</span></a>`).join('')}</div></section><section class="next-preview"><span class="eyebrow">${tx('nextMilestone')}</span><h2>${next?tx(next.label):tx('post')}</h2>${next?`<p>${tx('seasonDay')} ${next.day} · ${tx('week')} ${Math.ceil(next.day/7)}</p>`:''}<a href="#season">${tx('season')} →</a></section></aside></div>${diceHome()}`;
 }
 function daySelector() {
   return `<div class="week-selector" role="group" aria-label="${tx('vs')}">${WEEKDAYS.map((day,index)=>{
@@ -432,7 +443,7 @@ function guides() {
   const landing=guideLanding({lang,escape,t,guideHash,shortTitle:shortGuideTitle,weekday:state.weekday,week:state.week,seasonGroups:SEASON_GUIDE_ROADMAP,weekdays:WEEKDAYS});
   const practical=topic=>Object.entries(PRACTICAL_GUIDES).filter(([id])=>guideTopicOf(id)===topic).map(([id])=>practicalGuideDisclosure(id)).join('');
   const disclosures=html=>`<div class="guide-disclosures">${html}</div>`;
-  const alliance=guideTopicSection('alliance',lang,escape,disclosures(practical('alliance')+trainGuideDisclosure()));
+  const alliance=guideTopicSection('alliance',lang,escape,disclosures(practical('alliance')+trainGuideDisclosure()+diceDisclosure(lang,escape)));
   const power=guideTopicSection('power',lang,escape,disclosures(practical('power')+techGuideDisclosure()+t10GuideDisclosure())+`<details class="guide-reference-extra" data-search-group><summary>${tx('quickReference')}</summary>${referenceLibrary()}</details>`);
   const vs=guideTopicSection('vs',lang,escape,disclosures(vsGuides.map(guideDisclosure).join('')));
   const season=guideTopicSection('season',lang,escape,seasonGuidePosition()+seasonGuideRoadmapLibrary());
