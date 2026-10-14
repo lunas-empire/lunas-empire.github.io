@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-14.21');
+@import url('./tokens.css?v=2026-10-14.22');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -1426,3 +1426,34 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
  .native-admin .native-donation-person-head{flex-wrap:wrap}
  .native-admin .native-donation-person-head b{margin-left:auto}
 }
+
+/* v22: officer policy settings, original last-war-inspired controls. */
+.native-admin .native-requirements-intro{padding:.8rem 1rem;margin-bottom:.65rem;
+ border:2px solid #7589a6;border-bottom:4px solid #c5873e;border-radius:7px;
+ background:linear-gradient(#435776,#263954);color:#f4f6fb}
+.native-admin .native-requirements-intro h2{color:#fff;font-size:clamp(1.2rem,4vw,1.65rem);margin:.15rem 0}
+.native-admin .native-requirements-intro p{color:#e4eaf5;margin:.4rem 0 .1rem}
+.native-admin .native-requirements-form{display:grid;gap:.7rem}
+.native-admin .native-requirement-section{display:grid;gap:.65rem;padding:.85rem;
+ border:1px solid var(--color-rule);border-bottom:3px solid #b78a51;
+ border-radius:7px;background:var(--color-panel);color:var(--color-ink)}
+.native-admin .native-requirement-section h3{margin:0;font-size:.97rem;color:var(--color-ink)}
+.native-admin .native-requirement-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.65rem}
+.native-admin .native-requirement-field,.native-admin .native-requirement-section>label{display:grid;gap:.3rem;min-width:0;font-weight:750;font-size:.82rem}
+.native-admin .native-requirement-field input,.native-admin .native-requirement-section textarea{
+ width:100%;min-width:0;min-height:50px;padding:.65rem;
+ border:1px solid #8699b7;border-radius:5px;
+ font-size:16px;color:var(--color-ink);background:var(--color-surface, #f9f5f1)}
+.native-admin .native-requirement-section textarea{font-size:16px;resize:vertical}
+.native-admin .native-requirement-field small,.native-admin .native-requirement-check small{
+ font-size:.73rem;line-height:1.4;font-weight:500;color:var(--color-muted)}
+.native-admin .native-requirement-check{display:flex!important;align-items:flex-start;gap:.65rem;min-height:52px;
+ padding:.65rem;border:1px solid var(--color-rule);border-radius:6px}
+.native-admin .native-requirement-check input{width:22px;height:22px;flex:none}
+.native-admin .native-requirement-check span{display:grid;gap:.18rem}
+.native-admin [data-native-requirements-reload]{min-height:45px}
+.native-admin #native-requirements-message{min-height:1.2rem;font-weight:720;overflow-wrap:anywhere}
+.native-admin .native-vs-policy-status{padding:.55rem .65rem;margin:.45rem 0;background:var(--color-panel);
+ color:var(--color-ink);border-left:3px solid #c59b59;border-radius:4px;font-size:.78rem}
+@media(max-width:490px){.native-admin .native-requirement-grid{grid-template-columns:minmax(0,1fr)}
+ .native-admin .native-requirement-section{padding:.7rem}}

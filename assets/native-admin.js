@@ -24,11 +24,11 @@ const primaryPanels=[
 const secondaryPanels=[
  ['registry','Ränge & Archiv'],['watch','Mitglieder-Abgleich'],['diplomacy','Diplomatie'],
  ['reviews','OCR-Prüffälle'],['tasks','Admin-Aufgaben'],['absences','Abwesenheiten'],['events','Allianz-Events'],
- ['activity','Änderungsprotokoll'],['access','Zugangscodes']
+ ['activity','Änderungsprotokoll'],['access','Zugangscodes'],['requirements','Einstellungen']
 ];
 const parentPanel=key=>({
  overview:'overview',vs:'vs',donations:'vs',reviews:'vs',members:'members',registry:'members',watch:'members',diplomacy:'members',
- train:'train',tasks:'train',absences:'train',events:'train',activity:'activity',access:'activity'
+ train:'train',tasks:'train',absences:'train',events:'train',activity:'activity',access:'activity',requirements:'activity'
 }[key]||'overview');
 const sectionPanels={
  vs:[['vs','VS-Duell'],['donations','Allianzspenden']],
@@ -106,6 +106,9 @@ async function view(mount){
     '<button type="button" data-native-action="member-find">Spieler suchen</button></section></div>'+
 
     '</div>';
+  }else if(panel==='requirements'){
+   cache.requirements=await request('/api/alliance-requirements');
+   renderRequirements(target);
   }else if(panel==='access'){
    cache.access=await request('/api/officer-access');
    cache.registry=canManageSite()?await request('/api/member-registry'):null;
@@ -423,6 +426,38 @@ function editProfileAbsence(target,id){
 }
 
 const donationStatus={met:'Ziel erreicht',below:'Unter 20.000',unknown:'Wert unbekannt'};
+
+function renderRequirements(target){
+ const cfg=cache.requirements;if(!cfg)return;
+ const numeric=(name,value,min,max,step,help)=>'<label class="native-requirement-field"><span>'+e(name)+'</span>'+
+  '<input type="number" required inputmode="numeric" name="'+e(step)+'" min="'+min+'" max="'+max+'" step="1" value="'+e(value)+'">'+
+  '<small>'+e(help)+'</small></label>';
+ target.innerHTML='<div class="native-requirements-intro"><span class="native-kicker">ALLIANZ · VERWALTUNG</span>'+
+  '<h2>Allianzregeln & Mindestwerte</h2><p>Werte für das private Command Center. Keine automatische Bestrafung oder Änderung historischer Rohdaten.</p></div>'+
+  '<form id="native-requirements-save" class="native-requirements-form" data-revision="'+e(cfg.revision)+'">'+
+  '<section class="native-requirement-section"><h3>Verpflichtende Mindestpunkte</h3><div class="native-requirement-grid">'+
+   numeric('VS-Duell · pro Tag',cfg.vs_daily_minimum,0,100000000,'vs_daily_minimum','Montag–Samstag · derzeit 3,6 Millionen Punkte')+
+   numeric('Allianzspenden · pro Woche',cfg.donation_weekly_minimum,0,1000000,'donation_weekly_minimum','Nur bestätigte wöchentliche Spenden; nicht täglich')+
+  '</div></section>'+
+  '<section class="native-requirement-section"><h3>Aktivitäts-Hinweise</h3><div class="native-requirement-grid">'+
+   numeric('Mindestens aktive VS-Tage',cfg.min_active_vs_days,0,6,'min_active_vs_days','Empfehlung: 5 von 6 · 0 deaktiviert; nur bestätigte Tageswerte')+
+   numeric('Hinweis nach X Tagen unter VS-Ziel',cfg.low_vs_day_warning_count,0,6,'low_vs_day_warning_count','Empfehlung: 2 Tage · 0 deaktiviert; keine automatische Strafe')+
+  '</div><label class="native-requirement-check"><input type="checkbox" name="shield_reminder_saturday" '+(cfg.shield_reminder_saturday?'checked':'')+'>'+
+   '<span><strong>Samstag an den Schild erinnern</strong><small>Hinweis für Enemy Buster, kein behaupteter Nachweis eines tatsächlich aktiven Schilds.</small></span></label></section>'+
+  '<section class="native-requirement-section"><h3>Änderung dokumentieren</h3><label>Grund der Änderung'+
+   '<textarea name="reason" rows="2" minlength="8" maxlength="300" required placeholder="Weshalb gelten die neuen Mindestwerte?"></textarea></label>'+
+   '<div class="native-row"><button type="submit" class="native-game-primary">Allianzregeln speichern</button>'+
+   '<button type="button" data-native-requirements-reload>Neu laden</button></div>'+
+   '<p id="native-requirements-message" role="status" aria-live="polite"></p>'+
+   '<p class="native-muted">Stand: '+e(cfg.updated_at||'unbekannt')+' · Version '+e(cfg.revision)+
+   '. Neue Grenzwerte bewerten vorhandene bestätigte Messpunkte neu, ohne Spielerwerte zu überschreiben. Abwesenheiten und unbekannte OCR-Werte benötigen weiterhin eine faire manuelle Einzelfallprüfung.</p>'+
+  '</section></form>'+
+  '<details class="native-fold"><summary>Weitere sinnvolle Regeln – noch ohne automatische Bewertung</summary><div class="native-fold-body">'+
+   '<p><b>Schildpflicht am Samstag:</b> sinnvoll, aber ohne echten Schild-Nachweis keine automatische Verletzung ausweisen.</p>'+
+   '<p><b>Event-Teilnahme:</b> Siege, Guard und Desert Storm erst ab zuverlässig erfassten Teilnehmerlisten bewerten.</p>'+
+   '<p><b>Abwesenheit:</b> vorher angekündigte Ausnahmen individuell berücksichtigen und niemals fehlendes OCR als 0 zählen.</p>'+
+  '</div></details>';
+}
 function renderDonations(target,query=''){
  const host=target.querySelector('#native-donations-body');if(!host)return;
  const weeks=cache.donations?.weeks||[];
@@ -480,6 +515,9 @@ function renderVs(target){
   if(!week){host.innerHTML='<p class="native-muted">Noch keine VS-Woche importiert.</p>';return}
   const labels=['Mo','Di','Mi','Do','Fr','Sa'];
   const members=week.members||[];
+  const policy=cache.vs.policy||{};
+  const lowWarnings=members.filter(x=>x.repeatedLowDays).length;
+  const participationWarnings=members.filter(x=>x.participationStatus==='below').length;
   const groups=[
    ['Unter Tagesziel',members.filter(m=>m.failed>0)],
    ['Werte noch unklar',members.filter(m=>m.unknown>0)],
@@ -488,7 +526,7 @@ function renderVs(target){
   // All player groups start collapsed, including "Unter Tagesziel".
   const groupMarkup=([name,players])=>'<details class="native-fold native-vs-group">'+
    '<summary><span>'+e(name)+'</span><b>'+players.length+' Spieler</b></summary><div class="native-fold-body">'+
-   (players.length?'<div class="native-list">'+players.map(p=>'<details class="native-vs-player"><summary>'+e(p.name)+' · '+e(p.failed||0)+' unter Ziel / '+e(p.unknown||0)+' unklar</summary>'+
+   (players.length?'<div class="native-list">'+players.map(p=>'<details class="native-vs-player"><summary>'+e(p.name)+' · '+e(p.failed||0)+' unter Ziel / '+e(p.unknown||0)+' unklar'+(policy.min_active_vs_days?' · '+e(p.activeDays??'?')+' aktive Tage':'')+'</summary>'+
     '<button type="button" class="native-vs-open-person" data-native-member="'+e(p.id)+'">Spielerakte & Entwicklung öffnen ›</button>'+
     '<div class="native-vs-player-days">'+(p.days||[]).map((d,i)=>'<span><b>'+labels[i%6]+'</b> <button type="button" class="native-vs-day-link" data-native-vs-image="'+e(week.week+'|'+p.id+'|'+i)+'" aria-label="'+e(labels[i%6])+' Screenshot zu '+e(p.name)+' ansehen">'+
     (d.verified&&d.points!=null?e(Number(d.points).toLocaleString('de-DE')):'Unbekannt')+' <small>↗</small></button></span>').join('')+'</div></details>').join('')+'</div>':
@@ -499,9 +537,10 @@ function renderVs(target){
      '<span>'+e(d.failed??0)+' unter Ziel</span><small>'+e(d.unknown??0)+' unklar</small></div>';
    }).join('')+'</div>';
   host.innerHTML='<section class="native-vs-brief" aria-label="VS-Wochenübersicht">'+
-   '<div class="native-vs-heading"><div><h3>Wochenüberblick</h3><p class="native-muted">Tagesziel: 3,6 Mio. Punkte · Nur bestätigte Werte</p></div>'+
+   '<div class="native-vs-heading"><div><h3>Wochenüberblick</h3><p class="native-muted">Tagesziel: '+e(numberText(week.threshold))+' Punkte · Nur bestätigte Werte</p></div>'+
    '<button type="button" class="native-vs-action" data-native-action="review-open">OCR-Prüffälle ('+e(cache.overview?.reviews??'—')+')</button></div>'+
-   (Number.isFinite(week.priority)&&week.priority>0?'<p class="native-vs-priority-note">'+e(week.priority)+' Spieler mit mindestens 3 bestätigten Tagen unter dem VS-Ziel. Das sind keine offenen OCR-Prüffälle.</p>':'')+
+   (Number.isFinite(week.priority)&&week.priority>0?'<p class="native-vs-priority-note">'+e(week.priority)+' Spieler mit mindestens '+e(policy.low_vs_day_warning_count??3)+' bestätigten Tagen unter dem VS-Ziel. Das sind keine offenen OCR-Prüffälle.</p>':'')+
+   '<p class="native-vs-policy-status">'+(policy.low_vs_day_warning_count?e(lowWarnings)+' Spieler mit mindestens '+e(policy.low_vs_day_warning_count)+' Tagen unter Ziel. ':'')+(policy.min_active_vs_days?e(participationWarnings)+' mit weniger als '+e(policy.min_active_vs_days)+' aktiven Tagen bei vollständiger Erfassung. ':'')+(policy.shield_reminder_saturday?'Samstag: Schildpflicht erinnern (nicht automatisch überprüfbar).':'')+'</p>'+
    '<div class="native-vs-compact">'+cards([['Unter Ziel',week.failedDays??0,'bestätigte Tage'],
     ['Noch unklar',week.unknownDays??0,'nicht als 0 gewertet'],['6 von 6',week.perfect??0,'Spieler mit erreichtem Ziel']])+'</div>'+
    '<details class="native-fold native-vs-days"><summary>Tagesvergleich <small>Mo bis Sa</small></summary>'+
@@ -961,7 +1000,7 @@ export function auditChanges(entry){
  }));
 }
 const activityTypes=[
- ['all','Alle','standard'],['members','Mitglieder','alliance'],['tasks','Aufgaben','tasks'],
+ ['all','Alle','standard'],['members','Mitglieder','alliance'],['tasks','Aufgaben','tasks'],['policy','Allianzregeln','tasks'],
  ['train','Zug','season'],['ocr','OCR & Daten','vs'],['access','Zugänge','hero'],
  ['archive','Archiv','economy'],['events','Events','today'],['diplomacy','Diplomatie','alliance'],
  ['other','Weitere','standard']
@@ -969,6 +1008,7 @@ const activityTypes=[
 export function auditCategory(entry){
  const kind=String(entry?.object_kind||'').toLowerCase(),action=String(entry?.action||'').toLowerCase();
  if(/officer|site_owner|credential|code|session/.test(kind+' '+action))return 'access';
+ if(/alliance_requirements/.test(kind))return 'policy';
  if(/lifecycle|blacklist|archiv|auto_archive|former/.test(action)||kind==='auto_archive')return 'archive';
  if(kind==='member_registry'&&auditChanges(entry).some(d=>d.field==='Status'||d.field==='Blacklist'))return 'archive';
  if(/ocr|profile_capture|review|correction|identity_resolution|vs_day/.test(kind))return 'ocr';
@@ -1366,7 +1406,7 @@ export function initNativeAdmin(mount){
    if(url.startsWith('blob:'))window.open(url,'_blank','noopener,noreferrer');
    return;
   }
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-dice-delete],[data-native-train-choice],[data-native-access-mode],[data-native-access-copy],[data-native-access-signout],[data-native-member-create],[data-native-registry-quick],[data-native-access-link],[data-native-access-disable],[data-audit-category],[data-native-vs-image],[data-native-vs-image-close],[data-native-more-close]');
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-dice-delete],[data-native-train-choice],[data-native-access-mode],[data-native-access-copy],[data-native-access-signout],[data-native-member-create],[data-native-registry-quick],[data-native-access-link],[data-native-access-disable],[data-audit-category],[data-native-vs-image],[data-native-vs-image-close],[data-native-more-close],[data-native-requirements-reload]');
   if(!button)return;
   if(button.hasAttribute('data-officer-logout')){
    try{await request('/api/native-logout',{method:'POST',body:{}})}catch{}clearOfficer();await renderNativeAdmin(mount);return;
@@ -1374,6 +1414,9 @@ export function initNativeAdmin(mount){
   if(button.hasAttribute('data-native-more-close')){
    const menu=mount.querySelector('.native-admin-more');if(menu){menu.open=false;menu.querySelector('summary')?.focus()}
    return;
+  }
+  if(button.hasAttribute('data-native-requirements-reload')){
+   cache.requirements=await request('/api/alliance-requirements');renderRequirements(mount.querySelector('#native-admin-content'));return
   }
   if(button.dataset.officerTab){panel=button.dataset.officerTab;pageLimit=20;historyLimit=20;activityLimit=30;await view(mount);return}
   if(button.dataset.nativeAction){
@@ -1701,6 +1744,27 @@ export function initNativeAdmin(mount){
     }else{
      button.disabled=false;message.textContent='Nicht gespeichert: '+err.message;
     }
+   }
+   return;
+  }
+  if(form.id==='native-requirements-save'){
+   const values={revision:Number(form.dataset.revision),
+    vs_daily_minimum:Number(form.elements.namedItem('vs_daily_minimum').value),
+    donation_weekly_minimum:Number(form.elements.namedItem('donation_weekly_minimum').value),
+    min_active_vs_days:Number(form.elements.namedItem('min_active_vs_days').value),
+    low_vs_day_warning_count:Number(form.elements.namedItem('low_vs_day_warning_count').value),
+    shield_reminder_saturday:form.elements.namedItem('shield_reminder_saturday').checked,
+    reason:form.elements.namedItem('reason').value};
+   const message=form.querySelector('#native-requirements-message'),button=form.querySelector('[type=submit]');
+   if(!form.reportValidity())return;
+   button.disabled=true;message.textContent='Speichere Regeln mit Admin-Protokoll …';
+   try{
+    cache.requirements=await request('/api/alliance-requirements',{method:'POST',body:values});
+    renderRequirements(mount.querySelector('#native-admin-content'));
+    mount.querySelector('#native-requirements-message').textContent='Allianzregeln gespeichert und protokolliert. VS und Spenden verwenden die neuen Grenzwerte.';
+   }catch(error){
+    message.textContent=error.status===409?'Einstellungen wurden zwischenzeitlich geändert. Bitte neu laden, damit du niemandes Änderungen überschreibst.':'Nicht gespeichert: '+error.message;
+    button.disabled=error.status===409;
    }
    return;
   }

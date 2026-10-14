@@ -42,7 +42,8 @@ test('iPhone More navigation offers direct grouped shortcuts and closes on tap',
  assert.equal(q('.native-more-group').querySelectorAll('button').length,3);
  assert.equal(mount.querySelectorAll('.native-more-group').length,3);
  const shortcuts=[...mount.querySelectorAll('.native-more-group [data-officer-tab]')].map(x=>x.dataset.officerTab);
- assert.equal(new Set(shortcuts).size,9);
+ assert.equal(new Set(shortcuts).size,10);
+ assert.ok(shortcuts.includes('requirements'));
  assert.ok(shortcuts.includes('registry')&&shortcuts.includes('access'));
  more.open=true;
  q('[data-native-more-close]').click();
