@@ -3,6 +3,7 @@ import {ALLIANCE_CONFIG} from './config.js';
 import {icon} from './icons.js';
 import {localizeOfficerTree,officerLanguage,officerLocale} from './native-admin-i18n.js';
 import {buildOfficerActions} from './officer-cockpit.js';
+import {dailyOfficerBrief,vsWeeklyMail,donationsWeeklyMail,safeMailText,ALLIANCE_MAIL_LIMIT} from './officer-reports.js';
 const apiBase=ALLIANCE_CONFIG.commandCenterEmbedUrl.replace('/?embed=1','');
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
 let sessionToken='',officer=null,panel='overview',cache={},pageLimit=20,historyLimit=20,activityLimit=30,registryFilter='all',activityCategory='all',activityGroupBy='type';
@@ -83,6 +84,15 @@ function moreHub(){
    '</div></section>').join('')+'</div>';
 }
 function cards(items){return '<div class="native-cards">'+items.map(([name,value,sub])=>'<article><small>'+e(name)+'</small><strong>'+e(value)+'</strong><span>'+e(sub||'')+'</span></article>').join('')+'</div>'}
+function reportPanel(message){
+ const mail=safeMailText(message);
+ if(!mail)return '<p class="native-evidence-note">Report is unavailable or exceeds the 500-character limit.</p>';
+ return '<details class="native-fold native-report-panel"><summary>English report / alliance mail</summary>'+
+  '<div class="native-fold-body"><textarea readonly rows="5" aria-label="English alliance mail preview">'+e(mail)+'</textarea>'+
+  '<div class="native-row"><small>'+mail.length+'/'+ALLIANCE_MAIL_LIMIT+' characters</small>'+
+  '<button type="button" data-native-copy-report>Copy report</button></div>'+
+  '<p role="status" class="native-report-copy-status"></p></div></details>';
+}
 function marker(status){return '<span class="native-status">'+e(status||'Unbekannt')+'</span>'}
 async function view(mount){
  clearReviewImages();
@@ -127,6 +137,7 @@ async function view(mount){
     '<button type="button" data-native-action="tasks-open">Aufgaben öffnen</button></section>'+
     '<section class="native-dashboard-panel"><h3>Als Nächstes</h3><p><strong>'+e(tomorrowTrain?.date||'Nächster Zug')+'</strong> · '+e(tomorrowTrain?.type||'Kein weiterer Zugtag gefunden')+'</p><p class="native-muted">'+trainLine(tomorrowTrain)+'</p>'+
     '<button type="button" data-native-action="member-find">Spieler suchen</button></section></div>'+
+    reportPanel(dailyOfficerBrief({date:day,overview:summary,operations:ops,trains}))+
 
     '</div>';
   }else if(panel==='requirements'){
@@ -527,6 +538,7 @@ function renderDonations(target,query=''){
    'Bisher liegt nur eine verlässliche Wochenaufnahme vor – kein erfundener Vorwochenvergleich.')+'</p>'+
   '<label class="native-ios-search">Spieler suchen<input id="native-donation-search" type="search" value="'+e(query)+'" placeholder="Mitglied oder Name" autocomplete="off"></label>'+
   '<div class="native-donation-groups">'+groups.map(section).join('')+'</div>'+
+  reportPanel(donationsWeeklyMail(week,minimum))+
   '<details class="native-fold"><summary>So werden die Spenden bewertet</summary><div class="native-fold-body">'+
    '<p>Mindestens 20.000 Spenden pro Spieler und Woche. Nur nachweislich erfasste Werte aus „Wöchentliche Spenden“ zählen. Fehlende Werte bleiben unbekannt, ein späterer Messzeitpunkt wird nicht erfunden.</p>'+
    '<p>Die Aufnahme stellt einen Zeitpunkt innerhalb der angegebenen Woche dar; eine noch nicht abgeschlossene Woche ist keine endgültige Leistungsbewertung.</p></div></details></section>';
@@ -570,6 +582,7 @@ function renderVs(target){
    '<div class="native-fold-body">'+dayTiles+'</div></details>'+
    '<h3 class="native-vs-list-title">Spieler nach Ergebnis</h3>'+
    '<div class="native-vs-groups">'+groups.map(groupMarkup).join('')+'</div>'+
+   reportPanel(vsWeeklyMail(week,policy))+
    '<details class="native-fold native-vs-explainer"><summary>Wie werden die Werte bewertet?</summary>'+
    '<p class="native-fold-body native-muted">Nur bestätigte Ergebnisse zählen als über oder unter dem Tagesziel. Nicht lesbare Screenshots bleiben unklar und werden nie als 0 Punkte erfasst. Öffne „Prüffälle“, um solche Werte nachzusehen.</p></details>'+
    '</section>';
@@ -1433,8 +1446,23 @@ export function initNativeAdmin(mount){
    if(url.startsWith('blob:'))window.open(url,'_blank','noopener,noreferrer');
    return;
   }
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-dice-delete],[data-native-train-choice],[data-native-access-mode],[data-native-access-copy],[data-native-access-signout],[data-native-member-create],[data-native-registry-quick],[data-native-access-link],[data-native-access-disable],[data-audit-category],[data-native-vs-image],[data-native-vs-image-close],[data-native-requirements-reload]');
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-dice-delete],[data-native-train-choice],[data-native-access-mode],[data-native-access-copy],[data-native-access-signout],[data-native-member-create],[data-native-registry-quick],[data-native-access-link],[data-native-access-disable],[data-audit-category],[data-native-vs-image],[data-native-vs-image-close],[data-native-requirements-reload],[data-native-copy-report]');
   if(!button)return;
+  if(button.hasAttribute('data-native-copy-report')){
+   const area=button.closest('.native-report-panel');
+   const field=area?.querySelector('textarea');
+   const note=area?.querySelector('.native-report-copy-status');
+   if(!field||!note)return;
+   try {
+    if(!window.navigator.clipboard?.writeText)throw Error('Clipboard unavailable');
+    await window.navigator.clipboard.writeText(field.value);
+    note.textContent='Copied. Review before sending in game.';
+   } catch(error) {
+    field.focus();field.select();
+    note.textContent='Select and copy the text manually.';
+   }
+   return;
+  }
   if(button.hasAttribute('data-officer-logout')){
    try{await request('/api/native-logout',{method:'POST',body:{}})}catch{}clearOfficer();await renderNativeAdmin(mount);return;
   }

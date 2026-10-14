@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-14.29');
+@import url('./tokens.css?v=2026-10-14.30');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -1514,3 +1514,8 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 
 /* v24 touch target QA: the exit link must be as usable as the new tiles. */
 .native-admin .native-return-link{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;padding:.45rem .65rem}
+
+/* Officer reports: readable on narrow phones, intentionally secondary and copy-only. */
+.native-report-panel textarea{display:block;width:100%;max-width:100%;box-sizing:border-box;min-height:110px;padding:12px;line-height:1.5;font:inherit;resize:vertical;color:inherit;background:transparent;border:1px solid currentColor;border-radius:8px}
+.native-report-panel [data-native-copy-report]{min-height:44px;padding:8px 15px}
+.native-report-panel .native-report-copy-status{min-height:1.5em}
