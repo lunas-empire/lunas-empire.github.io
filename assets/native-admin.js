@@ -27,11 +27,11 @@ const secondaryPanels=[
  ['activity','Änderungsprotokoll'],['access','Zugangscodes']
 ];
 const parentPanel=key=>({
- overview:'overview',vs:'vs',reviews:'vs',members:'members',registry:'members',watch:'members',diplomacy:'members',
+ overview:'overview',vs:'vs',donations:'vs',reviews:'vs',members:'members',registry:'members',watch:'members',diplomacy:'members',
  train:'train',tasks:'train',absences:'train',events:'train',activity:'activity',access:'activity'
 }[key]||'overview');
 const sectionPanels={
- vs:[['vs','VS-Duell']],
+ vs:[['vs','VS-Duell'],['donations','Allianzspenden']],
  members:[['members','Mitglieder'],['diplomacy','Diplomatie']],
  train:[['train','Züge'],['events','Allianz-Events']]
 };
@@ -46,10 +46,14 @@ function nav(){
  const parent=parentPanel(panel);
  return '<nav class="native-admin-nav" aria-label="Command Center Hauptbereiche">'+
   primaryPanels.map(([key,label,art])=>'<button type="button" class="native-primary-tab" data-officer-tab="'+key+'" '+(parent===key?'aria-current="page"':'')+'>'+icon(art,'native-tab-icon')+'<span>'+e(label)+'</span></button>').join('')+
-  '<details class="native-admin-more" '+(parent==='activity'?'open':'')+'><summary aria-label="Weitere Offizierswerkzeuge">Mehr</summary><div class="native-more-menu">'+
-  '<span class="native-more-section-label">ALLIANZ & SPIELER</span>'+secondaryPanels.slice(0,3).map(pair=>navButton(pair)).join('')+
-  '<span class="native-more-section-label">DATEN & EINSÄTZE</span>'+secondaryPanels.slice(3,7).map(pair=>navButton(pair)).join('')+
-  '<span class="native-more-section-label">SYSTEM</span>'+secondaryPanels.slice(7).map(pair=>navButton(pair)).join('')+'</div></details></nav>'+
+  '<details class="native-admin-more '+(parent==='activity'?'native-more-current':'')+'"><summary aria-label="Weitere Bereiche öffnen">Mehr</summary>'+
+  '<button type="button" class="native-more-backdrop" data-native-more-close aria-label="Menü schließen"></button>'+
+  '<div class="native-more-menu" role="dialog" aria-modal="true" aria-label="Weitere Verwaltungsbereiche">'+
+   '<div class="native-more-header"><div><small>RZSN COMMAND CENTER</small><strong>Weitere Verwaltung</strong></div><button type="button" data-native-more-close aria-label="Menü schließen">✕</button></div>'+
+   '<section class="native-more-group"><h3>Allianz & Mitglieder</h3><div>'+secondaryPanels.slice(0,3).map(pair=>navButton(pair)).join('')+'</div></section>'+
+   '<section class="native-more-group"><h3>Planung & Einsätze</h3><div>'+secondaryPanels.slice(4,7).map(pair=>navButton(pair)).join('')+'</div></section>'+
+   '<section class="native-more-group"><h3>Daten & Sicherheit</h3><div>'+[secondaryPanels[3],...secondaryPanels.slice(7)].map(pair=>navButton(pair)).join('')+'</div></section>'+
+   '</div></details></nav>'+
   (sectionPanels[parent]?'<nav class="native-admin-subnav" aria-label="Unterbereiche">'+
    sectionPanels[parent].map(pair=>navButton(pair)).join('')+
    (contextTools[parent]?'<details class="native-context-tools" '+(contextTools[parent].items.some(([k])=>k===panel)?'open':'')+
@@ -177,6 +181,12 @@ async function view(mount){
    cache.vs=data;cache.overview=summary;
    target.innerHTML='<div class="native-row"><h2>VS-Duell</h2><select id="native-vs-week">'+data.weeks.map(w=>'<option value="'+e(w.week)+'">'+e(w.week)+'</option>').join('')+'</select></div>'+
     '<div id="native-vs-body"></div>';renderVs(target);
+  }else if(panel==='donations'){
+   cache.donations=await request('/api/donations-intelligence');
+   target.innerHTML='<div class="native-row native-data-heading"><div><h2>Allianzspenden</h2><p class="native-muted">Wöchentliches Forschungsziel · mindestens 20.000 pro Mitglied</p></div>'+
+    '<label>Aufnahmewoche<select id="native-donation-week">'+(cache.donations.weeks||[]).map(w=>'<option value="'+e(w.week)+'">'+e(w.week)+'</option>').join('')+'</select></label></div>'+
+    '<div id="native-donations-body"></div>';
+   renderDonations(target);
   }else if(panel==='train'){
    [cache.trains,cache.dice,cache.diceMembers]=await Promise.all([
     request('/api/train-manager'),request('/api/train-dice').catch(()=>[]),request('/api/members').catch(()=>[])]);
@@ -290,9 +300,9 @@ async function showPerson(target,id){
    '<small>'+e(w.state==='final'?'Finalisiert':'Vorläufig / unvollständig')+' · '+e(w.verified_goal_days??0)+'/'+e(w.verified_days??0)+' bestätigte Zieltage'+
    (w.uncertain_days?' · '+e(w.uncertain_days)+' unklar':'')+'</small>'+
    (weeklyDelta!==null?'<small class="native-week-change">'+(weeklyDelta>0?'+':'')+numberText(weeklyDelta)+' zum '+e(older.week)+'</small>':'')+'</summary>'+
-   '<div class="native-profile-timeline">'+days.map(day=>'<div><span>'+e(weekdays[day.weekday]||'?')+'</span><b>'+
+   '<div class="native-profile-timeline">'+days.map(day=>'<div><span>'+e(weekdays[day.weekday]||'?')+'</span><button type="button" class="native-vs-day-link" data-native-vs-image="'+e(w.week+'|'+id+'|'+day.weekday)+'" title="Privaten Screenshot öffnen"><b>'+
     (['observed','corrected'].includes(day.quality)&&day.points!==null?numberText(day.points):'Unbekannt')+
-    '</b><small>'+e(day.quality||'nicht gelesen')+'</small></div>').join('')+'</div></details>';
+    '</b><small>'+e(day.quality||'nicht gelesen')+' · Bild ansehen</small></button></div>').join('')+'</div></details>';
  }).join('')+'</div>':
   '<p class="native-muted">Noch kein VS-Wochenverlauf vorhanden.</p>';
  const rides=(p.rides||[]).slice().sort((a,b)=>b.date.localeCompare(a.date));
@@ -336,6 +346,66 @@ async function showPerson(target,id){
     '<div id="native-person-log"></div><div id="registry-form"></div></div></details></section>';
  node.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
+async function openVsScreenshot(target,key){
+ const matched=/^(20\d{2}-W\d{2})\|([a-zA-Z0-9-]{1,80})\|([0-5])$/.exec(String(key));
+ if(!matched)return;
+ const [,week,memberId,weekday]=matched;
+ target.querySelector('#native-vs-evidence-viewer')?.remove();
+ const host=target.ownerDocument.createElement('section');
+ host.id='native-vs-evidence-viewer';
+ host.className='native-vs-evidence-backdrop';
+ host.setAttribute('role','dialog');host.setAttribute('aria-modal','true');
+ host.setAttribute('aria-label','Geschützter VS-Screenshot');
+ host.innerHTML='<div class="native-vs-evidence-panel"><div class="native-row"><h3>Original-Screenshot · '+e(week)+'</h3>'+
+  '<button type="button" data-native-vs-image-close aria-label="Bild schließen">Schließen ✕</button></div>'+
+  '<p class="native-muted">Nur für angemeldete Offiziere. Das Bild wird nicht öffentlich gespeichert.</p>'+
+  '<div id="native-vs-evidence-image" role="status">Originalbild wird privat geladen …</div></div>';
+ target.append(host);
+ const image=host.querySelector('#native-vs-evidence-image');
+ host.querySelector('[data-native-vs-image-close]')?.focus();
+ const url='/api/vs-days/'+encodeURIComponent(week)+'/'+encodeURIComponent(memberId)+'/'+weekday+'/evidence';
+ try{
+  const response=await fetch(apiBase+url,{headers:{Authorization:'Bearer '+sessionToken,Accept:'image/png,image/jpeg,image/webp'},mode:'cors',credentials:'omit',cache:'no-store'});
+  if(!host.isConnected)return;
+  if(response.ok){
+   const mime=response.headers.get('Content-Type')||'';
+   if(!['image/png','image/jpeg','image/webp'].includes(mime.split(';')[0]))throw Error('Ungültiger Bildinhalt');
+   const blob=await response.blob();
+   if(!host.isConnected)return;
+   const localURL=URL.createObjectURL(blob);
+   reviewBlobUrls.set('vs:'+key,localURL);
+   image.innerHTML='<img alt="Privater Original-Screenshot zum ausgewählten VS-Tageswert" loading="eager" draggable="false">';
+   image.querySelector('img').src=localURL;
+   return;
+  }
+  const problem=await response.json().catch(()=>({}));
+  if(response.status!==404)throw Error(problem.error||'Bildabruf fehlgeschlagen');
+  image.innerHTML='<p>Noch kein Originalbild für diesen Wert hinterlegt. Ein Officer kann den passenden Screenshot aus der Rangliste ergänzen.</p>'+
+   '<form id="native-vs-evidence-upload" data-key="'+e(key)+'"><label>Screenshot (PNG/JPG/WebP)'+
+   '<input type="file" name="image" accept="image/png,image/jpeg,image/webp" required></label>'+
+   '<label>Begründung / Quelle<input type="text" name="reason" required minlength="8" maxlength="300" value="Originale VS-Rangliste, manuell zugeordnet"></label>'+
+   '<button type="submit">Privat zuordnen</button><p role="status" class="native-vs-evidence-upload-result"></p></form>';
+ }catch(error){if(host.isConnected)image.textContent='Bild konnte nicht geladen werden: '+error.message}
+}
+async function submitVsScreenshot(form,target){
+ const key=form.dataset.key,matched=/^(20\d{2}-W\d{2})\|([a-zA-Z0-9-]{1,80})\|([0-5])$/.exec(String(key));
+ if(!matched)return;
+ const file=form.elements.namedItem('image')?.files?.[0],reason=form.elements.namedItem('reason')?.value||'';
+ const message=form.querySelector('.native-vs-evidence-upload-result'),button=form.querySelector('[type=submit]');
+ if(!file||file.size<50||file.size>950000||!['image/png','image/jpeg','image/webp'].includes(file.type)){
+  message.textContent='Bildformat ungültig oder über 950 KB';return;
+ }
+ button.disabled=true;
+ try{
+  const response=await fetch(apiBase+'/api/vs-days/'+matched[1]+'/'+matched[2]+'/'+matched[3]+'/evidence',{
+   method:'PUT',mode:'cors',credentials:'omit',cache:'no-store',
+   headers:{Authorization:'Bearer '+sessionToken,'Content-Type':file.type,'X-Evidence-Reason':encodeURIComponent(reason)},
+   body:file});
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok)throw Error(result.error||'Screenshot konnte nicht gespeichert werden');
+  await openVsScreenshot(target,key);
+ }catch(error){message.textContent='Nicht gespeichert: '+error.message;button.disabled=false}
+}
 function editProfileAbsence(target,id){
  const host=target.querySelector('#native-person-absence-form');if(!host)return;
  const roster=cache.ops?.members||[];
@@ -352,6 +422,58 @@ function editProfileAbsence(target,id){
  host.querySelector('[name=start_date]')?.focus();
 }
 
+const donationStatus={met:'Ziel erreicht',below:'Unter 20.000',unknown:'Wert unbekannt'};
+function renderDonations(target,query=''){
+ const host=target.querySelector('#native-donations-body');if(!host)return;
+ const weeks=cache.donations?.weeks||[];
+ const week=weeks.find(w=>w.week===target.querySelector('#native-donation-week')?.value)||weeks[0];
+ if(!week){host.innerHTML='<p class="native-muted">Noch keine wöchentlichen Allianzspenden importiert. Werte werden nicht geschätzt.</p>';return}
+ const minimum=cache.donations?.minimum||20000;
+ const search=String(query).trim().toLocaleLowerCase('de-DE');
+ const members=(week.members||[]).filter(m=>String(m.name||'').toLocaleLowerCase('de-DE').includes(search));
+ const groups=[['below','Unter Wochenziel'],['unknown','Wert nicht bestätigt'],['met','Wochenziel erreicht']];
+ const previousAvailable=weeks.some(w=>w.week!==week.week&&w.week<week.week);
+ const matched=members.filter(m=>m.status==='met').length;
+ const rate=week.verified>0?Math.round(100*week.met/week.verified):null;
+ const tile=(label,value,extra)=>'<article class="native-donation-tile"><small>'+e(label)+'</small><strong>'+e(value)+'</strong><span>'+e(extra)+'</span></article>';
+ const section=([state,label])=>{
+  const players=members.filter(m=>m.status===state),n=players.length;
+  return '<details class="native-fold native-donation-group native-donation-'+state+'" '+(search&&n?'open':'')+'><summary><strong>'+e(label)+'</strong><span>'+n+' Spieler</span></summary>'+
+   '<div class="native-fold-body">'+(n?players.map((m,i)=>
+    '<article class="native-donation-person"><div class="native-donation-person-head">'+
+    '<strong>'+e(m.name)+'</strong><small>'+e(m.rank||'?')+'</small><b>'+
+    (m.points===null?'Unbekannt':numberText(m.points))+'</b></div>'+
+    (m.points===null?'<p class="native-muted">Unbekannte Spenden sind keine 0.</p>':
+    '<div class="native-donation-progress" role="progressbar" aria-label="Anteil zum Wochenziel" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+Math.min(100,Math.round(m.points/minimum*100))+'">'+
+    '<span style="width:'+Math.min(100,Math.round(m.points/minimum*100))+'%"></span></div>'+
+    '<p class="native-donation-delta">'+(m.difference>=0?'+':'')+numberText(m.difference)+' zum Wochenminimum'+
+    (m.delta!==null?' · '+(m.delta>0?'+':'')+numberText(m.delta)+' zu '+e(m.previous_week):
+    ' · Kein verifizierter Vorwochenvergleich')+'</p>')+
+    '<button type="button" data-native-member="'+e(m.id)+'">Spielerakte & Spendenverlauf ansehen ›</button></article>'
+   ).join(''):'<p class="native-muted">Keine Spieler in dieser Gruppe.</p>')+'</div></details>';
+ };
+ const existingSearch=target.querySelector('#native-donation-search');
+ const focused=existingSearch===target.ownerDocument?.activeElement;
+ const position=focused?existingSearch.selectionStart:null;
+ host.innerHTML='<section class="native-vs-brief native-donation-summary" aria-label="Allianzspenden Wochenauswertung">'+
+  '<div class="native-vs-heading"><div><h3>Wochenauswertung '+e(week.week)+'</h3>'+
+   '<p class="native-muted">Aufnahme: '+e(formatOfficerTime(week.captured_at))+' · '+e(week.is_complete?'Vollständige Mitgliederaufnahme':'Teilaufnahme')+'</p></div>'+
+   '<span class="native-donation-goal">Ziel '+numberText(minimum)+'</span></div>'+
+  '<div class="native-donation-tiles">'+tile('Ziel erreicht',week.met,'Bestätigte Spieler')+
+   tile('Unter Ziel',week.below,'Bestätigte Spieler')+
+   tile('Unbekannt',week.unknown,'Nicht als 0 gewertet')+
+   tile('Zielquote',rate===null?'—':rate+' %','Von '+week.verified+' bestätigten Werten')+'</div>'+
+  '<p class="native-evidence-note">Werte gelten zum Zeitpunkt des Screenshots. '+week.verified+'/'+week.active+
+   ' aktive Spieler mit bestätigten Wochenspenden. '+(previousAvailable?
+   'Vergleiche erscheinen nur bei zwei bestätigten Messpunkten.':
+   'Bisher liegt nur eine verlässliche Wochenaufnahme vor – kein erfundener Vorwochenvergleich.')+'</p>'+
+  '<label class="native-ios-search">Spieler suchen<input id="native-donation-search" type="search" value="'+e(query)+'" placeholder="Mitglied oder Name" autocomplete="off"></label>'+
+  '<div class="native-donation-groups">'+groups.map(section).join('')+'</div>'+
+  '<details class="native-fold"><summary>So werden die Spenden bewertet</summary><div class="native-fold-body">'+
+   '<p>Mindestens 20.000 Spenden pro Spieler und Woche. Nur nachweislich erfasste Werte aus „Wöchentliche Spenden“ zählen. Fehlende Werte bleiben unbekannt, ein späterer Messzeitpunkt wird nicht erfunden.</p>'+
+   '<p>Die Aufnahme stellt einen Zeitpunkt innerhalb der angegebenen Woche dar; eine noch nicht abgeschlossene Woche ist keine endgültige Leistungsbewertung.</p></div></details></section>';
+ if(focused){const input=target.querySelector('#native-donation-search');input.focus();if(position!==null)input.setSelectionRange(position,position)}
+}
 function renderVs(target){
   const week=cache.vs.weeks.find(w=>w.week===target.querySelector('#native-vs-week').value)||cache.vs.weeks[0];
   const host=target.querySelector('#native-vs-body');
@@ -368,8 +490,8 @@ function renderVs(target){
    '<summary><span>'+e(name)+'</span><b>'+players.length+' Spieler</b></summary><div class="native-fold-body">'+
    (players.length?'<div class="native-list">'+players.map(p=>'<details class="native-vs-player"><summary>'+e(p.name)+' · '+e(p.failed||0)+' unter Ziel / '+e(p.unknown||0)+' unklar</summary>'+
     '<button type="button" class="native-vs-open-person" data-native-member="'+e(p.id)+'">Spielerakte & Entwicklung öffnen ›</button>'+
-    '<div class="native-vs-player-days">'+(p.days||[]).map((d,i)=>'<span><b>'+labels[i%6]+'</b> '+
-    (d.verified&&d.points!=null?e(Number(d.points).toLocaleString('de-DE')):'Unbekannt')+'</span>').join('')+'</div></details>').join('')+'</div>':
+    '<div class="native-vs-player-days">'+(p.days||[]).map((d,i)=>'<span><b>'+labels[i%6]+'</b> <button type="button" class="native-vs-day-link" data-native-vs-image="'+e(week.week+'|'+p.id+'|'+i)+'" aria-label="'+e(labels[i%6])+' Screenshot zu '+e(p.name)+' ansehen">'+
+    (d.verified&&d.points!=null?e(Number(d.points).toLocaleString('de-DE')):'Unbekannt')+' <small>↗</small></button></span>').join('')+'</div></details>').join('')+'</div>':
     '<p class="native-muted">Keine Spieler in dieser Gruppe.</p>')+'</div></details>';
   const dayTiles='<div class="native-weekdays" role="list" aria-label="Sechs Tage im Allianzduell">'+(week.dayTotals||[]).map(d=>{
     const label=labels[d.weekday]||'-';
@@ -1227,6 +1349,16 @@ export async function renderNativeAdmin(mount){
 export function initNativeAdmin(mount){
  if(mount.dataset.nativeReady)return;
  mount.dataset.nativeReady='1';
+ mount.addEventListener('toggle',event=>{
+  if(event.target.matches?.('.native-admin-more')&&event.target.open)
+   event.target.querySelector('.native-more-header [data-native-more-close]')?.focus();
+ },true);
+ mount.addEventListener('keydown',event=>{
+  if(event.key==='Escape'){
+   const menu=mount.querySelector('.native-admin-more[open]');
+   if(menu){event.preventDefault();menu.open=false;menu.querySelector('summary')?.focus()}
+  }
+ });
  mount.addEventListener('click',async event=>{
   const screenshot=event.target.closest?.('.native-review-image img');
   if(screenshot){
@@ -1234,10 +1366,14 @@ export function initNativeAdmin(mount){
    if(url.startsWith('blob:'))window.open(url,'_blank','noopener,noreferrer');
    return;
   }
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-dice-delete],[data-native-train-choice],[data-native-access-mode],[data-native-access-copy],[data-native-access-signout],[data-native-member-create],[data-native-registry-quick],[data-native-access-link],[data-native-access-disable],[data-audit-category]');
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-dice-delete],[data-native-train-choice],[data-native-access-mode],[data-native-access-copy],[data-native-access-signout],[data-native-member-create],[data-native-registry-quick],[data-native-access-link],[data-native-access-disable],[data-audit-category],[data-native-vs-image],[data-native-vs-image-close],[data-native-more-close]');
   if(!button)return;
   if(button.hasAttribute('data-officer-logout')){
    try{await request('/api/native-logout',{method:'POST',body:{}})}catch{}clearOfficer();await renderNativeAdmin(mount);return;
+  }
+  if(button.hasAttribute('data-native-more-close')){
+   const menu=mount.querySelector('.native-admin-more');if(menu){menu.open=false;menu.querySelector('summary')?.focus()}
+   return;
   }
   if(button.dataset.officerTab){panel=button.dataset.officerTab;pageLimit=20;historyLimit=20;activityLimit=30;await view(mount);return}
   if(button.dataset.nativeAction){
@@ -1284,6 +1420,12 @@ export function initNativeAdmin(mount){
    return;
   }
   const target=mount.querySelector('#native-admin-content');if(!target)return;
+  if(button.hasAttribute('data-native-vs-image-close')){
+   const modal=target.querySelector('#native-vs-evidence-viewer');modal?.remove();
+   for(const [key,url] of reviewBlobUrls)if(key.startsWith('vs:')){URL.revokeObjectURL(url);reviewBlobUrls.delete(key)}
+   return;
+  }
+  if(button.dataset.nativeVsImage){await openVsScreenshot(target,button.dataset.nativeVsImage);return}
   if(button.dataset.nativeRegistryFilter){
    registryFilter=button.dataset.nativeRegistryFilter;
    target.querySelectorAll('[data-native-registry-filter]').forEach(item=>
@@ -1473,6 +1615,7 @@ export function initNativeAdmin(mount){
   if(event.target.id==='registry-search'){pageLimit=20;renderRegistry(mount.querySelector('#native-admin-content'),event.target.value)}
   if(event.target.id==='native-diplomacy-search')renderDiplomacy(mount.querySelector('#native-admin-content'),event.target.value);
   if(event.target.id==='activity-search'){activityLimit=30;renderActivity(mount.querySelector('#native-admin-content'),event.target.value)}
+  if(event.target.id==='native-donation-search')renderDonations(mount.querySelector('#native-admin-content'),event.target.value);
   if(event.target.id==='review-search-native'){historyLimit=20;renderReviews(mount.querySelector('#native-admin-content'),event.target.value)}
   if(event.target.matches('[data-native-review-search]')){
    const card=event.target.closest('.native-review-card');
@@ -1486,7 +1629,7 @@ export function initNativeAdmin(mount){
     const message=card.querySelector('.native-review-message');if(message)message.textContent='Andere Aufnahme gewählt; bitte zuerst öffnen und kontrollieren.'}
   }
  if(event.target.id==='activity-group-by'){activityGroupBy=event.target.value;activityLimit=30;renderActivity(mount.querySelector('#native-admin-content'),mount.querySelector('#activity-search')?.value||'')}
- if(event.target.name==='event_type'&&event.target.closest('#native-record-save'))updateEventForm(event.target.form);if(event.target.id==='native-vs-week')renderVs(mount.querySelector('#native-admin-content'));if(['review-image-native','review-batch-native','review-kind-native'].includes(event.target.id)){historyLimit=20;const target=mount.querySelector('#native-admin-content');renderReviews(target,target.querySelector('#review-search-native')?.value||'')}});
+ if(event.target.name==='event_type'&&event.target.closest('#native-record-save'))updateEventForm(event.target.form);if(event.target.id==='native-vs-week')renderVs(mount.querySelector('#native-admin-content'));if(event.target.id==='native-donation-week')renderDonations(mount.querySelector('#native-admin-content'));if(['review-image-native','review-batch-native','review-kind-native'].includes(event.target.id)){historyLimit=20;const target=mount.querySelector('#native-admin-content');renderReviews(target,target.querySelector('#review-search-native')?.value||'')}});
  mount.addEventListener('submit',async event=>{
   const form=event.target;event.preventDefault();
   if(form.id==='native-officer-login'){
@@ -1560,6 +1703,9 @@ export function initNativeAdmin(mount){
     }
    }
    return;
+  }
+  if(form.id==='native-vs-evidence-upload'){
+   await submitVsScreenshot(form,mount.querySelector('#native-admin-content'));return;
   }
   if(form.id==='native-member-create-save'){
    const button=form.querySelector('[type=submit]'),message=form.querySelector('#native-member-create-message');

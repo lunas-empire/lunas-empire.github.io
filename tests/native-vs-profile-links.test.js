@@ -51,6 +51,10 @@ test('VS priority is NOT OCR review count; VS player opens real dossier, history
   if(path==='/api/operations')return Response.json({tasks:[],events:[],absences:[],members:[]});
   if(path==='/api/train-manager')return Response.json({today:'2026-10-14',history:[],calendar:[],counts:{}});
   if(path==='/api/vs-intelligence')return Response.json({weeks});
+  if(path.startsWith('/api/vs-days/')){
+   const png=new Uint8Array(100);png.set([137,80,78,71,13,10,26,10]);
+   return new Response(png,{status:200,headers:{'Content-Type':'image/png','X-Evidence-Source':'ocr-review'}});
+  }
   if(path==='/api/members')return Response.json([member]);
   if(path==='/api/member/'+id)return Response.json(sample);
   throw Error('Unexpected '+path);
@@ -67,6 +71,11 @@ test('VS priority is NOT OCR review count; VS player opens real dossier, history
  assert.doesNotMatch(q('[data-native-action=review-open]').textContent,/29/);
  q('.native-vs-group summary').click();
  await until(()=>q('[data-native-member="'+id+'"]'));
+ assert.ok(q('[data-native-vs-image="2026-W41|'+id+'|0"]'));
+ q('[data-native-vs-image="2026-W41|'+id+'|0"]').click();
+ await until(()=>q('#native-vs-evidence-image img'));
+ assert.ok(routes.includes('/api/vs-days/2026-W41/'+id+'/0/evidence'));
+ q('[data-native-vs-image-close]').click();
  q('[data-native-member="'+id+'"]').click();
  await until(()=>q('.native-profile h3'));
  assert.equal(q('.native-profile h3').textContent,member.name);
@@ -76,6 +85,11 @@ test('VS priority is NOT OCR review count; VS player opens real dossier, history
  assert.match(q('.native-profile-weeks').textContent,/2.000.000 zum 2026-W39/);
  assert.match(q('.native-profile-weeks').textContent,/Vorläufig/);
  assert.ok(routes.includes('/api/member/'+id));
+ assert.ok(q('[data-native-vs-image="2026-W40|'+id+'|0"]'));
+ q('[data-native-vs-image="2026-W40|'+id+'|0"]').click();
+ await until(()=>q('#native-vs-evidence-image img'));
+ assert.ok(routes.includes('/api/vs-days/2026-W40/'+id+'/0/evidence'));
+ q('[data-native-vs-image-close]').click();
  q('[data-native-member-close]').click();
  await until(()=>q('#native-member-list')&&!q('.native-profile'));
  assert.ok(q('.native-rank-group').open);
