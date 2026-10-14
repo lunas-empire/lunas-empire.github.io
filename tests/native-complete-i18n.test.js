@@ -61,3 +61,14 @@ test('Partial already translated sentences receive a second safe pass without ch
  assert.equal(translateOfficerText('Samstag an den Schild erinnern','en'),'Remind members to shield on Saturday');
  assert.equal(translateOfficerText('Mitglied 日本🇯🇵 UnbekanntXYZ','en'),'Mitglied 日本🇯🇵 UnbekanntXYZ','Player-provided identifiers must never be machine-translated');
 });
+
+test('Localized composite sentences translate leftover German fragments without changing unknown player identifiers',async()=>{
+ const {translateOfficerFragments}=await import('../assets/native-admin-fragments.js');
+ const raw='Stärke 2026-10-11 · VS 2026-W41 · Quellen sind unterschiedlich vollständig';
+ const english=translateOfficerText(raw,'en');
+ assert.ok(english.includes('Power 2026-10-11'));
+ assert.ok(english.includes('Data sources differ in completeness'));
+ assert.equal(translateOfficerFragments('XYPrüfkandidatenZ','en'),'XYPrüfkandidatenZ');
+ assert.equal(translateOfficerFragments('Prüfkandidaten','en'),'Candidates for review');
+ assert.equal(translateOfficerText('UserXYPrüfkandidatenZ','en'),'UserXYPrüfkandidatenZ');
+});
