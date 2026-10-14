@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-14.17');
+@import url('./tokens.css?v=2026-10-14.18');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -1160,3 +1160,10 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 .native-admin #registry-form .native-row,.native-admin #native-access-form .native-row{flex-wrap:wrap}
 .native-admin #registry-form .native-row button{min-height:44px;white-space:normal;flex:1 1 115px}
 @media(max-width:30rem){.native-admin .native-officer-controls{width:100%;justify-content:flex-start}.native-admin .native-officer-controls>.native-officer-badge{flex:1 1 100%;max-width:100%}.native-admin .native-officer-controls button{flex:1 1 110px}.native-admin .native-row #registry-search{flex:1 1 100%;min-width:0}}
+
+/* R5 legacy-officer reconciliation: no clipped names or inaccessible controls. */
+.native-admin .native-access-account .native-row{display:flex;flex-wrap:wrap;gap:.4rem;min-width:0}
+.native-admin .native-access-account .native-row button{min-height:44px;min-width:0;flex:1 1 130px;white-space:normal;overflow-wrap:anywhere}
+.native-admin #native-access-save [name=member_id]{max-width:100%;min-width:0}
+.native-admin .native-access-account small{line-height:1.5}
+@media(max-width:375px){.native-admin .native-access-account .native-row button{flex-basis:100%}}

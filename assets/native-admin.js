@@ -109,9 +109,12 @@ async function view(mount){
     '<div class="native-row"><button type="button" data-native-access-mode="self">Eigenen Code ändern</button>'+
     (officer.role==='R5'?'<button type="button" data-native-access-mode="issue">Neuen Admin hinzufügen</button><button type="button" data-native-access-mode="reset">Code eines Admins zurücksetzen</button>':'')+'</div>'+
     '<div id="native-access-form"></div><div id="native-access-result" role="status"></div>'+
-    '<details class="native-fold"><summary>Aktive Offizierszugänge ('+e(cache.access.accounts.filter(x=>x.enabled).length)+')</summary>'+
+    (officer.role==='R5'&&cache.access.accounts.some(x=>x.enabled&&!x.member_id)?'<p class="native-evidence-note" role="status">'+cache.access.accounts.filter(x=>x.enabled&&!x.member_id).length+' bestehende Offizierszugänge sind noch nicht zugeordnet. R5 muss jede Zuordnung ausdrücklich prüfen.</p>':'')+
+    '<details class="native-fold" open><summary>Offizierszugänge ('+e(cache.access.accounts.filter(x=>x.enabled).length)+' aktiv)</summary>'+
      '<div class="native-fold-body native-list">'+cache.access.accounts.map(x=>'<div class="native-access-account"><strong>'+e(x.ingame_name)+' · '+e(x.role)+'</strong>'+
-      '<small>'+(x.member_id?'Mit Mitglied verknüpft':'Älterer Zugang · Verknüpfung prüfen')+'</small></div>').join('')+'</div></details>';
+      '<small>'+(x.enabled?(x.member_id?'Mit Mitglied verknüpft':'Nicht zugeordnet – R5-Prüfung nötig'):'Deaktiviert')+'</small>'+
+      (officer.role==='R5'&&x.enabled?'<div class="native-row">'+(!x.member_id?'<button type="button" data-native-access-link="'+e(x.id)+'">Spieler zuordnen</button>':'')+
+       (x.ingame_name!==officer.name?'<button type="button" data-native-access-disable="'+e(x.id)+'">Zugang deaktivieren</button>':'')+'</div>':'')+'</div>').join('')+'</div></details>';
   }else if(panel==='registry'){
    cache.registry=await request('/api/member-registry');
    target.innerHTML='<div class="native-row"><h2>Mitgliederverwaltung</h2><button type="button" data-native-member-create>+ Mitglied anlegen</button><input id="registry-search" type="search" placeholder="Spieler suchen"></div>'+
@@ -752,8 +755,23 @@ function createMemberForm(target){
   '<button type="submit" class="native-game-primary">Mitglied protokolliert anlegen</button><p role="status" id="native-member-create-message"></p></form>';
  host.querySelector('[name=name]').focus();
 }
-function accessForm(target,mode){
+function accessForm(target,mode,accountId=''){
  const host=target.querySelector('#native-access-form');if(!host)return;
+ if(['link','disable'].includes(mode)){
+  if(officer?.role!=='R5')return;
+  const account=(cache.access?.accounts||[]).find(a=>a.id===accountId&&a.enabled);
+  if(!account)return;
+  const linkedIds=new Set((cache.access?.accounts||[]).map(a=>a.member_id).filter(Boolean));
+  const eligible=(cache.registry?.members||[]).filter(m=>m.lifecycle==='active'&&!m.blacklisted&&m.rank===account.role&&!linkedIds.has(m.id));
+  host.innerHTML='<form id="native-access-save" class="native-form" data-mode="'+e(mode)+'" data-officer-id="'+e(account.id)+'"><h3>'+e(account.ingame_name)+' · '+e(account.role)+'</h3>'+
+   '<p class="native-muted">'+(mode==='link'?'R5 bestätigt persönlich, welcher aktive Spieler wirklich hinter diesem bestehenden Offizierskonto steht. Keine automatische Zuordnung nach Namen.':
+   'Zugang deaktivieren und alle laufenden Sitzungen beenden. Das Spielerprofil und seine historischen Werte bleiben erhalten.')+'</p>'+
+   (mode==='link'?'<label>Bestätigtes Mitglied auswählen<select name="member_id" required><option value="">Bitte wählen</option>'+eligible.map(m=>'<option value="'+e(m.id)+'">'+e(m.name)+' · '+e(m.rank)+'</option>').join('')+'</select></label>':'')+
+   '<label>Begründung für Audit-Protokoll<input name="reason" required minlength="8" maxlength="500" placeholder="Identität bestätigt / Zugang nicht mehr berechtigt"></label>'+
+   '<button type="submit" class="native-game-primary">'+(mode==='link'?'Zuordnung verbindlich speichern':'Zugang sicher deaktivieren')+'</button>'+
+   '<p id="native-access-message" role="status"></p></form>';
+  host.querySelector('[name=reason]')?.focus();return;
+ }
  const reason='<label>Grund (Audit-Log)<input name="reason" required minlength="8" maxlength="500" placeholder="Warum wird der Zugang verändert?"></label>';
  const accountChoices=(cache.access?.accounts||[]).filter(a=>a.enabled&&a.ingame_name!==officer?.name);
  const eligible=(cache.registry?.members||[]).filter(m=>m.lifecycle==='active'&&!m.blacklisted&&['R4','R5'].includes(m.rank)&&
@@ -1141,7 +1159,7 @@ export function initNativeAdmin(mount){
    if(url.startsWith('blob:'))window.open(url,'_blank','noopener,noreferrer');
    return;
   }
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-dice-delete],[data-native-train-choice],[data-native-access-mode],[data-native-access-copy],[data-native-access-signout],[data-native-member-create],[data-native-registry-quick]');
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-dice-delete],[data-native-train-choice],[data-native-access-mode],[data-native-access-copy],[data-native-access-signout],[data-native-member-create],[data-native-registry-quick],[data-native-access-link],[data-native-access-disable]');
   if(!button)return;
   if(button.hasAttribute('data-officer-logout')){
    try{await request('/api/native-logout',{method:'POST',body:{}})}catch{}clearOfficer();await renderNativeAdmin(mount);return;
@@ -1242,6 +1260,8 @@ export function initNativeAdmin(mount){
    form.elements.namedItem('reason').focus();return;
   }
   if(button.dataset.nativeAccessMode){accessForm(target,button.dataset.nativeAccessMode);return}
+  if(button.dataset.nativeAccessLink){accessForm(target,'link',button.dataset.nativeAccessLink);return}
+  if(button.dataset.nativeAccessDisable){accessForm(target,'disable',button.dataset.nativeAccessDisable);return}
   if(button.hasAttribute('data-native-access-signout')){clearOfficer();await renderNativeAdmin(mount);return}
   if(button.hasAttribute('data-native-access-copy')){
    const output=target.querySelector('#native-credential-output');if(!output)return;
@@ -1479,11 +1499,23 @@ export function initNativeAdmin(mount){
    if(mode==='self'){
     body.action='change_self';body.current_code=form.elements.namedItem('current_code').value;
    }else if(mode==='issue')body.member_id=form.elements.namedItem('member_id').value;
-   else{body.action='reset_other';body.officer_id=form.elements.namedItem('officer_id').value}
+   else if(mode==='link'||mode==='disable'){
+    body.officer_id=form.dataset.officerId;
+    if(mode==='link')body.member_id=form.elements.namedItem('member_id').value;
+   }else{body.action='reset_other';body.officer_id=form.elements.namedItem('officer_id').value}
+   if(mode==='disable'&&!window.confirm('Offizierszugang wirklich deaktivieren und alle bisherigen Sitzungen beenden?'))return;
    const button=form.querySelector('[type=submit]'),message=form.querySelector('#native-access-message');
    button.disabled=true;
    try{
-    const result=await request(mode==='issue'?'/api/officer-access/issue':'/api/officer-access/rotate',{method:'POST',body});
+    const endpoint=mode==='issue'?'/api/officer-access/issue':
+     mode==='link'?'/api/officer-access/link':mode==='disable'?'/api/officer-access/disable':'/api/officer-access/rotate';
+    const result=await request(endpoint,{method:'POST',body});
+    if(mode==='link'||mode==='disable'){
+     await view(mount);
+     const message=mount.querySelector('#native-access-result');
+     if(message)message.textContent=mode==='link'?'Offizierskonto mit dem bestätigten Mitglied verknüpft.':'Offizierszugang deaktiviert und Sitzungen beendet.';
+     return;
+    }
     form.remove();
     const host=mount.querySelector('#native-access-result');
     host.innerHTML='<section class="native-access-secret" role="status"><h3>Neuer Code für '+e(result.ingame_name)+'</h3>'+

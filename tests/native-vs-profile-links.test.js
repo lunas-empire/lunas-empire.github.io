@@ -185,3 +185,59 @@ test('R4 can rotate own code but not issue or reset other accounts',async t=>{
  const options=[...q('#native-member-create-save [name=rank]').options].map(x=>x.value);
  assert.deepEqual(options,['R1','R2','R3']);
 });
+
+test('R5 explicitly links a legacy account and can disable access without exposing any code',async t=>{
+ const dom=new JSDOM('<main id="mount"></main>',{url:'https://lunas-empire.github.io/#admin'});
+ const win=dom.window,prevWindow=globalThis.window,prevFetch=globalThis.fetch;
+ globalThis.window=win;win.HTMLElement.prototype.scrollIntoView=()=>{};win.confirm=()=>true;
+ t.after(()=>{clearOfficer();globalThis.window=prevWindow;globalThis.fetch=prevFetch;dom.window.close()});
+ const account={id:'old-r4',ingame_name:'Legacy Officer',role:'R4',enabled:1,member_id:null};
+ const me={id:'r5-current',ingame_name:'Chief',role:'R5',enabled:1,member_id:null};
+ const r4={id:'real-r4',name:'Verified Member',rank:'R4',lifecycle:'active',blacklisted:0};
+ const r5={id:'real-r5',name:'Chief',rank:'R5',lifecycle:'active',blacklisted:0};
+ const requests=[];
+ globalThis.fetch=async(url,opt={})=>{
+  const path=new URL(url).pathname;requests.push([path,opt.method||'GET',opt.body]);
+  if(path==='/api/native-login')return Response.json({token:'synthetic',name:'Chief',role:'R5'});
+  if(path==='/api/overview')return Response.json({active:2,reviews:0});
+  if(path==='/api/operations')return Response.json({tasks:[],events:[],members:[]});
+  if(path==='/api/train-manager')return Response.json({today:'2026-10-14',calendar:[],history:[],counts:{}});
+  if(path==='/api/officer-access')return Response.json({accounts:[me,account]});
+  if(path==='/api/member-registry')return Response.json({members:[r4,r5],counts:{active:2}});
+  if(path==='/api/officer-access/link'){
+   const body=JSON.parse(opt.body);account.member_id=body.member_id;
+   return Response.json({ok:true,officer_id:account.id,member_id:body.member_id});
+  }
+  if(path==='/api/officer-access/disable'){
+   account.enabled=0;return Response.json({ok:true,disabled:true,sessions_revoked:true});
+  }
+  throw Error(path);
+ };
+ const mount=win.document.querySelector('#mount'),q=s=>mount.querySelector(s);
+ const until=async fn=>{for(let i=0;i<140;i++){if(fn())return;await new Promise(r=>setTimeout(r,5))}assert.ok(fn(),'UI did not settle')};
+ initNativeAdmin(mount);await renderNativeAdmin(mount);
+ q('[name=code]').value='synthetic';q('form').dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true}));
+ await until(()=>q('[data-officer-tab=access]'));
+ q('[data-officer-tab=access]').click();await until(()=>q('[data-native-access-link=old-r4]'));
+ assert.match(q('.native-evidence-note').textContent,/2 bestehende Offizierszugänge/);
+ q('[data-native-access-link=old-r4]').click();
+ const form=q('#native-access-save');
+ assert.equal(form.dataset.mode,'link');
+ const values=[...form.elements.namedItem('member_id').options].map(x=>x.value);
+ assert.deepEqual(values,['',r4.id],'R5 names must not be offered for a legacy R4 account');
+ form.elements.namedItem('member_id').value=r4.id;
+ form.elements.namedItem('reason').value='R5 personally confirmed identity';
+ form.dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true}));
+ await until(()=>account.member_id===r4.id&&q('[data-native-access-link=old-r4]')===null&&q('[data-native-access-disable=old-r4]'));
+ assert.equal(q('[data-native-access-link=old-r4]'),null);
+ assert.equal(q('#native-credential-output'),null);
+ const post=requests.find(([url,method])=>url==='/api/officer-access/link'&&method==='POST');
+ assert.deepEqual(JSON.parse(post[2]),{officer_id:'old-r4',member_id:r4.id,reason:'R5 personally confirmed identity'});
+ q('[data-native-access-disable=old-r4]').click();
+ const disableForm=q('#native-access-save');
+ disableForm.elements.namedItem('reason').value='Officer access retired by R5';
+ disableForm.dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true}));
+ await until(()=>!account.enabled&&q('[data-native-access-disable=old-r4]')===null);
+ assert.match(q('#native-access-result').textContent,/deaktiviert/);
+ assert.equal(q('[data-native-access-disable=old-r4]'),null);
+});
