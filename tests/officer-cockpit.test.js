@@ -46,3 +46,13 @@ test('Only verified final-week donation values create a specific linked warning'
  assert.equal(found[0].action,'donations-open');
  assert.equal(found[0].title,'1 · 2026-W41');
 });
+
+test('Cold cockpit shows proven latest VS/donation notices without prior visit; missing counts are not zero',()=>{
+ const alerts={vs:{week:'2026-W41',state:'final',confirmed_repeated_low:3},
+  donations:{week:'2026-W41',is_complete:true,confirmed_below:2}};
+ const fresh=action({alerts});
+ assert.deepEqual(fresh.map(x=>x.action),['vs-open','donations-open']);
+ assert.ok(fresh[0].title.includes('2026-W41'));
+ assert.deepEqual(action({alerts:{vs:{week:'2026-W41',confirmed_repeated_low:null},
+ donations:{week:'2026-W41',confirmed_below:null}}}),[]);
+});

@@ -2,7 +2,7 @@
 const count=value=>Number.isSafeInteger(value)&&value>=0?value:0;
 const openTask=item=>item&&!['done','completed','cancelled'].includes(item.status);
 const weekFinal=week=>['final','confirmed'].includes(week?.state);
-export function buildOfficerActions({today,summary={},operations={},trains={},vs=null,donations=null}={}){
+export function buildOfficerActions({today,summary={},operations={},trains={},alerts=null,vs=null,donations=null}={}){
  const items=[];
  let order=0;
  const add=(priority,action,art,eyebrow,title,detail)=>{
@@ -26,15 +26,15 @@ export function buildOfficerActions({today,summary={},operations={},trains={},vs
  }
  // Use already loaded VS/donation data only; do not add repeated D1 scans.
  const week=vs?.weeks?.[0];
- if(weekFinal(week)){
-  const flagged=(week.members||[]).filter(x=>x.repeatedLowDays===true&&count(x.failed)>0).length;
-  if(flagged)add(4,'vs-open','vs','VS-Duell',flagged+' · '+week.week,'Tagesziel');
- }
+ const vsAvailable=alerts?.vs && typeof alerts.vs.confirmed_repeated_low==='number';
+ const flagged=vsAvailable?count(alerts.vs.confirmed_repeated_low):
+  weekFinal(week)?(week.members||[]).filter(x=>x.repeatedLowDays===true&&count(x.failed)>0).length:0;
+ if(flagged)add(4,'vs-open','vs','VS-Duell',flagged+' · '+(vsAvailable?alerts.vs.week:week.week),'Tagesziel');
  const donationWeek=donations?.weeks?.[0];
- if(donationWeek?.is_complete===true){
-  const below=(donationWeek.members||[]).filter(x=>x.status==='below'&&Number.isSafeInteger(x.points)).length;
-  if(below)add(5,'donations-open','vs','Allianzspenden',below+' · '+donationWeek.week,'Wochenauswertung');
- }
+ const donationAvailable=alerts?.donations && typeof alerts.donations.confirmed_below==='number';
+ const below=donationAvailable?count(alerts.donations.confirmed_below):
+  donationWeek?.is_complete===true?(donationWeek.members||[]).filter(x=>x.status==='below'&&Number.isSafeInteger(x.points)).length:0;
+ if(below)add(5,'donations-open','vs','Allianzspenden',below+' · '+(donationAvailable?alerts.donations.week:donationWeek.week),'Wochenauswertung');
  const soon=(operations.events||[]).filter(x=>x.event_date>=today&&x.event_date<=addDays(today,7)&&
   !['completed','cancelled','failed'].includes(x.outcome)).sort((a,b)=>a.event_date.localeCompare(b.event_date));
  const noLead=soon.find(x=>!x.lead_id);

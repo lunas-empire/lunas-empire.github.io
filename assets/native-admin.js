@@ -88,8 +88,8 @@ function reportPanel(message){
  const mail=safeMailText(message);
  if(!mail)return '<p class="native-evidence-note">Report is unavailable or exceeds the 500-character limit.</p>';
  return '<details class="native-fold native-report-panel"><summary>English report / alliance mail</summary>'+
-  '<div class="native-fold-body"><textarea readonly rows="5" aria-label="English alliance mail preview">'+e(mail)+'</textarea>'+
-  '<div class="native-row"><small>'+mail.length+'/'+ALLIANCE_MAIL_LIMIT+' characters</small>'+
+  '<div class="native-fold-body"><textarea rows="5" maxlength="500" aria-label="Edit English alliance mail">'+e(mail)+'</textarea>'+
+  '<div class="native-row"><small class="native-report-counter">'+mail.length+'/'+ALLIANCE_MAIL_LIMIT+' characters</small>'+
   '<button type="button" data-native-copy-report>Copy report</button></div>'+
   '<p role="status" class="native-report-copy-status"></p></div></details>';
 }
@@ -108,8 +108,8 @@ async function view(mount){
   if(panel==='more'){
    target.innerHTML=moreHub();
   }else if(panel==='overview'){
-   const [summary,ops,trains]=await Promise.all([request('/api/overview'),request('/api/operations'),request('/api/train-manager')]);
-   cache.ops=ops;cache.trains=trains;
+   const [summary,ops,trains,alerts]=await Promise.all([request('/api/overview'),request('/api/operations'),request('/api/train-manager'),request('/api/officer-alerts').catch(()=>null)]);
+   cache.ops=ops;cache.trains=trains;cache.alerts=alerts;
    const day=trains.today||new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
    const pending=(ops.tasks||[]).filter(x=>x.status!=='done').sort((a,b)=>
     (a.due_date||'9999').localeCompare(b.due_date||'9999'));
@@ -122,7 +122,7 @@ async function view(mount){
    const trainLine=slot=>slot?(slot.entry?.driver
     ? e(slot.entry.driver)+' · '+e(slot.entry.status||'Unbestätigt')
     : 'Fahrer noch nicht eingetragen'):'Kein Eintrag im Wochenplan';
-   const actions=buildOfficerActions({today:day,summary,operations:ops,trains,vs:cache.vs,donations:cache.donations});
+   const actions=buildOfficerActions({today:day,summary,operations:ops,trains,alerts,vs:cache.vs,donations:cache.donations});
    const mission=(key,art,eyebrow,title,detail)=>'<button type="button" class="native-mission" data-native-action="'+key+'">'+
     '<span class="native-mission-icon">'+icon(art,'native-mission-svg')+'</span><span class="native-mission-copy"><small>'+e(eyebrow)+'</small><strong>'+e(title)+'</strong><span>'+detail+'</span></span><span class="native-mission-chevron" aria-hidden="true">›</span></button>';
    target.innerHTML='<div class="native-dashboard">'+
@@ -1453,6 +1453,9 @@ export function initNativeAdmin(mount){
    const field=area?.querySelector('textarea');
    const note=area?.querySelector('.native-report-copy-status');
    if(!field||!note)return;
+   if(safeMailText(field.value)===null||!field.value.trim()){
+    note.textContent='Please keep your report within 500 characters.';return;
+   }
    try {
     if(!window.navigator.clipboard?.writeText)throw Error('Clipboard unavailable');
     await window.navigator.clipboard.writeText(field.value);
@@ -1707,6 +1710,13 @@ export function initNativeAdmin(mount){
   if(button.dataset.nativeNew||button.dataset.nativeEdit){editRecord(target,panel,button.dataset.nativeEdit||'');return}
  });
  mount.addEventListener('input',event=>{
+  if(event.target.matches('.native-report-panel textarea')){
+   const panel=event.target.closest('.native-report-panel');
+   const counter=panel?.querySelector('.native-report-counter');
+   if(counter)counter.textContent=event.target.value.length+'/500 characters';
+   const status=panel?.querySelector('.native-report-copy-status');
+   if(status)status.textContent='';
+  }
   if(event.target.id==='native-member-search'){pageLimit=20;renderMembers(mount.querySelector('#native-admin-content'),event.target.value)}
   if(event.target.id==='registry-search'){pageLimit=20;renderRegistry(mount.querySelector('#native-admin-content'),event.target.value)}
   if(event.target.id==='native-diplomacy-search')renderDiplomacy(mount.querySelector('#native-admin-content'),event.target.value);

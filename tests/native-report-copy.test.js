@@ -30,10 +30,14 @@ test('Daily report is private until login, copy only on explicit click',async t=
  assert.equal(copied.length,0,'No automatic messaging');
  const message=container.querySelector('textarea').value;
  assert.match(message,/RZSN officer brief/);
+ const edited=message+' Officer checked.';
+ container.querySelector('textarea').value=edited;
+ container.querySelector('textarea').dispatchEvent(new dom.window.Event('input',{bubbles:true}));
+ assert.match(container.querySelector('.native-report-counter').textContent,new RegExp('^'+edited.length+'/500'));
  const button=container.querySelector('[data-native-copy-report]');
  button.click();
  for(let i=0;i<30&&copied.length===0;i++)await new Promise(resolve=>setTimeout(resolve,10));
- assert.deepEqual(copied,[message]);
+ assert.deepEqual(copied,[edited]);
  await new Promise(resolve=>setTimeout(resolve,10));
  assert.match(container.querySelector('.native-report-copy-status').textContent,/Copied/);
  assert.ok(message.length<=500);
