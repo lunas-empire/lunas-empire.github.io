@@ -3,8 +3,8 @@ import {ALLIANCE_CONFIG} from './config.js';
 import {icon} from './icons.js';
 const apiBase=ALLIANCE_CONFIG.commandCenterEmbedUrl.replace('/?embed=1','');
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
-let sessionToken='',officer=null,panel='overview',cache={},pageLimit=20,historyLimit=20,activityLimit=30,registryFilter='all';
-export function clearOfficer(){clearReviewImages();sessionToken='';officer=null;cache={};panel='overview';pageLimit=20;historyLimit=20;activityLimit=30;registryFilter='all';}
+let sessionToken='',officer=null,panel='overview',cache={},pageLimit=20,historyLimit=20,activityLimit=30,registryFilter='all',activityCategory='all',activityGroupBy='type';
+export function clearOfficer(){clearReviewImages();sessionToken='';officer=null;cache={};panel='overview';pageLimit=20;historyLimit=20;activityLimit=30;registryFilter='all';activityCategory='all';activityGroupBy='type';}
 export const hasOfficer=()=>Boolean(sessionToken);
 const canManageSite=()=>officer?.role==='R5'||officer?.siteOwner===true;
 async function request(path,options={}){
@@ -140,8 +140,9 @@ async function view(mount){
     target.querySelector('#native-diplomacy-list').innerHTML='<p class="native-evidence-note" role="status">Das private Diplomatiebuch ist vorbereitet, aber auf Cloudflare-Staging noch nicht aktiviert. Es wurden keine Bündnisse oder Zusagen gespeichert.</p>';
    }
   }else if(panel==='activity'){
-   cache.activity=await request('/api/activity?limit=200');
-   target.innerHTML='<div class="native-row"><h2>Admin-Aktivitäten</h2><input id="activity-search" type="search" placeholder="Admin, Aktion, Spieler"></div><div id="activity-list"></div>';renderActivity(target,'');
+   cache.activity=await request('/api/activity?limit=500');
+   target.innerHTML='<div class="native-audit-head"><div><span class="native-kicker">ALLIANZ · VERWALTUNG</span><h2>Admin-Protokoll</h2><p>Nachvollziehbare Änderungen durch Offiziere</p></div>'+icon('tasks','native-audit-title-icon')+'</div>'+
+    '<div id="activity-filters"></div><div id="activity-list"></div>';renderActivity(target,'');
   }else if(panel==='reviews'){
    const [cases,members,session]=await Promise.all([
     request('/api/reviews?status=open'),
@@ -837,21 +838,94 @@ export function auditChanges(entry){
   field:auditLabels[key],before:auditValue(before?.[key]),after:auditValue(after[key])
  }));
 }
-function renderActivity(target,term){
- const matching=(cache.activity||[]).filter(x=>[x.actor,x.action,x.object_kind,x.object_id,x.before_json,x.after_json]
-  .some(y=>String(y||'').toLowerCase().includes(term.toLowerCase())));
- const details=x=>{
-  const changes=auditChanges(x);
-  return '<details class="native-audit-entry"><summary><strong>'+e(x.actor||'Unbekannter Officer')+' · '+e(x.action||'Änderung')+
-   '</strong><small>'+e(formatOfficerTime(x.at))+' · '+e(x.object_kind||'Objekt')+'</small></summary>'+
-   '<div class="native-audit-body"><p class="native-muted">Objekt: '+e(x.object_id||'—')+'</p>'+
-   (changes.length?'<div class="native-audit-diff">'+changes.map(d=>'<div><b>'+e(d.field)+'</b><span>'+e(d.before)+' → '+e(d.after)+'</span></div>').join('')+'</div>':
-    '<p class="native-muted">Keine sicher lesbare Feldänderung in diesem Eintrag vorhanden.</p>')+
+const activityTypes=[
+ ['all','Alle','standard'],['members','Mitglieder','alliance'],['tasks','Aufgaben','tasks'],
+ ['train','Zug','season'],['ocr','OCR & Daten','vs'],['access','Zugänge','hero'],
+ ['archive','Archiv','economy'],['events','Events','today'],['diplomacy','Diplomatie','alliance'],
+ ['other','Weitere','standard']
+];
+export function auditCategory(entry){
+ const kind=String(entry?.object_kind||'').toLowerCase(),action=String(entry?.action||'').toLowerCase();
+ if(/officer|site_owner|credential|code|session/.test(kind+' '+action))return 'access';
+ if(/lifecycle|blacklist|archiv|auto_archive|former/.test(action)||kind==='auto_archive')return 'archive';
+ if(kind==='member_registry'&&auditChanges(entry).some(d=>d.field==='Status'||d.field==='Blacklist'))return 'archive';
+ if(/ocr|profile_capture|review|correction|identity_resolution|vs_day/.test(kind))return 'ocr';
+ if(/train|dice|rotation/.test(kind+' '+action))return 'train';
+ if(/task/.test(kind))return 'tasks';
+ if(/absenc|event|siege|marshall|storm/.test(kind))return 'events';
+ if(/diplom/.test(kind))return 'diplomacy';
+ if(/member|alias|roster/.test(kind))return 'members';
+ return 'other';
+}
+const auditCategoryName=key=>activityTypes.find(([id])=>id===key)?.[1]||'Weitere';
+function activityDate(raw){
+ const source=String(raw||'').trim().replace(' ','T');
+ const iso=/(Z|[+-]\d{2}:?\d{2})$/i.test(source)?source:source+'Z';
+ const date=new Date(iso);
+ return Number.isFinite(date.getTime())?new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',day:'2-digit',month:'2-digit',year:'numeric'}).format(date):'Datum unbekannt';
+}
+function auditEntryCard(x){
+ const changes=auditChanges(x),type=auditCategory(x);
+ return '<details class="native-audit-entry native-audit-'+e(type)+'"><summary>'+
+  '<span class="native-audit-entry-icon">'+icon(activityTypes.find(([id])=>id===type)?.[2]||'standard','native-audit-svg')+'</span>'+
+  '<span class="native-audit-entry-summary"><strong>'+e(x.actor||'Unbekannter Officer')+'</strong>'+
+  '<span class="native-audit-action">'+e(x.action||'Änderung')+'</span>'+
+  '<small>'+e(x.object_kind||'Objekt')+' · '+e(x.object_id||'—')+'</small></span>'+
+  '<time>'+e(formatOfficerTime(x.at))+'</time><span class="native-audit-chevron" aria-hidden="true">⌄</span></summary>'+
+  '<div class="native-audit-body">'+
+  (changes.length?'<div class="native-audit-diff">'+changes.map(d=>'<div><b>'+e(d.field)+'</b><span>'+e(d.before)+' → '+e(d.after)+'</span></div>').join('')+'</div>':
+   '<p class="native-muted">Für diese Änderung sind keine vergleichbaren Felder verfügbar.</p>')+
+  '<small class="native-audit-object">Objekt-ID: '+e(x.object_id||'—')+'</small></div></details>';
+}
+function renderActivity(target,term=''){
+ if(!target?.querySelector('#activity-list'))return;
+ const all=Array.isArray(cache.activity)?cache.activity:[],query=String(term||'').trim().toLocaleLowerCase('de-DE');
+ const counts=Object.fromEntries(activityTypes.map(([key])=>[key,key==='all'?all.length:all.filter(x=>auditCategory(x)===key).length]));
+ const active=(activityTypes.some(([key])=>key===activityCategory)?activityCategory:'all');
+ const eligible=all.filter(x=>(active==='all'||auditCategory(x)===active)&&
+  (!query||[x.actor,x.action,x.object_kind,x.object_id,...auditChanges(x).flatMap(c=>[c.field,c.before,c.after])]
+   .some(y=>String(y||'').toLocaleLowerCase('de-DE').includes(query))));
+ const host=target.querySelector('#activity-filters');
+ if(host){
+  // Reuse the input while typing so iOS keyboard, caret and search focus survive.
+  const previousInput=host.querySelector('#activity-search'),focused=previousInput===target.ownerDocument?.activeElement;
+  const selection=focused?previousInput.selectionStart:null;
+  host.innerHTML='<div class="native-audit-types" role="group" aria-label="Protokoll nach Art filtern">'+
+   activityTypes.filter(([key])=>key==='all'||counts[key]>0).map(([key,label,art])=>
+    '<button type="button" data-audit-category="'+e(key)+'" aria-pressed="'+(active===key)+'">'+
+    icon(art,'native-audit-svg')+'<span>'+e(label)+'</span><small>'+counts[key]+'</small></button>').join('')+'</div>'+
+   '<div class="native-audit-tools"><label>Gruppieren nach <select id="activity-group-by">'+
+    [['type','Art'],['date','Datum'],['actor','Officer']].map(([key,label])=>
+     '<option value="'+key+'" '+(activityGroupBy===key?'selected':'')+'>'+label+'</option>').join('')+
+    '</select></label><label class="native-audit-search">Durchsuchen<input id="activity-search" type="search" autocomplete="off" value="'+e(term)+'" placeholder="Officer, Aktion oder Spieler"></label></div>';
+  if(focused){const input=host.querySelector('#activity-search');input.focus();if(selection!==null)input.setSelectionRange(selection,selection)}
+ }
+ const groups=new Map();
+ for(const entry of eligible){
+  const group=activityGroupBy==='date'?activityDate(entry.at):activityGroupBy==='actor'?
+   String(entry.actor||'Unbekannter Officer'):auditCategory(entry);
+  if(!groups.has(group))groups.set(group,[]);
+  groups.get(group).push(entry);
+ }
+ const preview=activityGroupBy==='type'&&active==='all'&&!query;
+ let shown=0;
+ const sections=[...groups].map(([key,items],i)=>{
+  const slice=items.slice(0,preview?5:Math.max(0,activityLimit-shown));shown+=slice.length;
+  if(!slice.length)return '';
+  const type=activityGroupBy==='type'?key:'other';
+  const heading=activityGroupBy==='type'?auditCategoryName(key):key;
+  return '<details class="native-audit-group native-audit-group-'+e(type)+'" '+(i<3?'open':'')+'>'+
+   '<summary>'+icon(activityTypes.find(([id])=>id===type)?.[2]||'standard','native-audit-svg')+
+   '<strong>'+e(heading)+'</strong><small>'+items.length+' Einträge</small><span class="native-audit-chevron" aria-hidden="true">⌄</span></summary>'+
+   '<div class="native-audit-items">'+slice.map(auditEntryCard).join('')+
+   (preview&&items.length>slice.length?'<button type="button" class="native-audit-open-type" data-audit-category="'+e(key)+'">Alle '+items.length+' Einträge dieser Art ansehen ›</button>':'')+
    '</div></details>';
- };
- target.querySelector('#activity-list').innerHTML='<p class="native-muted">'+matching.length+' verfügbare Einträge · Anzeige Europe/Berlin · keine geheimen Sitzungsdaten</p>'+
-  '<div class="native-list">'+matching.slice(0,activityLimit).map(details).join('')+'</div>'+
-  (matching.length>activityLimit?'<button type="button" data-native-more="activity">Weitere 30 Änderungen</button>':'');
+ }).join('');
+ target.querySelector('#activity-list').innerHTML='<p class="native-audit-count" role="status">'+
+  eligible.length+' passende Einträge'+(all.length>=500?' · Neueste 500 geladen':'')+
+  ' · Uhrzeiten Berlin · keine Zugangscodes</p>'+
+  (sections||'<p class="native-evidence-note">Keine passenden Änderungen gefunden. Anderen Filter oder Suchbegriff wählen.</p>')+
+  (!preview&&eligible.length>shown?'<button type="button" class="native-audit-load" data-native-more="activity">Weitere 30 Einträge laden</button>':'');
 }
 // Evidence never receives a public URL. A protected Blob URL exists only for the
 // current officer's in-memory session and is revoked on navigation/logout.
@@ -1160,7 +1234,7 @@ export function initNativeAdmin(mount){
    if(url.startsWith('blob:'))window.open(url,'_blank','noopener,noreferrer');
    return;
   }
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-dice-delete],[data-native-train-choice],[data-native-access-mode],[data-native-access-copy],[data-native-access-signout],[data-native-member-create],[data-native-registry-quick],[data-native-access-link],[data-native-access-disable]');
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-dice-delete],[data-native-train-choice],[data-native-access-mode],[data-native-access-copy],[data-native-access-signout],[data-native-member-create],[data-native-registry-quick],[data-native-access-link],[data-native-access-disable],[data-audit-category]');
   if(!button)return;
   if(button.hasAttribute('data-officer-logout')){
    try{await request('/api/native-logout',{method:'POST',body:{}})}catch{}clearOfficer();await renderNativeAdmin(mount);return;
@@ -1346,6 +1420,7 @@ export function initNativeAdmin(mount){
    if(card)await completeReview(card,button.dataset.nativeReviewResolve);
    return;
   }
+  if(button.dataset.auditCategory){activityCategory=button.dataset.auditCategory;activityLimit=30;renderActivity(target,target.querySelector('#activity-search')?.value||'');return}
   if(button.dataset.nativeMore==='activity'){activityLimit+=30;renderActivity(target,target.querySelector('#activity-search')?.value||'');return}
   if(button.dataset.nativeCopyTrain){
    const date=button.dataset.nativeCopyTrain;
@@ -1397,7 +1472,7 @@ export function initNativeAdmin(mount){
   if(event.target.id==='native-member-search'){pageLimit=20;renderMembers(mount.querySelector('#native-admin-content'),event.target.value)}
   if(event.target.id==='registry-search'){pageLimit=20;renderRegistry(mount.querySelector('#native-admin-content'),event.target.value)}
   if(event.target.id==='native-diplomacy-search')renderDiplomacy(mount.querySelector('#native-admin-content'),event.target.value);
-  if(event.target.id==='activity-search')renderActivity(mount.querySelector('#native-admin-content'),event.target.value);
+  if(event.target.id==='activity-search'){activityLimit=30;renderActivity(mount.querySelector('#native-admin-content'),event.target.value)}
   if(event.target.id==='review-search-native'){historyLimit=20;renderReviews(mount.querySelector('#native-admin-content'),event.target.value)}
   if(event.target.matches('[data-native-review-search]')){
    const card=event.target.closest('.native-review-card');
@@ -1410,6 +1485,7 @@ export function initNativeAdmin(mount){
    if(card){selectedProfileCaptures.delete(card.dataset.reviewId);const attach=card.querySelector('[data-native-capture-attach]');if(attach)attach.disabled=true;
     const message=card.querySelector('.native-review-message');if(message)message.textContent='Andere Aufnahme gewählt; bitte zuerst öffnen und kontrollieren.'}
   }
+ if(event.target.id==='activity-group-by'){activityGroupBy=event.target.value;activityLimit=30;renderActivity(mount.querySelector('#native-admin-content'),mount.querySelector('#activity-search')?.value||'')}
  if(event.target.name==='event_type'&&event.target.closest('#native-record-save'))updateEventForm(event.target.form);if(event.target.id==='native-vs-week')renderVs(mount.querySelector('#native-admin-content'));if(['review-image-native','review-batch-native','review-kind-native'].includes(event.target.id)){historyLimit=20;const target=mount.querySelector('#native-admin-content');renderReviews(target,target.querySelector('#review-search-native')?.value||'')}});
  mount.addEventListener('submit',async event=>{
   const form=event.target;event.preventDefault();
