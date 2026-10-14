@@ -1,6 +1,7 @@
 /** Native Luna officer workspace. Private data is held only in a live memory token. */
 import {ALLIANCE_CONFIG} from './config.js';
 import {icon} from './icons.js';
+import {localizeOfficerTree,officerLanguage,officerLocale} from './native-admin-i18n.js';
 const apiBase=ALLIANCE_CONFIG.commandCenterEmbedUrl.replace('/?embed=1','');
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
 let sessionToken='',officer=null,panel='overview',cache={},pageLimit=20,historyLimit=20,activityLimit=30,registryFilter='all',activityCategory='all',activityGroupBy='type';
@@ -41,7 +42,7 @@ const moreSections=[
   ['watch','Mitglieder-Abgleich','power','Zuordnungen prüfen'],
   ['reviews','OCR-Prüffälle','vs','Screenshots kontrollieren']]},
  {title:'System & Sicherheit',items:[
-  ['activity','Änderungsprotokoll','standard','Wer hat was geändert?'],
+  ['activity','Admin-Protokoll','standard','Wer hat was geändert?'],
   ['access','Zugangscodes','guides','Offizierszugänge'],
   ['requirements','Einstellungen','research','Mindestwerte & Regeln']]}
 ];
@@ -77,7 +78,7 @@ function moreHub(){
   moreSections.map((section,index)=>'<section class="native-hub-section" aria-labelledby="native-hub-title-'+index+'">'+
    '<h3 id="native-hub-title-'+index+'">'+e(section.title)+'</h3>'+
    '<div class="native-hub-grid">'+section.items.map(([key,title,art,description])=>
-    '<button type="button" class="native-hub-tile '+(key==='requirements'||key==='registry'?'native-hub-tile-gold':'')+'" data-officer-tab="'+e(key)+'" aria-label="'+e(title)+': '+e(description)+'">'+
+    '<button type="button" class="native-hub-tile" data-officer-tab="'+e(key)+'" aria-label="'+e(title)+': '+e(description)+'">'+
     '<span class="native-hub-tile-icon" aria-hidden="true">'+icon(art,'native-hub-svg')+'</span>'+
     '<span class="native-hub-tile-copy"><strong>'+e(title)+'</strong><small>'+e(description)+'</small></span>'+
     '<span class="native-hub-tile-chevron" aria-hidden="true">›</span></button>').join('')+
@@ -1000,7 +1001,7 @@ export function formatOfficerTime(raw){
  const utc=/(Z|[+-]\d{2}:?\d{2})$/i.test(value)?value:value+'Z';
  const date=new Date(utc);
  if(!Number.isFinite(date.getTime()))return 'Zeit unbekannt';
- return new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',dateStyle:'medium',timeStyle:'short'}).format(date);
+ return new Intl.DateTimeFormat(officerLocale(),{timeZone:'Europe/Berlin',dateStyle:'medium',timeStyle:'short'}).format(date);
 }
 const auditLabels={
  rank_override:'Rang',rank:'Rang',lifecycle:'Status',blacklisted:'Blacklist',
@@ -1411,13 +1412,24 @@ async function completeReview(card,action){
 export async function renderNativeAdmin(mount){
  if(!sessionToken){
   mount.innerHTML='<section class="native-admin native-login"><div><span class="admin-eyebrow">RZSN / R4–R5</span><h1>Command Center</h1><p>Melde dich mit deinem Offizierscode an. Alle privaten Daten bleiben bei Cloudflare.</p><form id="native-officer-login"><label>Offizierscode<input type="password" name="code" autocomplete="off" required placeholder="RZSN-…"></label><button type="submit">Anmelden</button><p id="native-login-status" role="status"></p></form></div></section>';
+  localizeOfficerTree(mount);
   return;
  }
  await view(mount);
+ localizeOfficerTree(mount);
 }
 export function initNativeAdmin(mount){
  if(mount.dataset.nativeReady)return;
  mount.dataset.nativeReady='1';
+ // One observer translates late API renderers, forms and validation messages.
+ // We observe child additions only: translating text nodes cannot recursively trigger itself.
+ const Observer=mount.ownerDocument.defaultView?.MutationObserver;
+ if(Observer){
+  const localizer=new Observer(()=>localizeOfficerTree(mount));
+  localizer.observe(mount,{childList:true,subtree:true});
+ }
+ mount.lang=officerLanguage(mount.ownerDocument);
+ mount.dir=mount.lang==='ar'?'rtl':'ltr';
  mount.addEventListener('click',async event=>{
   const screenshot=event.target.closest?.('.native-review-image img');
   if(screenshot){

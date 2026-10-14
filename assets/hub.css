@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-14.24');
+@import url('./tokens.css?v=2026-10-14.25');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -1460,25 +1460,25 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 
 /* Luna v24: genuine Last War-inspired full-page More hub — no dropdown/bottom sheet. */
 .native-admin .native-admin-nav .native-more-tab{min-height:65px}
-.native-admin .native-more-tab[aria-current="page"]{box-shadow:inset 0 1px #fff0bd,inset 0 -3px #fbd37d}
+.native-admin .native-more-tab[aria-current="page"]{box-shadow:inset 0 1px #e5edf8,inset 0 -3px #91aac8}
 .native-admin .native-more-hub{min-width:0;max-width:920px;margin:0 auto;display:grid;gap:.95rem;padding:0 .1rem 1.1rem}
 .native-admin .native-hub-heading{display:flex;align-items:center;gap:.85rem;
- padding:1rem 1.1rem;color:#fff;border:2px solid #8497b4;border-bottom:4px solid #b98243;
+ padding:1rem 1.1rem;color:#fff;border:2px solid #8497b4;border-bottom:4px solid #667f9f;
  border-radius:6px;background:linear-gradient(145deg,#445873,#293750 75%);
  box-shadow:inset 0 2px rgba(255,255,255,.22),0 3px 7px rgba(12,23,42,.18)}
 .native-admin .native-hub-heading>div{min-width:0}
-.native-admin .native-hub-heading small{color:#f1c67c;letter-spacing:.08em;font-weight:820;font-size:.68rem}
+.native-admin .native-hub-heading small{color:#cad8eb;letter-spacing:.08em;font-weight:820;font-size:.68rem}
 .native-admin .native-hub-heading h2{color:#fff;font-family:var(--font-display);font-size:clamp(1.18rem,4.6vw,1.65rem);
  line-height:1.15;margin:.18rem 0}
 .native-admin .native-hub-heading p{color:#e6ecf5;margin:.2rem 0 0;font-size:.82rem;line-height:1.4}
 .native-admin .native-hub-sigil{display:grid;place-items:center;flex:none;width:60px;height:60px;
- border:2px solid #daac59;border-radius:9px;background:linear-gradient(135deg,#edc278,#ac6d3d 60%,#654a47);
- box-shadow:inset 0 2px #fff2c7,0 3px #3f3540}
-.native-admin .native-hub-sigil-icon{width:32px;height:32px;color:#fff2ca;filter:drop-shadow(0 2px 1px #63472a)}
+ border:2px solid #829dbf;border-radius:9px;background:linear-gradient(135deg,#9db2d2,#627c9e 60%,#3b536f);
+ box-shadow:inset 0 2px #d9e5f4,0 3px #344861}
+.native-admin .native-hub-sigil-icon{width:32px;height:32px;color:#eff6ff;filter:drop-shadow(0 2px 1px #354863)}
 .native-admin .native-hub-section{min-width:0;padding:.65rem;border:1px solid var(--color-rule);
  border-radius:6px;background:var(--color-panel);box-shadow:0 3px 7px rgba(12,23,42,.09)}
 .native-admin .native-hub-section h3{margin:0 0 .65rem;padding:.3rem .35rem .55rem;
- border-bottom:2px solid #b98d58;color:var(--color-ink);font-size:.91rem;font-weight:830;line-height:1.2}
+ border-bottom:2px solid #90a6bf;color:var(--color-ink);font-size:.91rem;font-weight:830;line-height:1.2}
 .native-admin .native-hub-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}
 .native-admin .native-hub-tile{display:grid;grid-template-columns:44px minmax(0,1fr) 12px;
  align-items:center;gap:.56rem;min-width:0;min-height:94px;padding:.6rem .65rem;white-space:normal;text-align:left;
@@ -1488,24 +1488,19 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
  transition:filter .12s,transform .12s}
 .native-admin .native-hub-tile:hover{filter:brightness(1.05)}
 .native-admin .native-hub-tile:active{transform:translateY(2px);box-shadow:inset 0 2px rgba(255,255,255,.7)}
-.native-admin .native-hub-tile-gold{color:#4b3620;
- background:linear-gradient(180deg,#ffe6a8,#f7ca75 60%,#eeb560);
- border-color:#d3a04e;border-bottom-color:#a97836}
 .native-admin .native-hub-tile-icon{display:grid;place-items:center;width:44px;height:44px;
  border:1px solid rgba(45,67,102,.3);border-radius:8px;
  color:#eaf8ff;background:linear-gradient(#809bbf,#536d97);
  box-shadow:inset 0 2px rgba(255,255,255,.5),0 2px 2px rgba(24,42,68,.16)}
-.native-admin .native-hub-tile-gold .native-hub-tile-icon{background:linear-gradient(#f8d18a,#c58b46)}
 .native-admin .native-hub-svg{width:25px;height:25px;filter:drop-shadow(0 1px #45536b)}
 .native-admin .native-hub-tile-copy{display:grid;gap:.18rem;min-width:0}
 .native-admin .native-hub-tile-copy strong{font-size:clamp(.77rem,1.7vw,1rem);line-height:1.21;
- font-weight:850;overflow-wrap:anywhere}
+ font-weight:850;overflow-wrap:anywhere;word-break:normal;hyphens:auto}
 .native-admin .native-hub-tile-copy small{color:#40516c;font-size:.72rem;line-height:1.27;overflow-wrap:anywhere}
-.native-admin .native-hub-tile-gold .native-hub-tile-copy small{color:#725332}
 .native-admin .native-hub-tile-chevron{justify-self:end;color:#667b9c;font-size:1.25rem;font-weight:800}
 .native-admin .native-hub-return{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;
  margin:.2rem 0 .8rem;padding:.5rem .6rem;background:var(--color-panel);
- border:1px solid var(--color-rule);border-left:4px solid #bc8c4a;border-radius:5px}
+ border:1px solid var(--color-rule);border-left:4px solid #7d98b8;border-radius:5px}
 .native-admin .native-hub-return button{min-height:44px;min-width:140px;padding:.46rem .65rem;
  color:#2a3b54;background:linear-gradient(#dfe7f3,#adbfda);
  border:1px solid #869cba;border-bottom:3px solid #657aa0;border-radius:5px;font-size:.8rem;font-weight:800}
