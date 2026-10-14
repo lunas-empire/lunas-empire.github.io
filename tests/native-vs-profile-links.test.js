@@ -60,9 +60,10 @@ test('VS priority is NOT OCR review count; VS player opens real dossier, history
   if(path==='/api/operations')return Response.json({tasks:[],events:[],absences:[],members:[]});
   if(path==='/api/train-manager')return Response.json({today:'2026-10-14',history:[],calendar:[],counts:{}});
   if(path==='/api/vs-intelligence')return Response.json({weeks});
+  if(path.startsWith('/api/vs-source/'))return Response.json({member_name:member.name,value:1200000,source:null});
   if(path.startsWith('/api/vs-days/')){
    const png=new Uint8Array(100);png.set([137,80,78,71,13,10,26,10]);
-   return new Response(png,{status:200,headers:{'Content-Type':'image/png','X-Evidence-Source':'ocr-review'}});
+   return new Response(png,{status:200,headers:{'Content-Type':'image/png','X-Evidence-Source':'direct'}});
   }
   if(path==='/api/members')return Response.json([member]);
   if(path==='/api/member/'+id)return Response.json(sample);

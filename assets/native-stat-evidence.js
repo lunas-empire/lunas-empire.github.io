@@ -1,3 +1,4 @@
+import {renderEvidenceRow} from './native-evidence-row.js';
 /** Private proof viewer: player + metric + snapshot must be an exact source match.
  * Candidate images are NEVER described as confirmed until an officer links a row.
  */
@@ -36,31 +37,7 @@ export function createStatEvidenceViewer({request,getToken,apiBase}){
   }
   if(active!==state||!state.host.isConnected)return false;
   state.url=URL.createObjectURL(blob);
-  if(sourceRow&&Number.isInteger(sourceRow.row_y)&&sourceRow.row_y>=0&&sourceRow.row_y<660){
-   frame.innerHTML='<p class="native-stat-row-identity"><strong>'+safe(sourceRow.member_name||sourceRow.source_name)+'</strong> · '+
-    new Intl.NumberFormat('de-DE').format(sourceRow.source_value)+' Punkte</p>'+
-    '<div class="native-stat-row-window"><img alt="'+safe(alt)+'" draggable="false" loading="eager"></div>'+
-    '<details class="native-stat-full-image"><summary>Vollständigen Screenshot ansehen</summary>'+
-    '<img alt="Vollständiger privater Original-Screenshot" loading="lazy"></details>';
-   const wrap=frame.querySelector('.native-stat-row-window');
-   const img=wrap.querySelector('img');
-   img.addEventListener('load',()=>{
-    if(active!==state||!img.naturalHeight||!img.naturalWidth)return;
-    const width=Math.min(img.naturalWidth,Math.max(140,wrap.clientWidth));
-    const scale=width/img.naturalWidth;
-    const region=Math.min(160,img.naturalHeight);
-    const start=Math.max(0,Math.min(img.naturalHeight-region,sourceRow.row_y-region/2));
-    wrap.style.height=Math.ceil(region*scale)+'px';
-    img.style.width=width+'px';
-    img.style.top=(-Math.round(start*scale))+'px';
-    wrap.classList.add('ready');
-   },{once:true});
-   img.src=state.url;
-   frame.querySelector('.native-stat-full-image img').src=state.url;
-  }else{
-   frame.innerHTML='<img alt="'+safe(alt)+'" draggable="false" loading="eager">';
-   frame.querySelector('img').src=state.url;
-  }
+  renderEvidenceRow(frame,state.url,sourceRow,alt,()=>active===state&&state.host.isConnected);
   return true;
  };
  const displayVerified=async()=>{

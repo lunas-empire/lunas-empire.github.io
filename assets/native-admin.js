@@ -4,6 +4,7 @@ import {icon} from './icons.js';
 import {localizeOfficerTree,officerLanguage,officerLocale} from './native-admin-i18n.js';
 import {buildOfficerActions} from './officer-cockpit.js';
 import {createStatEvidenceViewer} from './native-stat-evidence.js';
+import {renderEvidenceRow} from './native-evidence-row.js';
 import {dailyOfficerBrief,vsWeeklyMail,donationsWeeklyMail,safeMailText,ALLIANCE_MAIL_LIMIT} from './officer-reports.js';
 const apiBase=ALLIANCE_CONFIG.commandCenterEmbedUrl.replace('/?embed=1','');
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
@@ -400,39 +401,74 @@ async function openVsScreenshot(target,key){
  host.id='native-vs-evidence-viewer';
  host.className='native-vs-evidence-backdrop';
  host.setAttribute('role','dialog');host.setAttribute('aria-modal','true');
- host.setAttribute('aria-label','Geschützter VS-Screenshot');
- host.innerHTML='<div class="native-vs-evidence-panel"><div class="native-row"><h3>Original-Screenshot · '+e(week)+'</h3>'+
+ host.setAttribute('aria-label','Privater Originalbeleg zum VS-Wert');
+ host.innerHTML='<div class="native-vs-evidence-panel native-stat-evidence-panel">'+
+  '<div class="native-row"><h3>Original-Screenshot · '+e(week)+'</h3>'+
   '<button type="button" data-native-vs-image-close aria-label="Bild schließen">Schließen ✕</button></div>'+
-  '<p class="native-muted">Nur für angemeldete Offiziere. Das Bild wird nicht öffentlich gespeichert.</p>'+
-  '<div id="native-vs-evidence-image" role="status">Originalbild wird privat geladen …</div></div>';
+  '<p class="native-muted">Geschützter Originalbeleg; nur für angemeldete Offiziere.</p>'+
+  '<div id="native-vs-evidence-image" class="native-stat-image" role="status">Quellzeile wird ermittelt …</div></div>';
  target.append(host);
- const image=host.querySelector('#native-vs-evidence-image');
+ const area=host.querySelector('#native-vs-evidence-image');
  host.querySelector('[data-native-vs-image-close]')?.focus();
- const url=weekday==='6'?'/api/vs-week/'+encodeURIComponent(week)+'/'+encodeURIComponent(memberId)+'/evidence':
-  '/api/vs-days/'+encodeURIComponent(week)+'/'+encodeURIComponent(memberId)+'/'+weekday+'/evidence';
+ const sourcePath='/api/vs-source/'+encodeURIComponent(week)+'/'+encodeURIComponent(memberId)+'/'+weekday;
+ let source=null;
  try{
-  const response=await fetch(apiBase+url,{headers:{Authorization:'Bearer '+sessionToken,Accept:'image/png,image/jpeg,image/webp'},mode:'cors',credentials:'omit',cache:'no-store'});
+  if(weekday!=='6'){
+   const info=await request(sourcePath);
+   if(!host.isConnected)return;
+   source=info.source?{...info.source,member_name:info.member_name}:null;
+   if(source&&!source.image_available){
+    area.textContent='Die richtige Spielerzeile wurde gefunden, aber das Originalbild ist noch nicht im privaten Archiv verfügbar. Es wird kein anderer Screenshot angezeigt.';
+    return;
+   }
+  }
+  let fetchPath=weekday==='6'
+   ?'/api/vs-week/'+encodeURIComponent(week)+'/'+encodeURIComponent(memberId)+'/evidence'
+   :source?sourcePath+'/image':
+    '/api/vs-days/'+encodeURIComponent(week)+'/'+encodeURIComponent(memberId)+'/'+weekday+'/evidence';
+  const response=await fetch(apiBase+fetchPath,{
+   headers:{Authorization:'Bearer '+sessionToken,Accept:'image/png,image/jpeg,image/webp'},
+   mode:'cors',credentials:'omit',cache:'no-store'
+  });
   if(!host.isConnected)return;
   if(response.ok){
-   const mime=response.headers.get('Content-Type')||'';
-   if(!['image/png','image/jpeg','image/webp'].includes(mime.split(';')[0]))throw Error('Ungültiger Bildinhalt');
+   const mime=(response.headers.get('Content-Type')||'').split(';')[0];
+   if(!['image/png','image/jpeg','image/webp'].includes(mime))throw Error('Ungültiger Bildinhalt');
    const blob=await response.blob();
+   if(blob.size<50||blob.size>950000)throw Error('Originalbildgröße ungültig');
+   if(source){
+    const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',await blob.arrayBuffer()))]
+     .map(v=>v.toString(16).padStart(2,'0')).join('');
+    if(hash!==source.sha256)throw Error('Das Originalbild stimmt nicht mit der gespeicherten Quelle überein');
+   }
    if(!host.isConnected)return;
-   const localURL=URL.createObjectURL(blob);
-   reviewBlobUrls.set('vs:'+key,localURL);
-   image.innerHTML='<img alt="Privater Original-Screenshot zum ausgewählten VS-Tageswert" loading="eager" draggable="false">';
-   image.querySelector('img').src=localURL;
+   const urlKey='vs:'+key,previous=reviewBlobUrls.get(urlKey);
+   if(previous)URL.revokeObjectURL(previous);
+   const objectUrl=URL.createObjectURL(blob);
+   reviewBlobUrls.set(urlKey,objectUrl);
+   renderEvidenceRow(area,objectUrl,source?{
+    row_y:source.row_y,source_name:source.source_name,
+    member_name:source.member_name,
+    source_value:source.source_value
+   }:null,'Private Originalaufnahme zum ausgewählten VS-Wert',()=>host.isConnected);
+   if(source)area.insertAdjacentHTML('beforeend',
+    '<p class="native-evidence-note">Exakte Spielerzeile aus dem ursprünglichen VS-OCR-Import. '+
+    'Bild und gespeicherte Punktzahl per Prüfsumme abgeglichen. '+
+    (source.visually_checked?'Zusätzlich visuell bestätigt.':'OCR-Herkunft, keine gesonderte Officer-Abnahme.')+'</p>');
    return;
   }
   const problem=await response.json().catch(()=>({}));
-  if(response.status!==404)throw Error(problem.error||'Bildabruf fehlgeschlagen');
-  image.innerHTML='<p>Noch kein Originalbild für diesen Wert hinterlegt. Ein Officer kann den passenden Screenshot aus der Rangliste ergänzen.</p>'+
-   '<form id="native-vs-evidence-upload" data-key="'+e(key)+'"><label>Screenshot (PNG/JPG/WebP)'+
-   '<input type="file" name="image" accept="image/png,image/jpeg,image/webp" required></label>'+
-   '<label>Begründung / Quelle<input type="text" name="reason" required minlength="8" maxlength="300" value="Originale VS-Rangliste, manuell zugeordnet"></label>'+
-   '<button type="submit">Privat zuordnen</button><p role="status" class="native-vs-evidence-upload-result"></p></form>';
- }catch(error){if(host.isConnected)image.textContent='Bild konnte nicht geladen werden: '+error.message}
+  if(response.status!==404)throw Error(problem.error||'Privates Bild nicht abrufbar');
+  area.innerHTML='<p>Kein eindeutig zugeordneter Original-Screenshot für diesen Spielerwert. '+
+   'Es wird bewusst kein beliebiges Bild dieser Rangliste gezeigt.</p>'+
+   '<form id="native-vs-evidence-upload" data-key="'+e(key)+'">'+
+   '<label>Originalaufnahme (PNG/JPG/WebP)<input type="file" name="image" accept="image/png,image/jpeg,image/webp" required></label>'+
+   '<label>Begründung / sichtbare Spielerzeile<input type="text" name="reason" required minlength="8" maxlength="300" value="Originale VS-Rangliste, sichtbaren Spielernamen und Wert geprüft"></label>'+
+   '<button type="submit">Originalbild privat zuordnen</button>'+
+   '<p role="status" class="native-vs-evidence-upload-result"></p></form>';
+ }catch(error){if(host.isConnected)area.textContent='Originalbeleg konnte nicht geöffnet werden: '+error.message}
 }
+
 async function submitVsScreenshot(form,target){
  const key=form.dataset.key,matched=/^(20\d{2}-W\d{2})\|([a-zA-Z0-9-]{1,80})\|([0-6])$/.exec(String(key));
  if(!matched)return;
