@@ -2,6 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {JSDOM} from 'jsdom';
 import {initNativeAdmin,renderNativeAdmin,clearOfficer} from '../assets/native-admin.js';
+async function openMore(mount) {
+ for(let i=0;i<160;i++){
+  const more=mount.querySelector('[data-officer-tab=more]');
+  if(more){more.click();return}
+  await new Promise(resolve=>setTimeout(resolve,6));
+ }
+ throw Error('More page did not become available');
+}
+
 
 test('OCR review filters show real source groups without unverified approval',async t=>{
  const dom=new JSDOM('<main id="mount"></main>',{url:'https://lunas-empire.github.io/#admin'});
@@ -27,7 +36,9 @@ test('OCR review filters show real source groups without unverified approval',as
  initNativeAdmin(mount);await renderNativeAdmin(mount);
  q('[name=code]').value='synthetic';
  q('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
+ await openMore(mount);
  await wait(()=>q('[data-officer-tab=reviews]'));
+ await openMore(mount);
  q('[data-officer-tab=reviews]').click();
  await wait(()=>q('#review-batch-native'));
  assert.match(q('#review-list-native').textContent,/3 von 3 offenen Prüffällen/);

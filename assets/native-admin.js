@@ -15,8 +15,7 @@ async function request(path,options={}){
  return result;
 }
 const options=(members,value='')=>'<option value="">Nicht besetzt</option>'+members.map(m=>'<option value="'+e(m.id)+'" '+(m.id===value?'selected':'')+'>'+e(m.name)+' · '+e(m.rank)+'</option>').join('');
-// Keep the ten stable panel IDs for deep links and existing officer workflows,
-// but only expose four high-level destinations in the primary navigation.
+// Keep existing feature panel IDs and API workflows; the fifth main tab is a dedicated tile-based More page.
 const primaryPanels=[
  ['overview','Kommando','today'],['vs','VS & Daten','vs'],
  ['members','Allianz','alliance'],['train','Einsätze','hero']
@@ -27,9 +26,25 @@ const secondaryPanels=[
  ['activity','Änderungsprotokoll'],['access','Zugangscodes'],['requirements','Einstellungen']
 ];
 const parentPanel=key=>({
- overview:'overview',vs:'vs',donations:'vs',reviews:'vs',members:'members',registry:'members',watch:'members',diplomacy:'members',
- train:'train',tasks:'train',absences:'train',events:'train',activity:'activity',access:'activity',requirements:'activity'
+ overview:'overview',vs:'vs',donations:'vs',members:'members',train:'train',more:'more',
+ registry:'more',watch:'more',diplomacy:'more',reviews:'more',tasks:'more',
+ absences:'more',events:'more',activity:'more',access:'more',requirements:'more'
 }[key]||'overview');
+const moreSections=[
+ {title:'Allianz & Planung',items:[
+  ['tasks','Aufgaben','tasks','Verantwortung & Fristen'],
+  ['absences','Abwesenheiten','today','Vertretung & Urlaub'],
+  ['events','Allianz-Events','hero','Einsätze organisieren'],
+  ['diplomacy','Diplomatie','alliance','Verbündete & Kontakte']]},
+ {title:'Mitglieder & Kontrolle',items:[
+  ['registry','Ränge & Archiv','alliance','Ränge und ehemalige Mitglieder'],
+  ['watch','Mitglieder-Abgleich','power','Zuordnungen prüfen'],
+  ['reviews','OCR-Prüffälle','vs','Screenshots kontrollieren']]},
+ {title:'System & Sicherheit',items:[
+  ['activity','Änderungsprotokoll','standard','Wer hat was geändert?'],
+  ['access','Zugangscodes','guides','Offizierszugänge'],
+  ['requirements','Einstellungen','research','Mindestwerte & Regeln']]}
+];
 const sectionPanels={
  vs:[['vs','VS-Duell'],['donations','Allianzspenden']],
  members:[['members','Mitglieder'],['diplomacy','Diplomatie']],
@@ -46,20 +61,27 @@ function nav(){
  const parent=parentPanel(panel);
  return '<nav class="native-admin-nav" aria-label="Command Center Hauptbereiche">'+
   primaryPanels.map(([key,label,art])=>'<button type="button" class="native-primary-tab" data-officer-tab="'+key+'" '+(parent===key?'aria-current="page"':'')+'>'+icon(art,'native-tab-icon')+'<span>'+e(label)+'</span></button>').join('')+
-  '<details class="native-admin-more '+(parent==='activity'?'native-more-current':'')+'"><summary aria-label="Weitere Bereiche öffnen">Mehr</summary>'+
-  '<button type="button" class="native-more-backdrop" data-native-more-close aria-label="Menü schließen"></button>'+
-  '<div class="native-more-menu" role="dialog" aria-modal="true" aria-label="Weitere Verwaltungsbereiche">'+
-   '<div class="native-more-header"><div><small>RZSN COMMAND CENTER</small><strong>Weitere Verwaltung</strong></div><button type="button" data-native-more-close aria-label="Menü schließen">✕</button></div>'+
-   '<section class="native-more-group"><h3>Allianz & Mitglieder</h3><div>'+secondaryPanels.slice(0,3).map(pair=>navButton(pair)).join('')+'</div></section>'+
-   '<section class="native-more-group"><h3>Planung & Einsätze</h3><div>'+secondaryPanels.slice(4,7).map(pair=>navButton(pair)).join('')+'</div></section>'+
-   '<section class="native-more-group"><h3>Daten & Sicherheit</h3><div>'+[secondaryPanels[3],...secondaryPanels.slice(7)].map(pair=>navButton(pair)).join('')+'</div></section>'+
-   '</div></details></nav>'+
+  '<button type="button" class="native-primary-tab native-more-tab" data-officer-tab="more" '+(parent==='more'?'aria-current="page"':'')+'>'+icon('guides','native-tab-icon')+'<span>Mehr</span></button></nav>'+
   (sectionPanels[parent]?'<nav class="native-admin-subnav" aria-label="Unterbereiche">'+
    sectionPanels[parent].map(pair=>navButton(pair)).join('')+
    (contextTools[parent]?'<details class="native-context-tools" '+(contextTools[parent].items.some(([k])=>k===panel)?'open':'')+
     '><summary>'+e(contextTools[parent].label)+'</summary><div>'+
      contextTools[parent].items.map(pair=>navButton(pair)).join('')+'</div></details>':'')+
    '</nav>':'');
+}
+function moreHub(){
+ return '<div class="native-more-hub" aria-label="Weitere Verwaltung">'+
+  '<header class="native-hub-heading"><span class="native-hub-sigil" aria-hidden="true">'+icon('alliance','native-hub-sigil-icon')+'</span>'+
+  '<div><small>RZSN · OFFIZIERSZENTRALE</small><h2 tabindex="-1">Weitere Verwaltung</h2>'+
+  '<p>Wähle einen Bereich, um deine Allianz zu verwalten.</p></div></header>'+
+  moreSections.map((section,index)=>'<section class="native-hub-section" aria-labelledby="native-hub-title-'+index+'">'+
+   '<h3 id="native-hub-title-'+index+'">'+e(section.title)+'</h3>'+
+   '<div class="native-hub-grid">'+section.items.map(([key,title,art,description])=>
+    '<button type="button" class="native-hub-tile '+(key==='requirements'||key==='registry'?'native-hub-tile-gold':'')+'" data-officer-tab="'+e(key)+'" aria-label="'+e(title)+': '+e(description)+'">'+
+    '<span class="native-hub-tile-icon" aria-hidden="true">'+icon(art,'native-hub-svg')+'</span>'+
+    '<span class="native-hub-tile-copy"><strong>'+e(title)+'</strong><small>'+e(description)+'</small></span>'+
+    '<span class="native-hub-tile-chevron" aria-hidden="true">›</span></button>').join('')+
+   '</div></section>').join('')+'</div>';
 }
 function cards(items){return '<div class="native-cards">'+items.map(([name,value,sub])=>'<article><small>'+e(name)+'</small><strong>'+e(value)+'</strong><span>'+e(sub||'')+'</span></article>').join('')+'</div>'}
 function marker(status){return '<span class="native-status">'+e(status||'Unbekannt')+'</span>'}
@@ -69,10 +91,14 @@ async function view(mount){
   '<a class="native-return-link" href="#today">← Zur Website</a>'+
   '<div class="native-officer-controls"><span class="native-officer-badge">'+e(officer?.role||'Offizier')+' · '+e(officer?.name||'')+(officer?.siteOwner?' · Website-Eigentümerin':'')+
   '</span><button type="button" data-officer-tab="access">Mein Zugang</button><button type="button" data-officer-logout>Abmelden</button></div></div>';
- mount.innerHTML='<section class="native-admin"><h1 class="sr-only">RZSN Command Center</h1>'+header+nav()+'<div class="native-admin-content" id="native-admin-content"><p>Daten werden geladen …</p></div></section>';
+ mount.innerHTML='<section class="native-admin"><h1 class="sr-only">RZSN Command Center</h1>'+header+nav()+
+  (parentPanel(panel)==='more'&&panel!=='more'?'<div class="native-hub-return"><button type="button" data-officer-tab="more">← Weitere Verwaltung</button><span>'+e(secondaryPanels.find(([key])=>key===panel)?.[1]||'Verwaltung')+'</span></div>':'')+
+  '<div class="native-admin-content" id="native-admin-content"><p>Daten werden geladen …</p></div></section>';
  const target=mount.querySelector('#native-admin-content');
  try{
-  if(panel==='overview'){
+  if(panel==='more'){
+   target.innerHTML=moreHub();
+  }else if(panel==='overview'){
    const [summary,ops,trains]=await Promise.all([request('/api/overview'),request('/api/operations'),request('/api/train-manager')]);
    cache.ops=ops;cache.trains=trains;
    const day=trains.today||new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
@@ -1392,16 +1418,6 @@ export async function renderNativeAdmin(mount){
 export function initNativeAdmin(mount){
  if(mount.dataset.nativeReady)return;
  mount.dataset.nativeReady='1';
- mount.addEventListener('toggle',event=>{
-  if(event.target.matches?.('.native-admin-more')&&event.target.open)
-   event.target.querySelector('.native-more-header [data-native-more-close]')?.focus();
- },true);
- mount.addEventListener('keydown',event=>{
-  if(event.key==='Escape'){
-   const menu=mount.querySelector('.native-admin-more[open]');
-   if(menu){event.preventDefault();menu.open=false;menu.querySelector('summary')?.focus()}
-  }
- });
  mount.addEventListener('click',async event=>{
   const screenshot=event.target.closest?.('.native-review-image img');
   if(screenshot){
@@ -1409,19 +1425,17 @@ export function initNativeAdmin(mount){
    if(url.startsWith('blob:'))window.open(url,'_blank','noopener,noreferrer');
    return;
   }
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-dice-delete],[data-native-train-choice],[data-native-access-mode],[data-native-access-copy],[data-native-access-signout],[data-native-member-create],[data-native-registry-quick],[data-native-access-link],[data-native-access-disable],[data-audit-category],[data-native-vs-image],[data-native-vs-image-close],[data-native-more-close],[data-native-requirements-reload]');
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-dice-delete],[data-native-train-choice],[data-native-access-mode],[data-native-access-copy],[data-native-access-signout],[data-native-member-create],[data-native-registry-quick],[data-native-access-link],[data-native-access-disable],[data-audit-category],[data-native-vs-image],[data-native-vs-image-close],[data-native-requirements-reload]');
   if(!button)return;
   if(button.hasAttribute('data-officer-logout')){
    try{await request('/api/native-logout',{method:'POST',body:{}})}catch{}clearOfficer();await renderNativeAdmin(mount);return;
   }
-  if(button.hasAttribute('data-native-more-close')){
-   const menu=mount.querySelector('.native-admin-more');if(menu){menu.open=false;menu.querySelector('summary')?.focus()}
-   return;
-  }
   if(button.hasAttribute('data-native-requirements-reload')){
    cache.requirements=await request('/api/alliance-requirements');renderRequirements(mount.querySelector('#native-admin-content'));return
   }
-  if(button.dataset.officerTab){panel=button.dataset.officerTab;pageLimit=20;historyLimit=20;activityLimit=30;await view(mount);return}
+  if(button.dataset.officerTab){panel=button.dataset.officerTab;pageLimit=20;historyLimit=20;activityLimit=30;await view(mount);
+   if(panel==='more')mount.querySelector('.native-hub-heading h2')?.focus();
+   return}
   if(button.dataset.nativeAction){
    const action=button.dataset.nativeAction;
    panel=({ 'train-today':'train','event-planning':'events','member-find':'members','review-open':'reviews','tasks-open':'tasks'})[action]||'overview';

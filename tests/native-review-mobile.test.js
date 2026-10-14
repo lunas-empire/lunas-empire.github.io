@@ -2,6 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {JSDOM} from 'jsdom';
 import {initNativeAdmin,renderNativeAdmin,clearOfficer,reviewMatchesMember,reviewNumericValue} from '../assets/native-admin.js';
+async function openMore(mount) {
+ for(let i=0;i<160;i++){
+  const more=mount.querySelector('[data-officer-tab=more]');
+  if(more){more.click();return}
+  await new Promise(resolve=>setTimeout(resolve,6));
+ }
+ throw Error('More page did not become available');
+}
+
 
 test('Numeric correction accepts confirmed digit groups but not guesses or overflow',()=>{
  assert.equal(reviewNumericValue('3.600.000'),3600000);
@@ -45,7 +54,9 @@ test('Protected review workflow requires a screenshot, searchable member and exp
  initNativeAdmin(mount);await renderNativeAdmin(mount);
  q('[name=code]').value='synthetic';
  q('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
+ await openMore(mount);
  await wait(()=>q('[data-officer-tab=reviews]'));
+ await openMore(mount);
  q('[data-officer-tab=reviews]').click();
  await wait(()=>q('[data-review-id=case-with-image]'));
  const missing=q('[data-review-id=case-no-image]');

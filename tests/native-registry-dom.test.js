@@ -2,6 +2,15 @@
 import assert from 'node:assert/strict';
 import {JSDOM} from 'jsdom';
 import {initNativeAdmin,renderNativeAdmin,clearOfficer} from '../assets/native-admin.js';
+async function openMore(mount) {
+ for(let i=0;i<160;i++){
+  const more=mount.querySelector('[data-officer-tab=more]');
+  if(more){more.click();return}
+  await new Promise(resolve=>setTimeout(resolve,6));
+ }
+ throw Error('More page did not become available');
+}
+
 
 test('Registry preserves conflicting edits, reloads explicitly, and submits the displayed revision',async t=>{
  const dom=new JSDOM('<main id="mount"></main>',{url:'https://lunas-empire.github.io/#admin'});
@@ -32,6 +41,7 @@ test('Registry preserves conflicting edits, reloads explicitly, and submits the 
  const submit=form=>form.dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true}));
  initNativeAdmin(mount);await renderNativeAdmin(mount);
  q('[name=code]').value='synthetic';submit(q('form'));
+ await openMore(mount);
  await until(()=>q('[data-officer-tab=registry]'));q('[data-officer-tab=registry]').click();
  await until(()=>q('[data-registry-edit]'));q('[data-registry-edit]').click();
  let form=q('#registry-save');
@@ -61,6 +71,7 @@ test('Registry preserves conflicting edits, reloads explicitly, and submits the 
  assert.match(q('#native-person').textContent,/R1/);
  assert.match(q('#native-person').textContent,/<Synthetic Officer>/);
  assert.equal(q('#native-person synthetic'),null);
+ await openMore(mount);
  lifecycle='unverified';rank=null;q('[data-officer-tab=registry]').click();
  await until(()=>q('[data-registry-edit]'));q('[data-registry-edit]').click();
  form=q('#registry-save');assert.equal(form.elements.namedItem('rank').value,'');

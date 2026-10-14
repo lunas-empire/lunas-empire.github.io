@@ -2,6 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {JSDOM} from 'jsdom';
 import {initNativeAdmin,renderNativeAdmin,clearOfficer} from '../assets/native-admin.js';
+async function openMore(mount) {
+ for(let i=0;i<160;i++){
+  const more=mount.querySelector('[data-officer-tab=more]');
+  if(more){more.click();return}
+  await new Promise(resolve=>setTimeout(resolve,6));
+ }
+ throw Error('More page did not become available');
+}
+
 test('Settings in mobile Mehr: R4 edits minimums, saves revision, and sees audit confirmation',async t=>{
  const dom=new JSDOM('<main id="mount"></main>',{url:'https://lunas-empire.github.io/#admin'});
  const prevWindow=globalThis.window,prevFetch=globalThis.fetch;
@@ -34,7 +43,9 @@ test('Settings in mobile Mehr: R4 edits minimums, saves revision, and sees audit
  const until=async fn=>{for(let i=0;i<120;i++){if(fn())return;await new Promise(r=>setTimeout(r,5))}assert.ok(fn(),'UI timeout')};
  initNativeAdmin(mount);await renderNativeAdmin(mount);
  q('[name=code]').value='fake';q('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
+ await openMore(mount);
  await until(()=>q('[data-officer-tab=requirements]'));
+ await openMore(mount);
  q('[data-officer-tab=requirements]').click();
  await until(()=>q('#native-requirements-save'));
  assert.equal(q('[name=vs_daily_minimum]').value,'3600000');

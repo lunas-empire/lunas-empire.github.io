@@ -2,6 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {JSDOM} from 'jsdom';
 import {initNativeAdmin,renderNativeAdmin,clearOfficer,profileMetricChanges} from '../assets/native-admin.js';
+async function openMore(mount) {
+ for(let i=0;i<160;i++){
+  const more=mount.querySelector('[data-officer-tab=more]');
+  if(more){more.click();return}
+  await new Promise(resolve=>setTimeout(resolve,6));
+ }
+ throw Error('More page did not become available');
+}
+
 
 test('Profile development uses only verified repeated samples, not invented changes',()=>{
  const rows=[
@@ -147,7 +156,9 @@ test('R5 can choose eligible officers and create a member; codes appear once, wi
  const until=async fn=>{for(let i=0;i<120;i++){if(fn())return;await new Promise(r=>setTimeout(r,5))}assert.ok(fn(),'UI did not settle')};
  initNativeAdmin(mount);await renderNativeAdmin(mount);
  q('[name=code]').value='synthetic';q('form').dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true}));
+ await openMore(mount);
  await until(()=>q('[data-officer-tab=access]'));
+ await openMore(mount);
  q('[data-officer-tab=access]').click();await until(()=>q('[data-native-access-mode=issue]'));
  q('[data-native-access-mode=issue]').click();
  assert.equal(q('#native-access-save [name=member_id]').options.length,2);
@@ -157,6 +168,7 @@ test('R5 can choose eligible officers and create a member; codes appear once, wi
  await until(()=>q('#native-credential-output'));
  assert.equal(q('#native-credential-output').value,resultCode);
  assert.ok(posts.some(([path,method])=>path==='/api/officer-access/issue'&&method==='POST'));
+ await openMore(mount);
  q('[data-officer-tab=registry]').click();await until(()=>q('[data-native-member-create]'));
  assert.equal(q('#native-credential-output'),null,'One-time code hidden after leaving access tab');
  q('[data-native-member-create]').click();
@@ -188,12 +200,15 @@ test('R4 can rotate own code but not issue or reset other accounts',async t=>{
  const until=async fn=>{for(let i=0;i<100;i++){if(fn())return;await new Promise(r=>setTimeout(r,5))}assert.ok(fn(),'UI did not settle')};
  initNativeAdmin(mount);await renderNativeAdmin(mount);
  q('[name=code]').value='synthetic';q('form').dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true}));
+ await openMore(mount);
  await until(()=>q('[data-officer-tab=access]'));
+ await openMore(mount);
  q('[data-officer-tab=access]').click();await until(()=>q('[data-native-access-mode=self]'));
  assert.equal(q('[data-native-access-mode=issue]'),null);
  assert.equal(q('[data-native-access-mode=reset]'),null);
  q('[data-native-access-mode=self]').click();
  assert.ok(q('#native-access-save [name=current_code]'));
+ await openMore(mount);
  q('[data-officer-tab=registry]').click();await until(()=>q('[data-native-member-create]'));
  q('[data-native-member-create]').click();
  const options=[...q('#native-member-create-save [name=rank]').options].map(x=>x.value);
@@ -231,7 +246,9 @@ test('R5 explicitly links a legacy account and can disable access without exposi
  const until=async fn=>{for(let i=0;i<140;i++){if(fn())return;await new Promise(r=>setTimeout(r,5))}assert.ok(fn(),'UI did not settle')};
  initNativeAdmin(mount);await renderNativeAdmin(mount);
  q('[name=code]').value='synthetic';q('form').dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true}));
+ await openMore(mount);
  await until(()=>q('[data-officer-tab=access]'));
+ await openMore(mount);
  q('[data-officer-tab=access]').click();await until(()=>q('[data-native-access-link=old-r4]'));
  assert.match(q('.native-evidence-note').textContent,/2 bestehende Offizierszugänge/);
  q('[data-native-access-link=old-r4]').click();
@@ -279,13 +296,16 @@ test('Site owner Luna remains R4 in-game but sees and uses all R5-only managemen
  const until=async fn=>{for(let i=0;i<130;i++){if(fn())return;await new Promise(r=>setTimeout(r,5))}assert.ok(fn(),'UI did not settle')};
  initNativeAdmin(mount);await renderNativeAdmin(mount);
  q('[name=code]').value='synthetic';q('form').dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true}));
+ await openMore(mount);
  await until(()=>q('[data-officer-tab=access]'));
  assert.match(q('.native-officer-badge').textContent,/R4 · Luna · Website-Eigentümerin/);
+ await openMore(mount);
  q('[data-officer-tab=access]').click();
  await until(()=>q('[data-native-access-mode=issue]'));
  assert.ok(q('[data-native-access-mode=reset]'));
  assert.ok(q('[data-native-access-link=officer-other]'));
  assert.equal(q('[data-native-access-disable=officer-luna]'),null);
+ await openMore(mount);
  q('[data-officer-tab=registry]').click();
  await until(()=>q('[data-native-member-create]'));
  q('[data-native-member-create]').click();

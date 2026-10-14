@@ -3,6 +3,15 @@ import assert from 'node:assert/strict';
 import {webcrypto} from 'node:crypto';
 import {JSDOM} from 'jsdom';
 import {initNativeAdmin,renderNativeAdmin,clearOfficer} from '../assets/native-admin.js';
+async function openMore(mount) {
+ for(let i=0;i<160;i++){
+  const more=mount.querySelector('[data-officer-tab=more]');
+  if(more){more.click();return}
+  await new Promise(resolve=>setTimeout(resolve,6));
+ }
+ throw Error('More page did not become available');
+}
+
 if(!globalThis.crypto)globalThis.crypto=webcrypto;
 test('A profile image is never linked before explicit image viewing and confirmation',async t=>{
  const dom=new JSDOM('<main id="mount"></main>',{url:'https://lunas-empire.github.io/#admin'});
@@ -40,7 +49,9 @@ test('A profile image is never linked before explicit image viewing and confirma
  initNativeAdmin(mount);await renderNativeAdmin(mount);
  q('[name=code]').value='synthetic';
  q('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
+ await openMore(mount);
  await wait(()=>q('[data-officer-tab=reviews]'));
+ await openMore(mount);
  q('[data-officer-tab=reviews]').click();
  await wait(()=>q('[data-native-capture-choice]'));
  assert.equal(puts,0);assert.equal(approvals,0);
@@ -74,6 +85,7 @@ test('Visible zero suggestion requires explicit button and never saves on its ow
  const wait=async fn=>{for(let i=0;i<100;i++){if(fn())return;await new Promise(r=>setTimeout(r,5))}assert.ok(fn(),'UI timeout')};
  initNativeAdmin(mount);await renderNativeAdmin(mount);
  q('[name=code]').value='synthetic';q('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
+ await openMore(mount);
  await wait(()=>q('[data-officer-tab=reviews]'));q('[data-officer-tab=reviews]').click();
  await wait(()=>q('[data-native-mark-zero]'));
  assert.equal(q('[data-native-review-value]').value,'');
@@ -110,6 +122,7 @@ test('A clipped screenshot can be replaced with explicit confirmation without cl
  const wait=async fn=>{for(let i=0;i<100;i++){if(fn())return;await new Promise(r=>setTimeout(r,5))}assert.ok(fn(),'UI timeout')};
  initNativeAdmin(root);await renderNativeAdmin(root);
  q('[name=code]').value='synthetic';q('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
+ await openMore(root);
  await wait(()=>q('[data-officer-tab=reviews]'));q('[data-officer-tab=reviews]').click();
  await wait(()=>q('[data-native-review-replace-file]'));
  const replacement=new dom.window.File([new Uint8Array(100)],'better.png',{type:'image/png'});

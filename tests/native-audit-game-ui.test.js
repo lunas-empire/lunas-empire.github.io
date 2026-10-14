@@ -2,6 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {JSDOM} from 'jsdom';
 import {auditCategory,auditChanges,initNativeAdmin,renderNativeAdmin,clearOfficer} from '../assets/native-admin.js';
+async function openMore(mount) {
+ for(let i=0;i<160;i++){
+  const more=mount.querySelector('[data-officer-tab=more]');
+  if(more){more.click();return}
+  await new Promise(resolve=>setTimeout(resolve,6));
+ }
+ throw Error('More page did not become available');
+}
+
 
 test('Audit groups distinguish verified categories, including access and archive',()=>{
  assert.equal(auditCategory({object_kind:'ocr_review',action:'resolve'}),'ocr');
@@ -44,7 +53,9 @@ test('Native alliance admin log: filter, group, search, reveal all 355 records a
  const until=async check=>{for(let i=0;i<170;i++){if(check())return;await new Promise(r=>setTimeout(r,5))}assert.ok(check(),'Expected UI not found')};
  initNativeAdmin(mount);await renderNativeAdmin(mount);
  q('[name=code]').value='synthetic';q('form').dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true}));
+ await openMore(mount);
  await until(()=>q('[data-officer-tab=activity]'));
+ await openMore(mount);
  q('[data-officer-tab=activity]').click();
  await until(()=>q('[data-audit-category=all]'));
  assert.ok(requests.includes('/api/activity?limit=500'));

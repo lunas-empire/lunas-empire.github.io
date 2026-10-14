@@ -1,0 +1,61 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {JSDOM} from 'jsdom';
+import {initNativeAdmin,renderNativeAdmin,clearOfficer} from '../assets/native-admin.js';
+test('More opens real game-style tile page with ten accessible links, back navigation and no extra API calls',async t=>{
+ const dom=new JSDOM('<main id="mount"></main>',{url:'https://lunas-empire.github.io/#admin'});
+ const original={window:globalThis.window,fetch:globalThis.fetch};
+ globalThis.window=dom.window;dom.window.HTMLElement.prototype.scrollIntoView=()=>{};
+ t.after(()=>{clearOfficer();globalThis.window=original.window;globalThis.fetch=original.fetch;dom.window.close()});
+ const seen=[];
+ globalThis.fetch=async url=>{
+  const pathname=new URL(url).pathname;seen.push(pathname);
+  if(pathname==='/api/native-login')return Response.json({token:'test-token',name:'Luna',role:'R4',siteOwner:true});
+  if(pathname==='/api/overview')return Response.json({active:92,reviews:0});
+  if(pathname==='/api/operations')return Response.json({tasks:[],events:[],absences:[],members:[]});
+  if(pathname==='/api/train-manager')return Response.json({today:'2026-10-14',history:[],calendar:[],counts:{}});
+  if(pathname==='/api/alliance-requirements')return Response.json({vs_daily_minimum:3600000,donation_weekly_minimum:20000,min_active_vs_days:5,low_vs_day_warning_count:2,shield_reminder_saturday:true,revision:1});
+  if(pathname==='/api/activity')return Response.json([]);
+  throw Error('Unexpected API request '+pathname)
+ };
+ const mount=dom.window.document.querySelector('#mount'),q=s=>mount.querySelector(s);
+ const until=async fn=>{for(let i=0;i<150;i++){if(fn())return;await new Promise(r=>setTimeout(r,5))}assert.ok(fn(),'navigation timeout')};
+ initNativeAdmin(mount);await renderNativeAdmin(mount);
+ q('[name=code]').value='test';q('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
+ await until(()=>q('[data-officer-tab=more]'));
+ assert.equal(q('.native-more-hub'),null);
+ assert.equal(mount.querySelectorAll('.native-primary-tab').length,5);
+ const countBefore=seen.length;
+ q('[data-officer-tab=more]').click();
+ assert.equal(seen.length,countBefore,'Hub is local: entering it must not query private D1');
+ assert.equal(q('.native-more-menu'),null,'No dropdown or overlay');
+ assert.equal(q('.native-more-backdrop'),null);
+ assert.equal(mount.querySelectorAll('.native-hub-section').length,3);
+ assert.equal(mount.querySelectorAll('.native-hub-grid').length,3);
+ const tiles=[...mount.querySelectorAll('.native-hub-tile[data-officer-tab]')];
+ assert.equal(tiles.length,10);
+ assert.equal(new Set(tiles.map(x=>x.dataset.officerTab)).size,10);
+ assert.deepEqual(tiles.map(x=>x.dataset.officerTab),['tasks','absences','events','diplomacy','registry','watch','reviews','activity','access','requirements']);
+ for(const tile of tiles){
+  assert.equal(tile.tagName,'BUTTON');
+  assert.equal(tile.getAttribute('type'),'button');
+  assert.ok(tile.getAttribute('aria-label').length>10);
+  assert.ok(tile.querySelector('svg[aria-hidden=true]'));
+  assert.ok(tile.querySelector('strong').textContent.length);
+ }
+ assert.equal(q('[data-officer-tab=more]').getAttribute('aria-current'),'page');
+ q('.native-hub-tile[data-officer-tab=requirements]').click();
+ await until(()=>q('#native-requirements-save'));
+ assert.equal(q('[data-officer-tab=more]').getAttribute('aria-current'),'page');
+ assert.ok(q('.native-hub-return [data-officer-tab=more]'));
+ q('.native-hub-return [data-officer-tab=more]').click();
+ assert.equal(mount.querySelectorAll('.native-hub-tile').length,10);
+ q('.native-hub-tile[data-officer-tab=activity]').click();
+ await until(()=>q('#activity-list'));
+ assert.ok(q('.native-hub-return'));
+ q('[data-officer-tab=more]').click();
+ assert.equal(q('.native-hub-tile[data-officer-tab=activity]')!==null,true);
+ q('[data-officer-tab=overview]').click();
+ await until(()=>q('.native-dashboard'));
+ assert.equal(q('.native-more-hub'),null,'Normal main tabs still work');
+});

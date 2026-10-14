@@ -42,7 +42,7 @@ test('Four destinations drive real cockpit, train and player dossier workflows',
  initNativeAdmin(mount);await renderNativeAdmin(mount);
  q('[name=code]').value='synthetic';submit(q('form'));
  await until(()=>q('.native-mission'));
- assert.equal(mount.querySelectorAll('.native-primary-tab').length,4);
+ assert.equal(mount.querySelectorAll('.native-primary-tab').length,5);
  assert.equal(mount.querySelectorAll('.native-admin-top').length,0,'Nested branded header must not return');
  assert.equal(mount.querySelectorAll('.native-command-emblem').length,0,'Second RZSN emblem must not be rendered');
  assert.equal(mount.querySelectorAll('.native-officer-strip').length,1,'One compact officer session bar');
@@ -50,8 +50,11 @@ test('Four destinations drive real cockpit, train and player dossier workflows',
  assert.equal(mount.querySelectorAll('h1').length,1,'Accessible admin title exists but is not a second hero');
  assert.equal(mount.querySelectorAll('.native-mission').length,3);
  assert.match(q('.native-dashboard').textContent,/2 offene Prüffälle/);
- assert.ok(q('[data-officer-tab=registry]'),'Old deep-link target remains available');
- assert.ok(q('[data-officer-tab=reviews]'),'Review workflow remains reachable');
+ q('[data-officer-tab=more]').click();
+ assert.ok(q('[data-officer-tab=registry]'),'Roster archive is one tile away');
+ assert.ok(q('[data-officer-tab=reviews]'),'Review workflow is one tile away');
+ q('[data-officer-tab=overview]').click();
+ await until(()=>q('.native-dashboard'));
  q('[data-native-action=train-today]').click();
  await until(()=>q('#native-train-save'));
  assert.equal(q('#native-train-save [name=date]').value,'2026-10-13');

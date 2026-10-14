@@ -2,6 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {JSDOM} from 'jsdom';
 import {initNativeAdmin,renderNativeAdmin,clearOfficer} from '../assets/native-admin.js';
+async function openMore(mount) {
+ for(let i=0;i<160;i++){
+  const more=mount.querySelector('[data-officer-tab=more]');
+  if(more){more.click();return}
+  await new Promise(resolve=>setTimeout(resolve,6));
+ }
+ throw Error('More page did not become available');
+}
+
 
 test('Uploaded OCR screenshots are visible first, with a separate missing-image filter',async t=>{
  const dom=new JSDOM('<main id="mount"></main>',{url:'https://lunas-empire.github.io/#admin'});
@@ -35,7 +44,9 @@ test('Uploaded OCR screenshots are visible first, with a separate missing-image 
  initNativeAdmin(root);await renderNativeAdmin(root);
  q('[name=code]').value='synthetic';
  q('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
+ await openMore(root);
  await wait(()=>q('[data-officer-tab=reviews]'));
+ await openMore(root);
  q('[data-officer-tab=reviews]').click();
  await wait(()=>q('#review-image-native'));
  assert.match(root.textContent,/101 mit Screenshot/);

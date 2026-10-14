@@ -2,6 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {JSDOM} from 'jsdom';
 import {summarizeAllianceEventRuns,initNativeAdmin,renderNativeAdmin,clearOfficer} from '../assets/native-admin.js';
+async function openMore(mount) {
+ for(let i=0;i<160;i++){
+  const more=mount.querySelector('[data-officer-tab=more]');
+  if(more){more.click();return}
+  await new Promise(resolve=>setTimeout(resolve,6));
+ }
+ throw Error('More page did not become available');
+}
+
 
 const id='aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa';
 test('Alliance event history preserves unknown levels, outcomes, waves and genuine changes',()=>{
@@ -63,7 +72,9 @@ test('Officer can log Zombie Siege and Marshal Guard recurring runs, preserve De
  const until=async fn=>{for(let i=0;i<100;i++){if(fn())return;await new Promise(r=>setTimeout(r,6))}assert.ok(fn(),'render timeout')};
  initNativeAdmin(mount);await renderNativeAdmin(mount);
  q('[name=code]').value='synthetic';q('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
+ await openMore(mount);
  await until(()=>q('[data-officer-tab=events]'));
+ await openMore(mount);
  q('[data-officer-tab=events]').click();
  await until(()=>q('.native-event-panels'));
  assert.equal(mount.querySelectorAll('.native-event-panel').length,2);

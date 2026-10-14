@@ -31,7 +31,8 @@ test('VS data starts compact with under-target and day breakdown collapsed, whil
  await until(()=>q('.native-dashboard'));
  assert.equal(q('.native-dashboard .native-shortcuts'),null,'duplicate quick actions should be absent');
  assert.equal(q('.native-dashboard-stat-fold').open,false,'supplemental cockpit metrics start collapsed');
- assert.equal(mount.querySelectorAll('.native-more-menu [data-officer-tab]').length,10,'all officer destinations including new settings remain reachable');
+ q('[data-officer-tab=more]').click();
+ assert.equal(mount.querySelectorAll('.native-hub-tile[data-officer-tab]').length,10,'all officer destinations including settings remain reachable from the dedicated More page');
  q('[data-officer-tab=vs]').click();
  await until(()=>q('.native-vs-group'));
  const groups=mount.querySelectorAll('.native-vs-group');

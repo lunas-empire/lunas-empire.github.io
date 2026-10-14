@@ -2,6 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {JSDOM} from 'jsdom';
 import {membershipWatchSummary,initNativeAdmin,renderNativeAdmin,clearOfficer} from '../assets/native-admin.js';
+async function openMore(mount) {
+ for(let i=0;i<160;i++){
+  const more=mount.querySelector('[data-officer-tab=more]');
+  if(more){more.click();return}
+  await new Promise(resolve=>setTimeout(resolve,6));
+ }
+ throw Error('More page did not become available');
+}
+
 
 const id='aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa';
 const fresh=()=>{
@@ -66,7 +75,9 @@ test('Passively missing screenshots never blacklist or archive members',async t=
  const ctx=fresh();t.after(()=>ctx.close());const writes=mockFetch();
  await login(ctx.mount,ctx.dom);
  ctx.mount.querySelector('[data-officer-tab=members]').click();
+ await openMore(ctx.mount);
  await until(()=>ctx.mount.querySelector('[data-officer-tab=watch]'));
+ await openMore(ctx.mount);
  ctx.mount.querySelector('[data-officer-tab=watch]').click();
  await until(()=>ctx.mount.querySelector('[data-native-watch-person]'));
  const text=ctx.mount.querySelector('#native-watch-list').textContent;
@@ -81,6 +92,7 @@ test('Passively missing screenshots never blacklist or archive members',async t=
  assert.equal(ctx.mount.querySelector('#registry-save [name=blacklisted]').checked,false);
  assert.equal(ctx.mount.querySelector('#registry-save [name=lifecycle]').value,'active');
  assert.equal(writes.length,0);
+ await openMore(ctx.mount);
  ctx.mount.querySelector('[data-officer-tab=registry]').click();
  await until(()=>ctx.mount.querySelector('[data-native-registry-filter=blacklist]'));
  ctx.mount.querySelector('[data-native-registry-filter=blacklist]').click();
@@ -92,6 +104,7 @@ test('Passively missing screenshots never blacklist or archive members',async t=
 test('Diplomacy edits preserve alliance relation, separate war help and verified source',async t=>{
  const ctx=fresh();t.after(()=>ctx.close());const writes=mockFetch();
  await login(ctx.mount,ctx.dom);
+ await openMore(ctx.mount);
  ctx.mount.querySelector('[data-officer-tab=diplomacy]').click();
  await until(()=>ctx.mount.querySelector('[data-native-diplomacy-edit]'));
  const item=ctx.mount.querySelector('[data-native-diplomacy-edit]');
@@ -116,6 +129,7 @@ test('Diplomacy edits preserve alliance relation, separate war help and verified
 test('Diplomacy conflicts keep unsaved text and require explicit reload',async t=>{
  const ctx=fresh();t.after(()=>ctx.close());const writes=mockFetch({conflict:true});
  await login(ctx.mount,ctx.dom);
+ await openMore(ctx.mount);
  ctx.mount.querySelector('[data-officer-tab=diplomacy]').click();
  await until(()=>ctx.mount.querySelector('[data-native-diplomacy-edit]'));
  ctx.mount.querySelector('[data-native-diplomacy-edit]').click();
@@ -134,9 +148,12 @@ test('New Cloudflare endpoints fail closed while existing registry stays reachab
  const ctx=fresh();t.after(()=>ctx.close());mockFetch({notEnabled:true});
  await login(ctx.mount,ctx.dom);
  ctx.mount.querySelector('[data-officer-tab=members]').click();
+ await openMore(ctx.mount);
  await until(()=>ctx.mount.querySelector('[data-officer-tab=watch]'));
+ await openMore(ctx.mount);
  ctx.mount.querySelector('[data-officer-tab=watch]').click();
  await until(()=>ctx.mount.querySelector('#native-watch-list')?.textContent.includes('erst nach dem geschützten'));
+ await openMore(ctx.mount);
  ctx.mount.querySelector('[data-officer-tab=diplomacy]').click();
  await until(()=>ctx.mount.querySelector('#native-diplomacy-list')?.textContent.includes('noch nicht aktiviert'));
  assert.equal(ctx.mount.querySelector('[data-native-diplomacy-new]').disabled,true);
