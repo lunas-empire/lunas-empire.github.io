@@ -34,7 +34,9 @@ test('Source image preview cannot silently link another player; explicit confirm
  const container=dom.window.document.getElementById('content');
  await viewer.open(container,key);
  assert.equal(writes,0);
- assert.equal(reads,1,'Only selected image is downloaded');
+ assert.equal(reads,0,'Never show top ranked random capture by default');
+ await viewer.step(0);
+ assert.equal(reads,1,'Image is loaded only after explicit source browse');
  assert.match(container.querySelector('.native-stat-candidate-count').textContent,/1 \/ 1/);
  assert.equal(container.querySelector('[data-native-stat-link]').disabled,false);
  await viewer.link();

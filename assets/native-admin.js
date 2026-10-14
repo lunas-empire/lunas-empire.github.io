@@ -1452,11 +1452,12 @@ export function initNativeAdmin(mount){
  mount.lang=officerLanguage(mount.ownerDocument);
  mount.dir=mount.lang==='ar'?'rtl':'ltr';
  mount.addEventListener('click',async event=>{
-  const proof=event.target.closest?.('[data-native-stat-evidence],[data-native-stat-close],[data-native-stat-prev],[data-native-stat-next],[data-native-stat-link]');
+  const proof=event.target.closest?.('[data-native-stat-evidence],[data-native-stat-close],[data-native-stat-prev],[data-native-stat-next],[data-native-stat-link],[data-native-stat-browse]');
   if(proof){
    const area=mount.querySelector('#native-admin-content');
    if(proof.dataset.nativeStatEvidence)await statViewer.open(area,proof.dataset.nativeStatEvidence);
    else if(proof.hasAttribute('data-native-stat-close'))statViewer.close(area);
+   else if(proof.hasAttribute('data-native-stat-browse'))await statViewer.step(0);
    else if(proof.hasAttribute('data-native-stat-prev'))await statViewer.step(-1);
    else if(proof.hasAttribute('data-native-stat-next'))await statViewer.step(1);
    else if(proof.hasAttribute('data-native-stat-link'))await statViewer.link();

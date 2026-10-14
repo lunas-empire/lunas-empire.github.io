@@ -15,7 +15,7 @@ export function createStatEvidenceViewer({request,getToken,apiBase}){
   active=null;
   target?.querySelector('#native-stat-evidence-viewer')?.remove();
  };
- const loadImage=async(path,expectedHash,frame,alt)=>{
+ const loadImage=async(path,expectedHash,frame,alt,sourceRow=null)=>{
   if(!active)return false;
   const state=active;
   clearBlob();
@@ -36,17 +36,46 @@ export function createStatEvidenceViewer({request,getToken,apiBase}){
   }
   if(active!==state||!state.host.isConnected)return false;
   state.url=URL.createObjectURL(blob);
-  frame.innerHTML='<img alt="'+safe(alt)+'" draggable="false" loading="eager">';
-  frame.querySelector('img').src=state.url;
+  if(sourceRow&&Number.isInteger(sourceRow.row_y)&&sourceRow.row_y>=0&&sourceRow.row_y<660){
+   frame.innerHTML='<p class="native-stat-row-identity"><strong>'+safe(sourceRow.source_name)+'</strong> · '+
+    new Intl.NumberFormat('de-DE').format(sourceRow.source_value)+' Punkte</p>'+
+    '<div class="native-stat-row-window"><img alt="'+safe(alt)+'" draggable="false" loading="eager"></div>'+
+    '<details class="native-stat-full-image"><summary>Vollständigen Screenshot ansehen</summary>'+
+    '<img alt="Vollständiger privater Original-Screenshot" loading="lazy"></details>';
+   const wrap=frame.querySelector('.native-stat-row-window');
+   const img=wrap.querySelector('img');
+   img.addEventListener('load',()=>{
+    if(active!==state||!img.naturalHeight||!img.naturalWidth)return;
+    const width=Math.min(img.naturalWidth,Math.max(140,wrap.clientWidth));
+    const scale=width/img.naturalWidth;
+    const region=Math.min(160,img.naturalHeight);
+    const start=Math.max(0,Math.min(img.naturalHeight-region,sourceRow.row_y-region/2));
+    wrap.style.height=Math.ceil(region*scale)+'px';
+    img.style.width=width+'px';
+    img.style.top=(-Math.round(start*scale))+'px';
+    wrap.classList.add('ready');
+   },{once:true});
+   img.src=state.url;
+   frame.querySelector('.native-stat-full-image img').src=state.url;
+  }else{
+   frame.innerHTML='<img alt="'+safe(alt)+'" draggable="false" loading="eager">';
+   frame.querySelector('img').src=state.url;
+  }
   return true;
  };
  const displayVerified=async()=>{
   const {host,key,info,base}=active;
   const frame=host.querySelector('.native-stat-image');
-  host.querySelector('.native-stat-body').innerHTML='<p class="native-evidence-note">Verifizierter Originalbeleg · '+safe(info.captured_at.slice(0,10))+'</p>';
+  const proof=info.verified_source;
+  host.querySelector('.native-stat-body').innerHTML=proof.kind==='ocr_original_row'
+   ?'<p class="native-evidence-note">Quellzeile aus dem ursprünglichen OCR-Import · '+
+     safe(info.captured_at.slice(0,10))+' · '+safe(proof.id)+
+     '. Name und Punkte wurden mit der originalen Bildposition abgeglichen.'+
+     (proof.visually_checked?' Die Zeile wurde zusätzlich visuell geprüft.':'')+'</p>'
+   :'<p class="native-evidence-note">Von einem Officer geprüfter Originalbeleg · '+safe(info.captured_at.slice(0,10))+'</p>';
   frame.textContent='Originalbild wird geladen …';
   try{await loadImage(base+'/image',info.verified_source.sha256,frame,
-   'Privater, diesem Spielerwert bestätigter Screenshot')}
+   'Privater Original-Screenshot zum ausgewählten Spielerwert',info.verified_source)}
   catch(e){frame.textContent=e.message}
  };
  const candidate=async(index)=>{
@@ -103,14 +132,17 @@ export function createStatEvidenceViewer({request,getToken,apiBase}){
    host.querySelector('.native-stat-body').innerHTML=
     '<p class="native-evidence-note">Noch nicht zugeordnet: '+info.candidates.length+
     ' Originalaufnahmen dieses Tages. Erst den Spielernamen und den genauen Wert im Bild abgleichen.</p>'+
-    '<div class="native-row"><button type="button" data-native-stat-prev>← Vorheriges</button>'+
+    '<button type="button" data-native-stat-browse>Manuell Originalaufnahmen durchsuchen</button>'+
+    '<div class="native-row"><button type="button" data-native-stat-prev disabled>← Vorheriges</button>'+
     '<span class="native-stat-candidate-count"></span>'+
     '<button type="button" data-native-stat-next>Nächstes →</button></div>'+
     '<label>Grund / überprüfte Spielerzeile<input class="native-stat-reason" minlength="8" maxlength="300" required '+
     'value="Spielername und Wochenwert im Originalbild geprüft"></label>'+
     '<button type="button" data-native-stat-link disabled>Diesen Screenshot nach Prüfung zuordnen</button>'+
     '<p class="native-stat-message" role="status"></p>';
-   await candidate(0);
+   host.querySelector('.native-stat-image').textContent=
+    'Kein eindeutig zugeordneter Spielerbeleg. Die Screenshots desselben Tages werden NICHT automatisch geöffnet.';
+   host.querySelector('[data-native-stat-link]').disabled=true;
   }catch(error){if(active?.host===host)host.querySelector('.native-stat-image').textContent=
    'Originalbeleg konnte nicht geladen werden: '+error.message}
  };
