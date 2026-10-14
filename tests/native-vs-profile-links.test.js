@@ -241,3 +241,41 @@ test('R5 explicitly links a legacy account and can disable access without exposi
  assert.match(q('#native-access-result').textContent,/deaktiviert/);
  assert.equal(q('[data-native-access-disable=old-r4]'),null);
 });
+
+test('Site owner Luna remains R4 in-game but sees and uses all R5-only management UI',async t=>{
+ const dom=new JSDOM('<main id="mount"></main>',{url:'https://lunas-empire.github.io/#admin'});
+ const win=dom.window,prevWindow=globalThis.window,prevFetch=globalThis.fetch;
+ globalThis.window=win;win.HTMLElement.prototype.scrollIntoView=()=>{};
+ t.after(()=>{clearOfficer();globalThis.window=prevWindow;globalThis.fetch=prevFetch;dom.window.close()});
+ const lunaAccount={id:'officer-luna',ingame_name:'Luna',role:'R4',enabled:1,is_site_owner:1,member_id:null};
+ const other={id:'officer-other',ingame_name:'Deputy',role:'R4',enabled:1,is_site_owner:0,member_id:null};
+ const lunaMember={id:'luna-member',name:'Luna',rank:'R4',lifecycle:'active',blacklisted:0};
+ const deputyMember={id:'deputy-member',name:'Deputy',rank:'R4',lifecycle:'active',blacklisted:0};
+ globalThis.fetch=async url=>{
+  const path=new URL(url).pathname;
+  if(path==='/api/native-login')return Response.json({token:'synthetic',name:'Luna',role:'R4',siteOwner:true});
+  if(path==='/api/overview')return Response.json({active:2,reviews:0});
+  if(path==='/api/operations')return Response.json({tasks:[],events:[],members:[]});
+  if(path==='/api/train-manager')return Response.json({today:'2026-10-14',calendar:[],history:[],counts:{}});
+  if(path==='/api/officer-access')return Response.json({accounts:[lunaAccount,other]});
+  if(path==='/api/member-registry')return Response.json({members:[lunaMember,deputyMember],counts:{active:2,former:0,blacklisted:0}});
+  throw Error(path);
+ };
+ const mount=win.document.querySelector('#mount'),q=s=>mount.querySelector(s);
+ const until=async fn=>{for(let i=0;i<130;i++){if(fn())return;await new Promise(r=>setTimeout(r,5))}assert.ok(fn(),'UI did not settle')};
+ initNativeAdmin(mount);await renderNativeAdmin(mount);
+ q('[name=code]').value='synthetic';q('form').dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true}));
+ await until(()=>q('[data-officer-tab=access]'));
+ assert.match(q('.native-officer-badge').textContent,/R4 · Luna · Website-Eigentümerin/);
+ q('[data-officer-tab=access]').click();
+ await until(()=>q('[data-native-access-mode=issue]'));
+ assert.ok(q('[data-native-access-mode=reset]'));
+ assert.ok(q('[data-native-access-link=officer-other]'));
+ assert.equal(q('[data-native-access-disable=officer-luna]'),null);
+ q('[data-officer-tab=registry]').click();
+ await until(()=>q('[data-native-member-create]'));
+ q('[data-native-member-create]').click();
+ assert.deepEqual([...q('#native-member-create-save [name=rank]').options].map(x=>x.value),['R1','R2','R3','R4','R5']);
+ q('[data-registry-edit=deputy-member]').click();
+ assert.equal(q('#registry-save [name=rank]').options.length,5);
+});

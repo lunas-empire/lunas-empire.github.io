@@ -6,6 +6,7 @@ const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt
 let sessionToken='',officer=null,panel='overview',cache={},pageLimit=20,historyLimit=20,activityLimit=30,registryFilter='all';
 export function clearOfficer(){clearReviewImages();sessionToken='';officer=null;cache={};panel='overview';pageLimit=20;historyLimit=20;activityLimit=30;registryFilter='all';}
 export const hasOfficer=()=>Boolean(sessionToken);
+const canManageSite=()=>officer?.role==='R5'||officer?.siteOwner===true;
 async function request(path,options={}){
  const headers={'Accept':'application/json',...(options.body?{'Content-Type':'application/json'}:{}),...(sessionToken?{'Authorization':'Bearer '+sessionToken}:{})};
  const response=await fetch(apiBase+path,{method:options.method||'GET',headers,body:options.body?JSON.stringify(options.body):undefined,mode:'cors',credentials:'omit',cache:'no-store'});
@@ -62,7 +63,7 @@ async function view(mount){
  clearReviewImages();
  const header='<div class="native-officer-strip" role="group" aria-label="Offiziersbereich">'+
   '<a class="native-return-link" href="#today">← Zur Website</a>'+
-  '<div class="native-officer-controls"><span class="native-officer-badge">'+e(officer?.role||'Offizier')+' · '+e(officer?.name||'')+
+  '<div class="native-officer-controls"><span class="native-officer-badge">'+e(officer?.role||'Offizier')+' · '+e(officer?.name||'')+(officer?.siteOwner?' · Website-Eigentümerin':'')+
   '</span><button type="button" data-officer-tab="access">Mein Zugang</button><button type="button" data-officer-logout>Abmelden</button></div></div>';
  mount.innerHTML='<section class="native-admin"><h1 class="sr-only">RZSN Command Center</h1>'+header+nav()+'<div class="native-admin-content" id="native-admin-content"><p>Daten werden geladen …</p></div></section>';
  const target=mount.querySelector('#native-admin-content');
@@ -103,18 +104,18 @@ async function view(mount){
     '</div>';
   }else if(panel==='access'){
    cache.access=await request('/api/officer-access');
-   cache.registry=officer.role==='R5'?await request('/api/member-registry'):null;
+   cache.registry=canManageSite()?await request('/api/member-registry'):null;
    target.innerHTML='<div class="native-row"><h2>Offizierszugänge</h2></div>'+
     '<p class="native-muted">Nur R4 und R5 können sich anmelden. Codes werden nur einmal gezeigt und nie dauerhaft angezeigt. Bei Änderungen werden bisherige Sitzungen ungültig.</p>'+
     '<div class="native-row"><button type="button" data-native-access-mode="self">Eigenen Code ändern</button>'+
-    (officer.role==='R5'?'<button type="button" data-native-access-mode="issue">Neuen Admin hinzufügen</button><button type="button" data-native-access-mode="reset">Code eines Admins zurücksetzen</button>':'')+'</div>'+
+    (canManageSite()?'<button type="button" data-native-access-mode="issue">Neuen Admin hinzufügen</button><button type="button" data-native-access-mode="reset">Code eines Admins zurücksetzen</button>':'')+'</div>'+
     '<div id="native-access-form"></div><div id="native-access-result" role="status"></div>'+
-    (officer.role==='R5'&&cache.access.accounts.some(x=>x.enabled&&!x.member_id)?'<p class="native-evidence-note" role="status">'+cache.access.accounts.filter(x=>x.enabled&&!x.member_id).length+' bestehende Offizierszugänge sind noch nicht zugeordnet. R5 muss jede Zuordnung ausdrücklich prüfen.</p>':'')+
+    (canManageSite()&&cache.access.accounts.some(x=>x.enabled&&!x.member_id)?'<p class="native-evidence-note" role="status">'+cache.access.accounts.filter(x=>x.enabled&&!x.member_id).length+' bestehende Offizierszugänge sind noch nicht zugeordnet. R5 oder Luna als Website-Eigentümerin prüft jede Zuordnung ausdrücklich.</p>':'')+
     '<details class="native-fold" open><summary>Offizierszugänge ('+e(cache.access.accounts.filter(x=>x.enabled).length)+' aktiv)</summary>'+
      '<div class="native-fold-body native-list">'+cache.access.accounts.map(x=>'<div class="native-access-account"><strong>'+e(x.ingame_name)+' · '+e(x.role)+'</strong>'+
       '<small>'+(x.enabled?(x.member_id?'Mit Mitglied verknüpft':'Nicht zugeordnet – R5-Prüfung nötig'):'Deaktiviert')+'</small>'+
-      (officer.role==='R5'&&x.enabled?'<div class="native-row">'+(!x.member_id?'<button type="button" data-native-access-link="'+e(x.id)+'">Spieler zuordnen</button>':'')+
-       (x.ingame_name!==officer.name?'<button type="button" data-native-access-disable="'+e(x.id)+'">Zugang deaktivieren</button>':'')+'</div>':'')+'</div>').join('')+'</div></details>';
+      (canManageSite()&&x.enabled?'<div class="native-row">'+(!x.member_id?'<button type="button" data-native-access-link="'+e(x.id)+'">Spieler zuordnen</button>':'')+
+       (x.ingame_name!==officer.name&&!x.is_site_owner?'<button type="button" data-native-access-disable="'+e(x.id)+'">Zugang deaktivieren</button>':'')+'</div>':'')+'</div>').join('')+'</div></details>';
   }else if(panel==='registry'){
    cache.registry=await request('/api/member-registry');
    target.innerHTML='<div class="native-row"><h2>Mitgliederverwaltung</h2><button type="button" data-native-member-create>+ Mitglied anlegen</button><input id="registry-search" type="search" placeholder="Spieler suchen"></div>'+
@@ -746,7 +747,7 @@ function renderRegistry(target,query){
 }
 function createMemberForm(target){
  const host=target.querySelector('#registry-form');if(!host)return;
- const ranks=officer?.role==='R5'?['R1','R2','R3','R4','R5']:['R1','R2','R3'];
+ const ranks=canManageSite()?['R1','R2','R3','R4','R5']:['R1','R2','R3'];
  host.innerHTML='<form id="native-member-create-save" class="native-form"><h3>Mitglied manuell anlegen</h3>'+
   '<p class="native-muted">Nur die bestätigte Identität wird angelegt. Keine Power-, Kills-, Spenden- oder VS-Werte werden erfunden.</p>'+
   '<label>Ingame-Spielername<input name="name" maxlength="80" minlength="2" required autocomplete="off"></label>'+
@@ -758,7 +759,7 @@ function createMemberForm(target){
 function accessForm(target,mode,accountId=''){
  const host=target.querySelector('#native-access-form');if(!host)return;
  if(['link','disable'].includes(mode)){
-  if(officer?.role!=='R5')return;
+  if(!canManageSite())return;
   const account=(cache.access?.accounts||[]).find(a=>a.id===accountId&&a.enabled);
   if(!account)return;
   const linkedIds=new Set((cache.access?.accounts||[]).map(a=>a.member_id).filter(Boolean));
@@ -773,7 +774,7 @@ function accessForm(target,mode,accountId=''){
   host.querySelector('[name=reason]')?.focus();return;
  }
  const reason='<label>Grund (Audit-Log)<input name="reason" required minlength="8" maxlength="500" placeholder="Warum wird der Zugang verändert?"></label>';
- const accountChoices=(cache.access?.accounts||[]).filter(a=>a.enabled&&a.ingame_name!==officer?.name);
+ const accountChoices=(cache.access?.accounts||[]).filter(a=>a.enabled&&!a.is_site_owner&&a.ingame_name!==officer?.name);
  const eligible=(cache.registry?.members||[]).filter(m=>m.lifecycle==='active'&&!m.blacklisted&&['R4','R5'].includes(m.rank)&&
   !(cache.access?.accounts||[]).some(a=>a.member_id===m.id||a.ingame_name.toLocaleLowerCase()===m.name.toLocaleLowerCase()));
  const self=mode==='self',issue=mode==='issue';
@@ -791,11 +792,11 @@ function accessForm(target,mode,accountId=''){
 function editRegistry(target,id){
  const m=cache.registry.members.find(x=>x.id===id);if(!m)return;
  const host=target.querySelector('#registry-form');
- if(officer?.role!=='R5'&&['R4','R5'].includes(m.rank)){
+ if(!canManageSite()&&['R4','R5'].includes(m.rank)){
   host.innerHTML='<p class="native-evidence-note">Offiziersrang, Archiv und Blacklist dieses Mitglieds dürfen nur durch R5 geändert werden.</p>';
   return;
  }
- const ranks=officer?.role==='R5'?['R1','R2','R3','R4','R5']:['R1','R2','R3'];
+ const ranks=canManageSite()?['R1','R2','R3','R4','R5']:['R1','R2','R3'];
  host.innerHTML='<form id="registry-save" class="native-form" data-id="'+e(id)+'" data-revision="'+e(m.revision)+'"><h3>'+e(m.name)+' verwalten</h3>'+
   '<label>Verwalteter Rang<select name="rank" required>'+(!m.rank?'<option value="" selected disabled>Rang verifizieren</option>':'')+ranks.map(x=>'<option '+(m.rank===x?'selected':'')+'>'+x+'</option>').join('')+'</select></label>'+
   '<label>Status<select name="lifecycle" required>'+(m.lifecycle==='unverified'?'<option value="" selected disabled>Identität / Status verifizieren</option>':'')+'<option value="active" '+(m.lifecycle==='active'?'selected':'')+'>Aktiv</option><option value="former" '+(m.lifecycle==='former'?'selected':'')+'>Ehemalig / Archiv</option></select></label>'+
