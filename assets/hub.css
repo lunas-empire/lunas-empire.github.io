@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-13.15');
+@import url('./tokens.css?v=2026-10-14.16');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -1126,3 +1126,17 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
  .native-admin .native-operational-item{flex-wrap:wrap}
  .native-admin .native-task-check{width:100%}
 }
+
+/* Officer train shortlist: optional detail, thumb-sized actions and no horizontal scroll. */
+.native-admin .native-train-item{flex-wrap:wrap;min-width:0}
+.native-admin .native-train-item>div:first-child{flex:1 1 175px;min-width:0}
+.native-admin .native-train-shortlist{flex:0 0 100%;min-width:0;border-top:1px solid var(--color-rule);padding-top:.35rem}
+.native-admin .native-train-shortlist>summary{cursor:pointer;min-height:44px;display:flex;align-items:center;color:var(--color-action);font-weight:750;font-size:.85rem;overflow-wrap:anywhere}
+.native-admin .native-train-shortlist>.native-muted{font-size:.78rem;line-height:1.5;margin:.25rem 0 .65rem}
+.native-admin .native-train-candidates{display:grid;gap:.45rem;list-style:none;padding:0;margin:0}
+.native-admin .native-train-candidates li{min-width:0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;padding:.6rem;border:1px solid var(--color-rule);border-radius:4px;background:var(--color-raised)}
+.native-admin .native-train-candidates li>div{min-width:0;flex:1 1 175px;display:flex;flex-direction:column;align-items:flex-start;gap:.22rem}
+.native-admin .native-train-candidates b,.native-admin .native-train-candidates span{overflow-wrap:anywhere}
+.native-admin .native-train-candidates span{font-size:.75rem;line-height:1.45;color:var(--color-ink)}
+.native-admin .native-train-candidates button{min-height:44px;min-width:90px}
+@media(max-width:30rem){.native-admin .native-train-item .native-train-actions{width:100%;justify-content:flex-start}.native-admin .native-train-item .native-train-actions button{flex:1 1 125px}.native-admin .native-train-candidates button{flex:0 0 auto}}
