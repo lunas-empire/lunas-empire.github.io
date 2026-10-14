@@ -44,7 +44,7 @@ export function createStatEvidenceViewer({request,getToken,apiBase}){
   const {host,key,info,base}=active;
   const frame=host.querySelector('.native-stat-image');
   const proof=info.verified_source;
-  host.querySelector('.native-stat-body').innerHTML=proof.kind==='ocr_original_row'
+  host.querySelector('.native-stat-body').innerHTML=['ocr_original_row','archive_ocr_row'].includes(proof.kind)
    ?'<p class="native-evidence-note">Quellzeile aus dem ursprünglichen OCR-Import · '+
      safe(info.captured_at.slice(0,10))+' · '+safe(proof.id)+
      '. Name und Punkte wurden mit der originalen Bildposition abgeglichen.'+
