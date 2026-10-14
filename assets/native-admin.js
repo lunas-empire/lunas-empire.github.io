@@ -983,7 +983,10 @@ const auditLabels={
  date:'Datum',ride_date:'Zugdatum',driver_name:'Zugfahrer',note:'Notiz',
  event_type:'Event',event_date:'Eventdatum',level:'Level',waves:'Wellen',
  lead_id:'Leitung',attendance:'Teilnehmer',outcome:'Ergebnis',reason:'Begründung',
- revision:'Revision',updated_by:'Bearbeitet von'
+ revision:'Revision',updated_by:'Bearbeitet von',
+ vs_daily_minimum:'VS-Punkte pro Tag',donation_weekly_minimum:'Spenden pro Woche',
+ min_active_vs_days:'Aktive VS-Tage',low_vs_day_warning_count:'Warnung nach Tagen',
+ shield_reminder_saturday:'Samstag Schild-Erinnerung'
 };
 const safeAuditObject=value=>{
  try{const item=typeof value==='string'?JSON.parse(value):value;return item&&typeof item==='object'&&!Array.isArray(item)?item:null}

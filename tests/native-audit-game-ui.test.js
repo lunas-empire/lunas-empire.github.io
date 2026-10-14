@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {JSDOM} from 'jsdom';
-import {auditCategory,initNativeAdmin,renderNativeAdmin,clearOfficer} from '../assets/native-admin.js';
+import {auditCategory,auditChanges,initNativeAdmin,renderNativeAdmin,clearOfficer} from '../assets/native-admin.js';
 
 test('Audit groups distinguish verified categories, including access and archive',()=>{
  assert.equal(auditCategory({object_kind:'ocr_review',action:'resolve'}),'ocr');
@@ -79,4 +79,15 @@ test('Native alliance admin log: filter, group, search, reveal all 355 records a
  const restored=q('#activity-search');restored.value='ocr-7';restored.dispatchEvent(new win.Event('input',{bubbles:true}));
  assert.match(q('.native-audit-count').textContent,/passende Einträge/);
  assert.ok(mount.querySelectorAll('.native-audit-entry').length>0);
+});
+
+test('Alliance policy audit renders exactly changed thresholds and shield flag without secrets',()=>{
+ const before={vs_daily_minimum:3600000,donation_weekly_minimum:20000,min_active_vs_days:5,low_vs_day_warning_count:2,shield_reminder_saturday:true};
+ const after={...before,vs_daily_minimum:4000000,donation_weekly_minimum:25000,shield_reminder_saturday:false,reason:'Officer changed priorities'};
+ const event={object_kind:'alliance_requirements',action:'alliance_requirements_update',before_json:JSON.stringify(before),after_json:JSON.stringify(after)};
+ assert.equal(auditCategory(event),'policy');
+ const diff=auditChanges(event);
+ assert.deepEqual(diff.map(x=>x.field),['Begründung','VS-Punkte pro Tag','Spenden pro Woche','Samstag Schild-Erinnerung']);
+ assert.equal(diff.find(x=>x.field==='VS-Punkte pro Tag').after,'4000000');
+ assert.equal(diff.find(x=>x.field==='Samstag Schild-Erinnerung').after,'Nein');
 });
