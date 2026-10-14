@@ -72,11 +72,8 @@ function nav(){
 }
 function moreHub(){
  return '<div class="native-more-hub" aria-label="Weitere Verwaltung">'+
-  '<header class="native-hub-heading"><span class="native-hub-sigil" aria-hidden="true">'+icon('alliance','native-hub-sigil-icon')+'</span>'+
-  '<div><small>RZSN · OFFIZIERSZENTRALE</small><h2 tabindex="-1">Weitere Verwaltung</h2>'+
-  '<p>Wähle einen Bereich, um deine Allianz zu verwalten.</p></div></header>'+
   moreSections.map((section,index)=>'<section class="native-hub-section" aria-labelledby="native-hub-title-'+index+'">'+
-   '<h3 id="native-hub-title-'+index+'">'+e(section.title)+'</h3>'+
+   '<h3 tabindex="-1" id="native-hub-title-'+index+'">'+e(section.title)+'</h3>'+
    '<div class="native-hub-grid">'+section.items.map(([key,title,art,description])=>
     '<button type="button" class="native-hub-tile" data-officer-tab="'+e(key)+'" aria-label="'+e(title)+': '+e(description)+'">'+
     '<span class="native-hub-tile-icon" aria-hidden="true">'+icon(art,'native-hub-svg')+'</span>'+
@@ -1426,7 +1423,7 @@ export function initNativeAdmin(mount){
  const Observer=mount.ownerDocument.defaultView?.MutationObserver;
  if(Observer){
   const localizer=new Observer(()=>localizeOfficerTree(mount));
-  localizer.observe(mount,{childList:true,subtree:true});
+  localizer.observe(mount,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['placeholder','title','aria-label']});
  }
  mount.lang=officerLanguage(mount.ownerDocument);
  mount.dir=mount.lang==='ar'?'rtl':'ltr';
@@ -1446,7 +1443,7 @@ export function initNativeAdmin(mount){
    cache.requirements=await request('/api/alliance-requirements');renderRequirements(mount.querySelector('#native-admin-content'));return
   }
   if(button.dataset.officerTab){panel=button.dataset.officerTab;pageLimit=20;historyLimit=20;activityLimit=30;await view(mount);
-   if(panel==='more')mount.querySelector('.native-hub-heading h2')?.focus();
+   if(panel==='more')mount.querySelector('.native-hub-section h3')?.focus();
    return}
   if(button.dataset.nativeAction){
    const action=button.dataset.nativeAction;

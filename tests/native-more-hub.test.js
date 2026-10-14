@@ -29,6 +29,7 @@ test('More opens real game-style tile page with ten accessible links, back navig
  q('[data-officer-tab=more]').click();
  assert.equal(seen.length,countBefore,'Hub is local: entering it must not query private D1');
  assert.equal(q('.native-more-menu'),null,'No dropdown or overlay');
+ assert.equal(q('.native-hub-heading'),null,'More hub aligns with main pages: no extra hero header');
  assert.equal(q('.native-more-backdrop'),null);
  assert.equal(mount.querySelectorAll('.native-hub-section').length,3);
  assert.equal(mount.querySelectorAll('.native-hub-grid').length,3);

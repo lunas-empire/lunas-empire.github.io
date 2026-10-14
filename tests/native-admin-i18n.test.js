@@ -73,9 +73,9 @@ test('All 15 languages localize the login, fifth tab, ten tile labels, settings 
    await wait(()=>q('[data-officer-tab=more]'));
    await wait(()=>q('[data-officer-tab=more]').textContent===translateOfficerText('Mehr',lang));
    q('[data-officer-tab=more]').click();
-   await wait(()=>q('.native-more-hub h2'));
-   await wait(()=>q('.native-more-hub h2').textContent===translateOfficerText('Weitere Verwaltung',lang));
-   assert.equal(q('.native-more-hub h2').textContent,translateOfficerText('Weitere Verwaltung',lang));
+   await wait(()=>q('.native-hub-section h3'));
+   await wait(()=>q('.native-hub-section h3').textContent===translateOfficerText('Allianz & Planung',lang));
+   assert.equal(q('.native-hub-heading'),null,'More hub header must not exist');
    assert.equal(mount.querySelectorAll('.native-hub-tile').length,10,lang);
    assert.equal(mount.querySelectorAll('.native-hub-tile-gold').length,0,lang);
    assert.equal(q('.native-hub-section h3').textContent,translateOfficerText('Allianz & Planung',lang));
@@ -87,9 +87,24 @@ test('All 15 languages localize the login, fifth tab, ten tile labels, settings 
    assert.equal(q('[name=vs_daily_minimum]').value,'3600000');
    assert.equal(q('[name=donation_weekly_minimum]').value,'20000');
    q('.native-hub-return [data-officer-tab=more]').click();
-   await wait(()=>q('.native-more-hub h2'));
+   await wait(()=>q('.native-hub-section h3'));
   }finally{
    clearOfficer();globalThis.window=oldWindow;globalThis.fetch=oldFetch;dom.window.close();
   }
  }
+});
+
+test('Dynamic English labels, counts and updated status nodes use translated UI copy only',async t=>{
+ const dom=new JSDOM('<!doctype html><html lang="en"><body><main id="mount"></main></body></html>',{url:'https://lunas-empire.github.io/#admin'});
+ const mount=dom.window.document.querySelector('#mount');
+ t.after(()=>{clearOfficer();dom.window.close()});
+ initNativeAdmin(mount);await renderNativeAdmin(mount);
+ const status=mount.querySelector('#native-login-status');
+ status.textContent='Anmeldung wird geprüft …';
+ await wait(()=>status.textContent===translateOfficerText('Anmeldung wird geprüft …','en'));
+ assert.equal(status.textContent,'Verifying login…');
+ assert.equal(translateOfficerText('24 Spieler','en'),'24 Players');
+ assert.equal(translateOfficerText('25 Aufgaben (10)','en'),'25 Aufgaben (10)','Unrecognized player or free text must remain untouched');
+ assert.equal(translateOfficerText('Aufgaben (10)','en'),translateOfficerText('Aufgaben','en')+' (10)');
+ assert.equal(mount.querySelector('[name=code]').getAttribute('type'),'password');
 });
