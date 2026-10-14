@@ -37,7 +37,7 @@ export function createStatEvidenceViewer({request,getToken,apiBase}){
   if(active!==state||!state.host.isConnected)return false;
   state.url=URL.createObjectURL(blob);
   if(sourceRow&&Number.isInteger(sourceRow.row_y)&&sourceRow.row_y>=0&&sourceRow.row_y<660){
-   frame.innerHTML='<p class="native-stat-row-identity"><strong>'+safe(sourceRow.source_name)+'</strong> · '+
+   frame.innerHTML='<p class="native-stat-row-identity"><strong>'+safe(sourceRow.member_name||sourceRow.source_name)+'</strong> · '+
     new Intl.NumberFormat('de-DE').format(sourceRow.source_value)+' Punkte</p>'+
     '<div class="native-stat-row-window"><img alt="'+safe(alt)+'" draggable="false" loading="eager"></div>'+
     '<details class="native-stat-full-image"><summary>Vollständigen Screenshot ansehen</summary>'+

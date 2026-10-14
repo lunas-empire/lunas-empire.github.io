@@ -21,7 +21,7 @@ test('Below-target click displays the exact player row instead of top 3 or a gen
    requests.push(path);
    return {captured_at:'2026-10-11T10:00:00Z',value:19100,metric:'donations_weekly',
     verified_source:{kind:'ocr_original_row',id:'donations_weekly-2026-10-11-020',
-     sha256:hash,row_y:277,source_name:'KerandaBerdarah',source_value:19100,
+     sha256:hash,row_y:277,source_name:'KerrandaBerdarah OCR',member_name:'KerandaBerdarah',source_value:19100,
      visually_checked:true},candidates:[]};
   }});
  t.after(()=>{viewer.close(root);globalThis.window=oldWindow;globalThis.fetch=oldFetch;
