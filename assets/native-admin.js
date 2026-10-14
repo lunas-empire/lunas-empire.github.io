@@ -3,11 +3,12 @@ import {ALLIANCE_CONFIG} from './config.js';
 import {icon} from './icons.js';
 import {localizeOfficerTree,officerLanguage,officerLocale} from './native-admin-i18n.js';
 import {buildOfficerActions} from './officer-cockpit.js';
+import {createStatEvidenceViewer} from './native-stat-evidence.js';
 import {dailyOfficerBrief,vsWeeklyMail,donationsWeeklyMail,safeMailText,ALLIANCE_MAIL_LIMIT} from './officer-reports.js';
 const apiBase=ALLIANCE_CONFIG.commandCenterEmbedUrl.replace('/?embed=1','');
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
 let sessionToken='',officer=null,panel='overview',cache={},pageLimit=20,historyLimit=20,activityLimit=30,registryFilter='all',activityCategory='all',activityGroupBy='type';
-export function clearOfficer(){clearReviewImages();sessionToken='';officer=null;cache={};panel='overview';pageLimit=20;historyLimit=20;activityLimit=30;registryFilter='all';activityCategory='all';activityGroupBy='type';}
+export function clearOfficer(){statViewer.close();clearReviewImages();sessionToken='';officer=null;cache={};panel='overview';pageLimit=20;historyLimit=20;activityLimit=30;registryFilter='all';activityCategory='all';activityGroupBy='type';}
 export const hasOfficer=()=>Boolean(sessionToken);
 const canManageSite=()=>officer?.role==='R5'||officer?.siteOwner===true;
 async function request(path,options={}){
@@ -17,6 +18,12 @@ async function request(path,options={}){
  if(!response.ok){if(response.status===401&&path!=='/api/native-login')clearOfficer();throw Object.assign(Error(result.error||'HTTP '+response.status),{status:response.status})}
  return result;
 }
+const statViewer=createStatEvidenceViewer({request,getToken:()=>sessionToken,apiBase});
+const statEvidenceKey=(snapshot,member,metric)=>snapshot&&member&&['power','kills','donations_weekly'].includes(metric)?String(snapshot)+'|'+member+'|'+metric:'';
+const statValueButton=(value,snapshot,member,metric)=>{
+ const key=statEvidenceKey(snapshot,member,metric);
+ return key?'<button type="button" class="native-stat-value-link" data-native-stat-evidence="'+e(key)+'" title="Originalbild zum Spielerwert ansehen">'+numberText(value)+' <small aria-hidden="true">↗</small></button>':numberText(value);
+};
 const options=(members,value='')=>'<option value="">Nicht besetzt</option>'+members.map(m=>'<option value="'+e(m.id)+'" '+(m.id===value?'selected':'')+'>'+e(m.name)+' · '+e(m.rank)+'</option>').join('');
 // Keep existing feature panel IDs and API workflows; the fifth main tab is a dedicated tile-based More page.
 const primaryPanels=[
@@ -322,7 +329,7 @@ async function showPerson(target,id){
    '<small>'+e(m.deltaSinceFirst===null?'Erst eine bestätigte Aufnahme – noch kein Langzeitvergleich':
     'Seit '+m.firstDate+': '+(m.deltaSinceFirst>0?'+':'')+numberText(m.deltaSinceFirst))+'</small>'+
    '<small>'+e(metricQuality[m.quality]||'Bestätigt')+' · '+e(m.date)+'</small><em>Alle '+timeline.length+' Messungen anzeigen ›</em></summary>'+
-   '<div class="native-profile-timeline">'+timeline.map((s,i)=>'<div><time>'+e(String(s.captured_at).slice(0,10))+'</time><b>'+numberText(s.value)+'</b>'+
+   '<div class="native-profile-timeline">'+timeline.map((s,i)=>'<div><time>'+e(String(s.captured_at).slice(0,10))+'</time><b>'+statValueButton(s.value,s.snapshot_id,id,s.metric)+'</b>'+
      '<small>'+e(i+1<timeline.length?deltaLabel(s.value-timeline[i+1].value):'Erste Messung')+'</small></div>').join('')+'</div></details>';
  }).join('')+'</div>':
   '<p class="native-muted">Noch keine bestätigten Messungen. Fehlende Werte werden nicht als Null bewertet.</p>';
@@ -337,7 +344,8 @@ async function showPerson(target,id){
    '<small>'+e(w.state==='final'?'Finalisiert':'Vorläufig / unvollständig')+' · '+e(w.verified_goal_days??0)+'/'+e(w.verified_days??0)+' bestätigte Zieltage'+
    (w.uncertain_days?' · '+e(w.uncertain_days)+' unklar':'')+'</small>'+
    (weeklyDelta!==null?'<small class="native-week-change">'+(weeklyDelta>0?'+':'')+numberText(weeklyDelta)+' zum '+e(older.week)+'</small>':'')+'</summary>'+
-   '<div class="native-profile-timeline">'+days.map(day=>'<div><span>'+e(weekdays[day.weekday]||'?')+'</span><button type="button" class="native-vs-day-link" data-native-vs-image="'+e(w.week+'|'+id+'|'+day.weekday)+'" title="Privaten Screenshot öffnen"><b>'+
+   '<div class="native-profile-timeline">'+(Number.isSafeInteger(w.weekly_points)?
+    '<div class="native-vs-weekly-proof"><span>Wochenpunkte</span><button type="button" class="native-vs-day-link" data-native-vs-image="'+e(w.week+'|'+id+'|6')+'">'+numberText(w.weekly_points)+' · Originalbild ↗</button></div>':'')+days.map(day=>'<div><span>'+e(weekdays[day.weekday]||'?')+'</span><button type="button" class="native-vs-day-link" data-native-vs-image="'+e(w.week+'|'+id+'|'+day.weekday)+'" title="Privaten Screenshot öffnen"><b>'+
     (['observed','corrected'].includes(day.quality)&&day.points!==null?numberText(day.points):'Unbekannt')+
     '</b><small>'+e(day.quality||'nicht gelesen')+' · Bild ansehen</small></button></div>').join('')+'</div></details>';
  }).join('')+'</div>':
@@ -384,7 +392,7 @@ async function showPerson(target,id){
  node.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 async function openVsScreenshot(target,key){
- const matched=/^(20\d{2}-W\d{2})\|([a-zA-Z0-9-]{1,80})\|([0-5])$/.exec(String(key));
+ const matched=/^(20\d{2}-W\d{2})\|([a-zA-Z0-9-]{1,80})\|([0-6])$/.exec(String(key));
  if(!matched)return;
  const [,week,memberId,weekday]=matched;
  target.querySelector('#native-vs-evidence-viewer')?.remove();
@@ -400,7 +408,8 @@ async function openVsScreenshot(target,key){
  target.append(host);
  const image=host.querySelector('#native-vs-evidence-image');
  host.querySelector('[data-native-vs-image-close]')?.focus();
- const url='/api/vs-days/'+encodeURIComponent(week)+'/'+encodeURIComponent(memberId)+'/'+weekday+'/evidence';
+ const url=weekday==='6'?'/api/vs-week/'+encodeURIComponent(week)+'/'+encodeURIComponent(memberId)+'/evidence':
+  '/api/vs-days/'+encodeURIComponent(week)+'/'+encodeURIComponent(memberId)+'/'+weekday+'/evidence';
  try{
   const response=await fetch(apiBase+url,{headers:{Authorization:'Bearer '+sessionToken,Accept:'image/png,image/jpeg,image/webp'},mode:'cors',credentials:'omit',cache:'no-store'});
   if(!host.isConnected)return;
@@ -425,7 +434,7 @@ async function openVsScreenshot(target,key){
  }catch(error){if(host.isConnected)image.textContent='Bild konnte nicht geladen werden: '+error.message}
 }
 async function submitVsScreenshot(form,target){
- const key=form.dataset.key,matched=/^(20\d{2}-W\d{2})\|([a-zA-Z0-9-]{1,80})\|([0-5])$/.exec(String(key));
+ const key=form.dataset.key,matched=/^(20\d{2}-W\d{2})\|([a-zA-Z0-9-]{1,80})\|([0-6])$/.exec(String(key));
  if(!matched)return;
  const file=form.elements.namedItem('image')?.files?.[0],reason=form.elements.namedItem('reason')?.value||'';
  const message=form.querySelector('.native-vs-evidence-upload-result'),button=form.querySelector('[type=submit]');
@@ -434,7 +443,9 @@ async function submitVsScreenshot(form,target){
  }
  button.disabled=true;
  try{
-  const response=await fetch(apiBase+'/api/vs-days/'+matched[1]+'/'+matched[2]+'/'+matched[3]+'/evidence',{
+  const path=matched[3]==='6'?'/api/vs-week/'+matched[1]+'/'+matched[2]+'/evidence':
+   '/api/vs-days/'+matched[1]+'/'+matched[2]+'/'+matched[3]+'/evidence';
+  const response=await fetch(apiBase+path,{
    method:'PUT',mode:'cors',credentials:'omit',cache:'no-store',
    headers:{Authorization:'Bearer '+sessionToken,'Content-Type':file.type,'X-Evidence-Reason':encodeURIComponent(reason)},
    body:file});
@@ -511,7 +522,7 @@ function renderDonations(target,query=''){
    '<div class="native-fold-body">'+(n?players.map((m,i)=>
     '<article class="native-donation-person"><div class="native-donation-person-head">'+
     '<strong>'+e(m.name)+'</strong><small>'+e(m.rank||'?')+'</small><b>'+
-    (m.points===null?'Unbekannt':numberText(m.points))+'</b></div>'+
+    (m.points===null?'Unbekannt':statValueButton(m.points,m.snapshot_id||week.snapshot_id,m.id,'donations_weekly'))+'</b></div>'+
     (m.points===null?'<p class="native-muted">Unbekannte Spenden sind keine 0.</p>':
     '<div class="native-donation-progress" role="progressbar" aria-label="Anteil zum Wochenziel" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+Math.min(100,Math.round(m.points/minimum*100))+'">'+
     '<span style="width:'+Math.min(100,Math.round(m.points/minimum*100))+'%"></span></div>'+
@@ -563,6 +574,7 @@ function renderVs(target){
    '<summary><span>'+e(name)+'</span><b>'+players.length+' Spieler</b></summary><div class="native-fold-body">'+
    (players.length?'<div class="native-list">'+players.map(p=>'<details class="native-vs-player"><summary>'+e(p.name)+' · '+e(p.failed||0)+' unter Ziel / '+e(p.unknown||0)+' unklar'+(policy.min_active_vs_days?' · '+e(p.activeDays??'?')+' aktive Tage':'')+'</summary>'+
     '<button type="button" class="native-vs-open-person" data-native-member="'+e(p.id)+'">Spielerakte & Entwicklung öffnen ›</button>'+
+    (Number.isSafeInteger(p.weekly_points)?'<p class="native-vs-week-total"><button type="button" class="native-vs-day-link" data-native-vs-image="'+e(week.week+'|'+p.id+'|6')+'">'+numberText(p.weekly_points)+' Wochenpunkte · Originalbild ↗</button></p>':'')+
     '<div class="native-vs-player-days">'+(p.days||[]).map((d,i)=>'<span><b>'+labels[i%6]+'</b> <button type="button" class="native-vs-day-link" data-native-vs-image="'+e(week.week+'|'+p.id+'|'+i)+'" aria-label="'+e(labels[i%6])+' Screenshot zu '+e(p.name)+' ansehen">'+
     (d.verified&&d.points!=null?e(Number(d.points).toLocaleString('de-DE')):'Unbekannt')+' <small>↗</small></button></span>').join('')+'</div></details>').join('')+'</div>':
     '<p class="native-muted">Keine Spieler in dieser Gruppe.</p>')+'</div></details>';
@@ -1440,6 +1452,16 @@ export function initNativeAdmin(mount){
  mount.lang=officerLanguage(mount.ownerDocument);
  mount.dir=mount.lang==='ar'?'rtl':'ltr';
  mount.addEventListener('click',async event=>{
+  const proof=event.target.closest?.('[data-native-stat-evidence],[data-native-stat-close],[data-native-stat-prev],[data-native-stat-next],[data-native-stat-link]');
+  if(proof){
+   const area=mount.querySelector('#native-admin-content');
+   if(proof.dataset.nativeStatEvidence)await statViewer.open(area,proof.dataset.nativeStatEvidence);
+   else if(proof.hasAttribute('data-native-stat-close'))statViewer.close(area);
+   else if(proof.hasAttribute('data-native-stat-prev'))await statViewer.step(-1);
+   else if(proof.hasAttribute('data-native-stat-next'))await statViewer.step(1);
+   else if(proof.hasAttribute('data-native-stat-link'))await statViewer.link();
+   return;
+  }
   const screenshot=event.target.closest?.('.native-review-image img');
   if(screenshot){
    const url=screenshot.getAttribute('src')||'';

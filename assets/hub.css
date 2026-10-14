@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-14.31');
+@import url('./tokens.css?v=2026-10-14.32');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -1519,3 +1519,15 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 .native-report-panel textarea{display:block;width:100%;max-width:100%;box-sizing:border-box;min-height:110px;padding:12px;line-height:1.5;font:inherit;resize:vertical;color:inherit;background:transparent;border:1px solid currentColor;border-radius:8px}
 .native-report-panel [data-native-copy-report]{min-height:44px;padding:8px 15px}
 .native-report-panel .native-report-copy-status{min-height:1.5em}
+
+/* Private evidence links: large mobile hit targets and no accidental screenshot clipping. */
+.native-admin .native-stat-value-link{display:inline-flex;align-items:center;gap:.35rem;min-height:40px;padding:.25rem .5rem;color:inherit;border:1px solid currentColor;border-radius:.55rem;background:transparent;font:inherit;font-weight:inherit;cursor:pointer;max-width:100%}
+.native-admin .native-stat-value-link:hover,.native-admin .native-stat-value-link:focus-visible{outline:2px solid var(--color-game-gold,#d7a64a);outline-offset:2px}
+.native-admin .native-stat-value-link small{opacity:.75}
+.native-admin .native-stat-evidence-panel{width:min(96vw,920px);max-height:94dvh;overflow-y:auto}
+.native-admin .native-stat-evidence-panel .native-stat-image{overflow:auto;max-height:60dvh;text-align:center;padding:.4rem}
+.native-admin .native-stat-evidence-panel .native-stat-image img{display:block;max-width:100%;height:auto;max-height:57dvh;object-fit:contain;margin:0 auto}
+.native-admin .native-stat-evidence-panel .native-stat-body .native-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;margin:.6rem 0}
+.native-admin .native-stat-evidence-panel .native-stat-body button{min-height:44px}
+.native-admin .native-stat-evidence-panel .native-stat-reason{display:block;width:100%;max-width:100%;box-sizing:border-box}
+@media(max-width:420px){.native-admin .native-stat-evidence-panel{width:100%;max-height:95dvh;padding:12px}.native-admin .native-stat-evidence-panel .native-row{gap:.3rem}}
