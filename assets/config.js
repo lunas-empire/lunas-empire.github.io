@@ -1,9 +1,9 @@
-﻿export const GUIDE_CONFIG = {
+export const GUIDE_CONFIG = {
   timezone: 'Europe/Berlin', serverResetHour: 4,
   serverDayAnchor: { date: '2026-09-12', day: 144 },
   seasonStart: '2026-09-21T04:00:00+02:00', server: 2261,
 };
-export const BUILD_VERSION_BASE = '2026-10-14.27';
+export const BUILD_VERSION_BASE = '2026-10-14.28';
 const productionHost='rzsn-home.github.io';
 export const BUILD_VERSION = globalThis.location?.hostname===productionHost ? BUILD_VERSION_BASE : `${BUILD_VERSION_BASE}-staging`;
 export const ALLIANCE_CONFIG = {
