@@ -5,7 +5,7 @@ import {localizeOfficerTree,officerLanguage,officerLocale} from './native-admin-
 import {buildOfficerActions} from './officer-cockpit.js';
 import {createStatEvidenceViewer} from './native-stat-evidence.js';
 import {renderEvidenceRow} from './native-evidence-row.js';
-import {renderVsOverview} from './native-vs-overview.js';
+import {renderVsOverview,derivedVsWeekTotal} from './native-vs-overview.js';
 import {diceHistory} from './dice-winners.js';
 const apiBase=ALLIANCE_CONFIG.commandCenterEmbedUrl.replace('/?embed=1','');
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
@@ -372,16 +372,21 @@ async function showPerson(target,id){
  const weekSummary=weeks.length?'<div class="native-profile-weeks">'+weeks.map((w,i)=>{
   const days=(p.days||[]).filter(d=>d.week===w.week);
   const older=weeks[i+1]||null;
-  const comparable=w.state==='final'&&older?.state==='final'&&
-   Number.isSafeInteger(w.weekly_points)&&Number.isSafeInteger(older.weekly_points);
-  const weeklyDelta=comparable?w.weekly_points-older.weekly_points:null;
-  return '<details class="native-profile-week"><summary><b>'+e(w.week)+'</b><span>'+numberText(w.weekly_points)+' Wochenpunkte</span>'+
+  const computed=derivedVsWeekTotal(days);
+  const olderComputed=older?derivedVsWeekTotal((p.days||[]).filter(d=>d.week===older.week)):null;
+  const comparable=w.state==='final'&&older?.state==='final'&&computed.complete&&olderComputed?.complete;
+  const weeklyDelta=comparable?computed.total-olderComputed.total:null;
+  const totalLabel=computed.complete?numberText(computed.total)+' Wochenpunkte':
+   (computed.partial===null?'Keine bestätigten Tageswerte':'Teilstand '+numberText(computed.partial))+
+   ' · '+computed.confirmed+'/6 bestätigt';
+  return '<details class="native-profile-week"><summary><b>'+e(w.week)+'</b><span>'+e(totalLabel)+'</span>'+
    '<small>'+e(w.state==='final'?'Finalisiert':'Vorläufig / unvollständig')+' · '+e(w.verified_goal_days??0)+'/'+e(w.verified_days??0)+' bestätigte Zieltage'+
    (w.uncertain_days?' · '+e(w.uncertain_days)+' unklar':'')+'</small>'+
    (weeklyDelta!==null?'<small class="native-week-change">'+(weeklyDelta>0?'+':'')+numberText(weeklyDelta)+' zum '+e(older.week)+'</small>':'')+'</summary>'+
-   '<div class="native-profile-timeline">'+(Number.isSafeInteger(w.weekly_points)?
-    '<div class="native-vs-weekly-proof"><span>Wochenpunkte: '+numberText(w.weekly_points)+'</span><button type="button" class="native-vs-day-link" data-native-vs-image="'+e(w.week+'|'+id+'|6')+'">'+
-    (w.weekly_proof_available?'Originalbeleg ansehen ↗':'Wochenbeleg fehlt · nachtragen')+'</button></div>':'')+days.map(day=>'<div><span>'+e(weekdays[day.weekday]||'?')+'</span><button type="button" class="native-vs-day-link" data-native-vs-image="'+e(w.week+'|'+id+'|'+day.weekday)+'" title="Privaten Screenshot öffnen"><b>'+
+   '<div class="native-profile-timeline"><div class="native-vs-weekly-proof"><span>'+
+    (computed.complete?'Wochensumme aus 6 Tageswerten: '+numberText(computed.total):
+    'Bestätigter Teilstand: '+(computed.partial===null?'—':numberText(computed.partial))+' · '+computed.confirmed+'/6')+
+    '</span></div>'+days.map(day=>'<div><span>'+e(weekdays[day.weekday]||'?')+'</span><button type="button" class="native-vs-day-link" data-native-vs-image="'+e(w.week+'|'+id+'|'+day.weekday)+'" title="Privaten Screenshot öffnen"><b>'+
     (['observed','corrected'].includes(day.quality)&&day.points!==null?numberText(day.points):'Unbekannt')+
     '</b><small>'+e(day.quality||'nicht gelesen')+' · Bild ansehen</small></button></div>').join('')+'</div></details>';
  }).join('')+'</div>':
@@ -674,7 +679,7 @@ function renderVs(target){
     '<span>'+notices.map(e).join(' · ')+'</span></div>':'')+
   layout.dayTiles+layout.groupsHtml+
   '<details class="native-fold native-vs-explainer"><summary>'+ (enUi?'How are results assessed?':'Wie werden die Werte bewertet?')+'</summary>'+
-   '<p class="native-fold-body native-muted">'+(enUi?'Only verified scores count. Missing screenshots and unclear OCR are never zero. Weekly totals are not evidence of a weekly screenshot.':'Nur bestätigte Werte zählen. Fehlende Screenshots und OCR-Unklarheiten sind nie automatisch 0. Wochenpunkte allein beweisen keinen Wochenbeleg.')+'</p></details>'+
+   '<p class="native-fold-body native-muted">'+(enUi?'Weekly totals are calculated from six confirmed daily scores. Missing or unclear values are never zero; partial sums remain marked as incomplete.':'Die Wochensumme wird aus sechs bestätigten Tageswerten berechnet. Fehlende oder unklare Tage sind nie automatisch 0; Teilstände bleiben als unvollständig gekennzeichnet.')+'</p></details>'+
   '</section>';
 
 }

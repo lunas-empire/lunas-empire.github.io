@@ -1,3 +1,29 @@
+/** VS week totals are calculated from the six independently confirmed daily values.
+ * A partial sum is never represented as a completed weekly score.
+ * Missing, inferred, duplicate and unsafe values remain unknown.
+ */
+export function derivedVsWeekTotal(days=[]){
+ const entries=new Map(), duplicates=new Set();
+ for(const day of Array.isArray(days)?days:[]){
+  const weekday=Number(day?.weekday);
+  if(!Number.isInteger(weekday)||weekday<0||weekday>5)continue;
+  if(entries.has(weekday))duplicates.add(weekday);
+  else entries.set(weekday,day);
+ }
+ let sum=0,confirmed=0;
+ for(let weekday=0;weekday<6;weekday++){
+  const day=entries.get(weekday);
+  const valid=day&&!duplicates.has(weekday)&&
+   (day.verified===true||(day.verified!==false&&['observed','corrected'].includes(day.quality)))&&
+   Number.isSafeInteger(day.points)&&day.points>=0;
+  if(valid){
+   if(!Number.isSafeInteger(sum+day.points))return {total:null,partial:null,confirmed,complete:false};
+   sum+=day.points;
+   confirmed++;
+  }
+ }
+ return {total:confirmed===6?sum:null,partial:confirmed?sum:null,confirmed,complete:confirmed===6};
+}
 /** Compact VS cockpit. Never implies an unverified weekly image or screenshot timestamp exists. */
 export function vsDataFreshness(week,formatTime){
  const stamp=week?.captured_at ? formatTime(week.captured_at) : null;
@@ -34,6 +60,11 @@ export function renderVsOverview(week,policy={},api={}){
   [' unter',' below'],
   ['alle Tagesziele erreicht','all daily targets met'],
   ['Wochenpunkte','weekly points'],
+  ['Aus sechs Tageswerten berechnet','Calculated from six daily values'],
+  ['Teilstand','Partial total'],
+  ['Tage bestätigt','days confirmed'],
+  ['Wochensumme erst mit 6 bestätigten Tagen','Weekly total only after 6 confirmed days'],
+  ['Noch kein bestätigter Tageswert','No confirmed daily values yet'],
   ['Quellzeit der Aufnahme','Original file capture time'],
   ['Screenshot-Aufnahme','Screenshot captured'],
   ['DATENSTAND','DATA STATUS'],
@@ -77,16 +108,20 @@ export function renderVsOverview(week,policy={},api={}){
   const failures=Number(p.failed||0),unknown=Number(p.unknown||0),active=p.activeDays;
   const status=failures>=3?'is-critical':failures>0?'is-warning':unknown>0?'is-unknown':'is-okay';
   const marker=failures?failures+'/6 unter Ziel':unknown?unknown+' unklar':'6/6 Ziel erreicht';
-  const weekly=Number.isSafeInteger(p.weekly_points)?
-   '<div class="native-player-weekline"><div><small>WOCHENPUNKTE</small><strong>'+n(p.weekly_points)+'</strong></div>'+
-    '<button type="button" class="native-vs-day-link" data-native-vs-image="'+e(week.week+'|'+p.id+'|6')+'">'+
-    (p.weekly_proof_available?'Originalbeleg ansehen ↗':'Wochenbeleg fehlt · ergänzen')+'</button></div>':
-   '<p class="native-muted">Keine bestätigten Wochenpunkte hinterlegt.</p>';
+  const computed=derivedVsWeekTotal(p.days);
+  const weekly='<div class="native-player-weekline"><div><small>WOCHENPUNKTE</small>'+
+   (computed.complete?
+    '<strong>'+n(computed.total)+'</strong><small>Aus sechs Tageswerten berechnet</small>':
+    '<strong>'+(computed.partial===null?'—':n(computed.partial))+'</strong><small>'+
+    (computed.partial===null?'Noch kein bestätigter Tageswert':'Teilstand')+
+    ' · '+computed.confirmed+'/6 Tage bestätigt · Wochensumme erst mit 6 bestätigten Tagen</small>')+
+   '</div></div>';
   return '<details class="native-vs-player native-vs-person-compact '+status+'"><summary>'+
    '<span class="native-vs-person-main"><strong>'+e(p.name)+'</strong>'+
    '<small>'+e(p.rank||'—')+' · '+(Number.isSafeInteger(active)?active:'?')+' aktive Tage</small></span>'+
    '<span class="native-vs-person-metrics"><b>'+e(marker)+'</b>'+
-   (unknown?'<small>'+unknown+' unbekannt</small>':'<small>'+n(p.weekly_points)+' Wochenpunkte</small>')+
+   (unknown?'<small>'+unknown+' unbekannt'+(computed.partial!==null?' · Teilstand '+n(computed.partial):'')+'</small>':
+    '<small>'+n(computed.total)+' Wochenpunkte</small>')+
    '</span></summary><div class="native-vs-person-expanded">'+
    weekly+
    '<div class="native-vs-person-daygrid">'+days.map((day,i)=>{

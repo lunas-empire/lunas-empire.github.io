@@ -45,7 +45,11 @@ test('VS priority is NOT OCR review count; VS player opens real dossier, history
    {week:'2026-W41',state:'preliminary',weekly_points:85000000,verified_days:3,verified_goal_days:2,uncertain_days:3},
    {week:'2026-W40',state:'final',weekly_points:82000000,verified_days:6,verified_goal_days:5,uncertain_days:0},
    {week:'2026-W39',state:'final',weekly_points:80000000,verified_days:6,verified_goal_days:4,uncertain_days:0}
-  ],days:[{week:'2026-W40',weekday:0,quality:'observed',points:3700000}],
+  ],days:[
+   ...Array.from({length:6},(_,weekday)=>({week:'2026-W40',weekday,quality:'observed',points:weekday===0?3700000:5300000})),
+   ...Array.from({length:6},(_,weekday)=>({week:'2026-W39',weekday,quality:'observed',points:4000000})),
+   {week:'2026-W41',weekday:0,quality:'observed',points:5000000}
+  ],
   rides:[],dice_wins:[],achievements:[]
  };
  const weeks=[{week:'2026-W41',priority:29,failedDays:50,unknownDays:10,perfect:4,
@@ -92,8 +96,11 @@ test('VS priority is NOT OCR review count; VS player opens real dossier, history
  assert.match(q('.native-profile-metrics').textContent,/500.000 seit der vorherigen Aufnahme/);
  assert.match(q('.native-profile-metrics').textContent,/Seit 2026-10-07: \+500.000/);
  assert.match(q('.native-profile-metrics').textContent,/Erst eine bestätigte Aufnahme/);
- assert.match(q('.native-profile-weeks').textContent,/2.000.000 zum 2026-W39/);
+ assert.match(q('.native-profile-weeks').textContent,/6.200.000 zum 2026-W39/);
  assert.match(q('.native-profile-weeks').textContent,/Vorläufig/);
+ assert.match(q('.native-profile-weeks').textContent,/Teilstand 5\.000\.000/);
+ assert.doesNotMatch(q('.native-profile-weeks').textContent,/Wochenbeleg fehlt|Originalbeleg ansehen/);
+ assert.equal(q('[data-native-vs-image="2026-W40|'+id+'|6"]'),null);
  assert.ok(routes.includes('/api/member/'+id));
  assert.ok(q('[data-native-vs-image="2026-W40|'+id+'|0"]'));
  q('[data-native-vs-image="2026-W40|'+id+'|0"]').click();
