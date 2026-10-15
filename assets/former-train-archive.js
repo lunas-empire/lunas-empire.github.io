@@ -8,12 +8,16 @@ const formerFingerprints=new Set([
  'c2e004b744754704dde9e6815351bc0f068df524825c118feb22939fef3eb085',
  'ea0e0580d9f2c8d6127d72fcc3639b4a178755dd5b890501435a514f78a8325b',
  '891d76e5a16b66335cfd38f8b2223f98c1af7468a780f08c972fbb2f4ef2ffab',
- '68665c3a52c9fa7a041637eef6dc21bb42fd6ac49e601e622156565716b38fcd',
- '084328c53a9de563b83b23b6f500521ff442af7cfe60f104574c2c8cce22cf2a',
  '5e67bad52ce5e34d3d5be98f82a73ac6fd26380d1c48ffbdee40fd53fa8a8bc1',
  '68c46b87f5b0c2795d3d7dce758d4c494cc281e1ebf134d2dc7e2084b34346e4',
  'b095856c5601f52020e23157bdcb24bb4ce2754b2510f426993493355a7d98dd',
  'cfe513f665b1e57b7806cd8c2c15f62cf48bc693635e110d79cca7c6f305b1c3'
+]);
+// Alliance leadership confirmed these train-source spellings refer to active players.
+ // This exclusion takes precedence even if a stale private Worker labels them former.
+const currentPlayerFingerprints=new Set([
+ '68665c3a52c9fa7a041637eef6dc21bb42fd6ac49e601e622156565716b38fcd',
+ '084328c53a9de563b83b23b6f500521ff442af7cfe60f104574c2c8cce22cf2a'
 ]);
 export const normalizeTrainIdentity=value=>String(value??'').normalize('NFKC')
  .replace(/[\u200B-\u200D\u2060\uFEFF]/gu,'').trim()
@@ -39,22 +43,33 @@ export async function formerArchiveFromTrain(train,registered=[],subtle=globalTh
  const registeredNames=new Set(members.map(m=>normalizeTrainIdentity(m.name)));
  const entries=new Map(),confirmed=new Set();
  const workerList=Array.isArray(train?.archivedFormerTrainDrivers)?train.archivedFormerTrainDrivers:[];
+ const history=Array.isArray(train?.history)?train.history:[];
+ const activeSourceKeys=new Set();
+ if(subtle){
+  const names=new Set([...workerList.map(r=>normalizeTrainIdentity(r?.name)),
+   ...history.map(r=>normalizeTrainIdentity(r?.original_name||r?.driver))]);
+  for(const key of names){
+   if(key&&currentPlayerFingerprints.has(await digestName(key,subtle)))activeSourceKeys.add(key);
+  }
+ }
+ // An old Worker response cannot override a correction from alliance leadership.
+ for(const ride of history)if(activeSourceKeys.has(normalizeTrainIdentity(ride.original_name||ride.driver)))
+  {ride.former_archive=false;if(ride.link_source==='historical_former')ride.link_source='unmatched';}
  // Worker records are authoritative after rollout, but still require valid evidence.
  for(const item of workerList){
   if(item?.source!=='historical_train'||!item.name||!Array.isArray(item.dates))continue;
   const key=normalizeTrainIdentity(item.name);
-  if(!key||registeredNames.has(key))continue;
+  if(!key||registeredNames.has(key)||activeSourceKeys.has(key))continue;
   const dates=item.dates.filter(validDate);
   if(!dates.length)continue;
   entries.set(key,{name:item.name,dates});
  }
- const history=Array.isArray(train?.history)?train.history:[];
  if(subtle){
   const names=new Map();
   for(const ride of history){
    if(ride.status!=='completed'||ride.linked!==false||ride.member_id)continue;
    const name=String(ride.original_name||ride.driver||'').trim(),key=normalizeTrainIdentity(name);
-   if(!key||registeredNames.has(key)||!validDate(ride.date))continue;
+   if(!key||registeredNames.has(key)||activeSourceKeys.has(key)||!validDate(ride.date))continue;
    if(!names.has(key))names.set(key,name);
   }
   for(const [key,name] of names)
