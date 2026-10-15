@@ -49,8 +49,10 @@ test('Uploaded OCR screenshots are visible first, with a separate missing-image 
  await openMore(root);
  q('[data-officer-tab=reviews]').click();
  await wait(()=>q('#review-image-native'));
- assert.match(root.textContent,/101 mit Screenshot/);
- assert.match(root.textContent,/27 ohne Screenshot/);
+ assert.match(q('#review-image-native').options[1].textContent,/101/);
+ assert.match(q('#review-image-native').options[2].textContent,/27/);
+ assert.equal(root.querySelector('.native-review-filter-fold').open,false,'Secondary filters do not displace the review queue');
+ assert.equal(root.querySelectorAll('.native-admin-content > p.native-muted').length,0,'Avoid redundant introductory statistics');
  let cards=[...root.querySelectorAll('.native-review-card')];
  assert.equal(cards.length,20);
  assert.ok(cards.every(card=>card.querySelector('.native-review-evidence-status').textContent==='Bild hinterlegt'));

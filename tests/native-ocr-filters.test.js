@@ -41,6 +41,11 @@ test('OCR review filters show real source groups without unverified approval',as
  await openMore(mount);
  q('[data-officer-tab=reviews]').click();
  await wait(()=>q('#review-batch-native'));
+ const secondary=q('.native-review-filter-fold');
+ assert.ok(secondary,'Advanced OCR filters are grouped under a single summary');
+ assert.equal(secondary.open,false,'Primary review cases are visible without expanding filters');
+ assert.equal(secondary.querySelectorAll('select').length,3);
+ assert.equal(q('.native-review-search-head input').id,'review-search-native');
  assert.match(q('#review-list-native').textContent,/3 von 3 offenen Prüffällen/);
  const batch=q('#review-batch-native');
  batch.value='vs/2026-W40';batch.dispatchEvent(new dom.window.Event('change',{bubbles:true}));

@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-15.43');
+@import url('./tokens.css?v=2026-10-15.44');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -1005,9 +1005,15 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 .native-review-body{padding:.6rem .75rem .8rem}
 .native-review-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.75rem;align-items:start}
 .native-review-picture,.native-review-entry{min-width:0;display:grid;align-content:start;gap:.55rem}
+.native-review-search-head{display:grid;grid-template-columns:minmax(0,1fr);gap:.35rem;margin-bottom:.5rem}
+.native-review-search-head label,.native-review-search-head input{display:block;width:100%;min-width:0}
+.native-review-filter-fold{margin:.55rem 0}
+.native-admin details.native-fold.native-review-filter-fold>summary{min-height:44px;padding:.35rem .65rem;display:flex;align-items:center}
+@media(min-width:45rem){.native-review-search-head{grid-template-columns:minmax(0,1fr) minmax(16rem,27rem);align-items:end}}
 .native-review-image{min-height:160px;display:grid;place-items:center;background:#19283a;color:#e3ebf5;border:2px solid #58728c;border-radius:4px;overflow:hidden;text-align:center;font-size:.81rem;padding:.5rem}
 .native-review-image button[data-native-review-expand]{display:block;width:100%;min-height:44px;padding:0;border:0;border-radius:2px;background:transparent;color:inherit;cursor:zoom-in}
 .native-review-image button[data-native-review-expand]:focus-visible{outline:3px solid var(--color-focus);outline-offset:-3px}
+.native-admin .native-review-card[data-evidence="without"] .native-review-image{min-height:54px;padding:.45rem .65rem}
 .native-review-image img{display:block;width:100%;height:auto;max-height:640px;object-fit:contain;cursor:zoom-in}
 .native-review-picture>label,.native-review-entry>label{display:grid;gap:.35rem;font-size:.81rem;font-weight:760}
 .native-review-picture input[type=file]{display:block;width:100%;max-width:100%;font-size:.8rem}

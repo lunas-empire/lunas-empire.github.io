@@ -48,7 +48,9 @@ test('Protected review workflow requires a screenshot, searchable member and exp
   if(path==='/api/identity-options')return Response.json([{id,name:'Synthetic Officer',rank:'R4'},{id:'bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb',name:'Another Player',rank:'R2'}]);
   if(path.endsWith('/evidence'))return new Response(new Uint8Array([137,80,78,71,13,10,26,10]),{headers:{'Content-Type':'image/png'}});
   if(path.endsWith('/resolve')){
-   posts.push(JSON.parse(opts.body));return Response.json({ok:true,status:'approved'});
+   posts.push(JSON.parse(opts.body));
+   if(posts.length===2)return Response.json({error:'synthetic conflict'},{status:409});
+   return Response.json({ok:true,status:'approved'});
   }
   throw Error('Unexpected '+path);
  };
@@ -64,6 +66,7 @@ test('Protected review workflow requires a screenshot, searchable member and exp
  await wait(()=>q('[data-review-id=case-with-image]'));
  assert.equal(q('#review-search-native').labels[0].textContent,'Spieler oder Fall suchen');
  const missing=q('[data-review-id=case-no-image]');
+ assert.equal(missing.dataset.evidence,'without','Missing-image reviews use compact evidence placeholder');
  assert.equal(missing.querySelector('[data-native-review-resolve=approve]').disabled,true);
  assert.ok(missing.querySelector('[data-native-review-file]'),'Evidence upload control is required');
  const attached=q('[data-review-id=case-with-image]');
@@ -91,5 +94,15 @@ test('Protected review workflow requires a screenshot, searchable member and exp
  assert.ok(!('corrected_value' in posts[0]));
  await wait(()=>!q('[data-review-id=case-with-image]'));
  assert.match(q('#native-review-finished').textContent,/erledigt/);
- assert.ok(q('[data-review-id=case-no-image]'),'Unresolved review must remain');
+ const next=q('[data-review-id=case-no-image]');
+ assert.ok(next,'Unresolved review must remain');
+ assert.equal(next.open,true,'Next open review is expanded immediately after a confirmed save');
+ assert.equal(dom.window.document.activeElement,next.querySelector('summary'),'Keyboard focus moves to next review');
+ assert.equal(next.querySelector('[data-native-review-resolve=approve]').disabled,true);
+ next.querySelector('[data-native-review-resolve=dismiss]').click();
+ await wait(()=>posts.length===2);
+ await wait(()=>next.querySelector('.native-review-message')?.textContent.includes('synthetic conflict'));
+ assert.equal(next.querySelector('[data-native-review-resolve=approve]').disabled,true,'Conflicted save does not enable approval without a screenshot');
+ assert.equal(next.querySelector('[data-native-review-resolve=dismiss]').disabled,false,'Retry remains possible after request error');
+ assert.equal(next.querySelector('[data-native-review-upload]').disabled,false,'An unrelated upload button keeps its original state');
 });

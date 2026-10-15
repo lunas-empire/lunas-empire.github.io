@@ -242,12 +242,11 @@ async function view(mount){
    const batches=[...new Set(cache.reviews.map(x=>x.source_batch).filter(Boolean))].sort();
    const withEvidence=cache.reviews.filter(x=>Boolean(x.evidence_sha)).length;
    const withoutEvidence=cache.reviews.length-withEvidence;
-   target.innerHTML='<div class="native-row"><h2>OCR-Prüfung</h2><label>Spieler oder Fall suchen<input id="review-search-native" type="search" placeholder="Spieler oder Fall suchen"></label></div>'+
-    '<p class="native-muted"><strong>'+withEvidence+' mit Screenshot</strong> · '+withoutEvidence+' ohne Screenshot. Die Belegfälle stehen zuerst. Bilder werden erst beim Öffnen privat geladen; keine automatische Freigabe.</p>'+
+   target.innerHTML='<div class="native-review-search-head"><h2>OCR-Prüfung</h2><label>Spieler oder Fall suchen<input id="review-search-native" type="search" placeholder="Spieler oder Fall suchen"></label></div>'+
     (!cache.reviewWritesEnabled?'<p class="native-evidence-note" role="status">Private Bild- und Korrekturfunktionen werden erst nach dem Cloudflare-Backend-Update freigeschaltet. Die bestehenden Prüffälle bleiben offen.</p>':'')+
-    '<div class="native-row"><label>Bildstatus <select id="review-image-native"><option value="all">Alle Fälle ('+cache.reviews.length+')</option><option value="with">Mit Bild ('+withEvidence+')</option><option value="without">Ohne Bild ('+withoutEvidence+')</option></select></label>'+
+    '<details class="native-fold native-review-filter-fold"><summary>Filter</summary><div class="native-fold-body native-row"><label>Bildstatus <select id="review-image-native"><option value="all">Alle Fälle ('+cache.reviews.length+')</option><option value="with">Mit Bild ('+withEvidence+')</option><option value="without">Ohne Bild ('+withoutEvidence+')</option></select></label>'+
      '<label>Quelle <select id="review-batch-native"><option value="">Alle Wochen und Profile</option>'+batches.map(b=>'<option value="'+e(b)+'">'+e(b)+'</option>').join('')+'</select></label>'+
-    '<label>Prüftyp <select id="review-kind-native"><option value="">Alle</option><option value="vs_day">VS-Tageswert</option><option value="identity">Identität</option><option value="profile">Profilwert</option></select></label></div>'+
+    '<label>Prüftyp <select id="review-kind-native"><option value="">Alle</option><option value="vs_day">VS-Tageswert</option><option value="identity">Identität</option><option value="profile">Profilwert</option></select></label></div></details>'+
     '<p id="native-review-finished" role="status" aria-live="polite"></p><div id="review-list-native"></div>';renderReviews(target,'');
   }else if(panel==='members'){
    const list=await request('/api/members');
@@ -1302,7 +1301,7 @@ function renderReviews(target,term=''){
  const card=x=>{
   const identity=x.kind==='identity',numeric=x.kind==='profile'||x.kind==='vs_day';
   const linked=Boolean(x.evidence_sha);
-  return '<details class="native-review-card" data-review-id="'+e(x.id)+'" data-review-kind="'+e(x.kind||'')+'">'+
+  return '<details class="native-review-card" data-evidence="'+(linked?'with':'without')+'" data-review-id="'+e(x.id)+'" data-review-kind="'+e(x.kind||'')+'">'+
    '<summary><span class="native-review-summary"><strong>'+e(x.source_name||'Unbekannt')+'</strong>'+
     '<small>'+e(names[x.category]||x.category)+' · '+e(x.metric||'')+
     (x.context?.date?' · '+e(x.context.date):'')+'</small></span>'+
@@ -1404,6 +1403,7 @@ async function attachProfileCapture(card){
   const result=await response.json();
   if(!response.ok||result.sha256!==selection.sha256)throw Error(result.error||'Abweichender Hash beim Verknüpfen');
   record.evidence_sha=result.sha256;
+  card.dataset.evidence='with';
   card.querySelector('.native-review-evidence-status').textContent='Bild hinterlegt';
   const panel=card.querySelector('.native-review-picture');
   panel.querySelector('[data-native-review-file]')?.closest('label')?.remove();
@@ -1463,6 +1463,7 @@ async function attachReviewScreenshot(card){
   if(!res.ok)throw Error(body.error||'Upload fehlgeschlagen');
   const record=(cache.reviews||[]).find(x=>x.id===id);
   if(record)record.evidence_sha=body.sha256;
+  card.dataset.evidence='with';
   card.querySelector('.native-review-evidence-status').textContent='Bild hinterlegt';
   const panel=card.querySelector('.native-review-picture');
   panel.querySelector('label')?.remove();upload.remove();
@@ -1493,7 +1494,9 @@ async function completeReview(card,action){
   }else{message.textContent='Dieser Falltyp kann nicht direkt freigegeben werden.';return}
  }
  if(!window.confirm(action==='approve'?'Wert nach Bildprüfung verbindlich speichern?':'Prüfauftrag mit Begründung schließen?'))return;
- card.querySelectorAll('button').forEach(button=>button.disabled=true);
+ const buttons=[...card.querySelectorAll('button')];
+ const disabledBefore=buttons.map(button=>button.disabled);
+ buttons.forEach(button=>button.disabled=true);
  message.textContent='Wird gespeichert und protokolliert …';
  try{
   await request('/api/reviews/'+encodeURIComponent(item.id)+'/resolve',{method:'POST',body});
@@ -1502,11 +1505,17 @@ async function completeReview(card,action){
   renderReviews(target,target.querySelector('#review-search-native')?.value||'');
   const status=target.querySelector('#native-review-finished');
   if(status)status.textContent='Prüfauftrag erledigt und aus der offenen Liste entfernt.';
+  const next=target.querySelector('.native-review-card');
+  if(next){
+   next.open=true;
+   next.querySelector('summary')?.focus();
+  }else if(status){
+   status.tabIndex=-1;
+   status.focus();
+  }
  }catch(error){
   message.textContent='Nicht gespeichert: '+error.message;
-  card.querySelectorAll('button').forEach(button=>button.disabled=false);
-  if(action==='approve'&&(!item.evidence_sha||item.context?.warning))
-   card.querySelector('[data-native-review-resolve="approve"]').disabled=true;
+  buttons.forEach((button,index)=>{button.disabled=disabledBefore[index]});
  }
 }
 
