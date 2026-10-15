@@ -94,10 +94,10 @@ function moreHub(){
    '</div></section>').join('')+'</div>';
 }
 function cards(items){return '<div class="native-cards">'+items.map(([name,value,sub])=>'<article><small>'+e(name)+'</small><strong>'+e(value)+'</strong><span>'+e(sub||'')+'</span></article>').join('')+'</div>'}
-function reportPanel(message){
+function reportPanel(message,title='English report / alliance mail',extraClass=''){
  const mail=safeMailText(message);
  if(!mail)return '<p class="native-evidence-note">Report is unavailable or exceeds the 500-character limit.</p>';
- return '<details class="native-fold native-report-panel"><summary>English report / alliance mail</summary>'+
+ return '<details class="native-fold native-report-panel'+(extraClass?' '+e(extraClass):'')+'"><summary>'+e(title)+'</summary>'+
   '<div class="native-fold-body"><textarea rows="5" maxlength="500" aria-label="Edit English alliance mail">'+e(mail)+'</textarea>'+
   '<div class="native-row"><small class="native-report-counter">'+mail.length+'/'+ALLIANCE_MAIL_LIMIT+' characters</small>'+
   '<button type="button" data-native-copy-report>Copy report</button></div>'+
@@ -165,7 +165,7 @@ async function view(mount){
       '<p>'+e(dateText)+'</p></div>'+
      '<div class="native-dashboard-microstats">'+
       '<span>'+word('Aktiv','Active')+' <b>'+e(summary.active??'—')+'</b></span>'+
-      (pending.length?'<span>'+word('Aufgaben','Tasks')+' <b>'+e(pending.length)+'</b></span>':'')+
+
      '</div></header>'+
     '<section class="native-command-today" aria-label="'+word('Heute wichtig','Today priorities')+'">'+
      '<div class="native-command-section-label"><strong>'+word('Heute wichtig','Today at a glance')+'</strong>'+
@@ -195,15 +195,13 @@ async function view(mount){
      '<div class="native-command-task-list">'+pending.slice(0,2).map(t=>'<p><b>'+e(t.title)+'</b>'+
       '<span>'+e(t.due_date||word('Ohne Frist','No due date'))+'</span></p>').join('')+'</div></section>':'')+
     '<nav class="native-dashboard-quick" aria-label="'+word('Schnellzugriff','Quick access')+'">'+
-      actionPill('tasks-open',word('Aufgaben','Tasks'),pending.length)+
+      actionPill('tasks-open',word('Aufgaben','Tasks'))+
       actionPill('member-find',word('Spieler','Members'))+
       actionPill('review-open',word('OCR prüfen','Review OCR'),summary.reviews??'—')+
       actionPill('train-today',word('Zugplanung','Train plan'))+
     '</nav>'+
-    '<details class="native-fold native-command-daily-report"><summary>'+
-      word('Tagesbericht für den Allianzchat','Daily alliance chat draft')+'</summary>'+
-      reportPanel(dailyOfficerBrief({date:day,overview:summary,operations:ops,trains}))+
-    '</details>'+
+    reportPanel(dailyOfficerBrief({date:day,overview:summary,operations:ops,trains}),word('Tagesbericht für den Allianzchat','Daily alliance chat draft'),'native-command-daily-report')+
+
     '</div>';
 
   }else if(panel==='requirements'){

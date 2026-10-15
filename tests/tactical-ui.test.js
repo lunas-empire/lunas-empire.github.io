@@ -53,7 +53,7 @@ test('Last War skin uses framed event panels and orange active tabs without chan
   const overview=await readFile(new URL('../assets/overview.css',import.meta.url),'utf8');
   for(const token of ['--color-game-bar','--color-game-rim','--color-game-orange'])assert.ok(hub.includes(token),token);
   for(const selector of ['.main-nav a[aria-current=','.guide-category-choice','.guide-disclosure>summary','.primary-link','.practical-table th'])assert.ok(hub.includes(selector),selector);
-  for(const selector of ['.command-hud__heading','.task-group>summary','.task-row[data-done=','.chapter-rail__week--current'])assert.ok(overview.includes(selector),selector);
+  for(const selector of ['.command-hud__cells','.task-group>summary','.task-row[data-done=','.chapter-rail__week--current'])assert.ok(overview.includes(selector),selector);
   assert.match(hub,/@media\(prefers-reduced-motion:reduce\)/);
 });
 

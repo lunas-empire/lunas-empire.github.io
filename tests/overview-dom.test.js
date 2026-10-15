@@ -50,7 +50,10 @@ test('member workflow: legacy checks, shared tasks, availability, guides, langua
     assert.equal(Number(q('[data-hud-vs-target]').dataset.hudVsTarget),ALLIANCE_CONFIG.vsDailyMinimum);
     assert.equal(Number(q('[data-server-time]').dataset.serverMinute),state.serverMinute);
     assert.equal(q('[data-server-time]').textContent,'17:30 ST');
-    assert.equal(q('[data-hud-task-count]').textContent,q('[data-task-progress] [data-progress-label]').textContent.match(/\d+\s*\/\s*\d+/)?.[0]);
+    assert.equal(q('[data-task-progress]'),null,'Today displays checklist progress once in the compact HUD');
+    assert.match(q('[data-hud-task-count]').textContent,/^\d+ \/ \d+$/);
+    assert.equal(q('.command-hud__heading'),null,'duplicate command-center heading removed');
+    assert.ok(q('.command-hud[aria-label]'),'HUD keeps an accessible localized label');
     assert.ok(q('[data-task-row] .mission-icon'));
     await nav('#daily');
     assert.equal(q('h1').textContent,'Aufgaben');

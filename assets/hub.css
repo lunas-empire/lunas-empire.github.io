@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-15.40');
+@import url('./tokens.css?v=2026-10-15.41');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -1645,7 +1645,7 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 .native-admin .native-dashboard-mini-tile.donations{border-top-color:#cba054}
 .native-admin .native-dashboard-mini-tile>span:first-child{font-size:.75rem;font-weight:750}
 .native-admin .native-dashboard-mini-tile>strong{font-size:1.45rem;line-height:1.05;font-variant-numeric:tabular-nums}
-.native-admin .native-dashboard-mini-tile>small{font-size:.67rem;color:var(--color-muted);line-height:1.3}
+.native-admin .native-dashboard-mini-tile>small{font-size:.67rem;color:var(--color-muted);line-height:1.3;white-space:normal;overflow-wrap:anywhere}
 .native-admin .native-dashboard-tile-chevron{position:absolute;right:.5rem;top:40%;font-size:1.2rem;color:var(--color-action)}
 .native-admin .native-command-tasks{padding:.65rem .75rem;border:1px solid var(--color-rule);border-radius:7px;background:var(--color-panel)}
 .native-admin .native-command-task-list{display:grid;gap:.2rem;margin-top:.25rem}
@@ -1712,6 +1712,10 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
  .native-admin .native-vs-kpi{padding:.42rem .36rem}
  .native-admin .native-vs-kpi span{font-size:.64rem}
  .native-admin .native-day-mini-count small{white-space:normal}
+ .native-admin .native-dashboard-mini-tile{white-space:normal}
+ .native-admin .native-command-alerts button{white-space:normal}
+ .native-admin .native-command-alerts button>small{white-space:normal;overflow-wrap:anywhere}
+ .native-admin .native-command-next-row b{min-width:0;white-space:normal;overflow-wrap:anywhere}
 }
 @media(prefers-reduced-motion:reduce){.native-admin .native-vs-tool,.native-admin .native-dashboard-quick-link{transition:none}}
 
@@ -1723,4 +1727,13 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
  .native-admin .native-admin-subnav{padding:.12rem 0 .48rem}
  .native-admin .native-admin-subnav button{min-height:38px;font-size:.72rem;padding:.32rem .6rem}
  .native-admin .native-admin-content{min-height:8rem}
+}
+
+/* 320px officer navigation: full labels wrap rather than being cropped by a single-word min-content width. */
+@media(max-width:359px){
+ .native-admin .native-admin-nav{grid-template-columns:1.2fr 1.2fr .95fr 1fr .7fr}
+ .native-admin .native-admin-nav .native-primary-tab{font-size:.59rem;min-width:0}
+ .native-admin .native-admin-nav .native-primary-tab span{display:block;min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere;font-size:inherit;letter-spacing:-.025em;line-height:1.15}
+ .native-admin .native-command-next-row{align-items:flex-start}
+ .native-admin .native-command-next-row span{white-space:normal}
 }
