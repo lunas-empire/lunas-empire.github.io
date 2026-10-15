@@ -6,9 +6,7 @@ import {buildOfficerActions} from './officer-cockpit.js';
 import {createStatEvidenceViewer} from './native-stat-evidence.js';
 import {renderEvidenceRow} from './native-evidence-row.js';
 import {renderVsOverview} from './native-vs-overview.js';
-import {dailyOfficerBrief,vsWeeklyMail,donationsWeeklyMail,safeMailText,ALLIANCE_MAIL_LIMIT} from './officer-reports.js';
 import {diceHistory} from './dice-winners.js';
-import {vsSupportChatReport} from './vs-support-report.js';
 const apiBase=ALLIANCE_CONFIG.commandCenterEmbedUrl.replace('/?embed=1','');
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
 let sessionToken='',officer=null,panel='overview',cache={},pageLimit=20,historyLimit=20,activityLimit=30,registryFilter='all',activityCategory='all',activityGroupBy='type';
@@ -94,25 +92,6 @@ function moreHub(){
    '</div></section>').join('')+'</div>';
 }
 function cards(items){return '<div class="native-cards">'+items.map(([name,value,sub])=>'<article><small>'+e(name)+'</small><strong>'+e(value)+'</strong><span>'+e(sub||'')+'</span></article>').join('')+'</div>'}
-function reportPanel(message,title='English report / alliance mail',extraClass=''){
- const mail=safeMailText(message);
- if(!mail)return '<p class="native-evidence-note">Report is unavailable or exceeds the 500-character limit.</p>';
- return '<details class="native-fold native-report-panel'+(extraClass?' '+e(extraClass):'')+'"><summary>'+e(title)+'</summary>'+
-  '<div class="native-fold-body"><textarea rows="5" maxlength="500" aria-label="Edit English alliance mail">'+e(mail)+'</textarea>'+
-  '<div class="native-row"><small class="native-report-counter">'+mail.length+'/'+ALLIANCE_MAIL_LIMIT+' characters</small>'+
-  '<button type="button" data-native-copy-report>Copy report</button></div>'+
-  '<p role="status" class="native-report-copy-status"></p></div></details>';
-}
-function chatReportPanel(week,allWeeks){
- const report=vsSupportChatReport(week,allWeeks);
- return '<details class="native-fold native-report-panel native-chat-report-panel">'+
- '<summary>VS support report · Chat (editable)</summary><div class="native-fold-body">'+
- '<p class="native-muted">For alliance chat or officer coordination. Review and edit before sending; no automatic DMs.</p>'+
- '<textarea rows="13" maxlength="15000" aria-label="Edit English VS chat report">'+e(report)+'</textarea>'+
- '<div class="native-row"><small class="native-report-counter">'+report.length+'/15000 characters</small>'+
- '<button type="button" data-native-copy-report>Copy chat report</button></div>'+
- '<p role="status" class="native-report-copy-status"></p></div></details>';
-}
 function marker(status){return '<span class="native-status">'+e(status||'Unbekannt')+'</span>'}
 async function view(mount){
  clearReviewImages();
@@ -200,7 +179,6 @@ async function view(mount){
       actionPill('review-open',word('OCR prüfen','Review OCR'),summary.reviews??'—')+
       actionPill('train-today',word('Zugplanung','Train plan'))+
     '</nav>'+
-    reportPanel(dailyOfficerBrief({date:day,overview:summary,operations:ops,trains}),word('Tagesbericht für den Allianzchat','Daily alliance chat draft'),'native-command-daily-report')+
 
     '</div>';
 
@@ -657,7 +635,6 @@ function renderDonations(target,query=''){
    'Bisher liegt nur eine verlässliche Wochenaufnahme vor – kein erfundener Vorwochenvergleich.')+'</p>'+
   '<label class="native-ios-search">Spieler suchen<input id="native-donation-search" type="search" value="'+e(query)+'" placeholder="Mitglied oder Name" autocomplete="off"></label>'+
   '<div class="native-donation-groups">'+groups.map(section).join('')+'</div>'+
-  reportPanel(donationsWeeklyMail(week,minimum))+
   '<details class="native-fold"><summary>So werden die Spenden bewertet</summary><div class="native-fold-body">'+
    '<p>Mindestens 20.000 Spenden pro Spieler und Woche. Nur nachweislich erfasste Werte aus „Wöchentliche Spenden“ zählen. Fehlende Werte bleiben unbekannt, ein späterer Messzeitpunkt wird nicht erfunden.</p>'+
    '<p>Die Aufnahme stellt einen Zeitpunkt innerhalb der angegebenen Woche dar; eine noch nicht abgeschlossene Woche ist keine endgültige Leistungsbewertung.</p></div></details></section>';
@@ -688,8 +665,6 @@ function renderVs(target){
    '<div class="native-vs-tools">'+
     '<button type="button" class="native-vs-tool" data-native-action="review-open">'+
     'OCR '+e(reviewCount??'—')+'</button>'+
-    '<button type="button" class="native-vs-tool" data-native-jump-report="chat">'+(enUi?'Chat report':'Chat-Bericht')+'</button>'+
-    '<button type="button" class="native-vs-tool" data-native-jump-report="mail">'+(enUi?'Ingame mail':'Ingame-Mail')+'</button>'+
    '</div></div>'+
   '<div class="native-vs-kpis" aria-label="'+(enUi?'Weekly metrics':'Wochenkennzahlen')+'">'+
     kpi(enUi?'Days below goal':'Tage unter Ziel',week.failedDays??'—','low')+
@@ -699,8 +674,6 @@ function renderVs(target){
   (notices.length?'<div class="native-vs-single-insight"><b>'+ (enUi?'Note':'Hinweis')+'</b>'+
     '<span>'+notices.map(e).join(' · ')+'</span></div>':'')+
   layout.dayTiles+layout.groupsHtml+
-  '<div class="native-vs-reports">'+reportPanel(vsWeeklyMail(week,policy))+
-    chatReportPanel(week,cache.vs.weeks)+'</div>'+
   '<details class="native-fold native-vs-explainer"><summary>'+ (enUi?'How are results assessed?':'Wie werden die Werte bewertet?')+'</summary>'+
    '<p class="native-fold-body native-muted">'+(enUi?'Only verified scores count. Missing screenshots and unclear OCR are never zero. Weekly totals are not evidence of a weekly screenshot.':'Nur bestätigte Werte zählen. Fehlende Screenshots und OCR-Unklarheiten sind nie automatisch 0. Wochenpunkte allein beweisen keinen Wochenbeleg.')+'</p></details>'+
   '</section>';
@@ -1576,27 +1549,8 @@ export function initNativeAdmin(mount){
    if(url.startsWith('blob:'))window.open(url,'_blank','noopener,noreferrer');
    return;
   }
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-dice-delete],[data-native-train-choice],[data-native-access-mode],[data-native-access-copy],[data-native-access-signout],[data-native-member-create],[data-native-registry-quick],[data-native-access-link],[data-native-access-disable],[data-audit-category],[data-native-vs-image],[data-native-vs-image-close],[data-native-requirements-reload],[data-native-copy-report]');
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-dice-delete],[data-native-train-choice],[data-native-access-mode],[data-native-access-copy],[data-native-access-signout],[data-native-member-create],[data-native-registry-quick],[data-native-access-link],[data-native-access-disable],[data-audit-category],[data-native-vs-image],[data-native-vs-image-close],[data-native-requirements-reload]');
   if(!button)return;
-  if(button.hasAttribute('data-native-copy-report')){
-   const area=button.closest('.native-report-panel');
-   const field=area?.querySelector('textarea');
-   const note=area?.querySelector('.native-report-copy-status');
-   if(!field||!note)return;
-   const limit=area?.classList.contains('native-chat-report-panel')?15000:ALLIANCE_MAIL_LIMIT;
-   if(!field.value.trim()||field.value.length>limit){
-    note.textContent='Please keep your report within '+limit+' characters.';return;
-   }
-   try {
-    if(!window.navigator.clipboard?.writeText)throw Error('Clipboard unavailable');
-    await window.navigator.clipboard.writeText(field.value);
-    note.textContent='Copied. Review before sending in game.';
-   } catch(error) {
-    field.focus();field.select();
-    note.textContent='Select and copy the text manually.';
-   }
-   return;
-  }
   if(button.hasAttribute('data-officer-logout')){
    try{await request('/api/native-logout',{method:'POST',body:{}})}catch{}clearOfficer();await renderNativeAdmin(mount);return;
   }
@@ -1653,12 +1607,6 @@ export function initNativeAdmin(mount){
   if(button.hasAttribute('data-native-vs-image-close')){
    const modal=target.querySelector('#native-vs-evidence-viewer');modal?.remove();
    for(const [key,url] of reviewBlobUrls)if(key.startsWith('vs:')){URL.revokeObjectURL(url);reviewBlobUrls.delete(key)}
-   return;
-  }
-  if(button.dataset.nativeJumpReport){
-   const selector=button.dataset.nativeJumpReport==='chat'?'.native-chat-report-panel':'.native-vs-reports .native-report-panel:not(.native-chat-report-panel)';
-   const section=target.querySelector(selector);
-   if(section){section.open=true;section.scrollIntoView?.({behavior:'smooth',block:'start'});section.querySelector('textarea')?.focus()}
    return;
   }
   if(button.dataset.nativeVsImage){await openVsScreenshot(target,button.dataset.nativeVsImage);return}
@@ -1847,13 +1795,6 @@ export function initNativeAdmin(mount){
   if(button.dataset.nativeNew||button.dataset.nativeEdit){editRecord(target,panel,button.dataset.nativeEdit||'');return}
  });
  mount.addEventListener('input',event=>{
-  if(event.target.matches('.native-report-panel textarea')){
-   const panel=event.target.closest('.native-report-panel');
-   const counter=panel?.querySelector('.native-report-counter');
-   if(counter)counter.textContent=event.target.value.length+'/'+(panel?.classList.contains('native-chat-report-panel')?15000:500)+' characters';
-   const status=panel?.querySelector('.native-report-copy-status');
-   if(status)status.textContent='';
-  }
   if(event.target.id==='native-member-search'){pageLimit=20;renderMembers(mount.querySelector('#native-admin-content'),event.target.value)}
   if(event.target.id==='registry-search'){pageLimit=20;renderRegistry(mount.querySelector('#native-admin-content'),event.target.value)}
   if(event.target.id==='native-diplomacy-search')renderDiplomacy(mount.querySelector('#native-admin-content'),event.target.value);

@@ -31,6 +31,9 @@ test('Every real iPhone screenshot regression string is localized into coherent 
 });
 test('Template localization preserves dates, player names, measurements and unknown private content',()=>{
  assert.equal(translateOfficerText('Vorschlag: ♛かぐや姫 · R4','en'),'Suggested driver: ♛かぐや姫 · R4');
+ assert.equal(translateOfficerText('Vorschlag: Zugfahrer · R2','en'),'Suggested driver: Zugfahrer · R2');
+ assert.ok(translateOfficerText('Vorschlag: Spielerakte prüfen · R2','fr').endsWith('Spielerakte prüfen · R2'));
+ assert.equal(translateOfficerText('Luna Spieler','en'),'Luna Spieler');
  assert.equal(translateOfficerText('GeheimerName Spieler irgendwas','en'),'GeheimerName Spieler irgendwas');
  assert.equal(translateOfficerText('18.200.000','en'),'18.200.000');
  assert.equal(translateOfficerText('No driver registered yet','en'),'No driver registered yet');

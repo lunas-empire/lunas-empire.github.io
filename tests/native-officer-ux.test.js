@@ -51,8 +51,8 @@ test('Four destinations drive real cockpit, train and player dossier workflows',
  assert.equal(mount.querySelectorAll('.native-mission').length,0,'oversized action cards removed');
  assert.equal(mount.querySelectorAll('.native-dashboard-mini-tile').length,2,'VS and donation summaries compact');
  assert.ok(q('.native-command-today'),'one important-today panel remains');
- assert.ok(q('.native-command-daily-report'),'Daily report is directly reachable');
- assert.equal(q('.native-command-daily-report details'),null,'Daily report must not nest two disclosure layers');
+ assert.equal(q('.native-command-daily-report'),null,'unapproved daily message draft removed');
+ assert.equal(q('.native-report-panel'),null,'no chat or mail draft is displayed');
  assert.equal(q('.native-dashboard-microstats').textContent.includes('Aufgaben'),false,'task count is not repeated in the microstat header');
 
  q('[data-officer-tab=more]').click();
