@@ -50,16 +50,20 @@ test('Former section in member archive shows source-only records and never modif
  await until(()=>q('[data-officer-tab=more]'));q('[data-officer-tab=more]').click();
  await until(()=>q('[data-officer-tab=registry]'));q('[data-officer-tab=registry]').click();
  await until(()=>q('#registry-list'));
- assert.equal(q('.native-historical-member')?.textContent.includes('Retired One'),true);
- assert.equal(q('.native-historical-member')?.textContent.includes('Registered Former'),false,'Existing archive row is not duplicated');
- assert.equal(q('.native-historical-member')?.textContent.includes('Active Player'),false,'Active user is not fabricated as former');
+ assert.equal(q('.native-registry-archive-row')?.textContent.includes('Retired One'),true);
+ assert.equal(q('.native-registry-archive-row')?.textContent.includes('Registered Former'),false,'Existing archive row is not duplicated');
+ assert.equal(q('.native-registry-archive-row')?.textContent.includes('Active Player'),false,'Active user is not fabricated as former');
  assert.equal(q('[data-registry-edit]')!==null,true,'Real member registry still editable');
  q('[data-native-registry-filter=former]').click();
  await until(()=>q('[data-native-registry-filter=former]').getAttribute('aria-pressed')==='true');
- assert.equal(mount.querySelectorAll('.native-historical-member').length,1);
+ assert.equal(mount.querySelectorAll('.native-registry-archive-row').length,1);
+ assert.equal(q('#registry-list').querySelectorAll('.native-list').length,1,'All former members must share one list');
+ assert.equal(q('#registry-list').querySelector('section.native-historical-archive'),null,'No separate train subsection');
+ assert.match(q('.native-registry-archive-row').textContent,/Zugfahrt/);
+ assert.deepEqual([...q('#registry-list .native-list').children].map(x=>x.querySelector('strong').textContent.split(' ·')[0]),['Registered Former','Retired One'],'Former profile and train rider must be alphabetically mixed in one list');
  assert.match(q('#registry-list').textContent,/Retired One/);
  q('[data-native-registry-filter=active]').click();
- assert.equal(mount.querySelectorAll('.native-historical-member').length,0);
+ assert.equal(mount.querySelectorAll('.native-registry-archive-row').length,0);
  assert.equal(updates,0,'No synthetic member or registry mutation is sent');
 });
 test('Four archival labels are localized in all fifteen officer languages',()=>{

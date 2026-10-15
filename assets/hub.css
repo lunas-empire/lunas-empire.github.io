@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-15.48');
+@import url('./tokens.css?v=2026-10-15.49');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -1762,3 +1762,10 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 .native-admin .native-member-archive-record>small{font-size:.76rem;line-height:1.45;color:var(--color-muted)}
 .native-admin .native-member-archive-record .native-historical-dates{display:flex;flex-wrap:wrap;gap:.4rem}
 .native-admin .native-member-archive-record time{font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--color-rule);border-radius:4px;font-variant-numeric:tabular-nums}
+
+/* v49: former player records and train-only entries share the SAME list styling. */
+.native-admin .native-rank-members>.native-archive-row{display:flex;align-items:center;gap:.65rem;min-height:56px;text-align:start;padding:.5rem .7rem;min-width:0;border:1px solid var(--color-rule);background:var(--color-raised);border-radius:4px}
+.native-admin .native-rank-members>.native-archive-row>span:nth-child(2){display:grid;gap:.12rem;min-width:0;flex:1}
+.native-admin .native-list>.native-registry-archive-row{display:grid;gap:.15rem;min-height:52px;align-content:center;padding:.55rem .75rem;margin:0;border:1px solid var(--color-rule);background:var(--color-raised);border-radius:4px}
+.native-admin .native-registry-archive-row>strong{overflow-wrap:anywhere}
+.native-admin .native-registry-archive-row>small{overflow-wrap:anywhere;font-size:.75rem;color:var(--color-muted);line-height:1.4}

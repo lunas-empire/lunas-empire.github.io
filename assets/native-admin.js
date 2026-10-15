@@ -335,22 +335,22 @@ function renderMembers(target,query=''){
    '<span class="native-rank-count">'+group.length+' Spieler</span></summary>'+
    '<div class="native-list native-rank-members">'+rows+'</div></details>';
  }).join('');
- const realFormerRows=realFormer.map(m=>'<button type="button" data-native-member="'+e(m.id)+'">'+
-  '<span class="native-rank-tag">Archiv</span><span><strong>'+e(m.name)+'</strong>'+
-  '<small>'+tr('Bestehende Spielerakte')+' · '+e(m.rank||tr('Rang unbekannt'))+'</small></span>'+
-  '<span class="native-member-open" aria-hidden="true">Profil →</span></button>').join('');
- const historicalRows=historical.map(item=>
-  '<div class="native-historical-member native-member-archive-record"><strong>'+e(item.name)+'</strong>'+
-  '<small>'+tr('Ehemalig')+' · '+e(item.ride_count)+' '+tr(item.ride_count===1?'Zugfahrt':'Zugfahrten')+
-  ' · '+tr('Historischer Zugbeleg, noch keine Spielerakte')+'</small>'+
-  '<div class="native-historical-dates">'+item.dates.map(date=>
-   '<time datetime="'+e(date)+'">'+e(date)+'</time>').join('')+'</div></div>').join('');
- const archiveCount=realFormer.length+historical.length;
+ const archiveEntries=mergeFormerMemberRows(realFormer,historical);
+ const archiveRows=archiveEntries.map(entry=>entry.kind==='member'?(
+  '<button type="button" data-native-member="'+e(entry.value.id)+'">'+
+   '<span class="native-rank-tag">A</span><span><strong>'+e(entry.value.name)+'</strong>'+
+   '<small>'+tr('Bestehende Spielerakte')+' · '+e(entry.value.rank||tr('Rang unbekannt'))+'</small></span>'+
+   '<span class="native-member-open" aria-hidden="true">Profil →</span></button>'
+ ):'<div class="native-member-archive-record native-archive-row">'+
+  '<span class="native-rank-tag" aria-hidden="true">A</span><span><strong>'+e(entry.value.name)+'</strong>'+
+  '<small>'+tr('Zugfahrt')+' · '+entry.value.ride_count+'×'+
+  (entry.value.dates.length?' · '+e(entry.value.dates.join(', ')):'')+'</small></span></div>').join('');
+ const archiveCount=archiveEntries.length;
  const archiveOpen=text.length>0||opened.has('Archiv')||(!active.length&&archiveCount>0);
  const archive=archiveCount?'<details class="native-rank-group native-members-archive" data-rank="Archiv" '+(archiveOpen?'open':'')+'>'+
   '<summary><span class="native-rank-tag">'+tr('Archiv')+'</span><strong>'+tr('Ehemalige Mitglieder')+'</strong>'+
-  '<span class="native-rank-count">'+archiveCount+' '+tr('Einträge')+'</span></summary>'+
-  '<div class="native-list native-rank-members">'+realFormerRows+historicalRows+'</div></details>':'';
+   '<span class="native-rank-count">'+archiveCount+' '+tr('Einträge')+'</span></summary>'+
+  '<div class="native-list native-rank-members">'+archiveRows+'</div></details>':'';
  const unavailable=!cache.membersArchiveAvailable?'<p class="native-evidence-note" role="status">'+tr('Historische Zugbelege momentan nicht erreichbar. Die vorhandenen Mitglieder werden weiter angezeigt.')+'</p>':'';
  host.innerHTML='<p class="native-muted">'+(archiveCount?((active.length+archiveCount)+' '+tr('Einträge')+(text?' '+tr('gefunden'):' · '+tr('nach Rang und Archiv gruppiert'))):(list.length+' Spieler'+(text?' für „'+e(query)+'“ gefunden':' · nach Allianzrang gruppiert')) )+'</p>'+
   unavailable+'<div class="native-member-folds">'+(rankGroups+archive||'<p class="native-muted">Keine Spieler gefunden.</p>')+'</div>'+
@@ -1082,6 +1082,15 @@ function editDiplomacy(target,id=''){
  const focus=host.querySelector(id?'[name=stance]':'[name=tag]');focus?.focus({preventScroll:true});
 }
 
+/** Unified former-members list. Private train-only records keep their original
+ * name and rides, without receiving member IDs or synthetic player fields. */
+export function mergeFormerMemberRows(members=[],historical=[]){
+ return [
+  ...members.map(value=>({kind:'member',value})),
+  ...historical.map(value=>({kind:'train',value}))
+ ].sort((a,b)=>String(a.value.name||'').localeCompare(String(b.value.name||''),'de',{sensitivity:'base'})||
+  (a.kind==='member'?-1:1));
+}
 /** Read-only archive entries supplied by the PRIVATE worker, not guesses from unlinked names. */
 export function historicalFormerRegistryEntries(entries=[],registered=[]){
  const normalized=s=>String(s||'').normalize('NFKC').replace(/[\u200B-\u200D\u2060\uFEFF]/gu,'').trim().toLocaleLowerCase('en-US');
@@ -1093,23 +1102,31 @@ export function historicalFormerRegistryEntries(entries=[],registered=[]){
   .map(x=>({name:x.name,ride_count:x.ride_count,dates:[...new Set(x.dates.filter(d=>/^20\d{2}-\d{2}-\d{2}$/.test(d)))].sort().reverse(),source:'historical_train'}))
   .sort((a,b)=>a.name.localeCompare(b.name,'de'));
 }
-function renderRegistry(target,query){
+ function renderRegistry(target,query){
  const historical=historicalFormerRegistryEntries(cache.archivedTrains?.archivedFormerTrainDrivers||[],cache.registry.members);
  const lang=officerLanguage(target.ownerDocument);
  const trans=key=>e(translateOfficerText(key,lang));
  const queryText=String(query||'').toLocaleLowerCase('de-DE');
- const visibleHistorical=['former','all'].includes(registryFilter)?historical.filter(x=>x.name.toLocaleLowerCase('de-DE').includes(queryText)):[];
- const archiveHistory=visibleHistorical.length?'<section class="native-historical-archive" aria-label="Ehemalige aus Zugliste">'+
-  '<h3>'+trans('Ehemalige aus Zugliste')+' · '+visibleHistorical.length+'</h3>'+
-  '<p class="native-muted">'+trans('Historische Zugfahrten ohne Spielerakte')+'</p>'+
-  '<div class="native-historical-archive-list">'+visibleHistorical.map(x=>
-   '<details class="native-historical-member"><summary><strong>'+e(x.name)+'</strong><span>'+trans('Ehemalig (Zugliste)')+' · '+x.ride_count+' '+trans('Fahrten')+'</span></summary>'+
-   '<div class="native-historical-dates">'+x.dates.map(date=>'<time datetime="'+e(date)+'">'+e(date)+'</time>').join('')+'</div></details>').join('')+
-  '</div></section>':'';
+ const visibleHistorical=['former','all'].includes(registryFilter)?
+  historical.filter(x=>x.name.toLocaleLowerCase('de-DE').includes(queryText)):[];
  const list=cache.registry.members.filter(x=>(registryFilter==='blacklist'?Boolean(x.blacklisted):
   registryFilter==='all'||x.lifecycle===registryFilter)&&
-  (x.name+' '+x.rank+' '+x.lifecycle+' '+(x.blacklisted?'blacklist':'')).toLowerCase().includes(query.toLowerCase()));
- target.querySelector('#registry-list').innerHTML='<p class="native-muted">'+(visibleHistorical.length?((list.length+visibleHistorical.length)+' '+trans('Ergebnisse')+' · '+visibleHistorical.length+' '+trans('Zuglisten-Namen ohne Spielerakte')):(list.length+' Ergebnisse. Archiv und Blacklist werden nur manuell geändert.'))+'</p><div class="native-list">'+ list.slice(0,pageLimit).map(x=>'<button data-registry-edit="'+e(x.id)+'"><strong>'+e(x.name)+' · '+e(x.rank)+'</strong><small>'+e(x.lifecycle)+(x.blacklisted?' · BLACKLIST':'')+' · zuletzt '+e(x.last_seen||'?')+'</small></button>').join('')+'</div>'+(list.length>pageLimit?'<button data-native-more="registry">Weitere Spieler</button>':'')+archiveHistory;
+  (x.name+' '+x.rank+' '+x.lifecycle+' '+(x.blacklisted?'blacklist':'')).toLowerCase().includes(queryText));
+ // One shared list ordered by member name: regular profiles and historical train
+ // sources are peers in the archive view, never split into subsections.
+ const combined=mergeFormerMemberRows(list,visibleHistorical);
+ const rows=combined.slice(0,pageLimit).map(entry=>entry.kind==='member'?
+  '<button type="button" data-registry-edit="'+e(entry.value.id)+'"><strong>'+e(entry.value.name)+' · '+e(entry.value.rank)+'</strong>'+
+   '<small>'+e(entry.value.lifecycle)+(entry.value.blacklisted?' · BLACKLIST':'')+' · zuletzt '+e(entry.value.last_seen||'?')+'</small></button>':
+  '<div class="native-archive-row native-registry-archive-row"><strong>'+e(entry.value.name)+'</strong>'+
+   '<small>'+trans('Zugfahrt')+' · '+entry.value.ride_count+'×'+
+   (entry.value.dates.length?' · '+e(entry.value.dates.join(', ')):'')+'</small></div>'
+ ).join('');
+ target.querySelector('#registry-list').innerHTML=
+  '<p class="native-muted">'+(visibleHistorical.length?(combined.length+' '+trans('Ergebnisse')):
+   (list.length+' Ergebnisse. Archiv und Blacklist werden nur manuell geändert.'))+'</p>'+
+  '<div class="native-list">'+rows+'</div>'+
+  (combined.length>pageLimit?'<button type="button" data-native-more="registry">Weitere Spieler</button>':'');
 }
 function createMemberForm(target){
  const host=target.querySelector('#registry-form');if(!host)return;

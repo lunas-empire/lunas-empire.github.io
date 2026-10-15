@@ -69,6 +69,10 @@ test('Alliance > Members includes archive section and keeps active rank separate
  assert.match(archive.textContent,/2026-09-01/);
  assert.match(archive.textContent,/2026-09-08/);
  assert.equal(archive.querySelectorAll('[data-native-member]').length,1,'Only real archived users open normal dossier');
+ assert.equal(archive.querySelectorAll('.native-rank-members').length,1,'A single unified member list');
+ assert.equal(archive.querySelectorAll('.native-archive-row').length,1);
+ assert.match(archive.querySelector('.native-archive-row').textContent,/Zugfahrt/);
+ assert.deepEqual([...archive.querySelector('.native-rank-members').children].map(x=>x.querySelector('strong').textContent),['Archived Member','Old Rider'],'Former profile and train rider are alphabetically interleaved');
  assert.equal(postCount,0,'Historical listing never posts a fake member');
  const search=q('#native-member-search');search.value='Old Rider';
  search.dispatchEvent(new dom.window.Event('input',{bubbles:true}));
