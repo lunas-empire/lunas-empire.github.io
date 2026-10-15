@@ -13,7 +13,7 @@ Local QA completed before publishing:
 - Tests: **204/204 passed** (including all 15×14 synthetic officer-panel checks, all-locale dictionary and ranks, and report-removal regressions).
 - `npm run lint`: **passed**, 344 public translation keys × 15 languages; JavaScript syntax and encrypted admin separation.
 - `git diff --check`: **passed**.
-- GitHub code commit and live Pages HTTP evidence: add only after successful deployment.
+- GitHub Luna code commit: 9f028b372e9f340effd07ea3a44deee39a7e7a57 on main; GitHub Pages HTML and /assets/config.js both served 2026-10-15.43 with HTTP 200. The live /assets/native-admin.js contains no report panel, report jump buttons or report copy buttons. Separate following documentation commit does not change application modules.
 - Browser locale audit: 90/90 public routes loaded, 210/210 synthetic admin panels rendered, 15/15 guide-overflow recheck clean. Original browser samples used a local synthetic R4 fixture and are not authenticated.
 - Read `docs/i18n-v43-audit.md` for full test scope and remaining translation quality risk.
 
