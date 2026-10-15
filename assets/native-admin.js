@@ -200,11 +200,12 @@ async function view(mount){
       (canManageSite()&&x.enabled?'<div class="native-row">'+(!x.member_id?'<button type="button" data-native-access-link="'+e(x.id)+'">Spieler zuordnen</button>':'')+
        (x.ingame_name!==officer.name&&!x.is_site_owner?'<button type="button" data-native-access-disable="'+e(x.id)+'">Zugang deaktivieren</button>':'')+'</div>':'')+'</div>').join('')+'</div></details>';
   }else if(panel==='registry'){
-   cache.registry=await request('/api/member-registry');
+   [cache.registry,cache.archivedTrains]=await Promise.all([request('/api/member-registry'),request('/api/train-manager').catch(()=>null)]);
+   const historicalArchive=historicalFormerRegistryEntries(cache.archivedTrains?.archivedFormerTrainDrivers||[],cache.registry.members);
    target.innerHTML='<div class="native-row"><h2>Mitgliederverwaltung</h2><button type="button" data-native-member-create>+ Mitglied anlegen</button><input id="registry-search" type="search" placeholder="Spieler suchen"></div>'+
     '<nav class="native-status-filter" aria-label="Mitgliederstatus">'+[['all','Alle'],['active','Aktiv'],['former','Archiv'],['blacklist','Blacklist']].map(([key,label])=>
     '<button type="button" data-native-registry-filter="'+key+'" aria-pressed="'+(registryFilter===key?'true':'false')+'">'+label+'</button>').join('')+'</nav>'+
-    cards([['Aktiv',cache.registry.counts.active],['Archiv',cache.registry.counts.former],['Blacklist',cache.registry.counts.blacklisted]])+
+    cards([['Aktiv',cache.registry.counts.active],['Archiv',Number(cache.registry.counts.former||0)+historicalArchive.length],['Blacklist',cache.registry.counts.blacklisted]])+
     '<div id="registry-list"></div><div id="registry-form"></div>';renderRegistry(target,'');
   }else if(panel==='watch'){
    target.innerHTML='<div class="native-row"><div><h2>Mitglieder-Abgleich</h2><p class="native-muted">VS- und Stärke-Aufnahmen vergleichen. Kein automatischer Austritt und keine automatische Blacklist.</p></div></div><div id="native-watch-list" role="region" aria-label="Mitglieder zum Prüfen"></div>';
@@ -709,7 +710,7 @@ function renderTrainRotation(target){
 export function groupUnlinkedTrainRides(history=[]){
  const groups=new Map();
  for(const ride of history){
-  if(ride?.status!=='completed'||ride.linked!==false)continue;
+  if(ride?.status!=='completed'||ride.linked!==false||ride.former_archive===true)continue;
   const name=String(ride.original_name||ride.driver||'Nicht angegeben').trim()||'Nicht angegeben';
   const key=name.normalize('NFKC').replace(/[\u200B-\u200D\u2060\uFEFF]/g,'').replace(/\s+/g,' ').trim().toLocaleLowerCase('en-US');
   if(!groups.has(key))groups.set(key,{name,dates:[],count:0});
@@ -1055,11 +1056,34 @@ function editDiplomacy(target,id=''){
  const focus=host.querySelector(id?'[name=stance]':'[name=tag]');focus?.focus({preventScroll:true});
 }
 
+/** Read-only archive entries supplied by the PRIVATE worker, not guesses from unlinked names. */
+export function historicalFormerRegistryEntries(entries=[],registered=[]){
+ const normalized=s=>String(s||'').normalize('NFKC').replace(/[\u200B-\u200D\u2060\uFEFF]/gu,'').trim().toLocaleLowerCase('en-US');
+ const existing=new Set(registered.map(x=>normalized(x.name)));
+ if(!Array.isArray(entries))return [];
+ return entries.filter(x=>x?.source==='historical_train'&&typeof x.name==='string'&&
+  Number.isSafeInteger(x.ride_count)&&x.ride_count>0&&Array.isArray(x.dates)&&
+  !existing.has(normalized(x.name)))
+  .map(x=>({name:x.name,ride_count:x.ride_count,dates:[...new Set(x.dates.filter(d=>/^20\d{2}-\d{2}-\d{2}$/.test(d)))].sort().reverse(),source:'historical_train'}))
+  .sort((a,b)=>a.name.localeCompare(b.name,'de'));
+}
 function renderRegistry(target,query){
+ const historical=historicalFormerRegistryEntries(cache.archivedTrains?.archivedFormerTrainDrivers||[],cache.registry.members);
+ const lang=officerLanguage(target.ownerDocument);
+ const trans=key=>e(translateOfficerText(key,lang));
+ const queryText=String(query||'').toLocaleLowerCase('de-DE');
+ const visibleHistorical=['former','all'].includes(registryFilter)?historical.filter(x=>x.name.toLocaleLowerCase('de-DE').includes(queryText)):[];
+ const archiveHistory=visibleHistorical.length?'<section class="native-historical-archive" aria-label="Ehemalige aus Zugliste">'+
+  '<h3>'+trans('Ehemalige aus Zugliste')+' · '+visibleHistorical.length+'</h3>'+
+  '<p class="native-muted">'+trans('Historische Zugfahrten ohne Spielerakte')+'</p>'+
+  '<div class="native-historical-archive-list">'+visibleHistorical.map(x=>
+   '<details class="native-historical-member"><summary><strong>'+e(x.name)+'</strong><span>'+trans('Ehemalig (Zugliste)')+' · '+x.ride_count+' '+trans('Fahrten')+'</span></summary>'+
+   '<div class="native-historical-dates">'+x.dates.map(date=>'<time datetime="'+e(date)+'">'+e(date)+'</time>').join('')+'</div></details>').join('')+
+  '</div></section>':'';
  const list=cache.registry.members.filter(x=>(registryFilter==='blacklist'?Boolean(x.blacklisted):
   registryFilter==='all'||x.lifecycle===registryFilter)&&
   (x.name+' '+x.rank+' '+x.lifecycle+' '+(x.blacklisted?'blacklist':'')).toLowerCase().includes(query.toLowerCase()));
- target.querySelector('#registry-list').innerHTML='<p class="native-muted">'+list.length+' Ergebnisse. Archiv und Blacklist werden nur manuell geändert.</p><div class="native-list">'+list.slice(0,pageLimit).map(x=>'<button data-registry-edit="'+e(x.id)+'"><strong>'+e(x.name)+' · '+e(x.rank)+'</strong><small>'+e(x.lifecycle)+(x.blacklisted?' · BLACKLIST':'')+' · zuletzt '+e(x.last_seen||'?')+'</small></button>').join('')+'</div>'+(list.length>pageLimit?'<button data-native-more="registry">Weitere Spieler</button>':'');
+ target.querySelector('#registry-list').innerHTML='<p class="native-muted">'+(visibleHistorical.length?((list.length+visibleHistorical.length)+' '+trans('Ergebnisse')+' · '+visibleHistorical.length+' '+trans('Zuglisten-Namen ohne Spielerakte')):(list.length+' Ergebnisse. Archiv und Blacklist werden nur manuell geändert.'))+'</p><div class="native-list">'+ list.slice(0,pageLimit).map(x=>'<button data-registry-edit="'+e(x.id)+'"><strong>'+e(x.name)+' · '+e(x.rank)+'</strong><small>'+e(x.lifecycle)+(x.blacklisted?' · BLACKLIST':'')+' · zuletzt '+e(x.last_seen||'?')+'</small></button>').join('')+'</div>'+(list.length>pageLimit?'<button data-native-more="registry">Weitere Spieler</button>':'')+archiveHistory;
 }
 function createMemberForm(target){
  const host=target.querySelector('#registry-form');if(!host)return;
