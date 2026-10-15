@@ -2,7 +2,7 @@
 Datum: 2026-10-15. Scope: **ausschließlich** lunas-empire/lunas-empire.github.io. Produktion rzsn-home.github.io und Worker/D1 nicht geändert.
 
 ## Nachweise und Testmethode
-Basis: Luna v40 `7971c27`. Live-Website mit echtem headless Chrome/CDP und emulierten Breiten 320, 375, 390, 768, 1365 px (Dark und Light; Routen Heute, Aufgaben, VS, Season, Guides, Admin-Login in definierter Matrix). Original-Bilder und Messwerte lokal in `qa/ux-rc/audit-*.png`, `browser-audit.json`. Vergleich mit lokalem RC in `after-*.png`, `browser-after.json`. Wichtig: erster CLI-Chrome-Screenshot war aufgrund der Headless-Minimalfensterbreite beschnitten, keine bestätigte Site-Überbreite. Browser-CDP zeigt keinen horizontalen **Dokument**-Overflow für geprüfte Kombinationen.
+Basis: Luna v40 `7971c27`. Live-Website mit echtem headless Chrome/CDP und emulierten Breiten 320, 375, 390, 768, 1365 px (Dark und Light; Routen Heute, Aufgaben, VS, Season, Guides, Admin-Login in definierter Matrix). Original-Bilder und Messwerte lokal in `qa/ux-rc/audit-*.png`, `browser-audit.json`. Vergleich mit lokalem RC in `after-*.png`, `browser-after.json`. Wichtig: erster CLI-Chrome-Screenshot war aufgrund der Headless-Minimalfensterbreite beschnitten, keine bestätigte Site-Überbreite. Browser-CDP zeigt keinen horizontalen **Dokument**-Overflow für geprüfte Kombinationen; zusätzlich 430 px auf den Live-Routen geprüft.
 
 Admin **ohne** echten Offizierscode: Login live visuell überprüft. Dashboard über lokalen Browser mit ausdrücklich **synthetischer** API-Mock-Antwort unter `qa/ux-rc/synthetic-admin-*.png` bei 320/375/390/768/1365 und beiden Themen überprüft. Dies beweist Layout und Interaktionsstruktur, **nicht** Cloudflare-Authentifizierung, reale D1-Mutationen oder echte OCR-Beleg-Zuordnungen.
 
@@ -33,7 +33,7 @@ Admin **ohne** echten Offizierscode: Login live visuell überprüft. Dashboard �
 - `npm run lint`: **bestanden**, 344 Keys × 15 Sprachen, JS-Syntax, verschlüsselte Admin-Dateitrennung.
 - `git diff --check`: **bestanden**; 51 JS-Module mit v41 im Import-Map/Service-Worker-Assetcache gestempelt.
 - GitHub `main`: Code-Commit `6afcf7e9b734c1a6447a28ec7d940a4f21371502`, ausschließlich Luna.
-- GitHub Pages live: `https://lunas-empire.github.io/` HTTP 200, HTML enthält **2026-10-15.41**. Direkte Browserkontrolle auf Live Pages: Today, Tasks, VS, Season, Guides, Admin-Login bei 320/375/390/768/1365 px in einer Dark/Light-Testmatrix, kein Dokument-x-Overflow. Screenshots `qa/ux-rc/live-v41-*.png` und `review-v41-*.png` sind lokal auf Zentrale hinterlegt.
+- GitHub Pages live: `https://lunas-empire.github.io/` HTTP 200, HTML enthält **2026-10-15.41**. Direkte Browserkontrolle auf Live Pages: Today, Tasks, VS, Season, Guides, Admin-Login bei 320/375/390/430/768/1365 px in einer Dark/Light-Testmatrix, kein Dokument-x-Overflow. Screenshots `qa/ux-rc/live-v41-*.png` und `review-v41-*.png` sind lokal auf Zentrale hinterlegt.
 - Privates Admin-Dashboard mit explizit **synthetischen** API-Mocks in Chrome bei 320/375/390/768/1365 px und beiden Themen. Bei 320 wurden die abgeschnittenen Zusatztexte und der ungünstige Umbruch der Kommando-Navigation korrigiert und per Screenshot nachkontrolliert.
 - Die Desktop-Datei `command-center/audits/PROGRESS.md` ist aktuell durch einen anderen Prozess gesperrt. Separater, nicht destruktiver Audit-Nachweis angelegt: `command-center/audits/2026-10-15_LUNA_V41_UX_FINAL.md`; die zentrale PROGRESS-Datei konnte deshalb nicht ergänzt werden.
 
