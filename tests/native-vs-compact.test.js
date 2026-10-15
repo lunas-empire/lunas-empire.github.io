@@ -30,7 +30,10 @@ test('VS data starts compact with under-target and day breakdown collapsed, whil
  q('#native-officer-login').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
  await until(()=>q('.native-dashboard'));
  assert.equal(q('.native-dashboard .native-shortcuts'),null,'duplicate quick actions should be absent');
- assert.equal(q('.native-dashboard-stat-fold').open,false,'supplemental cockpit metrics start collapsed');
+ assert.equal(q('.native-dashboard-stat-fold'),null,'empty and redundant metrics panel is removed');
+ assert.ok(q('.native-command-today'),'today duties are shown in one compact panel');
+ assert.equal(q('.native-command-tasks'),null,'no empty task cards when no open tasks');
+ assert.equal(mount.querySelectorAll('.native-dashboard-mini-tile').length,2,'two small signal tiles replace big duplicate cards');
  q('[data-officer-tab=more]').click();
  assert.equal(mount.querySelectorAll('.native-hub-tile[data-officer-tab]').length,10,'all officer destinations including settings remain reachable from the dedicated More page');
  q('[data-officer-tab=vs]').click();
@@ -41,7 +44,8 @@ test('VS data starts compact with under-target and day breakdown collapsed, whil
  assert.ok([...groups].every(group=>!group.open),'all VS player groups start collapsed');
  assert.equal(q('.native-vs-days'),null,'old oversized day accordion has been removed');
  assert.equal(mount.querySelectorAll('.native-day-mini').length,6,'six weekday comparisons immediately visible');
- assert.equal(mount.querySelectorAll('.native-vs-compact .native-cards article').length,3);
+ assert.equal(mount.querySelectorAll('.native-vs-kpi').length,3,'metrics remain compact and visible');
+ assert.equal(q('.native-vs-priority-note'),null,'duplicated warning callout removed');
  groups[0].querySelector('summary').click();
  assert.equal(groups[0].open,true,'an officer can expand under-target members');
  assert.match(groups[0].textContent,/Synthetic Under Target/);
@@ -50,5 +54,6 @@ test('VS data starts compact with under-target and day breakdown collapsed, whil
  q('#native-vs-week').dispatchEvent(new dom.window.Event('change',{bubbles:true}));
  assert.ok([...mount.querySelectorAll('.native-vs-group')].every(group=>!group.open),'next week starts collapsed');
  assert.equal(mount.querySelectorAll('.native-day-mini').length,6,'switching week keeps weekday summary visible');
- assert.ok(q('[data-native-action=review-open]'),'review action remains visible without opening an accordion');
+ assert.ok(q('.native-vs-tools [data-native-action=review-open]'),'small review action remains visible');
+ assert.equal(mount.querySelectorAll('.native-vs-single-insight').length,1,'one combined warning note');
 });

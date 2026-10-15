@@ -65,7 +65,6 @@ const sectionPanels={
  train:[['train','Züge'],['events','Allianz-Events']]
 };
 const contextTools={
- vs:{label:'Werte prüfen',items:[['reviews','Prüffälle öffnen']]},
  members:{label:'Weitere Mitglieder-Werkzeuge',items:[['watch','Mitglieder-Abgleich'],['registry','Ränge & Archiv']]},
  train:{label:'Aufgaben & Abwesenheiten',items:[['tasks','Aufgaben'],['absences','Abwesenheiten']]}
 };
@@ -144,23 +143,69 @@ async function view(mount){
     ? e(slot.entry.driver)+' · '+e(slot.entry.status||'Unbestätigt')
     : 'Fahrer noch nicht eingetragen'):'Kein Eintrag im Wochenplan';
    const actions=buildOfficerActions({today:day,summary,operations:ops,trains,alerts,vs:cache.vs,donations:cache.donations});
-   const mission=(key,art,eyebrow,title,detail)=>'<button type="button" class="native-mission" data-native-action="'+key+'">'+
-    '<span class="native-mission-icon">'+icon(art,'native-mission-svg')+'</span><span class="native-mission-copy"><small>'+e(eyebrow)+'</small><strong>'+e(title)+'</strong><span>'+detail+'</span></span><span class="native-mission-chevron" aria-hidden="true">›</span></button>';
-   target.innerHTML='<div class="native-dashboard">'+
-    '<div class="native-dashboard-heading"><div><span class="native-kicker">OFFIZIERSÜBERSICHT</span><h2>Heute im Kommando</h2><p class="native-muted">Spieltag '+e(day)+' · Daten aus deinem privaten Allianzregister</p></div><span class="native-daily-sigil" aria-hidden="true">'+icon('today','native-emblem-icon')+'</span></div>'+
-    '<div class="native-mission-stack" aria-label="Wichtige Aktionen">'+
-    (actions.length?actions.map(item=>mission(item.action,item.art,item.eyebrow,item.title,e(item.detail))).join(''):
-      '')+
-    '</div>'+
-    '<details class="native-fold native-dashboard-stat-fold"><summary>Weitere Kennzahlen</summary><div class="native-fold-body native-dashboard-summary">'+cards([['Allianz aktiv',summary.active??'—','Zuletzt importierter Stand'],['Offene Aufgaben',pending.length,'Officer Desk'],['Zugtage zur Klärung',trains.counts?.missing_recent??'—','Historische Lücken, nicht automatisch versäumt']])+'</div></details>'+
-    '<div class="native-dashboard-bottom"><section class="native-dashboard-panel"><h3>Deine nächsten Schritte</h3>'+
-    (pending.length?'<div class="native-action-brief">'+pending.slice(0,3).map(t=>'<div><b>'+e(t.title)+'</b><small>'+e(t.due_date||'Keine Frist')+' · '+e(t.priority||'normal')+'</small></div>').join('')+'</div>':'<p class="native-muted">Keine offenen Aufgaben eingetragen.</p>')+
-    '<button type="button" data-native-action="tasks-open">Aufgaben öffnen</button></section>'+
-    '<section class="native-dashboard-panel"><h3>Als Nächstes</h3><p><strong>'+e(tomorrowTrain?.date||'Nächster Zug')+'</strong> · '+e(tomorrowTrain?.type||'Kein weiterer Zugtag gefunden')+'</p><p class="native-muted">'+trainLine(tomorrowTrain)+'</p>'+
-    '<button type="button" data-native-action="member-find">Spieler suchen</button></section></div>'+
-    reportPanel(dailyOfficerBrief({date:day,overview:summary,operations:ops,trains}))+
-
+   const enUi=officerLanguage(target.ownerDocument)!=='de';
+   const word=(de,en)=>enUi?en:de;
+   const alertCount=(obj,key)=>Number.isSafeInteger(obj?.[key])?obj[key]:null;
+   const vsAlert=alertCount(alerts?.vs,'confirmed_repeated_low');
+   const donationAlert=alertCount(alerts?.donations,'confirmed_below');
+   const dateText=day.split('-').reverse().join('.');
+   const todayType=todayTrain?.type||word('Nicht geplant','Not scheduled');
+   const nextDate=tomorrowTrain?.date?tomorrowTrain.date.split('-').reverse().join('.'):'—';
+   const nextType=tomorrowTrain?.type||word('Kein nächster Zug bekannt','No upcoming train listed');
+   const tasksDue=pending.filter(item=>item.due_date&&item.due_date<=day);
+   const unknownDriver=todayTrain&&!todayTrain.entry?.driver;
+   const urgent=actions.filter(item=>!['train-today','vs-open','donations-open'].includes(item.action)).slice(0,2);
+   const actionPill=(key,label,count)=>'<button type="button" class="native-dashboard-quick-link" data-native-action="'+key+'">'+
+     e(label)+(count!==undefined?'<b>'+e(count)+'</b>':'')+'</button>';
+   const summaryTile=(key,label,value,sub,shade)=>'<button type="button" class="native-dashboard-mini-tile '+shade+
+    '" data-native-action="'+key+'"><span>'+e(label)+'</span><strong>'+e(value)+'</strong>'+
+    '<small>'+e(sub)+'</small><span class="native-dashboard-tile-chevron" aria-hidden="true">›</span></button>';
+   target.innerHTML='<div class="native-dashboard native-dashboard-v39">'+
+    '<header class="native-command-header"><div><h2>'+word('Heute','Today')+'</h2>'+
+      '<p>'+word('Heute','Today')+' · '+e(dateText)+'</p></div>'+
+     '<div class="native-dashboard-microstats">'+
+      '<span>'+word('Aktiv','Active')+' <b>'+e(summary.active??'—')+'</b></span>'+
+      (pending.length?'<span>'+word('Aufgaben','Tasks')+' <b>'+e(pending.length)+'</b></span>':'')+
+     '</div></header>'+
+    '<section class="native-command-today" aria-label="'+word('Heute wichtig','Today priorities')+'">'+
+     '<div class="native-command-section-label"><strong>'+word('Heute wichtig','Today at a glance')+'</strong>'+
+     (unknownDriver?'<span class="native-command-attention">'+word('Fahrer offen','Driver needed')+'</span>':'')+'</div>'+
+     '<div class="native-command-train-line">'+
+      '<div class="native-command-train-text"><small>'+word('ZUG HEUTE','TODAY’S TRAIN')+'</small>'+
+      '<strong>'+e(todayType)+'</strong><span>'+trainLine(todayTrain)+'</span></div>'+
+      '<button type="button" data-native-action="train-today">'+word('Zug öffnen','Open train')+' ›</button></div>'+
+     '<div class="native-command-next-row"><span>'+word('Nächster Zug','Next train')+'</span>'+
+      '<b>'+e(nextDate)+' · '+e(nextType)+'</b></div>'+
+     (nextEvent?'<div class="native-command-next-row"><span>'+word('Nächstes Event','Next event')+'</span>'+
+      '<b>'+e(nextEvent.event_date)+' · '+e(eventNames[nextEvent.event_type]||nextEvent.event_type||'Event')+'</b></div>':'')+
+     (urgent.length?'<div class="native-command-alerts" aria-label="'+word('Offene Hinweise','Open alerts')+'">'+
+       urgent.map(item=>'<button type="button" data-native-action="'+e(item.action)+'">'+
+        '<span>'+e(item.title)+'</span><small>'+e(item.detail)+'</small><b aria-hidden="true">›</b></button>').join('')+
+       '</div>':'')+
+    '</section>'+
+    '<section class="native-dashboard-signal-tiles" aria-label="'+word('Datenstatus','Data status')+'">'+
+     summaryTile('vs-open',word('VS-Duell','Alliance Duel'),
+      vsAlert===null?'—':vsAlert,word('Spieler wiederholt unter Ziel','Members below target repeatedly'),'vs')+
+     summaryTile('donations-open',word('Spenden','Donations'),
+      donationAlert===null?'—':donationAlert,word('Bestätigt unter Wochenziel','Confirmed below weekly goal'),'donations')+
+    '</section>'+
+    (pending.length?'<section class="native-command-tasks"><div class="native-command-section-label"><strong>'+
+     word('Offene Aufgaben','Open tasks')+' · '+pending.length+'</strong>'+
+     actionPill('tasks-open',word('Alle öffnen','View all'))+'</div>'+
+     '<div class="native-command-task-list">'+pending.slice(0,2).map(t=>'<p><b>'+e(t.title)+'</b>'+
+      '<span>'+e(t.due_date||word('Ohne Frist','No due date'))+'</span></p>').join('')+'</div></section>':'')+
+    '<nav class="native-dashboard-quick" aria-label="'+word('Schnellzugriff','Quick access')+'">'+
+      actionPill('tasks-open',word('Aufgaben','Tasks'),pending.length)+
+      actionPill('member-find',word('Spieler','Members'))+
+      actionPill('review-open',word('OCR prüfen','Review OCR'),summary.reviews??'—')+
+      actionPill('train-today',word('Zugplanung','Train plan'))+
+    '</nav>'+
+    '<details class="native-fold native-command-daily-report"><summary>'+
+      word('Tagesbericht für den Allianzchat','Daily alliance chat draft')+'</summary>'+
+      reportPanel(dailyOfficerBrief({date:day,overview:summary,operations:ops,trains}))+
+    '</details>'+
     '</div>';
+
   }else if(panel==='requirements'){
    cache.requirements=await request('/api/alliance-requirements');
    renderRequirements(target);
@@ -237,7 +282,8 @@ async function view(mount){
   }else if(panel==='vs'){
    const [data,summary]=await Promise.all([request('/api/vs-intelligence'),request('/api/overview')]);
    cache.vs=data;cache.overview=summary;
-   target.innerHTML='<div class="native-row"><h2>VS-Duell</h2><select id="native-vs-week">'+data.weeks.map(w=>'<option value="'+e(w.week)+'">'+e(w.week)+'</option>').join('')+'</select></div>'+
+   target.innerHTML='<div class="native-vs-week-toolbar"><label>'+(officerLanguage(target.ownerDocument)==='de'?'Woche':'Week')+
+    ' <select id="native-vs-week">'+data.weeks.map(w=>'<option value="'+e(w.week)+'">'+e(w.week)+'</option>').join('')+'</select></label></div>'+
     '<div id="native-vs-body"></div>';renderVs(target);
   }else if(panel==='donations'){
    cache.donations=await request('/api/donations-intelligence');
@@ -629,29 +675,38 @@ function renderVs(target){
  const layout=renderVsOverview(week,policy,{esc:e,numberText,formatTime:formatOfficerTime,language:officerLanguage(target.ownerDocument)});
  const lowWarnings=(week.members||[]).filter(x=>x.repeatedLowDays).length;
  const participationWarnings=(week.members||[]).filter(x=>x.participationStatus==='below').length;
- host.innerHTML='<section class="native-vs-brief native-vs-v38" aria-label="VS-Wochenübersicht">'+
+ const reviewCount=cache.overview?.reviews;
+ const repeatCount=Number.isSafeInteger(week.priority)?week.priority:lowWarnings;
+ const notices=[
+  repeatCount>0?(enUi?repeatCount+' members repeatedly below the daily goal.':repeatCount+' Spieler wiederholt unter dem Tagesziel.'):null,
+  participationWarnings>0?(enUi?participationWarnings+' members have too few active days with complete data.':participationWarnings+' Spieler mit zu wenigen aktiven Tagen bei vollständiger Erfassung.'):null,
+  policy.shield_reminder_saturday?(enUi?'Saturday shield: remind manually; not automatically verified.':'Samstag: Schildpflicht manuell erinnern (nicht automatisch geprüft).'):null
+ ].filter(Boolean);
+ const kpi=(label,value,kind)=>'<div class="native-vs-kpi '+kind+'"><span>'+e(label)+'</span><strong>'+e(value)+'</strong></div>';
+ host.innerHTML='<section class="native-vs-brief native-vs-v39" aria-label="'+(enUi?'Alliance duel weekly data':'VS-Wochendaten')+'">'+
   layout.freshness+
-  '<div class="native-vs-heading"><div><h3>'+(enUi?'Weekly overview':'Wochenüberblick')+'</h3><p class="native-muted">'+(enUi?'Daily target: ':'Tagesziel: ')+
-   e(numberText(week.threshold))+(enUi?' points · verified results only':' Punkte · nur bestätigte Ergebnisse')+'</p></div>'+
-   '<button type="button" class="native-vs-action" data-native-action="review-open">OCR-Prüffälle ('+
-    e(cache.overview?.reviews??'—')+')</button></div>'+
-  '<div class="native-vs-compact">'+cards([['Unter Ziel',week.failedDays??0,'bestätigte Tage'],
-   ['Noch unklar',week.unknownDays??0,enUi?'unknown is not zero':'keine Nullwerte'],
-   ['6 von 6',week.perfect??0,enUi?'all daily goals met':'alle Tagesziele erreicht']])+'</div>'+
-  (Number.isFinite(week.priority)&&week.priority>0?
-   '<p class="native-vs-priority-note">'+e(week.priority)+' Spieler mit mindestens '+
-   e(policy.low_vs_day_warning_count??3)+' bestätigten Tagen unter dem Tagesziel.</p>':'')+
-  '<p class="native-vs-policy-status">'+
-   (policy.low_vs_day_warning_count?e(lowWarnings)+' Spieler wiederholt unter Ziel. ':'')+
-   (policy.min_active_vs_days?e(participationWarnings)+' mit zu wenigen aktiven Tagen bei vollständiger Erfassung. ':'')+
-   (policy.shield_reminder_saturday?'Samstag: Schildpflicht erinnern (nicht automatisch überprüfbar).':'')+
-   '</p>'+
+  '<div class="native-vs-compact-top">'+
+   '<span>'+(enUi?'Daily minimum':'Tagesziel')+' · <b>'+e(numberText(week.threshold))+'</b></span>'+
+   '<div class="native-vs-tools">'+
+    '<button type="button" class="native-vs-tool" data-native-action="review-open">'+
+    'OCR '+e(reviewCount??'—')+'</button>'+
+    '<button type="button" class="native-vs-tool" data-native-jump-report="chat">'+(enUi?'Chat report':'Chat-Bericht')+'</button>'+
+    '<button type="button" class="native-vs-tool" data-native-jump-report="mail">'+(enUi?'Ingame mail':'Ingame-Mail')+'</button>'+
+   '</div></div>'+
+  '<div class="native-vs-kpis" aria-label="'+(enUi?'Weekly metrics':'Wochenkennzahlen')+'">'+
+    kpi(enUi?'Days below goal':'Tage unter Ziel',week.failedDays??'—','low')+
+    kpi(enUi?'Unclear':'Unklar',week.unknownDays??'—','unknown')+
+    kpi(enUi?'Perfect 6/6':'6 von 6',week.perfect??'—','perfect')+
+  '</div>'+
+  (notices.length?'<div class="native-vs-single-insight"><b>'+ (enUi?'Note':'Hinweis')+'</b>'+
+    '<span>'+notices.map(e).join(' · ')+'</span></div>':'')+
   layout.dayTiles+layout.groupsHtml+
-  reportPanel(vsWeeklyMail(week,policy))+
-  chatReportPanel(week,cache.vs.weeks)+
-  '<details class="native-fold native-vs-explainer"><summary>Wie werden die Werte bewertet?</summary>'+
-   '<p class="native-fold-body native-muted">'+(enUi?'Only confirmed scores count. Missing screenshots and unclear OCR are never zero. A weekly total does not prove a weekly screenshot exists. A verified original can be attached manually.':'Nur bestätigte Werte zählen. Fehlende Screenshots und OCR-Unklarheiten sind nie automatisch 0. Ein Wochenpunktestand ist kein Beweis für ein vorhandenes Wochenranglistenbild. Belege lassen sich separat nachtragen.')+'</p></details>'+
+  '<div class="native-vs-reports">'+reportPanel(vsWeeklyMail(week,policy))+
+    chatReportPanel(week,cache.vs.weeks)+'</div>'+
+  '<details class="native-fold native-vs-explainer"><summary>'+ (enUi?'How are results assessed?':'Wie werden die Werte bewertet?')+'</summary>'+
+   '<p class="native-fold-body native-muted">'+(enUi?'Only verified scores count. Missing screenshots and unclear OCR are never zero. Weekly totals are not evidence of a weekly screenshot.':'Nur bestätigte Werte zählen. Fehlende Screenshots und OCR-Unklarheiten sind nie automatisch 0. Wochenpunkte allein beweisen keinen Wochenbeleg.')+'</p></details>'+
   '</section>';
+
 }
 const trainWeekdays=['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
 const trainRideTypes=['R5','R4','Members Day','Donation King','VS Hero'];
@@ -1600,6 +1655,12 @@ export function initNativeAdmin(mount){
   if(button.hasAttribute('data-native-vs-image-close')){
    const modal=target.querySelector('#native-vs-evidence-viewer');modal?.remove();
    for(const [key,url] of reviewBlobUrls)if(key.startsWith('vs:')){URL.revokeObjectURL(url);reviewBlobUrls.delete(key)}
+   return;
+  }
+  if(button.dataset.nativeJumpReport){
+   const selector=button.dataset.nativeJumpReport==='chat'?'.native-chat-report-panel':'.native-vs-reports .native-report-panel:not(.native-chat-report-panel)';
+   const section=target.querySelector(selector);
+   if(section){section.open=true;section.scrollIntoView?.({behavior:'smooth',block:'start'});section.querySelector('textarea')?.focus()}
    return;
   }
   if(button.dataset.nativeVsImage){await openVsScreenshot(target,button.dataset.nativeVsImage);return}

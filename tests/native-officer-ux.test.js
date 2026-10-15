@@ -41,15 +41,17 @@ test('Four destinations drive real cockpit, train and player dossier workflows',
  const submit=form=>form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
  initNativeAdmin(mount);await renderNativeAdmin(mount);
  q('[name=code]').value='synthetic';submit(q('form'));
- await until(()=>q('.native-mission'));
+ await until(()=>q('.native-dashboard-v39'));
  assert.equal(mount.querySelectorAll('.native-primary-tab').length,5);
  assert.equal(mount.querySelectorAll('.native-admin-top').length,0,'Nested branded header must not return');
  assert.equal(mount.querySelectorAll('.native-command-emblem').length,0,'Second RZSN emblem must not be rendered');
  assert.equal(mount.querySelectorAll('.native-officer-strip').length,1,'One compact officer session bar');
  assert.equal(q('.native-return-link')?.getAttribute('href'),'#today','Return to member hub remains obvious');
  assert.equal(mount.querySelectorAll('h1').length,1,'Accessible admin title exists but is not a second hero');
- assert.equal(mount.querySelectorAll('.native-mission').length,4,'Cockpit keeps only four open cases in this fixture');
- assert.match(q('.native-dashboard').textContent,/2 offene Prüffälle/);
+ assert.equal(mount.querySelectorAll('.native-mission').length,0,'oversized action cards removed');
+ assert.equal(mount.querySelectorAll('.native-dashboard-mini-tile').length,2,'VS and donation summaries compact');
+ assert.ok(q('.native-command-today'),'one important-today panel remains');
+
  q('[data-officer-tab=more]').click();
  assert.ok(q('[data-officer-tab=registry]'),'Roster archive is one tile away');
  assert.ok(q('[data-officer-tab=reviews]'),'Review workflow is one tile away');

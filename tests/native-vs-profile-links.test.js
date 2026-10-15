@@ -75,9 +75,9 @@ test('VS priority is NOT OCR review count; VS player opens real dossier, history
  q('[name=code]').value='synthetic';
  q('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
  await until(()=>q('[data-officer-tab=vs]'));
- q('[data-officer-tab=vs]').click();await until(()=>q('.native-vs-priority-note'));
- assert.match(q('.native-vs-priority-note').textContent,/29 Spieler/);
- assert.match(q('[data-native-action=review-open]').textContent,/OCR-Prüffälle \(0\)/);
+ q('[data-officer-tab=vs]').click();await until(()=>q('.native-vs-single-insight'));
+ assert.match(q('.native-vs-single-insight').textContent,/29/);
+ assert.match(q('[data-native-action=review-open]').textContent,/OCR 0/);
  assert.doesNotMatch(q('[data-native-action=review-open]').textContent,/29/);
  q('.native-vs-group summary').click();
  await until(()=>q('[data-native-member="'+id+'"]'));

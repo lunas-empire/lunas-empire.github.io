@@ -30,8 +30,11 @@ test('English officer cockpit translates all urgent action labels and count mess
  for(let i=0;i<90&&!mount.querySelector('.native-dashboard');i++)await new Promise(r=>setTimeout(r,10));
  assert.ok(mount.querySelector('.native-dashboard'),'dashboard should render');
  await new Promise(r=>setTimeout(r,120));
- const captions=[...mount.querySelectorAll('.native-mission')].map(n=>n.textContent.trim());
- assert.equal(captions.length,5);
+ const captions=[...mount.querySelectorAll('.native-command-header,.native-command-today,.native-dashboard-signal-tiles')].map(n=>n.textContent.trim());
+ assert.equal(captions.length,3,'one command header, one Today panel, one compact data row');
+ assert.equal(mount.querySelectorAll('.native-mission').length,0,'old oversized repeated mission cards removed');
+ assert.equal(mount.querySelectorAll('.native-dashboard-mini-tile').length,2);
+ assert.equal(mount.querySelector('.native-command-header h2')?.textContent,'Today','the menu label is not repeated in the page header');
  const mixed=/(?:[äöüß]|\b(?:Prüffälle|Prüfaufträge|unbestätigt|Fällige|Aufgaben|Abwesenheiten|Vertretung|Leitung|prüfen|fehlend|ohne|Fahrer|noch|nicht|offene|Tageszug)\b)/iu;
  assert.ok(captions.every(s=>!mixed.test(s)),'German cockpit fragments: '+JSON.stringify(captions));
  assert.equal(mount.querySelectorAll('.native-error').length,0);

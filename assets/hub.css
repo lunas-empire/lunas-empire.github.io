@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-15.38');
+@import url('./tokens.css?v=2026-10-15.39');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -1606,3 +1606,121 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
  .native-admin .native-day-mini{padding:.42rem}
  .native-admin .native-day-mini-count{font-size:1.18rem}
  .native-admin .native-vs-person-compact>summary{padding:.45rem!important}}
+
+/* Luna v39: one-screen mobile Command dashboard and calm VS intelligence. */
+.native-admin .native-dashboard-v39{display:grid;gap:.7rem;min-width:0}
+.native-admin .native-command-header{display:flex;align-items:center;justify-content:space-between;gap:.65rem;flex-wrap:wrap;padding:.12rem 0 .45rem;border-bottom:1px solid var(--color-rule)}
+.native-admin .native-command-header h2{font-size:clamp(1.18rem,4vw,1.5rem);margin:0;line-height:1.2}
+.native-admin .native-command-header p{font-size:.74rem;color:var(--color-muted);margin:.17rem 0 0}
+.native-admin .native-dashboard-microstats{display:flex;flex-wrap:wrap;gap:.35rem}
+.native-admin .native-dashboard-microstats span{display:inline-flex;align-items:center;gap:.4rem;border:1px solid var(--color-rule);
+ background:var(--color-panel);padding:.27rem .42rem;border-radius:5px;font-size:.7rem;color:var(--color-muted)}
+.native-admin .native-dashboard-microstats b{font-size:.83rem;color:var(--color-ink);font-variant-numeric:tabular-nums}
+.native-admin .native-command-today{display:grid;gap:.42rem;padding:.74rem .85rem;
+ background:var(--color-panel);border:1px solid var(--color-rule);border-left:3px solid #cc9447;border-radius:8px}
+.native-admin .native-command-section-label{display:flex;align-items:center;justify-content:space-between;gap:.4rem;flex-wrap:wrap}
+.native-admin .native-command-section-label>strong{font-size:.88rem;line-height:1.3}
+.native-admin .native-command-attention{font-size:.69rem;font-weight:750;border-radius:4px;color:#884b26;background:#fce4c0;padding:.22rem .4rem}
+.native-admin .native-command-train-line{display:flex;justify-content:space-between;align-items:center;gap:.65rem;margin:.12rem 0}
+.native-admin .native-command-train-text{display:grid;gap:.08rem;min-width:0}
+.native-admin .native-command-train-text small{font-size:.62rem;letter-spacing:.07em;color:var(--color-muted);font-weight:800}
+.native-admin .native-command-train-text strong{font-size:clamp(.98rem,3.4vw,1.22rem)}
+.native-admin .native-command-train-text>span{font-size:.73rem;color:var(--color-muted)}
+.native-admin .native-command-train-line button{min-height:40px;padding:.38rem .6rem;font-size:.75rem;white-space:nowrap;font-weight:750;
+ background:#334b67;color:white;border:1px solid #56738d;border-radius:5px}
+.native-admin .native-command-next-row{display:flex;justify-content:space-between;align-items:baseline;gap:.6rem;
+ border-top:1px solid var(--color-rule);padding-top:.38rem;font-size:.74rem}
+.native-admin .native-command-next-row span{color:var(--color-muted);white-space:nowrap}
+.native-admin .native-command-next-row b{text-align:right;font-weight:720;font-size:.75rem}
+.native-admin .native-command-alerts{display:grid;gap:.18rem;border-top:1px solid var(--color-rule);padding-top:.35rem}
+.native-admin .native-command-alerts button{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.1rem .4rem;
+ text-align:left;padding:.35rem .15rem;background:transparent;color:var(--color-ink);border:0;min-height:40px}
+.native-admin .native-command-alerts button>span{font-weight:750;font-size:.77rem}
+.native-admin .native-command-alerts button>small{grid-column:1;color:var(--color-muted);font-size:.7rem}
+.native-admin .native-command-alerts button>b{grid-column:2;grid-row:1/3;align-self:center;color:var(--color-action)}
+.native-admin .native-dashboard-signal-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.46rem}
+.native-admin .native-dashboard-mini-tile{position:relative;min-width:0;min-height:89px;display:grid;align-content:center;gap:.13rem;
+ text-align:left;padding:.57rem .64rem;padding-right:1.45rem;background:var(--color-panel);
+ border:1px solid var(--color-rule);border-top:3px solid #56899c;border-radius:7px;color:var(--color-ink);box-shadow:none}
+.native-admin .native-dashboard-mini-tile.donations{border-top-color:#cba054}
+.native-admin .native-dashboard-mini-tile>span:first-child{font-size:.75rem;font-weight:750}
+.native-admin .native-dashboard-mini-tile>strong{font-size:1.45rem;line-height:1.05;font-variant-numeric:tabular-nums}
+.native-admin .native-dashboard-mini-tile>small{font-size:.67rem;color:var(--color-muted);line-height:1.3}
+.native-admin .native-dashboard-tile-chevron{position:absolute;right:.5rem;top:40%;font-size:1.2rem;color:var(--color-action)}
+.native-admin .native-command-tasks{padding:.65rem .75rem;border:1px solid var(--color-rule);border-radius:7px;background:var(--color-panel)}
+.native-admin .native-command-task-list{display:grid;gap:.2rem;margin-top:.25rem}
+.native-admin .native-command-task-list>p{display:flex;align-items:baseline;justify-content:space-between;gap:.5rem;margin:.13rem 0;font-size:.76rem}
+.native-admin .native-command-task-list b{font-weight:720;min-width:0;overflow-wrap:anywhere}
+.native-admin .native-command-task-list span{white-space:nowrap;color:var(--color-muted)}
+.native-admin .native-dashboard-quick{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.3rem}
+.native-admin .native-dashboard-quick-link{min-width:0;min-height:43px;padding:.36rem .2rem;display:flex;align-items:center;justify-content:center;
+ gap:.25rem;font-size:.67rem;font-weight:750;border:1px solid var(--color-rule);border-radius:6px;
+ background:var(--color-panel);color:var(--color-ink);white-space:normal;text-align:center}
+.native-admin .native-dashboard-quick-link b{border-radius:4px;background:var(--color-raised);padding:.1rem .2rem;font-variant-numeric:tabular-nums}
+.native-admin .native-command-daily-report{margin:0}
+.native-admin .native-command-daily-report>summary{min-height:42px;font-size:.77rem}
+.native-admin .native-command-daily-report>.native-report-panel{margin:.4rem 0}
+/* VS head: clear status, no duplicate headings, zero oversized call-to-action elements. */
+.native-admin .native-vs-week-toolbar{display:flex;justify-content:flex-end;margin:0 0 .35rem}
+.native-admin .native-vs-week-toolbar label{display:flex;align-items:center;gap:.45rem;font-size:.77rem;font-weight:750;color:var(--color-muted)}
+.native-admin .native-vs-week-toolbar select{width:auto;max-width:70vw;min-height:40px;margin:0;padding:.3rem 1.7rem .3rem .55rem;
+ font-size:.91rem;color:var(--color-ink);background:var(--color-panel);border:1px solid var(--color-rule);border-radius:6px}
+.native-admin .native-vs-v39{gap:.48rem}
+.native-admin .native-vs-v39 .native-capture-banner{margin:0;padding:.53rem .6rem;gap:.35rem;border-width:1px;border-left-width:3px;
+ border-radius:7px;background:var(--color-panel)}
+.native-admin .native-vs-v39 .native-capture-banner-main{display:flex;flex-direction:column;gap:.05rem}
+.native-admin .native-vs-v39 .native-capture-banner-main small{font-size:.61rem;letter-spacing:.03em}
+.native-admin .native-vs-v39 .native-capture-banner-main strong{font-size:.82rem;line-height:1.25}
+.native-admin .native-vs-v39 .native-capture-banner-main span{font-size:.66rem;line-height:1.3}
+.native-admin .native-vs-v39 .native-capture-state{font-size:.63rem;padding:.25rem .35rem}
+.native-admin .native-vs-compact-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.35rem}
+.native-admin .native-vs-compact-top>span{font-size:.75rem;color:var(--color-muted)}
+.native-admin .native-vs-compact-top>span b{color:var(--color-ink)}
+.native-admin .native-vs-tools{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem}
+.native-admin .native-vs-tool{min-height:36px;padding:.33rem .45rem;white-space:nowrap;font-size:.68rem;font-weight:750;
+ background:var(--color-panel);color:var(--color-action);border:1px solid var(--color-rule);border-radius:6px}
+.native-admin .native-vs-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.35rem}
+.native-admin .native-vs-kpi{display:flex;align-items:center;justify-content:space-between;gap:.35rem;min-width:0;
+ padding:.48rem .52rem;border:1px solid var(--color-rule);border-radius:6px;background:var(--color-panel);border-left:3px solid #8ba0b1}
+.native-admin .native-vs-kpi.low{border-left-color:#bd715b}
+.native-admin .native-vs-kpi.perfect{border-left-color:#589778}
+.native-admin .native-vs-kpi span{font-size:.69rem;line-height:1.25;color:var(--color-muted);overflow-wrap:anywhere}
+.native-admin .native-vs-kpi strong{font-size:1.09rem;font-variant-numeric:tabular-nums;white-space:nowrap}
+.native-admin .native-vs-single-insight{display:flex;gap:.5rem;align-items:baseline;padding:.5rem .6rem;border-radius:6px;
+ background:var(--color-raised);border-left:3px solid #b88b4c;font-size:.75rem;line-height:1.4}
+.native-admin .native-vs-single-insight>b{white-space:nowrap}
+.native-admin .native-vs-single-insight>span{overflow-wrap:anywhere}
+.native-admin .native-vs-v39 .native-vs-day-overview{margin:.32rem 0 .45rem}
+.native-admin .native-vs-v39 .native-intel-section-head{margin:.25rem 0 .28rem}
+.native-admin .native-vs-v39 .native-day-overview-grid{gap:.3rem}
+.native-admin .native-vs-v39 .native-day-mini{padding:.36rem .43rem;gap:.13rem;border:1px solid var(--color-rule);
+ border-top:2px solid #5a9f84;border-radius:6px}
+.native-admin .native-vs-v39 .native-day-mini.has-failures{border-top-color:#bb8459}
+.native-admin .native-vs-v39 .native-day-mini-count{font-size:1.1rem;line-height:1.08}
+.native-admin .native-vs-v39 .native-day-mini-count small{font-size:.61rem}
+.native-admin .native-vs-v39 .native-day-mini-meta{font-size:.61rem;gap:.15rem}
+.native-admin .native-vs-v39 .native-vs-compact-list{gap:.3rem!important}
+.native-admin .native-vs-v39 .native-vs-group>summary{min-height:44px}
+.native-admin .native-vs-v39 .native-vs-person-compact>summary{min-height:50px}
+.native-admin .native-vs-reports{display:grid;gap:.35rem}
+.native-admin .native-vs-reports>details{margin:0}
+@media(max-width:390px){
+ .native-admin .native-dashboard-microstats{width:100%}
+ .native-admin .native-vs-compact-top{align-items:flex-start}
+ .native-admin .native-vs-tools{width:100%}
+ .native-admin .native-dashboard-quick{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .native-admin .native-vs-kpi{padding:.42rem .36rem}
+ .native-admin .native-vs-kpi span{font-size:.64rem}
+ .native-admin .native-day-mini-count small{white-space:normal}
+}
+@media(prefers-reduced-motion:reduce){.native-admin .native-vs-tool,.native-admin .native-dashboard-quick-link{transition:none}}
+
+/* v39 small-screen nav: shrink repeated framing, leave content in focus. */
+@media(max-width:45rem){
+ .native-admin .native-admin-nav .native-primary-tab,
+ .native-admin .native-admin-nav .native-admin-more>summary{min-height:55px;padding:.17rem .1rem;font-size:.69rem}
+ .native-admin .native-admin-nav .native-tab-icon{height:1.05rem;width:1.05rem;margin-bottom:.08rem}
+ .native-admin .native-admin-subnav{padding:.12rem 0 .48rem}
+ .native-admin .native-admin-subnav button{min-height:38px;font-size:.72rem;padding:.32rem .6rem}
+ .native-admin .native-admin-content{min-height:8rem}
+}
