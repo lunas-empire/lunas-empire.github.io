@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-15.45');
+@import url('./tokens.css?v=2026-10-15.46');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -1745,3 +1745,13 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
  .native-admin .native-command-next-row{align-items:flex-start}
  .native-admin .native-command-next-row span{white-space:normal}
 }
+
+/* Private officer reconciliation: unresolved original train names, mobile-first. */
+.native-train-unlinked-list{display:grid;gap:0}
+.native-train-unlinked-group{display:grid;grid-template-columns:minmax(0,1fr);gap:.45rem;padding:.7rem 0;border-bottom:1px solid var(--color-rule)}
+.native-train-unlinked-group:last-child{border-bottom:0}
+.native-train-unlinked-group strong{display:block;overflow-wrap:anywhere}
+.native-train-unlinked-group small{display:block;color:var(--color-muted);margin-top:.15rem}
+.native-train-unlinked-dates{display:flex;flex-wrap:wrap;gap:.4rem}
+.native-train-unlinked-dates button{min-height:44px;padding:.35rem .65rem;font-size:.78rem}
+@media(min-width:48rem){.native-train-unlinked-group{grid-template-columns:minmax(10rem,.4fr) minmax(0,1fr);align-items:start}}

@@ -1,7 +1,7 @@
 /** Native Luna officer workspace. Private data is held only in a live memory token. */
 import {ALLIANCE_CONFIG} from './config.js';
 import {icon} from './icons.js';
-import {localizeOfficerTree,officerLanguage,officerLocale} from './native-admin-i18n.js';
+import {localizeOfficerTree,officerLanguage,officerLocale,translateOfficerText} from './native-admin-i18n.js';
 import {buildOfficerActions} from './officer-cockpit.js';
 import {createStatEvidenceViewer} from './native-stat-evidence.js';
 import {renderEvidenceRow} from './native-evidence-row.js';
@@ -704,6 +704,21 @@ function renderTrainRotation(target){
   '<button type="button" data-native-rotation-reload hidden>Aktuellen Stand laden</button>'+
   '<p id="native-rotation-message" role="status"></p></form>';
 }
+/** Unlinked imported train rides remain visible until a verified member is selected.
+ * No fuzzy or substring matching: a grouped source name is NOT a confirmed identity. */
+export function groupUnlinkedTrainRides(history=[]){
+ const groups=new Map();
+ for(const ride of history){
+  if(ride?.status!=='completed'||ride.linked!==false)continue;
+  const name=String(ride.original_name||ride.driver||'Nicht angegeben').trim()||'Nicht angegeben';
+  const key=name.normalize('NFKC').replace(/[\u200B-\u200D\u2060\uFEFF]/g,'').replace(/\s+/g,' ').trim().toLocaleLowerCase('en-US');
+  if(!groups.has(key))groups.set(key,{name,dates:[],count:0});
+  const group=groups.get(key);group.count++;
+  if(/^20\d\d-\d\d-\d\d$/.test(ride.date))group.dates.push(ride.date);
+ }
+ return [...groups.values()].map(x=>({...x,dates:[...new Set(x.dates)].sort().reverse()}))
+  .sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name,'de'));
+}
 export function trainSuggestionFacts(person,type){
  const rides=Number.isInteger(person?.rides)&&person.rides>=0?person.rides:null;
  const facts=[rides===null?'Fahrtenzahl unbekannt':rides===0?'Keine bestätigte Fahrt zugeordnet':
@@ -719,7 +734,7 @@ export function trainSuggestionFacts(person,type){
  return facts;
 }
 function renderTrain(target){
- const d=cache.trains,upcoming=(d.calendar||[]).filter(x=>x.date>=d.today).slice(0,7);
+ const d=cache.trains,unlinked=groupUnlinkedTrainRides(d.history),unlinkedCount=unlinked.reduce((n,x)=>n+x.count,0),assignVerb=translateOfficerText('Zuordnen',officerLanguage(target.ownerDocument)),upcoming=(d.calendar||[]).filter(x=>x.date>=d.today).slice(0,7);
  const absent=(id,date)=>memberAbsentOn(id,date,d.absences||[]);
  const slot=x=>'<article class="native-train-item '+(x.date===d.today?'native-train-today':'')+'">'+
   '<div><span class="native-kicker">'+(x.date===d.today?'HEUTE':e(x.date))+' · '+e(x.type||'Zug')+'</span>'+
@@ -736,9 +751,16 @@ function renderTrain(target){
     '<button type="button" data-native-train-choice="'+e(person.id)+'" data-date="'+e(x.date)+'" aria-label="'+e(person.name)+' als Fahrer für '+e(x.date)+' vormerken">Auswählen</button></li>').join('')+'</ol></details>':'')+'</article>';
  const toShow=upcoming.length?upcoming.map(slot).join(''):'<p class="native-muted">Für diese Woche liegen keine Zugdaten vor.</p>';
  target.querySelector('#native-train-body').innerHTML='<p class="native-muted">Fahrer ab R2 · historische Importe bleiben unverändert. Geplant, gefahren und noch nicht bestätigt sind unterschiedliche Zustände.</p>'+
-  '<div class="native-train-highlights">'+cards([['Gefahren (Historie)',d.counts?.completed??'—'],['Geplant',d.counts?.planned??'—'],['Historische Lücken',d.counts?.missing_recent??'—']])+'</div>'+
+  '<div class="native-train-highlights">'+cards([['Gefahren (Historie)',d.counts?.completed??'—'],['Geplant',d.counts?.planned??'—'],['Noch zuordnen',unlinkedCount]])+'</div>'+
   '<h3 class="native-section-heading">Heute & diese Woche</h3><div class="native-list native-train-week">'+toShow+'</div>'+
-  '<div id="native-train-form"></div><details class="native-fold"><summary>Dice Game Gewinner · '+diceHistory(cache.dice).length+'</summary>'+
+  '<div id="native-train-form"></div>'+
+  (unlinkedCount?'<details class="native-fold native-train-unlinked"><summary><span>Fahrerzuordnung prüfen</span> · <b>'+unlinkedCount+'</b> <span>Fahrten</span></summary>'+
+   '<div class="native-fold-body"><p class="native-muted">Nur sichere Identitäten zuordnen; Originalnamen bleiben erhalten.</p>'+
+   '<div class="native-train-unlinked-list">'+unlinked.map(group=>
+    '<div class="native-train-unlinked-group"><div><strong>'+e(group.name)+'</strong><small>'+group.count+' <span>'+(group.count===1?'Fahrt':'Fahrten')+'</span> · <span>Zuordnung offen</span></small></div>'+
+    '<div class="native-train-unlinked-dates">'+group.dates.map(date=>
+     '<button type="button" data-native-train="'+e(date)+'" aria-label="'+e(group.name)+' · '+e(date)+' · '+e(assignVerb)+'"><span>'+e(date.slice(5))+'</span> <span>Zuordnen</span></button>').join('')+'</div></div>').join('')+'</div></div></details>':'')+
+  '<details class="native-fold"><summary>Dice Game Gewinner · '+diceHistory(cache.dice).length+'</summary>'+
   '<div class="native-fold-body native-list">'+(diceHistory(cache.dice).length?diceHistory(cache.dice).map(x=>
    '<button type="button" data-native-dice-date="'+e(x.ride_date)+'">🎲 '+e(x.ride_date)+' · '+e(x.winner_name)+(x.roll_value?' · '+e(x.roll_value):'')+'</button>').join(''):
    '<p class="native-muted">Noch keine Dice-Game-Gewinner eingetragen.</p>')+'</div></details>'+
