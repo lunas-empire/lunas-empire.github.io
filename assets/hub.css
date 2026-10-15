@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-15.46');
+@import url('./tokens.css?v=2026-10-15.48');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -1755,3 +1755,10 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 .native-train-unlinked-dates{display:flex;flex-wrap:wrap;gap:.4rem}
 .native-train-unlinked-dates button{min-height:44px;padding:.35rem .65rem;font-size:.78rem}
 @media(min-width:48rem){.native-train-unlinked-group{grid-template-columns:minmax(10rem,.4fr) minmax(0,1fr);align-items:start}}
+
+/* Read-only historic train rides in Alliance > Members archive. */
+.native-admin .native-member-archive-record{display:grid;gap:.35rem;padding:.75rem .8rem;border-bottom:1px solid var(--color-rule);min-width:0}
+.native-admin .native-member-archive-record>strong{overflow-wrap:anywhere}
+.native-admin .native-member-archive-record>small{font-size:.76rem;line-height:1.45;color:var(--color-muted)}
+.native-admin .native-member-archive-record .native-historical-dates{display:flex;flex-wrap:wrap;gap:.4rem}
+.native-admin .native-member-archive-record time{font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--color-rule);border-radius:4px;font-variant-numeric:tabular-nums}

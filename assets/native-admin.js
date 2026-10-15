@@ -7,6 +7,7 @@ import {createStatEvidenceViewer} from './native-stat-evidence.js';
 import {renderEvidenceRow} from './native-evidence-row.js';
 import {renderVsOverview,derivedVsWeekTotal} from './native-vs-overview.js';
 import {diceHistory} from './dice-winners.js';
+import {formerArchiveFromTrain} from './former-train-archive.js';
 const apiBase=ALLIANCE_CONFIG.commandCenterEmbedUrl.replace('/?embed=1','');
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
 let sessionToken='',officer=null,panel='overview',cache={},pageLimit=20,historyLimit=20,activityLimit=30,registryFilter='all',activityCategory='all',activityGroupBy='type';
@@ -200,7 +201,8 @@ async function view(mount){
       (canManageSite()&&x.enabled?'<div class="native-row">'+(!x.member_id?'<button type="button" data-native-access-link="'+e(x.id)+'">Spieler zuordnen</button>':'')+
        (x.ingame_name!==officer.name&&!x.is_site_owner?'<button type="button" data-native-access-disable="'+e(x.id)+'">Zugang deaktivieren</button>':'')+'</div>':'')+'</div>').join('')+'</div></details>';
   }else if(panel==='registry'){
-   [cache.registry,cache.archivedTrains]=await Promise.all([request('/api/member-registry'),request('/api/train-manager').catch(()=>null)]);
+    [cache.registry,cache.archivedTrains]=await Promise.all([request('/api/member-registry'),request('/api/train-manager').catch(()=>null)]);
+    await formerArchiveFromTrain(cache.archivedTrains,cache.registry.members);
    const historicalArchive=historicalFormerRegistryEntries(cache.archivedTrains?.archivedFormerTrainDrivers||[],cache.registry.members);
    target.innerHTML='<div class="native-row"><h2>Mitgliederverwaltung</h2><button type="button" data-native-member-create>+ Mitglied anlegen</button><input id="registry-search" type="search" placeholder="Spieler suchen"></div>'+
     '<nav class="native-status-filter" aria-label="Mitgliederstatus">'+[['all','Alle'],['active','Aktiv'],['former','Archiv'],['blacklist','Blacklist']].map(([key,label])=>
@@ -250,8 +252,10 @@ async function view(mount){
     '<label>Prüftyp <select id="review-kind-native"><option value="">Alle</option><option value="vs_day">VS-Tageswert</option><option value="identity">Identität</option><option value="profile">Profilwert</option></select></label></div></details>'+
     '<p id="native-review-finished" role="status" aria-live="polite"></p><div id="review-list-native"></div>';renderReviews(target,'');
   }else if(panel==='members'){
-   const list=await request('/api/members');
-   cache.members=list;
+    const [list,trains]=await Promise.all([request('/api/members'),request('/api/train-manager').catch(()=>null)]);
+    cache.members=list;cache.archivedTrains=trains;
+    cache.membersArchive=await formerArchiveFromTrain(trains,list);
+    cache.membersArchiveAvailable=Boolean(trains);
    target.innerHTML='<div class="native-row"><h2>Allianzmitglieder</h2><input id="native-member-search" type="search" placeholder="Spieler suchen" autocomplete="off"></div>'+
     '<p class="native-muted">Nach Rang sortiert. Spieler antippen: Profil, Messwerte, Wochenverlauf, Erfolge und Zug-Historie.</p><div id="native-member-list"></div>';
    renderMembers(target,'');
@@ -270,7 +274,8 @@ async function view(mount){
   }else if(panel==='train'){
    [cache.trains,cache.dice,cache.diceMembers]=await Promise.all([
     request('/api/train-manager'),request('/api/train-dice').catch(()=>[]),request('/api/members').catch(()=>[])]);
-   cache.rotation=await request('/api/train-rotation').catch(()=>null);
+    await formerArchiveFromTrain(cache.trains,cache.diceMembers);
+    cache.rotation=await request('/api/train-rotation').catch(()=>null);
    target.innerHTML='<div class="native-row"><h2>Zugplanung</h2><div class="native-row-actions"><button type="button" data-native-dice-date="'+e(cache.trains.today)+'">🎲 Dice Game</button><button data-native-new="train">+ Fahrer / Datum</button></div></div><div id="native-train-body"></div>';renderTrain(target);
   }else if(['tasks','absences','events'].includes(panel)){
    cache.ops=await request('/api/operations');
@@ -306,28 +311,49 @@ export function profileMetricChanges(stats){
 }
 function renderMembers(target,query=''){
  const host=target.querySelector('#native-member-list');if(!host)return;
+ const lang=officerLanguage(target.ownerDocument),tr=k=>e(translateOfficerText(k,lang));
  const records=Array.isArray(cache.members)?cache.members:[];
  const text=String(query).trim().toLocaleLowerCase('de-DE');
+ const isFormer=m=>['former','archived','inactive'].includes(String(m.lifecycle||m.status||'').toLowerCase());
  const list=records.filter(m=>String(m.name||'').toLocaleLowerCase('de-DE').includes(text));
+ const active=list.filter(m=>!isFormer(m)),realFormer=list.filter(isFormer);
+ const historical=(cache.membersArchive||[]).filter(x=>String(x.name).toLocaleLowerCase('de-DE').includes(text));
  const opened=new Set([...host.querySelectorAll('details.native-rank-group[open]')].map(x=>x.dataset.rank));
  const initial=!host.querySelector('.native-rank-group');
- const firstRank=rankOrder.find(rank=>list.some(m=>(rankOrder.includes(m.rank)?m.rank:'Ungeklärt')===rank));
+ const firstRank=rankOrder.find(rank=>active.some(m=>(rankOrder.includes(m.rank)?m.rank:'Ungeklärt')===rank));
  const rankGroups=rankOrder.map(rank=>{
-  const group=list.filter(m=>(rankOrder.includes(m.rank)?m.rank:'Ungeklärt')===rank)
+  const group=active.filter(m=>(rankOrder.includes(m.rank)?m.rank:'Ungeklärt')===rank)
    .sort((a,b)=>String(a.name).localeCompare(String(b.name),'de',{sensitivity:'base'}));
   if(!group.length)return '';
   const open=text.length>0||opened.has(rank)||(initial&&rank===firstRank);
   const rows=group.map(m=>'<button type="button" data-native-member="'+e(m.id)+'">'+
    '<span class="native-rank-tag">'+e(m.rank||'?')+'</span><span><strong>'+e(m.name)+'</strong>'+
    '<small>Stärke '+numberText(m.power)+' · Kills '+numberText(m.kills)+
-   ' · Spenden '+numberText(m.donations_weekly)+'</small></span><span class="native-member-open" aria-hidden="true">Profil ›</span></button>').join('');
+   ' · Spenden '+numberText(m.donations_weekly)+'</small></span><span class="native-member-open" aria-hidden="true">Profil →</span></button>').join('');
   return '<details class="native-rank-group" data-rank="'+e(rank)+'" '+(open?'open':'')+'>'+
    '<summary><span class="native-rank-tag">'+e(rank)+'</span><strong>'+e(rank==='Ungeklärt'?'Rang ungeklärt':'Rang '+rank)+'</strong>'+
    '<span class="native-rank-count">'+group.length+' Spieler</span></summary>'+
    '<div class="native-list native-rank-members">'+rows+'</div></details>';
  }).join('');
- host.innerHTML='<p class="native-muted">'+list.length+' Spieler'+(text?' für „'+e(query)+'“ gefunden':' · nach Allianzrang gruppiert')+'</p>'+
-  '<div class="native-member-folds">'+(rankGroups||'<p class="native-muted">Keine Spieler gefunden.</p>')+'</div>'+
+ const realFormerRows=realFormer.map(m=>'<button type="button" data-native-member="'+e(m.id)+'">'+
+  '<span class="native-rank-tag">Archiv</span><span><strong>'+e(m.name)+'</strong>'+
+  '<small>'+tr('Bestehende Spielerakte')+' · '+e(m.rank||tr('Rang unbekannt'))+'</small></span>'+
+  '<span class="native-member-open" aria-hidden="true">Profil →</span></button>').join('');
+ const historicalRows=historical.map(item=>
+  '<div class="native-historical-member native-member-archive-record"><strong>'+e(item.name)+'</strong>'+
+  '<small>'+tr('Ehemalig')+' · '+e(item.ride_count)+' '+tr(item.ride_count===1?'Zugfahrt':'Zugfahrten')+
+  ' · '+tr('Historischer Zugbeleg, noch keine Spielerakte')+'</small>'+
+  '<div class="native-historical-dates">'+item.dates.map(date=>
+   '<time datetime="'+e(date)+'">'+e(date)+'</time>').join('')+'</div></div>').join('');
+ const archiveCount=realFormer.length+historical.length;
+ const archiveOpen=text.length>0||opened.has('Archiv')||(!active.length&&archiveCount>0);
+ const archive=archiveCount?'<details class="native-rank-group native-members-archive" data-rank="Archiv" '+(archiveOpen?'open':'')+'>'+
+  '<summary><span class="native-rank-tag">'+tr('Archiv')+'</span><strong>'+tr('Ehemalige Mitglieder')+'</strong>'+
+  '<span class="native-rank-count">'+archiveCount+' '+tr('Einträge')+'</span></summary>'+
+  '<div class="native-list native-rank-members">'+realFormerRows+historicalRows+'</div></details>':'';
+ const unavailable=!cache.membersArchiveAvailable?'<p class="native-evidence-note" role="status">'+tr('Historische Zugbelege momentan nicht erreichbar. Die vorhandenen Mitglieder werden weiter angezeigt.')+'</p>':'';
+ host.innerHTML='<p class="native-muted">'+(archiveCount?((active.length+archiveCount)+' '+tr('Einträge')+(text?' '+tr('gefunden'):' · '+tr('nach Rang und Archiv gruppiert'))):(list.length+' Spieler'+(text?' für „'+e(query)+'“ gefunden':' · nach Allianzrang gruppiert')) )+'</p>'+
+  unavailable+'<div class="native-member-folds">'+(rankGroups+archive||'<p class="native-muted">Keine Spieler gefunden.</p>')+'</div>'+
   '<div id="native-person"></div>';
 }
 function deltaLabel(n){
