@@ -91,7 +91,7 @@ test('Visible zero suggestion requires explicit button and never saves on its ow
  assert.equal(q('[data-native-review-value]').value,'');
  q('[data-native-mark-zero]').click();
  assert.equal(q('[data-native-review-value]').value,'0');
- assert.match(q('[data-native-review-reason]').value,/Original-Screenshot/);
+ assert.equal(q('[data-native-review-reason]').value,'','A suggested zero does not pre-certify the audit note');
 });
 
 test('A clipped screenshot can be replaced with explicit confirmation without closing its review',async t=>{
@@ -99,7 +99,11 @@ test('A clipped screenshot can be replaced with explicit confirmation without cl
  const oldWindow=globalThis.window,oldFetch=globalThis.fetch;globalThis.window=dom.window;
  dom.window.HTMLElement.prototype.scrollIntoView=()=>{};dom.window.confirm=()=>true;
  t.after(()=>{clearOfficer();globalThis.window=oldWindow;globalThis.fetch=oldFetch;dom.window.close()});
- const rows=[{id:'clipped',source_name:'Synthetic',kind:'vs_day',category:'vs_uncertain',metric:'Dienstag',status:'open',evidence_sha:'a'.repeat(64)}];
+ const original=new Uint8Array(100);original.set([137,80,78,71,13,10,26,10]);
+ const replacement=new Blob([new Uint8Array(100).fill(2)],{type:'image/png'});
+ const digest=async bytes=>Array.from(new Uint8Array(await webcrypto.subtle.digest('SHA-256',bytes)),b=>b.toString(16).padStart(2,'0')).join('');
+ const originalSha=await digest(original),replacementSha=await digest(await replacement.arrayBuffer());
+ const rows=[{id:'clipped',source_name:'Synthetic',kind:'vs_day',category:'vs_uncertain',metric:'Dienstag',status:'open',evidence_sha:originalSha}];
  let replaces=0,approvals=0;
  globalThis.fetch=async(url,opts={})=>{
   const path=new URL(url).pathname;
@@ -109,9 +113,9 @@ test('A clipped screenshot can be replaced with explicit confirmation without cl
   if(path==='/api/session')return Response.json({reviewWritesEnabled:true});
   if(path==='/api/profile-captures')return Response.json([]);
   if(path==='/api/reviews/clipped/evidence'&&opts.method==='PATCH'){
-   replaces++;assert.equal(opts.headers['If-Match'],'a'.repeat(64));return Response.json({ok:true,sha256:'b'.repeat(64)});
+   replaces++;assert.equal(opts.headers['If-Match'],originalSha);return Response.json({ok:true,sha256:replacementSha});
   }
-  if(path==='/api/reviews/clipped/evidence')return new Response(new Uint8Array([137,80,78,71,13,10,26,10,0,0]),{headers:{'Content-Type':'image/png'}});
+  if(path==='/api/reviews/clipped/evidence')return new Response(replaces?replacement:original,{headers:{'Content-Type':'image/png'}});
   if(path==='/api/reviews/clipped/resolve'){approvals++;return Response.json({ok:true})}
   if(path==='/api/overview')return Response.json({active:1,reviews:1});
   if(path==='/api/operations')return Response.json({tasks:[]});
@@ -125,7 +129,6 @@ test('A clipped screenshot can be replaced with explicit confirmation without cl
  await openMore(root);
  await wait(()=>q('[data-officer-tab=reviews]'));q('[data-officer-tab=reviews]').click();
  await wait(()=>q('[data-native-review-replace-file]'));
- const replacement=new dom.window.File([new Uint8Array(100)],'better.png',{type:'image/png'});
  Object.defineProperty(q('[data-native-review-replace-file]'),'files',{configurable:true,value:[replacement]});
  q('[data-native-review-reason]').value='Source screenshot was clipped; verified replacement';
  q('[data-native-review-replace]').click();

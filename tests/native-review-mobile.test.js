@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {webcrypto} from 'node:crypto';
 import {JSDOM} from 'jsdom';
 import {initNativeAdmin,renderNativeAdmin,clearOfficer,reviewMatchesMember,reviewNumericValue} from '../assets/native-admin.js';
 async function openMore(mount) {
@@ -23,6 +24,7 @@ test('Numeric correction accepts confirmed digit groups but not guesses or overf
  assert.equal(reviewMatchesMember({name:'Synthetic Officer',rank:'R4'},'Nonexistent'),false);
 });
 test('Protected review workflow requires a screenshot, searchable member and explicit audited save',async t=>{
+ if(!globalThis.crypto)globalThis.crypto=webcrypto;
  const dom=new JSDOM('<main id="mount"></main>',{url:'https://lunas-empire.github.io/#admin'});
  const oldWindow=globalThis.window,oldFetch=globalThis.fetch,oldForm=globalThis.FormData,oldConfirm=dom.window.confirm;
  const oldCreateObjectURL=URL.createObjectURL,oldRevokeObjectURL=URL.revokeObjectURL;
@@ -32,11 +34,14 @@ test('Protected review workflow requires a screenshot, searchable member and exp
  dom.window.HTMLElement.prototype.scrollIntoView=()=>{};
  t.after(()=>{clearOfficer();globalThis.window=oldWindow;globalThis.fetch=oldFetch;globalThis.FormData=oldForm;dom.window.confirm=oldConfirm;URL.createObjectURL=oldCreateObjectURL;URL.revokeObjectURL=oldRevokeObjectURL;dom.window.close()});
  const id='aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa';
+ const imageBytes=Uint8Array.from([137,80,78,71,13,10,26,10,...Array(72).fill(2)]);
+ const imageHash=Array.from(new Uint8Array(await webcrypto.subtle.digest('SHA-256',imageBytes)),v=>v.toString(16).padStart(2,'0')).join('');
  const cases=[
-  {id:'case-no-image',kind:'profile',category:'missing',metric:'power',source_name:'Low OCR Player',status:'open',evidence_sha:null},
-  {id:'case-with-image',kind:'identity',category:'unmatched_name',metric:'name',source_name:'Unmatched Player',status:'open',evidence_sha:'a'.repeat(64)}
+  {id:'case-no-image',kind:'profile',category:'missing',metric:'power',source_name:'Low OCR Player',source_batch:'profiles/2026-10-11',source_value:null,status:'open',evidence_sha:null},
+  {id:'case-with-image',kind:'identity',category:'unmatched_name',metric:'name',source_name:'Unmatched Player',source_batch:'vs/2026-W41',source_value:0,context:{date:'2026-10-06'},status:'open',evidence_sha:imageHash}
  ];
  const posts=[];
+ let tampered=true;
  globalThis.fetch=async(url,opts={})=>{
   const path=new URL(url).pathname;
   if(path==='/api/native-login')return Response.json({token:'synthetic-officer',name:'Synthetic Officer',role:'R4'});
@@ -46,7 +51,7 @@ test('Protected review workflow requires a screenshot, searchable member and exp
   if(path==='/api/operations')return Response.json({tasks:[],events:[],absences:[],members:[]});
   if(path==='/api/reviews'&&opts.method!=='POST')return Response.json(cases);
   if(path==='/api/identity-options')return Response.json([{id,name:'Synthetic Officer',rank:'R4'},{id:'bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb',name:'Another Player',rank:'R2'}]);
-  if(path.endsWith('/evidence'))return new Response(new Uint8Array([137,80,78,71,13,10,26,10]),{headers:{'Content-Type':'image/png'}});
+  if(path.endsWith('/evidence'))return new Response(tampered?Uint8Array.from([...imageBytes.slice(0,-1),3]):imageBytes,{headers:{'Content-Type':'image/png'}});
   if(path.endsWith('/resolve')){
    posts.push(JSON.parse(opts.body));
    if(posts.length===2)return Response.json({error:'synthetic conflict'},{status:409});
@@ -67,13 +72,20 @@ test('Protected review workflow requires a screenshot, searchable member and exp
  assert.equal(q('#review-search-native').labels[0].textContent,'Spieler oder Fall suchen');
  const missing=q('[data-review-id=case-no-image]');
  assert.equal(missing.dataset.evidence,'without','Missing-image reviews use compact evidence placeholder');
+ assert.match(missing.querySelector('.native-review-source').textContent,/profiles\/2026-10-11.*unbekannt/);
  assert.equal(missing.querySelector('[data-native-review-resolve=approve]').disabled,true);
  assert.ok(missing.querySelector('[data-native-review-file]'),'Evidence upload control is required');
  const attached=q('[data-review-id=case-with-image]');
- assert.equal(attached.querySelector('[data-native-review-resolve=approve]').disabled,false);
+ assert.equal(attached.querySelector('[data-native-review-resolve=approve]').disabled,true,'Approval waits for the protected image and hash check');
+ assert.match(attached.querySelector('.native-review-source').textContent,/vs\/2026-W41.*2026-10-06.*OCR: 0.*SHA-256/);
  attached.open=true;
  attached.dispatchEvent(new dom.window.Event('toggle'));
+ await wait(()=>attached.querySelector('.native-review-image').textContent.includes('Prüfsumme'));
+ assert.equal(attached.querySelector('[data-native-review-resolve=approve]').disabled,true,'Tampered image cannot be approved');
+ tampered=false;
+ attached.dispatchEvent(new dom.window.Event('toggle'));
  await wait(()=>attached.querySelector('[data-native-review-expand]'));
+ assert.equal(attached.querySelector('[data-native-review-resolve=approve]').disabled,false);
  const expand=attached.querySelector('[data-native-review-expand]');
  assert.equal(expand.tagName,'BUTTON');
  assert.equal(expand.getAttribute('aria-label'),'Originalbild ansehen');
@@ -87,10 +99,11 @@ test('Protected review workflow requires a screenshot, searchable member and exp
  await wait(()=>attached.querySelectorAll('[data-native-review-pick]').length===1);
  attached.querySelector('[data-native-review-pick]').click();
  assert.equal(attached.querySelector('[data-native-review-member]').value,id);
+ attached.querySelector('[data-native-review-reason]').value='Original image confirms synthetic identity';
  attached.querySelector('[data-native-review-resolve=approve]').click();
  await wait(()=>posts.length===1);
  assert.equal(posts[0].member_id,id);
- assert.equal(posts[0].evidence_sha,'a'.repeat(64));
+ assert.equal(posts[0].evidence_sha,imageHash);
  assert.ok(!('corrected_value' in posts[0]));
  await wait(()=>!q('[data-review-id=case-with-image]'));
  assert.match(q('#native-review-finished').textContent,/erledigt/);
@@ -99,6 +112,7 @@ test('Protected review workflow requires a screenshot, searchable member and exp
  assert.equal(next.open,true,'Next open review is expanded immediately after a confirmed save');
  assert.equal(dom.window.document.activeElement,next.querySelector('summary'),'Keyboard focus moves to next review');
  assert.equal(next.querySelector('[data-native-review-resolve=approve]').disabled,true);
+ next.querySelector('[data-native-review-reason]').value='Synthetic evidence cannot be matched';
  next.querySelector('[data-native-review-resolve=dismiss]').click();
  await wait(()=>posts.length===2);
  await wait(()=>next.querySelector('.native-review-message')?.textContent.includes('synthetic conflict'));

@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-15.50');
+@import url('./tokens.css?v=2026-10-15.51');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -1002,6 +1002,7 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 .native-review-summary small{font-size:.73rem;color:var(--color-muted);overflow-wrap:anywhere}
 .native-review-evidence-status{font-size:.72rem;font-weight:750;padding:.24rem .45rem;border:1px solid var(--color-rule);border-radius:4px;color:var(--color-ink);background:var(--color-raised);white-space:nowrap}
 .native-review-card[open]>summary{border-bottom:1px solid var(--color-rule)}
+.native-review-source{font-size:.76rem;line-height:1.5;color:var(--color-muted);overflow-wrap:anywhere;margin:.1rem 0 .5rem}
 .native-review-body{padding:.6rem .75rem .8rem}
 .native-review-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.75rem;align-items:start}
 .native-review-picture,.native-review-entry{min-width:0;display:grid;align-content:start;gap:.55rem}

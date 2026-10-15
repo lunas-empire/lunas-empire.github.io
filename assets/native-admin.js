@@ -459,6 +459,17 @@ async function showPerson(target,id){
     '<div id="native-person-log"></div><div id="registry-form"></div></div></details></section>';
  node.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
+function showVsEvidenceUpload(area,key,message,source=null){
+ area.innerHTML='<p class="native-evidence-note">'+e(message)+'</p>'+
+  (source?'<p class="native-review-source" data-native-no-translate>'+e(source.member_name||'')+' · '+e(source.source_name||'')+' · OCR: '+e(source.source_value??'unbekannt')+
+   (Number.isInteger(source.row_y)?' · Y: '+e(source.row_y):'')+
+   (source.sha256?' · SHA-256: '+e(source.sha256):'')+'</p>':'')+
+  '<form id="native-vs-evidence-upload" data-key="'+e(key)+'" data-expected-sha="'+e(source?.sha256||'')+'">'+
+  '<label>Originalaufnahme (PNG/JPG/WebP)<input type="file" name="image" accept="image/png,image/jpeg,image/webp" required></label>'+
+  '<label>Begründung / sichtbare Spielerzeile<input type="text" name="reason" required minlength="8" maxlength="300"></label>'+
+  '<button type="submit">Originalbild privat zuordnen</button>'+
+  '<p role="status" class="native-vs-evidence-upload-result"></p></form>';
+}
 async function openVsScreenshot(target,key){
  const matched=/^(20\d{2}-W\d{2})\|([a-zA-Z0-9-]{1,80})\|([0-6])$/.exec(String(key));
  if(!matched)return;
@@ -470,7 +481,7 @@ async function openVsScreenshot(target,key){
  host.setAttribute('role','dialog');host.setAttribute('aria-modal','true');
  host.setAttribute('aria-label','Privater Originalbeleg zum VS-Wert');
  host.innerHTML='<div class="native-vs-evidence-panel native-stat-evidence-panel">'+
-  '<div class="native-row"><h3>'+(weekday==='6'?'Wochenbeleg prüfen':'Original-Screenshot')+' · '+e(week)+'</h3>'+
+  '<div class="native-row"><h3>'+(weekday==='6'?'Wochenbeleg prüfen':'Original-Screenshot · <span>'+trainWeekdays[Number(weekday)]+'</span>')+' · '+e(week)+'</h3>'+
   '<button type="button" data-native-vs-image-close aria-label="Bild schließen">Schließen ✕</button></div>'+
   '<p class="native-muted">Geschützter Originalbeleg; nur für angemeldete Offiziere.</p>'+
   '<div id="native-vs-evidence-image" class="native-stat-image" role="status">'+(weekday==='6'?'Wochenbeleg wird geprüft …':'Quellzeile wird ermittelt …')+'</div></div>';
@@ -485,7 +496,7 @@ async function openVsScreenshot(target,key){
    if(!host.isConnected)return;
    source=info.source?{...info.source,member_name:info.member_name}:null;
    if(source&&!source.image_available){
-    area.textContent='Die richtige Spielerzeile wurde gefunden, aber das Originalbild ist noch nicht im privaten Archiv verfügbar. Es wird kein anderer Screenshot angezeigt.';
+    showVsEvidenceUpload(area,key,'Die richtige Spielerzeile wurde gefunden, aber das Originalbild ist noch nicht im privaten Archiv verfügbar. Es wird kein anderer Screenshot angezeigt.',source);
     return;
    }
   }
@@ -534,12 +545,7 @@ async function openVsScreenshot(target,key){
       ?'Wochenranglistenbilder sind archiviert, jedoch keines diesem Spielerwert eindeutig zugeordnet. Original prüfen und gezielt nachtragen.'
       :'Noch kein verifizierter Wochenranglisten-Beleg mit diesem Spielerwert verknüpft. Passendes Originalbild nachtragen.'
    :'Kein eindeutig zugeordneter Original-Screenshot für diesen Spielerwert. Kein beliebiges Bild dieser Rangliste wird angezeigt.';
-  area.innerHTML='<p class="native-evidence-note">'+e(unavailable)+'</p>'+
-   '<form id="native-vs-evidence-upload" data-key="'+e(key)+'">'+
-   '<label>Originalaufnahme (PNG/JPG/WebP)<input type="file" name="image" accept="image/png,image/jpeg,image/webp" required></label>'+
-   '<label>Begründung / sichtbare Spielerzeile<input type="text" name="reason" required minlength="8" maxlength="300" value="Originale VS-Rangliste, sichtbaren Spielernamen und Wert geprüft"></label>'+
-   '<button type="submit">Originalbild privat zuordnen</button>'+
-   '<p role="status" class="native-vs-evidence-upload-result"></p></form>';
+  showVsEvidenceUpload(area,key,unavailable,source);
  }catch(error){if(host.isConnected)area.textContent='Originalbeleg konnte nicht geöffnet werden: '+error.message}
 }
 
@@ -551,8 +557,12 @@ async function submitVsScreenshot(form,target){
  if(!file||file.size<50||file.size>950000||!['image/png','image/jpeg','image/webp'].includes(file.type)){
   message.textContent='Bildformat ungültig oder über 950 KB';return;
  }
+ if(reason.trim().length<8){message.textContent='Bitte die sichtbare Spielerzeile und den Wert begründen.';return}
  button.disabled=true;
  try{
+  const expected=form.dataset.expectedSha;
+  const hash=await evidenceHash(file);
+  if(expected&&hash!==expected)throw Error('Ausgewähltes Bild stimmt nicht mit der gespeicherten Quellen-Prüfsumme überein');
   const path=matched[3]==='6'?'/api/vs-week/'+matched[1]+'/'+matched[2]+'/evidence':
    '/api/vs-days/'+matched[1]+'/'+matched[2]+'/'+matched[3]+'/evidence';
   const response=await fetch(apiBase+path,{
@@ -561,6 +571,7 @@ async function submitVsScreenshot(form,target){
    body:file});
   const result=await response.json().catch(()=>({}));
   if(!response.ok)throw Error(result.error||'Screenshot konnte nicht gespeichert werden');
+  if(result.sha256&&result.sha256!==hash)throw Error('Gespeichertes Bild hat eine andere Prüfsumme. Bitte erneut laden und prüfen.');
   await openVsScreenshot(target,key);
  }catch(error){message.textContent='Nicht gespeichert: '+error.message;button.disabled=false}
 }
@@ -800,18 +811,25 @@ function renderTrain(target){
 }
 function editTrain(target,date,allowDateChange=false,preferredMemberId=null){
  const d=cache.trains,entry=(d.history||[]).find(x=>x.date===date);
- const optionsList=options((d.members||[]).filter(m=>!memberAbsentOn(m.id,date,d.absences||[])||m.id===entry?.member_id),preferredMemberId||entry?.member_id);
+ const repair=entry?.status==='completed'&&entry.linked===false&&!entry.member_id;
+ const eligible=(d.members||[]).filter(m=>(!repair||['R2','R3','R4','R5'].includes(m.rank))&&m.status!=='former'&&m.status!=='archived'&&m.lifecycle!=='former'&&m.lifecycle!=='archived'&&
+  (!memberAbsentOn(m.id,date,d.absences||[])||m.id===entry?.member_id));
+ const optionsList=options(eligible,preferredMemberId||entry?.member_id);
  const editor=target.querySelector('#native-train-form');
  if(!editor)return;
- editor.innerHTML='<form id="native-train-save" class="native-form native-fast-form"><h3>Zugfahrer · '+e(date)+'</h3>'+
+ editor.innerHTML='<form id="native-train-save" class="native-form native-fast-form" '+(repair?'data-repair-date="'+e(date)+'"':'')+'><h3>Zugfahrer · '+e(date)+'</h3>'+
+  (repair?'<p class="native-evidence-note"><span data-native-no-translate>'+e(entry.original_name||entry.driver||'Nicht angegeben')+' · '+e(date)+'</span> · <span>Zuordnung offen</span>. <span>Nur sichere Identitäten zuordnen; Originalnamen bleiben erhalten.</span></p>':'')+
   '<p class="native-form-help">Fahrer ab R2. Wer an diesem Tag als abwesend eingetragen ist, wird nicht vorgeschlagen und kann nicht neu geplant werden.</p>'+
-  '<label>Fahrer aus Allianz<select name="member_id">'+optionsList+'</select></label>'+
-  '<label>Status<select name="status">'+[['planned','Geplant'],['completed','Gefahren'],['cancelled','Abgesagt']].map(([v,l])=>
-   '<option value="'+v+'" '+(v===(entry?.status||'planned')?'selected':'')+'>'+l+'</option>').join('')+'</select></label>'+
-  '<details class="native-form-more" '+(allowDateChange?'open':'')+'><summary>Datum, freie Namen & Notizen</summary><div class="native-form-more-fields">'+
+  '<label>Fahrer aus Allianz<select name="member_id" '+(repair?'required':'')+'>'+optionsList+'</select></label>'+
+  (repair?'<input type="hidden" name="status" value="completed">':
+   '<label>Status<select name="status">'+[['planned','Geplant'],['completed','Gefahren'],['cancelled','Abgesagt']].map(([v,l])=>
+   '<option value="'+v+'" '+(v===(entry?.status||'planned')?'selected':'')+'>'+l+'</option>').join('')+'</select></label>')+
+  '<details class="native-form-more" '+(allowDateChange||repair?'open':'')+'><summary>Datum, freie Namen & Notizen</summary><div class="native-form-more-fields">'+
   '<label>Datum<input name="date" type="date" value="'+e(date)+'" required '+(allowDateChange?'':'readonly')+'></label>'+
-  '<label>Nur wenn keine sichere Zuordnung möglich ist: freier Name<input name="driver_name" maxlength="80" value="'+e(entry?.member_id?'':entry?.driver||'')+'"></label>'+
-  '<label>Notiz<input name="note" maxlength="300" value="'+e(entry?.note||'')+'"></label></div></details>'+
+  (repair?'':'<label>Nur wenn keine sichere Zuordnung möglich ist: freier Name<input name="driver_name" maxlength="80" value="'+e(entry?.member_id?'':entry?.driver||'')+'"></label>')+
+  (repair?'<label>Prüfnotiz<input data-native-repair-reason maxlength="300" minlength="8" required></label>'+
+   (entry.note?'<p class="native-muted" data-native-no-translate>'+e(entry.note)+'</p>':''):
+   '<label>Notiz<input name="note" maxlength="300" value="'+e(entry?.note||'')+'"></label>')+'</div></details>'+
   '<button type="submit" class="native-game-primary">Zugzuordnung speichern</button>'+
   '<button type="button" data-native-form-reload hidden>Aktuellen Zugstand laden</button>'+
   '<p id="native-form-message" role="status"></p></form>';
@@ -978,6 +996,21 @@ async function saveForm(mount,form){
  const action=kind==='train'?'train-assignments':'operations/'+kind;
  if(kind==='train'){
   const item=cache.trains.history.find(x=>x.date===body.date);
+  if(form.dataset.repairDate){
+   const member=(cache.trains.members||[]).find(x=>x.id===body.member_id);
+   const reason=form.querySelector('[data-native-repair-reason]')?.value.trim()||'';
+   const note=[item?.note,reason].filter(Boolean).join(' | ');
+   if(body.date!==form.dataset.repairDate||item?.status!=='completed'||item.linked!==false||item.member_id||
+    !Number.isSafeInteger(item.revision)||item.revision<0||
+    body.status!=='completed'||!member||['former','archived'].includes(member.status)||
+    ['former','archived'].includes(member.lifecycle)||!['R2','R3','R4','R5'].includes(member.rank)||
+    reason.length<8||note.length>300){
+    form.querySelector('#native-form-message').textContent='Bitte aktives Mitglied, Datum und Prüfnotiz für diese historische Fahrt bestätigen.';
+    return;
+   }
+   body.note=note;
+   if(!window.confirm('Historische Fahrt vom '+body.date+' nach Originalbeleg dem ausgewählten Mitglied zuordnen?'))return;
+  }
   body.expected_revision=item?.revision||0;
  }
  const submit=form.querySelector('[type=submit]');submit.disabled=true;
@@ -1353,35 +1386,32 @@ async function loadReviewImage(card){
    headers:{Authorization:'Bearer '+sessionToken},mode:'cors',credentials:'omit',cache:'no-store'});
   if(!response.ok)throw Error('Bild nicht verfügbar ('+response.status+')');
   const blob=await response.blob();
+  if(!['image/png','image/jpeg','image/webp'].includes(blob.type)||blob.size<50||blob.size>950000)throw Error('Ungültige Originalbilddaten');
+  if(await evidenceHash(blob)!==found.evidence_sha)throw Error('Bild-Prüfsumme stimmt nicht überein');
   if(!card.isConnected)return;
   const imageURL=URL.createObjectURL(blob);
   reviewBlobUrls.set(id,imageURL);
   preview.innerHTML='<button type="button" data-native-review-expand aria-label="Originalbild ansehen"><img alt="Privater Screenshot für diesen Prüfauftrag" loading="lazy" draggable="false"></button>';
   preview.querySelector('img').src=imageURL;
+  const approve=card.querySelector('[data-native-review-resolve="approve"]');
+  if(approve&&cache.reviewWritesEnabled===true&&['profile','vs_day','identity'].includes(found.kind)&&!found.context?.warning)approve.disabled=false;
  }catch(err){
-  if(card.isConnected)preview.textContent='Beleg konnte nicht geladen werden: '+err.message;
+  if(card.isConnected){preview.textContent='Beleg konnte nicht geladen werden: '+err.message;
+   const approve=card.querySelector('[data-native-review-resolve="approve"]');if(approve)approve.disabled=true}
  }
 }
 async function normalizeReviewImage(file){
  if(!file||!['image/png','image/jpeg','image/webp'].includes(file.type))throw Error('PNG, JPG oder WebP auswählen');
- if(file.size<=950000)return file;
- if(typeof createImageBitmap!=='function')throw Error('Bild ist zu groß. Bitte zuerst einen Ausschnitt erstellen.');
- const bitmap=await createImageBitmap(file);
- try{
-  const scale=Math.min(1,1600/bitmap.width,2000/bitmap.height);
-  const canvas=document.createElement('canvas');
-  canvas.width=Math.max(1,Math.round(bitmap.width*scale));
-  canvas.height=Math.max(1,Math.round(bitmap.height*scale));
-  canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);
-  for(const quality of [.82,.67,.50,.35]){
-   const result=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',quality));
-   if(result&&result.size<=950000)return result;
-  }
-  throw Error('Screenshot ist auch nach Verkleinerung zu groß. Bitte einen kleineren Ausschnitt wählen.');
- }finally{bitmap.close()}
+ if(file.size<50||file.size>950000)throw Error('Originalbild muss 50 Byte bis 950 KB groß sein. Nicht verkleinern oder zuschneiden.');
+ return file;
+}
+async function evidenceHash(blob){
+ const digest=await crypto.subtle.digest('SHA-256',await blob.arrayBuffer());
+ return Array.from(new Uint8Array(digest),v=>v.toString(16).padStart(2,'0')).join('');
 }
 function renderReviews(target,term=''){
  clearReviewImages();
+ const lang=officerLanguage(target.ownerDocument),label=key=>e(translateOfficerText(key,lang));
  const writesEnabled=cache.reviewWritesEnabled===true;
  const batch=target.querySelector('#review-batch-native')?.value||'';
  const kind=target.querySelector('#review-kind-native')?.value||'';
@@ -1401,6 +1431,10 @@ function renderReviews(target,term=''){
     (x.context?.date?' · '+e(x.context.date):'')+'</small></span>'+
     '<span class="native-review-evidence-status">'+(linked?'Bild hinterlegt':'Bild fehlt')+'</span></summary>'+
    '<div class="native-review-body"><p class="native-muted">'+e(x.note||'')+'</p>'+
+    '<p class="native-review-source">'+label('Quelle')+': <span data-native-no-translate>'+e(x.source_batch||translateOfficerText('unbekannt',lang))+'</span>'+
+    (x.context?.date?' · '+label('Datum')+': <span data-native-no-translate>'+e(x.context.date)+'</span>':'')+
+    ' · OCR: <span data-native-no-translate>'+e(x.source_value??translateOfficerText('unbekannt',lang))+'</span>'+
+    (linked?' · SHA-256: <span data-native-no-translate>'+e(x.evidence_sha)+'</span>':'')+'</p>'+
     (x.context?.warning?'<p class="native-evidence-note">'+e(x.context.warning)+'</p>':'')+
     '<div class="native-review-columns"><div class="native-review-picture">'+
      '<div class="native-review-image" role="status" aria-live="polite">Bild öffnen, um Beleg zu laden.</div>'+
@@ -1424,9 +1458,9 @@ function renderReviews(target,term=''){
       numeric?'<label>Richtigen Wert eingeben<input inputmode="numeric" type="text" autocomplete="off" data-native-review-value maxlength="18" placeholder="Zahl vom Screenshot ablesen"></label>'+
       (x.kind==='vs_day'?'<button type="button" data-native-mark-zero>Sichtbare 0 im Screenshot übernehmen</button>':''):
       '<p class="native-evidence-note">Dieser Falltyp benötigt eine gesonderte fachliche Prüfung.</p>')+
-     '<label>Prüfnotiz<input type="text" data-native-review-reason maxlength="500" placeholder="Was wurde am Bild bestätigt?" value="Screenshot manuell geprüft"></label>'+
+     '<label>Prüfnotiz<input type="text" data-native-review-reason maxlength="500" placeholder="Was wurde am Bild bestätigt?"></label>'+
      '<div class="native-review-controls">'+
-      '<button type="button" class="native-game-primary" data-native-review-resolve="approve" '+(!writesEnabled||!linked||(!identity&&!numeric)||Boolean(x.context?.warning)?'disabled':'')+'>Korrektur speichern</button>'+
+      '<button type="button" class="native-game-primary" data-native-review-resolve="approve" disabled>Korrektur speichern</button>'+
       '<button type="button" data-native-review-resolve="dismiss" '+(writesEnabled?'':'disabled')+'>Ohne Korrektur schließen</button></div>'+
      '<p class="native-review-message" role="status" aria-live="polite"></p></div></div></div></details>';
  };
@@ -1461,8 +1495,7 @@ async function previewProfileCapture(card){
   if(!response.ok)throw Error('Privates Bild nicht abrufbar (HTTP '+response.status+')');
   const blob=await response.blob();
   if(blob.type!=='image/png'||blob.size<50||blob.size>950000)throw Error('Ungültige Bilddaten');
-  const digest=await crypto.subtle.digest('SHA-256',await blob.arrayBuffer());
-  const hash=Array.from(new Uint8Array(digest),v=>v.toString(16).padStart(2,'0')).join('');
+  const hash=await evidenceHash(blob);
   if(hash!==candidate.sha256)throw Error('Bild-Prüfsumme stimmt nicht überein');
   if(card.querySelector('[data-native-capture-choice]')?.value!==candidate.id)return;
   const old=reviewBlobUrls.get('candidate-'+id);if(old)URL.revokeObjectURL(old);
@@ -1503,7 +1536,6 @@ async function attachProfileCapture(card){
   panel.querySelector('[data-native-review-file]')?.closest('label')?.remove();
   panel.querySelector('[data-native-review-upload]')?.remove();
   panel.querySelector('.native-private-capture-gallery')?.remove();
-  card.querySelector('[data-native-review-resolve="approve"]').disabled=Boolean(record.context?.warning);
   selectedProfileCaptures.delete(id);
   const old=reviewBlobUrls.get('candidate-'+id);if(old){URL.revokeObjectURL(old);reviewBlobUrls.delete('candidate-'+id)}
   const previousUrl=reviewBlobUrls.get(id);if(previousUrl){URL.revokeObjectURL(previousUrl);reviewBlobUrls.delete(id)}
@@ -1523,13 +1555,14 @@ async function replaceReviewScreenshot(card){
  button.disabled=true;message.textContent='Geprüften Ersatzbeleg sicher hinterlegen .';
  try{
   const payload=await normalizeReviewImage(file);
+  const hash=await evidenceHash(payload);
   const response=await fetch(apiBase+'/api/reviews/'+encodeURIComponent(id)+'/evidence',{
    method:'PATCH',
    headers:{Authorization:'Bearer '+sessionToken,'Content-Type':payload.type,
     'If-Match':record.evidence_sha,'X-Evidence-Reason':encodeURIComponent(reason)},
    body:payload,mode:'cors',credentials:'omit',cache:'no-store'});
   const result=await response.json();
-  if(!response.ok||!result.ok)throw Error(result.error||'Ersetzen fehlgeschlagen');
+  if(!response.ok||!result.ok||result.sha256!==hash)throw Error(result.error||'Ersetzen fehlgeschlagen oder Bild-Prüfsumme abweichend');
   record.evidence_sha=result.sha256;
   const url=reviewBlobUrls.get(id);if(url){URL.revokeObjectURL(url);reviewBlobUrls.delete(id)}
   const candidate=reviewBlobUrls.get('candidate-'+id);if(candidate){URL.revokeObjectURL(candidate);reviewBlobUrls.delete('candidate-'+id)}
@@ -1550,19 +1583,18 @@ async function attachReviewScreenshot(card){
  message.textContent='Bild wird privat gesichert …';
  try{
   const payload=await normalizeReviewImage(file);
+  const hash=await evidenceHash(payload);
   const res=await fetch(apiBase+'/api/reviews/'+encodeURIComponent(id)+'/evidence',{
    method:'PUT',headers:{Authorization:'Bearer '+sessionToken,'Content-Type':payload.type},
    body:payload,mode:'cors',credentials:'omit',cache:'no-store'});
   const body=await res.json();
-  if(!res.ok)throw Error(body.error||'Upload fehlgeschlagen');
+  if(!res.ok||body.sha256!==hash)throw Error(body.error||'Upload fehlgeschlagen oder Bild-Prüfsumme abweichend');
   const record=(cache.reviews||[]).find(x=>x.id===id);
   if(record)record.evidence_sha=body.sha256;
   card.dataset.evidence='with';
   card.querySelector('.native-review-evidence-status').textContent='Bild hinterlegt';
   const panel=card.querySelector('.native-review-picture');
   panel.querySelector('label')?.remove();upload.remove();
-  card.querySelector('[data-native-review-resolve="approve"]').disabled=
-   !['profile','vs_day','identity'].includes(record?.kind)||Boolean(record?.context?.warning);
   message.textContent='Bild geschützt hinterlegt. Bitte ansehen, korrigieren und speichern.';
   await loadReviewImage(card);
  }catch(error){message.textContent='Nicht hochgeladen: '+error.message;upload.disabled=false}
@@ -1576,6 +1608,7 @@ async function completeReview(card,action){
  const body={action,reason};
  if(action==='approve'){
   if(!item.evidence_sha){message.textContent='Ohne Bildbeleg keine Freigabe.';return}
+  if(!reviewBlobUrls.has(item.id)){message.textContent='Originalbild zuerst laden und Prüfsumme kontrollieren.';return}
   body.evidence_sha=item.evidence_sha;
   if(item.kind==='identity'){
    const chosen=card.querySelector('[data-native-review-member]')?.value;
@@ -1826,7 +1859,7 @@ export function initNativeAdmin(mount){
   if(button.hasAttribute('data-native-mark-zero')){
    const card=button.closest('.native-review-card');
    const field=card?.querySelector('[data-native-review-value]');
-   if(field){field.value='0';field.focus();card.querySelector('[data-native-review-reason]').value='Sichtbare 0 im Original-Screenshot von Officer geprüft';
+   if(field){field.value='0';field.focus();
     card.querySelector('.native-review-message').textContent='0 vorgemerkt. Bitte Originalbild prüfen und Korrektur ausdrücklich speichern.'}
    return;
   }
