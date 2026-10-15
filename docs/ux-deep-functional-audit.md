@@ -34,3 +34,6 @@ Changed files: `assets/native-admin.js` and `tests/native-review-mobile.test.js`
 5. Review current Worker/D1 security and data state in its authorized environment. This local frontend review provides no evidence about production permissions or mutations.
 
 No overall quality score is assigned from synthetic tests or source inspection.
+
+## Release reconciliation (15 October)
+Temporary local untracked QA/Chrome profiles were moved outside the public repository tree before final validation. After all v42 CSS/JS edits and asset stamping, npm test passed 182/182, npm run lint passed, and git diff --check passed. This supersedes the earlier working-tree lint blocker; no application error had been involved. Luna v42 code commit 943b145d89d8f477e5c9929b8a4567c0d995c47d was published, and GitHub Pages served the v42 HTML and config JS with HTTP 200. The privileged real-world evidence and R4/R5 acceptance gates are still open.
