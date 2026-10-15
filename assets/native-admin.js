@@ -264,7 +264,7 @@ async function view(mount){
    const batches=[...new Set(cache.reviews.map(x=>x.source_batch).filter(Boolean))].sort();
    const withEvidence=cache.reviews.filter(x=>Boolean(x.evidence_sha)).length;
    const withoutEvidence=cache.reviews.length-withEvidence;
-   target.innerHTML='<div class="native-row"><h2>OCR-Prüfung</h2><input id="review-search-native" type="search" placeholder="Spieler oder Fall suchen"></div>'+
+   target.innerHTML='<div class="native-row"><h2>OCR-Prüfung</h2><label>Spieler oder Fall suchen<input id="review-search-native" type="search" placeholder="Spieler oder Fall suchen"></label></div>'+
     '<p class="native-muted"><strong>'+withEvidence+' mit Screenshot</strong> · '+withoutEvidence+' ohne Screenshot. Die Belegfälle stehen zuerst. Bilder werden erst beim Öffnen privat geladen; keine automatische Freigabe.</p>'+
     (!cache.reviewWritesEnabled?'<p class="native-evidence-note" role="status">Private Bild- und Korrekturfunktionen werden erst nach dem Cloudflare-Backend-Update freigeschaltet. Die bestehenden Prüffälle bleiben offen.</p>':'')+
     '<div class="native-row"><label>Bildstatus <select id="review-image-native"><option value="all">Alle Fälle ('+cache.reviews.length+')</option><option value="with">Mit Bild ('+withEvidence+')</option><option value="without">Ohne Bild ('+withoutEvidence+')</option></select></label>'+
@@ -1290,7 +1290,7 @@ async function loadReviewImage(card){
   if(!card.isConnected)return;
   const imageURL=URL.createObjectURL(blob);
   reviewBlobUrls.set(id,imageURL);
-  preview.innerHTML='<img alt="Privater Screenshot für diesen Prüfauftrag" loading="lazy" draggable="false">';
+  preview.innerHTML='<button type="button" data-native-review-expand aria-label="Originalbild ansehen"><img alt="Privater Screenshot für diesen Prüfauftrag" loading="lazy" draggable="false"></button>';
   preview.querySelector('img').src=imageURL;
  }catch(err){
   if(card.isConnected)preview.textContent='Beleg konnte nicht geladen werden: '+err.message;
@@ -1337,7 +1337,7 @@ function renderReviews(target,term=''){
    '<div class="native-review-body"><p class="native-muted">'+e(x.note||'')+'</p>'+
     (x.context?.warning?'<p class="native-evidence-note">'+e(x.context.warning)+'</p>':'')+
     '<div class="native-review-columns"><div class="native-review-picture">'+
-     '<div class="native-review-image" role="img" aria-label="Geschütztes Belegbild">Bild öffnen, um Beleg zu laden.</div>'+
+     '<div class="native-review-image" role="status" aria-live="polite">Bild öffnen, um Beleg zu laden.</div>'+
      (linked?'<small>Privat hinterlegt · überprüfe die Anzeige vor dem Speichern.</small>'+
       '<details class="native-evidence-replace"><summary>Falschen oder abgeschnittenen Screenshot ersetzen</summary>'+
       '<label>Neuen Original-Screenshot auswählen<input type="file" data-native-review-replace-file accept="image/png,image/jpeg,image/webp"></label>'+
@@ -1402,7 +1402,7 @@ async function previewProfileCapture(card){
   const old=reviewBlobUrls.get('candidate-'+id);if(old)URL.revokeObjectURL(old);
   const url=URL.createObjectURL(blob);reviewBlobUrls.set('candidate-'+id,url);
   const frame=card.querySelector('.native-review-image');
-  frame.innerHTML='<img alt="Geschützter vollständiger Original-Screenshot zur manuellen Prüfung">';
+  frame.innerHTML='<button type="button" data-native-review-expand aria-label="Originalbild ansehen"><img alt="Geschützter vollständiger Original-Screenshot zur manuellen Prüfung"></button>';
   frame.querySelector('img').src=url;
   selectedProfileCaptures.set(id,{id:candidate.id,sha256:hash,blob});
   attach.disabled=false;
@@ -1570,9 +1570,9 @@ export function initNativeAdmin(mount){
    else if(proof.hasAttribute('data-native-stat-link'))await statViewer.link();
    return;
   }
-  const screenshot=event.target.closest?.('.native-review-image img');
-  if(screenshot){
-   const url=screenshot.getAttribute('src')||'';
+  const expand=event.target.closest?.('[data-native-review-expand]');
+  if(expand){
+   const url=expand.querySelector('img')?.getAttribute('src')||'';
    if(url.startsWith('blob:'))window.open(url,'_blank','noopener,noreferrer');
    return;
   }

@@ -25,9 +25,12 @@ test('Numeric correction accepts confirmed digit groups but not guesses or overf
 test('Protected review workflow requires a screenshot, searchable member and explicit audited save',async t=>{
  const dom=new JSDOM('<main id="mount"></main>',{url:'https://lunas-empire.github.io/#admin'});
  const oldWindow=globalThis.window,oldFetch=globalThis.fetch,oldForm=globalThis.FormData,oldConfirm=dom.window.confirm;
+ const oldCreateObjectURL=URL.createObjectURL,oldRevokeObjectURL=URL.revokeObjectURL;
+ URL.createObjectURL=()=> 'blob:synthetic-review';URL.revokeObjectURL=()=>{};
+ const opened=[];dom.window.open=(...args)=>{opened.push(args)};
  globalThis.window=dom.window;globalThis.FormData=dom.window.FormData;dom.window.confirm=()=>true;
  dom.window.HTMLElement.prototype.scrollIntoView=()=>{};
- t.after(()=>{clearOfficer();globalThis.window=oldWindow;globalThis.fetch=oldFetch;globalThis.FormData=oldForm;dom.window.confirm=oldConfirm;dom.window.close()});
+ t.after(()=>{clearOfficer();globalThis.window=oldWindow;globalThis.fetch=oldFetch;globalThis.FormData=oldForm;dom.window.confirm=oldConfirm;URL.createObjectURL=oldCreateObjectURL;URL.revokeObjectURL=oldRevokeObjectURL;dom.window.close()});
  const id='aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa';
  const cases=[
   {id:'case-no-image',kind:'profile',category:'missing',metric:'power',source_name:'Low OCR Player',status:'open',evidence_sha:null},
@@ -59,6 +62,7 @@ test('Protected review workflow requires a screenshot, searchable member and exp
  await openMore(mount);
  q('[data-officer-tab=reviews]').click();
  await wait(()=>q('[data-review-id=case-with-image]'));
+ assert.equal(q('#review-search-native').labels[0].textContent,'Spieler oder Fall suchen');
  const missing=q('[data-review-id=case-no-image]');
  assert.equal(missing.querySelector('[data-native-review-resolve=approve]').disabled,true);
  assert.ok(missing.querySelector('[data-native-review-file]'),'Evidence upload control is required');
@@ -66,6 +70,13 @@ test('Protected review workflow requires a screenshot, searchable member and exp
  assert.equal(attached.querySelector('[data-native-review-resolve=approve]').disabled,false);
  attached.open=true;
  attached.dispatchEvent(new dom.window.Event('toggle'));
+ await wait(()=>attached.querySelector('[data-native-review-expand]'));
+ const expand=attached.querySelector('[data-native-review-expand]');
+ assert.equal(expand.tagName,'BUTTON');
+ assert.equal(expand.getAttribute('aria-label'),'Originalbild ansehen');
+ assert.equal(opened.length,0);
+ expand.click();
+ assert.deepEqual(opened,[['blob:synthetic-review','_blank','noopener,noreferrer']]);
  await wait(()=>attached.querySelector('[data-native-review-pick]'));
  const field=attached.querySelector('[data-native-review-search]');
  field.value='synthetic';

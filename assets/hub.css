@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-15.41');
+@import url('./tokens.css?v=2026-10-15.42');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -33,7 +33,7 @@ button:disabled{opacity:.6;cursor:not-allowed}
 .theme-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-sm)}.theme-options button{display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%;min-height:52px;background:var(--color-raised);color:var(--color-ink);font-weight:600}.theme-options button[aria-current='true']{background:var(--color-accent);color:var(--color-accent-ink);border-color:var(--color-accent)}
 .setup-continue{width:100%;min-height:52px;background:var(--color-accent);color:var(--color-accent-ink);border-color:var(--color-accent);font-weight:700}
 .site-header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--space-sm);max-width:1024px;margin:auto;padding:var(--space-md) max(var(--space-md),env(safe-area-inset-left))}
-.brand{display:flex;align-items:center;gap:.5rem;text-decoration:none;color:var(--color-ink);font:700 1.4rem/1.2 var(--font-display);white-space:nowrap}
+.brand{display:flex;align-items:center;min-height:44px;gap:.5rem;text-decoration:none;color:var(--color-ink);font:700 1.4rem/1.2 var(--font-display);white-space:nowrap}
 .brand small{display:block;font:400 .625rem/1.5 var(--font-body);letter-spacing:.06em;color:var(--color-muted)}
 .header-controls{display:flex;align-items:center;gap:.5rem;margin-inline-start:auto}
 .language select{width:4.3rem;padding-inline:.5rem}
@@ -96,7 +96,7 @@ details[open]>summary{margin-bottom:.5rem}details>p:last-child{padding-bottom:.5
 .week-selector{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:.4rem;margin:var(--space-lg) 0}
 .week-selector button{grid-column:span 3;display:grid;place-items:center;gap:.1rem;min-width:0;min-height:52px;padding:.35rem .2rem;white-space:nowrap;transition:background-color var(--dur-micro) var(--ease-out),color var(--dur-micro) var(--ease-out),transform var(--dur-micro) var(--ease-out)}
 .week-selector button:nth-child(n+5){grid-column:span 4}
-.week-selector button span{font-weight:700}.week-selector button small{font-size:.72rem;font-variant-numeric:tabular-nums;opacity:.8}
+.week-selector button span{font-weight:700}.week-selector button small{font-size:.72rem;font-variant-numeric:tabular-nums;opacity:1}
 .week-selector button:active{transform:translateY(1px)}
 .week-selector button[aria-pressed='true']{background:var(--color-accent);color:var(--color-accent-ink);border-color:var(--color-accent)}
 .week-selector button[data-current='true'] span{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
@@ -1006,7 +1006,9 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 .native-review-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.75rem;align-items:start}
 .native-review-picture,.native-review-entry{min-width:0;display:grid;align-content:start;gap:.55rem}
 .native-review-image{min-height:160px;display:grid;place-items:center;background:#19283a;color:#e3ebf5;border:2px solid #58728c;border-radius:4px;overflow:hidden;text-align:center;font-size:.81rem;padding:.5rem}
-.native-review-image img{width:100%;height:auto;max-height:640px;object-fit:contain;cursor:zoom-in}
+.native-review-image button[data-native-review-expand]{display:block;width:100%;min-height:44px;padding:0;border:0;border-radius:2px;background:transparent;color:inherit;cursor:zoom-in}
+.native-review-image button[data-native-review-expand]:focus-visible{outline:3px solid var(--color-focus);outline-offset:-3px}
+.native-review-image img{display:block;width:100%;height:auto;max-height:640px;object-fit:contain;cursor:zoom-in}
 .native-review-picture>label,.native-review-entry>label{display:grid;gap:.35rem;font-size:.81rem;font-weight:760}
 .native-review-picture input[type=file]{display:block;width:100%;max-width:100%;font-size:.8rem}
 .native-review-entry input{min-height:44px;width:100%;max-width:100%;font-size:1rem}
