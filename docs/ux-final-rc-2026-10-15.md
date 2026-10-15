@@ -28,10 +28,16 @@ Admin **ohne** echten Offizierscode: Login live visuell überprüft. Dashboard �
 - `tests/overview-dom.test.js`, `tests/tactical-ui.test.js`, `tests/native-officer-ux.test.js`, `tests/native-mobile-wrap.test.js`: Regressionen für entfernte Dopplungen und Umbrüche.
 - `assets/config.js`, `index.html`, `service-worker.js`: v41 Version und atomare Asset-Stempelung zur Vermeidung gemischter Offline-Caches.
 
-## Release-Gates
-Bis zum Nachweis als **offen** behandeln: letzter vollständiger `npm test`-Lauf; `npm run lint`; `git diff --check`; Build-/Asset-Stamp; Commit/Push nur Luna; GitHub Pages; Live-Smoke; iPhone Safari. Vorläufige Testergebnisse VOR dem Versionswechsel: 178/178 Node-Frontendtests; Validator 344 Keys × 15 Sprachen sowie JS-Syntax und verschlüsselter Admin-Tree.
+## Release-Gates – verifiziert am 15.10.2026
+- `npm test`: **178/178 bestanden** nach v41 Asset-Stempelung.
+- `npm run lint`: **bestanden**, 344 Keys × 15 Sprachen, JS-Syntax, verschlüsselte Admin-Dateitrennung.
+- `git diff --check`: **bestanden**; 51 JS-Module mit v41 im Import-Map/Service-Worker-Assetcache gestempelt.
+- GitHub `main`: Code-Commit `6afcf7e9b734c1a6447a28ec7d940a4f21371502`, ausschließlich Luna.
+- GitHub Pages live: `https://lunas-empire.github.io/` HTTP 200, HTML enthält **2026-10-15.41**. Direkte Browserkontrolle auf Live Pages: Today, Tasks, VS, Season, Guides, Admin-Login bei 320/375/390/768/1365 px in einer Dark/Light-Testmatrix, kein Dokument-x-Overflow. Screenshots `qa/ux-rc/live-v41-*.png` und `review-v41-*.png` sind lokal auf Zentrale hinterlegt.
+- Privates Admin-Dashboard mit explizit **synthetischen** API-Mocks in Chrome bei 320/375/390/768/1365 px und beiden Themen. Bei 320 wurden die abgeschnittenen Zusatztexte und der ungünstige Umbruch der Kommando-Navigation korrigiert und per Screenshot nachkontrolliert.
+- Die Desktop-Datei `command-center/audits/PROGRESS.md` ist aktuell durch einen anderen Prozess gesperrt. Separater, nicht destruktiver Audit-Nachweis angelegt: `command-center/audits/2026-10-15_LUNA_V41_UX_FINAL.md`; die zentrale PROGRESS-Datei konnte deshalb nicht ergänzt werden.
 
-Echte iPhone-Safari-Touch- und R4/R5-Login-Prüfung nicht durchgeführt. Privates Cloudflare-D1-Backend, OCR-Originale und RZSN-Produktion unangetastet. Es wurde weder eine Datenmigration noch eine Löschung ausgeführt.
+**Nicht als bestanden ausgeben:** physisches iPhone Safari, echtes R4/R5-Login, D1-Schreibaktionen, Screenshot-Beleg/Spieler-Identität/VS-Korrektur und Cloudflare-Sicherheits- oder Backupprüfung. Die lokale synthetische Browserdemo ist kein echter privater End-to-End-Test.
 
 ## Vorläufige Qualitätsbewertung, vor persönlichem Officer-Login
 Visual Design 7/10; UX 6.5/10; Mobile 7/10; Einheitlichkeit 6/10; Datenverständlichkeit 6.5/10; Funktionalität 7/10; Release-Reife 6/10. Diese Werte sind keine vollständige produktive Sicherheits- oder Benutzerabnahme.
@@ -44,4 +50,4 @@ Visual Design 7/10; UX 6.5/10; Mobile 7/10; Einheitlichkeit 6/10; Datenverständ
 5. Guides, Archiv, Mitglieder und OCR nach echter Admin-Rückmeldung schrittweise visuell vereinheitlichen, ohne Feature-Rewrite.
 
 ## Versionsnachweis
-**Ergänzen nach Commit und Live-Prüfung.** Ungeprüfte Änderungen niemals als veröffentlicht bezeichnen.
+Luna v41 / `2026-10-15.41`; Code-Commit `6afcf7e9b734c1a6447a28ec7d940a4f21371502` auf `main`, GitHub Pages live mit v41 HTML und HTTP 200 überprüft. Der nachfolgende Dokumentationscommit verändert keine Anwendungsmodule.
