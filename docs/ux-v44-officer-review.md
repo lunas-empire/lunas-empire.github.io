@@ -24,4 +24,4 @@ Lokaler, synthetischer R4-Browsertest bei 390px: OCR-Fälle geladen; kein Dokume
 **Wichtig:** Auch mit grünen Tests keine allgemeine 9,5/10-Bewertung, solange diese fünf Nachweise fehlen.
 
 ## Versionsnachweis
-V44-Version 2026-10-15.44 vorbereitet; Code-Commit, Live-Pages-Nachweis und finale Tests nach Veröffentlichungsprüfung ergänzen.
+**Verifiziert:** Luna v44 Version 2026-10-15.44; Code-Commit 27cc2cd43dfdaade3916ef49f402e822cfa873f9 auf main. GitHub Pages HTML und assets/config.js lieferten jeweils HTTP 200 und die neue Versionsnummer; Remote-main zeigte denselben Code-Commit. Nach atomarer Asset-Stempelung (51 JS-Module) bestanden npm test **209/209**, npm run lint (344 Übersetzungsschlüssel × 15 Sprachen, Syntax und verschlüsselte Admin-Trennung) sowie git diff --check. Keine produktiven RZSN-Änderungen. Der folgende Dokumentationscommit ändert keine Anwendungsmodule.
