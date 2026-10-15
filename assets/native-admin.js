@@ -5,6 +5,7 @@ import {localizeOfficerTree,officerLanguage,officerLocale} from './native-admin-
 import {buildOfficerActions} from './officer-cockpit.js';
 import {createStatEvidenceViewer} from './native-stat-evidence.js';
 import {renderEvidenceRow} from './native-evidence-row.js';
+import {renderVsOverview} from './native-vs-overview.js';
 import {dailyOfficerBrief,vsWeeklyMail,donationsWeeklyMail,safeMailText,ALLIANCE_MAIL_LIMIT} from './officer-reports.js';
 import {diceHistory} from './dice-winners.js';
 import {vsSupportChatReport} from './vs-support-report.js';
@@ -358,7 +359,8 @@ async function showPerson(target,id){
    (w.uncertain_days?' · '+e(w.uncertain_days)+' unklar':'')+'</small>'+
    (weeklyDelta!==null?'<small class="native-week-change">'+(weeklyDelta>0?'+':'')+numberText(weeklyDelta)+' zum '+e(older.week)+'</small>':'')+'</summary>'+
    '<div class="native-profile-timeline">'+(Number.isSafeInteger(w.weekly_points)?
-    '<div class="native-vs-weekly-proof"><span>Wochenpunkte</span><button type="button" class="native-vs-day-link" data-native-vs-image="'+e(w.week+'|'+id+'|6')+'">'+numberText(w.weekly_points)+' · Originalbild ↗</button></div>':'')+days.map(day=>'<div><span>'+e(weekdays[day.weekday]||'?')+'</span><button type="button" class="native-vs-day-link" data-native-vs-image="'+e(w.week+'|'+id+'|'+day.weekday)+'" title="Privaten Screenshot öffnen"><b>'+
+    '<div class="native-vs-weekly-proof"><span>Wochenpunkte: '+numberText(w.weekly_points)+'</span><button type="button" class="native-vs-day-link" data-native-vs-image="'+e(w.week+'|'+id+'|6')+'">'+
+    (w.weekly_proof_available?'Originalbeleg ansehen ↗':'Wochenbeleg fehlt · nachtragen')+'</button></div>':'')+days.map(day=>'<div><span>'+e(weekdays[day.weekday]||'?')+'</span><button type="button" class="native-vs-day-link" data-native-vs-image="'+e(w.week+'|'+id+'|'+day.weekday)+'" title="Privaten Screenshot öffnen"><b>'+
     (['observed','corrected'].includes(day.quality)&&day.points!==null?numberText(day.points):'Unbekannt')+
     '</b><small>'+e(day.quality||'nicht gelesen')+' · Bild ansehen</small></button></div>').join('')+'</div></details>';
  }).join('')+'</div>':
@@ -415,10 +417,10 @@ async function openVsScreenshot(target,key){
  host.setAttribute('role','dialog');host.setAttribute('aria-modal','true');
  host.setAttribute('aria-label','Privater Originalbeleg zum VS-Wert');
  host.innerHTML='<div class="native-vs-evidence-panel native-stat-evidence-panel">'+
-  '<div class="native-row"><h3>Original-Screenshot · '+e(week)+'</h3>'+
+  '<div class="native-row"><h3>'+(weekday==='6'?'Wochenbeleg prüfen':'Original-Screenshot')+' · '+e(week)+'</h3>'+
   '<button type="button" data-native-vs-image-close aria-label="Bild schließen">Schließen ✕</button></div>'+
   '<p class="native-muted">Geschützter Originalbeleg; nur für angemeldete Offiziere.</p>'+
-  '<div id="native-vs-evidence-image" class="native-stat-image" role="status">Quellzeile wird ermittelt …</div></div>';
+  '<div id="native-vs-evidence-image" class="native-stat-image" role="status">'+(weekday==='6'?'Wochenbeleg wird geprüft …':'Quellzeile wird ermittelt …')+'</div></div>';
  target.append(host);
  const area=host.querySelector('#native-vs-evidence-image');
  host.querySelector('[data-native-vs-image-close]')?.focus();
@@ -471,8 +473,15 @@ async function openVsScreenshot(target,key){
   }
   const problem=await response.json().catch(()=>({}));
   if(response.status!==404)throw Error(problem.error||'Privates Bild nicht abrufbar');
-  area.innerHTML='<p>Kein eindeutig zugeordneter Original-Screenshot für diesen Spielerwert. '+
-   'Es wird bewusst kein beliebiges Bild dieser Rangliste gezeigt.</p>'+
+  const weeklyCount=cache.vs?.weeks?.find(w=>w.week===week)?.weekly_screenshot_count;
+  const unavailable=weekday==='6'
+   ?weeklyCount===0
+     ?'Für diese Woche wurde kein Wochenranglisten-Screenshot archiviert. Der gespeicherte Wochenpunktestand ist kein Bildbeleg. Bitte die passende Originalaufnahme nachtragen.'
+     :weeklyCount>0
+      ?'Wochenranglistenbilder sind archiviert, jedoch keines diesem Spielerwert eindeutig zugeordnet. Original prüfen und gezielt nachtragen.'
+      :'Noch kein verifizierter Wochenranglisten-Beleg mit diesem Spielerwert verknüpft. Passendes Originalbild nachtragen.'
+   :'Kein eindeutig zugeordneter Original-Screenshot für diesen Spielerwert. Kein beliebiges Bild dieser Rangliste wird angezeigt.';
+  area.innerHTML='<p class="native-evidence-note">'+e(unavailable)+'</p>'+
    '<form id="native-vs-evidence-upload" data-key="'+e(key)+'">'+
    '<label>Originalaufnahme (PNG/JPG/WebP)<input type="file" name="image" accept="image/png,image/jpeg,image/webp" required></label>'+
    '<label>Begründung / sichtbare Spielerzeile<input type="text" name="reason" required minlength="8" maxlength="300" value="Originale VS-Rangliste, sichtbaren Spielernamen und Wert geprüft"></label>'+
@@ -584,8 +593,15 @@ function renderDonations(target,query=''){
  const focused=existingSearch===target.ownerDocument?.activeElement;
  const position=focused?existingSearch.selectionStart:null;
  host.innerHTML='<section class="native-vs-brief native-donation-summary" aria-label="Allianzspenden Wochenauswertung">'+
+  '<div class="native-capture-banner '+(week.captured_at?'is-dated':'is-undated')+'">'+
+   '<div class="native-capture-banner-main"><small>DATENSTAND · SPENDEN '+e(week.week)+'</small>'+
+    '<strong>'+(week.captured_at?'Screenshot-Aufnahme: '+e(formatOfficerTime(week.captured_at)):'Screenshot-Uhrzeit nicht erfasst')+'</strong>'+
+    '<span>'+e(week.is_complete?'Vollständige Mitgliederaufnahme':'Teilaufnahme')+
+    ' · Der Wert gilt nur zum Aufnahmezeitpunkt</span></div>'+
+   '<span class="native-capture-state '+(week.is_complete?'is-final':'is-preliminary')+'">'+
+    (week.is_complete?'Vollständig':'Teilaufnahme')+'</span></div>'+
   '<div class="native-vs-heading"><div><h3>Wochenauswertung '+e(week.week)+'</h3>'+
-   '<p class="native-muted">Aufnahme: '+e(formatOfficerTime(week.captured_at))+' · '+e(week.is_complete?'Vollständige Mitgliederaufnahme':'Teilaufnahme')+'</p></div>'+
+   '<p class="native-muted">Alle Spendenwerte beziehen sich auf diesen Datenstand.</p></div>'+
    '<span class="native-donation-goal">Ziel '+numberText(minimum)+'</span></div>'+
   '<div class="native-donation-tiles">'+tile('Ziel erreicht',week.met,'Bestätigte Spieler')+
    tile('Unter Ziel',week.below,'Bestätigte Spieler')+
@@ -604,49 +620,38 @@ function renderDonations(target,query=''){
  if(focused){const input=target.querySelector('#native-donation-search');input.focus();if(position!==null)input.setSelectionRange(position,position)}
 }
 function renderVs(target){
-  const week=cache.vs.weeks.find(w=>w.week===target.querySelector('#native-vs-week').value)||cache.vs.weeks[0];
-  const host=target.querySelector('#native-vs-body');
-  if(!week){host.innerHTML='<p class="native-muted">Noch keine VS-Woche importiert.</p>';return}
-  const labels=['Mo','Di','Mi','Do','Fr','Sa'];
-  const members=week.members||[];
-  const policy=cache.vs.policy||{};
-  const lowWarnings=members.filter(x=>x.repeatedLowDays).length;
-  const participationWarnings=members.filter(x=>x.participationStatus==='below').length;
-  const groups=[
-   ['Unter Tagesziel',members.filter(m=>m.failed>0)],
-   ['Werte noch unklar',members.filter(m=>m.unknown>0)],
-   ['Weitere Spieler',members.filter(m=>!m.failed&&!m.unknown)]
-  ];
-  // All player groups start collapsed, including "Unter Tagesziel".
-  const groupMarkup=([name,players])=>'<details class="native-fold native-vs-group">'+
-   '<summary><span>'+e(name)+'</span><b>'+players.length+' Spieler</b></summary><div class="native-fold-body">'+
-   (players.length?'<div class="native-list">'+players.map(p=>'<details class="native-vs-player"><summary>'+e(p.name)+' · '+e(p.failed||0)+' unter Ziel / '+e(p.unknown||0)+' unklar'+(policy.min_active_vs_days?' · '+e(p.activeDays??'?')+' aktive Tage':'')+'</summary>'+
-    '<button type="button" class="native-vs-open-person" data-native-member="'+e(p.id)+'">Spielerakte & Entwicklung öffnen ›</button>'+
-    (Number.isSafeInteger(p.weekly_points)?'<p class="native-vs-week-total"><button type="button" class="native-vs-day-link" data-native-vs-image="'+e(week.week+'|'+p.id+'|6')+'">'+numberText(p.weekly_points)+' Wochenpunkte · Originalbild ↗</button></p>':'')+
-    '<div class="native-vs-player-days">'+(p.days||[]).map((d,i)=>'<span><b>'+labels[i%6]+'</b> <button type="button" class="native-vs-day-link" data-native-vs-image="'+e(week.week+'|'+p.id+'|'+i)+'" aria-label="'+e(labels[i%6])+' Screenshot zu '+e(p.name)+' ansehen">'+
-    (d.verified&&d.points!=null?e(Number(d.points).toLocaleString('de-DE')):'Unbekannt')+' <small>↗</small></button></span>').join('')+'</div></details>').join('')+'</div>':
-    '<p class="native-muted">Keine Spieler in dieser Gruppe.</p>')+'</div></details>';
-  const dayTiles='<div class="native-weekdays" role="list" aria-label="Sechs Tage im Allianzduell">'+(week.dayTotals||[]).map(d=>{
-    const label=labels[d.weekday]||'-';
-    return '<div role="listitem" class="native-vs-day"><b>'+e(label)+'</b><span>'+e(d.passed??0)+' erreicht</span>'+
-     '<span>'+e(d.failed??0)+' unter Ziel</span><small>'+e(d.unknown??0)+' unklar</small></div>';
-   }).join('')+'</div>';
-  host.innerHTML='<section class="native-vs-brief" aria-label="VS-Wochenübersicht">'+
-   '<div class="native-vs-heading"><div><h3>Wochenüberblick</h3><p class="native-muted">Tagesziel: '+e(numberText(week.threshold))+' Punkte · Nur bestätigte Werte</p></div>'+
-   '<button type="button" class="native-vs-action" data-native-action="review-open">OCR-Prüffälle ('+e(cache.overview?.reviews??'—')+')</button></div>'+
-   (Number.isFinite(week.priority)&&week.priority>0?'<p class="native-vs-priority-note">'+e(week.priority)+' Spieler mit mindestens '+e(policy.low_vs_day_warning_count??3)+' bestätigten Tagen unter dem VS-Ziel. Das sind keine offenen OCR-Prüffälle.</p>':'')+
-   '<p class="native-vs-policy-status">'+(policy.low_vs_day_warning_count?e(lowWarnings)+' Spieler mit mindestens '+e(policy.low_vs_day_warning_count)+' Tagen unter Ziel. ':'')+(policy.min_active_vs_days?e(participationWarnings)+' mit weniger als '+e(policy.min_active_vs_days)+' aktiven Tagen bei vollständiger Erfassung. ':'')+(policy.shield_reminder_saturday?'Samstag: Schildpflicht erinnern (nicht automatisch überprüfbar).':'')+'</p>'+
-   '<div class="native-vs-compact">'+cards([['Unter Ziel',week.failedDays??0,'bestätigte Tage'],
-    ['Noch unklar',week.unknownDays??0,'nicht als 0 gewertet'],['6 von 6',week.perfect??0,'Spieler mit erreichtem Ziel']])+'</div>'+
-   '<details class="native-fold native-vs-days"><summary>Tagesvergleich <small>Mo bis Sa</small></summary>'+
-   '<div class="native-fold-body">'+dayTiles+'</div></details>'+
-   '<h3 class="native-vs-list-title">Spieler nach Ergebnis</h3>'+
-   '<div class="native-vs-groups">'+groups.map(groupMarkup).join('')+'</div>'+
-   reportPanel(vsWeeklyMail(week,policy))+
-   chatReportPanel(week,cache.vs.weeks)+
-   '<details class="native-fold native-vs-explainer"><summary>Wie werden die Werte bewertet?</summary>'+
-   '<p class="native-fold-body native-muted">Nur bestätigte Ergebnisse zählen als über oder unter dem Tagesziel. Nicht lesbare Screenshots bleiben unklar und werden nie als 0 Punkte erfasst. Öffne „Prüffälle“, um solche Werte nachzusehen.</p></details>'+
-   '</section>';
+ const week=cache.vs?.weeks?.find(w=>w.week===target.querySelector('#native-vs-week')?.value)||cache.vs?.weeks?.[0];
+ const host=target.querySelector('#native-vs-body');
+ if(!host)return;
+ if(!week){host.innerHTML='<p class="native-muted">Noch keine VS-Woche importiert.</p>';return}
+ const policy=cache.vs.policy||{};
+ const enUi=officerLanguage(target.ownerDocument)!=='de';
+ const layout=renderVsOverview(week,policy,{esc:e,numberText,formatTime:formatOfficerTime,language:officerLanguage(target.ownerDocument)});
+ const lowWarnings=(week.members||[]).filter(x=>x.repeatedLowDays).length;
+ const participationWarnings=(week.members||[]).filter(x=>x.participationStatus==='below').length;
+ host.innerHTML='<section class="native-vs-brief native-vs-v38" aria-label="VS-Wochenübersicht">'+
+  layout.freshness+
+  '<div class="native-vs-heading"><div><h3>'+(enUi?'Weekly overview':'Wochenüberblick')+'</h3><p class="native-muted">'+(enUi?'Daily target: ':'Tagesziel: ')+
+   e(numberText(week.threshold))+(enUi?' points · verified results only':' Punkte · nur bestätigte Ergebnisse')+'</p></div>'+
+   '<button type="button" class="native-vs-action" data-native-action="review-open">OCR-Prüffälle ('+
+    e(cache.overview?.reviews??'—')+')</button></div>'+
+  '<div class="native-vs-compact">'+cards([['Unter Ziel',week.failedDays??0,'bestätigte Tage'],
+   ['Noch unklar',week.unknownDays??0,enUi?'unknown is not zero':'keine Nullwerte'],
+   ['6 von 6',week.perfect??0,enUi?'all daily goals met':'alle Tagesziele erreicht']])+'</div>'+
+  (Number.isFinite(week.priority)&&week.priority>0?
+   '<p class="native-vs-priority-note">'+e(week.priority)+' Spieler mit mindestens '+
+   e(policy.low_vs_day_warning_count??3)+' bestätigten Tagen unter dem Tagesziel.</p>':'')+
+  '<p class="native-vs-policy-status">'+
+   (policy.low_vs_day_warning_count?e(lowWarnings)+' Spieler wiederholt unter Ziel. ':'')+
+   (policy.min_active_vs_days?e(participationWarnings)+' mit zu wenigen aktiven Tagen bei vollständiger Erfassung. ':'')+
+   (policy.shield_reminder_saturday?'Samstag: Schildpflicht erinnern (nicht automatisch überprüfbar).':'')+
+   '</p>'+
+  layout.dayTiles+layout.groupsHtml+
+  reportPanel(vsWeeklyMail(week,policy))+
+  chatReportPanel(week,cache.vs.weeks)+
+  '<details class="native-fold native-vs-explainer"><summary>Wie werden die Werte bewertet?</summary>'+
+   '<p class="native-fold-body native-muted">'+(enUi?'Only confirmed scores count. Missing screenshots and unclear OCR are never zero. A weekly total does not prove a weekly screenshot exists. A verified original can be attached manually.':'Nur bestätigte Werte zählen. Fehlende Screenshots und OCR-Unklarheiten sind nie automatisch 0. Ein Wochenpunktestand ist kein Beweis für ein vorhandenes Wochenranglistenbild. Belege lassen sich separat nachtragen.')+'</p></details>'+
+  '</section>';
 }
 const trainWeekdays=['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
 const trainRideTypes=['R5','R4','Members Day','Donation King','VS Hero'];
