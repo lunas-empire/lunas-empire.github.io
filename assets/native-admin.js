@@ -162,7 +162,7 @@ async function view(mount){
     '<small>'+e(sub)+'</small><span class="native-dashboard-tile-chevron" aria-hidden="true">›</span></button>';
    target.innerHTML='<div class="native-dashboard native-dashboard-v39">'+
     '<header class="native-command-header"><div><h2>'+word('Heute','Today')+'</h2>'+
-      '<p>'+word('Heute','Today')+' · '+e(dateText)+'</p></div>'+
+      '<p>'+e(dateText)+'</p></div>'+
      '<div class="native-dashboard-microstats">'+
       '<span>'+word('Aktiv','Active')+' <b>'+e(summary.active??'—')+'</b></span>'+
       (pending.length?'<span>'+word('Aufgaben','Tasks')+' <b>'+e(pending.length)+'</b></span>':'')+

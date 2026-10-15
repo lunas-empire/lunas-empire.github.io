@@ -30,6 +30,9 @@ test('No screenshot time inventing and no locale leakage to English',()=>{
  assert.match(result.freshness,/Screenshot time not recorded/);
  assert.match(result.freshness,/Provisional/);
  assert.doesNotMatch(result.freshness,/2026-10-15/);
- assert.match(result.groupsHtml,/No players in this group/);
+ assert.match(result.groupsHtml,/No players recorded for this week/);
+ assert.doesNotMatch(result.groupsHtml,/native-vs-group-low/,'empty result groups are hidden');
  assert.equal(vsDataFreshness(week,fmt).captureKnown,false);
+ const mismatched=renderVsOverview({...week,members:[{id:'qa',name:'QA',failed:0,unknown:0,days:[]}],dayTotals:[{weekday:0,passed:89,failed:2,unknown:0}]},{},{esc,numberText:String,formatTime:fmt,language:'en'});
+ assert.match(mismatched.dayTiles,/100% captured/,'abnormal source totals cannot display above 100 percent');
 });

@@ -21,6 +21,7 @@ export function renderVsOverview(week,policy={},api={}){
   ['Messwerte unvollständig','Incomplete measurements'],
   ['Spieler nach Ergebnis','Players by result'],
   ['Keine Spieler in dieser Gruppe.','No players in this group.'],
+  ['Noch keine Spieler für diese Woche.','No players recorded for this week.'],
   ['Unter Tagesziel','Below daily target'],
   ['Tagesziel erreicht','Daily goal reached'],
   ['Tagesvergleich','Daily comparison'],
@@ -48,7 +49,7 @@ export function renderVsOverview(week,policy={},api={}){
  const loc=html=>language==='de'?html:translated.reduce((s,[a,b])=>s.replaceAll(a,b),html);
 
  const meta=vsDataFreshness(week,formatTime);
- const verified=members.reduce((v,p)=>v+Number(p.verified||0),0);
+ const verified=members.reduce((v,p)=>v+(Number.isSafeInteger(p.verified)?p.verified:(p.days||[]).filter(d=>d?.verified===true&&Number.isSafeInteger(d.points)).length),0);
  const groups=[
   ['Unter Tagesziel',members.filter(p=>p.failed>0),'low'],
   ['Messwerte unvollständig',members.filter(p=>!p.failed&&p.unknown>0),'unknown'],
@@ -67,7 +68,7 @@ export function renderVsOverview(week,policy={},api={}){
    const d=(week.dayTotals||[]).find(x=>x.weekday===i);
    const pass=d?.passed??0,failed=d?.failed??0,unknown=d?.unknown??members.length;
    return '<article class="native-day-mini'+(failed?' has-failures':'')+'">'+
-    '<header><strong>'+label+'</strong><span>'+ (members.length?Math.round(100*(pass+failed)/members.length):0)+'% erfasst</span></header>'+
+    '<header><strong>'+label+'</strong><span>'+ (members.length?Math.min(100,Math.round(100*(pass+failed)/members.length)):0)+'% erfasst</span></header>'+
     '<strong class="native-day-mini-count">'+pass+'<small> Ziel erreicht</small></strong>'+
     '<div class="native-day-mini-meta"><span class="bad">'+failed+' unter</span><span>'+unknown+' unklar</span></div>'+
     '</article>';
@@ -103,11 +104,12 @@ export function renderVsOverview(week,policy={},api={}){
  const groupsHtml='<section class="native-vs-results">'+
   '<div class="native-intel-section-head"><h3>Spieler nach Ergebnis</h3>'+
    '<span>'+members.length+' erfasste Spieler · '+verified+' bestätigte Tageswerte</span></div>'+
-  '<div class="native-vs-groups">'+groups.map(([label,people,kind])=>
+  '<div class="native-vs-groups">'+groups.filter(([,people])=>people.length>0).map(([label,people,kind])=>
    '<details class="native-fold native-vs-group native-vs-group-'+kind+'"><summary>'+
    '<span>'+e(label)+'</span><b>'+people.length+' Spieler</b></summary>'+
    '<div class="native-fold-body native-vs-compact-list">'+
    (people.length?people.map(person).join(''):'<p class="native-muted">Keine Spieler in dieser Gruppe.</p>')+
-   '</div></details>').join('')+'</div></section>';
+   '</div></details>').join('')+
+   (members.length?'':'<p class="native-muted">Noch keine Spieler für diese Woche.</p>')+'</div></section>';
  return {freshness:loc(h),dayTiles:loc(dayTiles),groupsHtml:loc(groupsHtml)};
 }
