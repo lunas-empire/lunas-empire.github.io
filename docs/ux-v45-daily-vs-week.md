@@ -23,3 +23,9 @@ Keine zusätzliche VS-Wochenranking-Aufnahme, keine neue Wochenbeleg-Pflicht. Da
 3. Mindestens 6/6-, 5/6- und echter Null-Fall mit Originaltagesbildern und Admin-Audit abnehmen.
 4. Unsichere OCR-Zeilen anhand ihrer Tagesbilder prüfen; niemals fälschlich zu 0 machen.
 5. Reales iPhone/RTL/15 Sprachen visuell prüfen.
+
+## Tatsächlicher Release-Nachweis
+- **Luna v45 / 2026-10-15.45** auf GitHub Pages live. Frontend-Code-Commit `64d6231e0e431ed3f91e430b6b6df06d9e90d608` auf main, Assets HTML, `assets/config.js`, `assets/native-vs-overview.js` jeweils HTTP 200, neue Wochenableitung im ausgelieferten Modul vorhanden.
+- `npm test` **210/210**, `npm run lint` **grün**, `git diff --check` **grün**, `npm run release:assets` hat 51 Module versioniert.
+- Backend-Quellstand auf eigenem privaten Branch [`feat/vs-daily-sum-source-20261015`](https://github.com/lunas-empire/last-war/tree/feat/vs-daily-sum-source-20261015), Commit `2cc9ae9dba14de5c96721d03e21a7578e5d91325`, **144/144 Tests und Syntaxprüfung grün**. Worker ausdrücklich **noch nicht deployed**, Wrangler-Authentifizierung auf Desktop fehlt. API / Zugempfehlungen erst nach separater Bereitstellung als umgestellt bewerten.
+- Keine Änderung an RZSN-Produktion, bestehenden D1-Datensätzen oder gespeicherten historischen Wochenscreenshots; nur die zusätzliche Wochenbeleg-Pflicht der Oberfläche ist weggefallen.
