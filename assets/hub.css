@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-15.51');
+@import url('./tokens.css?v=2026-10-16.52');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -741,6 +741,14 @@ input[type='checkbox'],input[type='radio']{accent-color:var(--color-game-orange)
 .native-vs-player-days b{color:var(--color-action)}
 .native-train-highlights .native-cards{grid-template-columns:repeat(3,minmax(0,1fr))}
 .native-train-week{margin-bottom:1rem}
+.native-train-history{border-color:var(--color-game-rim)}
+.native-train-history>summary{flex-wrap:wrap;gap:.25rem}
+.native-train-note{margin:.1rem 0 .7rem;line-height:1.45}
+.native-train-timeline-row{min-width:0;overflow-wrap:anywhere;cursor:pointer}
+.native-train-timeline-date{font-size:.84rem;font-weight:750}
+.native-train-timeline-type{font-size:.76rem;color:var(--color-muted)}
+.native-train-timeline-action{font-size:.75rem;color:var(--color-action)}
+@media(max-width:35rem){.native-train-history,.native-train-future,.native-train-unresolved{padding:.6rem}.native-train-timeline-row{width:100%}}
 .native-train-week .native-train-item{border-left:3px solid var(--color-game-rim);min-height:82px;box-shadow:inset 0 1px var(--surface-highlight)}
 .native-train-week .native-train-today{border-left-color:var(--color-game-orange);background:color-mix(in srgb,var(--color-game-bar) 8%,var(--color-panel))}
 .native-train-item div{display:grid;gap:.12rem}

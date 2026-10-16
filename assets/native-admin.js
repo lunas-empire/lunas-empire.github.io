@@ -771,8 +771,57 @@ export function trainSuggestionFacts(person,type){
  if(type==='VS Hero')facts.push(metric(person?.vs_weekly,'VS-Wochenpunkte',person?.vs_weekly_known));
  return facts;
 }
+export function isIsoTrainDate(value){
+ if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
+ const [year,month,day]=value.split('-').map(Number);
+ const date=new Date(Date.UTC(year,month-1,day));
+ return date.getUTCFullYear()===year&&date.getUTCMonth()+1===month&&date.getUTCDate()===day;
+}
+export function berlinTrainToday(now=new Date()){
+ return new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
+}
+export function trainTimelineGroups({history=[],dice=[],today=berlinTrainToday(),limit=20,visibleCalendarDates=[]}={}){
+ if(!isIsoTrainDate(today))throw new RangeError('today must be a real ISO date');
+ const calendar=new Set(visibleCalendarDates.filter(isIsoTrainDate));
+ const rides=Array.isArray(history)?history:[];
+ const winners=diceHistory(Array.isArray(dice)?dice:[]);
+ const past=[],future=[],unresolved=[];
+ rides.forEach((ride,index)=>{
+  const date=ride?.date;
+  const item={kind:'train',date,entry:ride,index};
+  if(isIsoTrainDate(date)&&date<=today&&ride.status==='completed')past.push(item);
+  else if(isIsoTrainDate(date)&&date>today&&ride.status==='planned'){
+   if(!calendar.has(date))future.push(item);
+  }else if(!(isIsoTrainDate(date)&&date>today&&ride.status==='completed'&&calendar.has(date)))unresolved.push(item);
+ });
+ winners.forEach((winner,index)=>{
+  const date=winner.ride_date;
+  if(!isIsoTrainDate(date))return;
+  const item={kind:'dice',date,entry:winner,index};
+  if(date<=today)past.push(item);
+  else if(!calendar.has(date))future.push(item);
+ });
+ const newest=(a,b)=>b.date.localeCompare(a.date)||(a.kind===b.kind?0:a.kind==='train'?-1:1)||a.index-b.index;
+ past.sort(newest);future.sort(newest);
+ unresolved.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))||a.index-b.index);
+ const pageSize=Number.isInteger(limit)&&limit>=0?limit:20;
+ return {past:past.slice(0,pageSize),pastCount:past.length,hasMore:past.length>pageSize,future,unresolved};
+}
 function renderTrain(target){
- const d=cache.trains,unlinked=groupUnlinkedTrainRides(d.history),unlinkedCount=unlinked.reduce((n,x)=>n+x.count,0),assignVerb=translateOfficerText('Zuordnen',officerLanguage(target.ownerDocument)),upcoming=(d.calendar||[]).filter(x=>x.date>=d.today).slice(0,7);
+ const d=cache.trains,today=isIsoTrainDate(d.today)?d.today:berlinTrainToday(),unlinked=groupUnlinkedTrainRides(d.history),unlinkedCount=unlinked.reduce((n,x)=>n+x.count,0),assignVerb=translateOfficerText('Zuordnen',officerLanguage(target.ownerDocument)),upcoming=(d.calendar||[]).filter(x=>isIsoTrainDate(x.date)&&x.date>=today&&x.entry?.status!=='cancelled').slice(0,7);
+ const timeline=trainTimelineGroups({history:d.history,dice:cache.dice,today,limit:historyLimit,visibleCalendarDates:upcoming.map(x=>x.date)});
+ const lang=officerLanguage(target.ownerDocument),english=lang==='en';
+ const trainWord=(de,en)=>english?en:de;
+ const dateLabel=date=>isIsoTrainDate(date)?new Intl.DateTimeFormat(english?'en-GB':'de-DE',{timeZone:'Europe/Berlin',weekday:'long'}).format(new Date(date+'T12:00:00Z'))+' · '+date:String(date||trainWord('Datum unbekannt','Unknown date'));
+ const timelineButton=item=>{
+  const dice=item.kind==='dice',date=item.date,entry=item.entry;
+  const kind=dice?'Dice Game':trainWord('Zugfahrt','Train ride');
+  const state=dice?trainWord('Gewinner','Winner'):(entry.status==='completed'?trainWord('Gefahren','Completed'):entry.status==='cancelled'?trainWord('Abgesagt','Cancelled'):entry.status==='planned'?trainWord('Geplant','Planned'):trainWord('Offen','Unresolved'));
+  const name=dice?entry.winner_name:entry.driver||trainWord('Noch kein Fahrer eingetragen','No driver registered yet');
+  const action=dice?'data-native-dice-date':'data-native-train';
+  const label=trainWord('Bearbeiten','Edit')+' '+kind+' · '+dateLabel(date)+' · '+state+' · '+name;
+  return '<button type="button" class="native-train-timeline-row" '+action+'="'+e(date)+'" aria-label="'+e(label)+'"><span class="native-train-timeline-date">'+e(dateLabel(date))+'</span><span class="native-train-timeline-type">'+e(kind)+' · '+e(state)+'</span><strong data-native-no-translate>'+e(name)+'</strong><span class="native-train-timeline-action" aria-hidden="true">'+trainWord('Bearbeiten','Edit')+' ›</span></button>';
+ };
  const absent=(id,date)=>memberAbsentOn(id,date,d.absences||[]);
  const slot=x=>'<article class="native-train-item '+(x.date===d.today?'native-train-today':'')+'">'+
   '<div><span class="native-kicker">'+(x.date===d.today?'HEUTE':e(x.date))+' · '+e(x.type||'Zug')+'</span>'+
@@ -790,23 +839,21 @@ function renderTrain(target){
  const toShow=upcoming.length?upcoming.map(slot).join(''):'<p class="native-muted">Für diese Woche liegen keine Zugdaten vor.</p>';
  target.querySelector('#native-train-body').innerHTML='<p class="native-muted">Fahrer ab R2 · historische Importe bleiben unverändert. Geplant, gefahren und noch nicht bestätigt sind unterschiedliche Zustände.</p>'+
   '<div class="native-train-highlights">'+cards([['Gefahren (Historie)',d.counts?.completed??'—'],['Geplant',d.counts?.planned??'—'],['Noch zuordnen',unlinkedCount]])+'</div>'+
-  '<h3 class="native-section-heading">Heute & diese Woche</h3><div class="native-list native-train-week">'+toShow+'</div>'+
+  '<h3 class="native-section-heading">Heute & nächste Züge</h3><div class="native-list native-train-week">'+toShow+'</div>'+
   '<div id="native-train-form"></div>'+
+  '<details class="native-fold native-train-history" open><summary><span>Vergangene Züge & Dice Game</span> · <b>'+timeline.pastCount+'</b></summary>'+
+  '<div class="native-fold-body"><p class="native-muted native-train-note">Dice-Gewinn ist keine bestätigte Zugfahrt – Fahrtenstatistik/Fairness zählen nur tatsächlich gefahrene Züge.</p>'+
+  '<div class="native-list">'+(timeline.past.length?timeline.past.map(timelineButton).join(''):'<p class="native-muted">Noch keine vergangenen Einträge.</p>')+
+  (timeline.hasMore?'<button type="button" data-native-more="train">Weitere 20 Einträge</button>':'')+'</div></div></details>'+
+  (timeline.future.length?'<details class="native-fold native-train-future"><summary><span>Weitere geplante Züge</span> · <b>'+timeline.future.length+'</b></summary><div class="native-fold-body native-list">'+timeline.future.map(timelineButton).join('')+'</div></details>':'')+
+  (timeline.unresolved.length?'<details class="native-fold native-train-unresolved"><summary><span>Offene / abgesagte Einträge</span> · <b>'+timeline.unresolved.length+'</b></summary><div class="native-fold-body native-list">'+timeline.unresolved.map(timelineButton).join('')+'</div></details>':'')+
   (unlinkedCount?'<details class="native-fold native-train-unlinked"><summary><span>Fahrerzuordnung prüfen</span> · <b>'+unlinkedCount+'</b> <span>Fahrten</span></summary>'+
    '<div class="native-fold-body"><p class="native-muted">Nur sichere Identitäten zuordnen; Originalnamen bleiben erhalten.</p>'+
    '<div class="native-train-unlinked-list">'+unlinked.map(group=>
     '<div class="native-train-unlinked-group"><div><strong>'+e(group.name)+'</strong><small>'+group.count+' <span>'+(group.count===1?'Fahrt':'Fahrten')+'</span> · <span>Zuordnung offen</span></small></div>'+
     '<div class="native-train-unlinked-dates">'+group.dates.map(date=>
      '<button type="button" data-native-train="'+e(date)+'" aria-label="'+e(group.name)+' · '+e(date)+' · '+e(assignVerb)+'"><span>'+e(date.slice(5))+'</span> <span>Zuordnen</span></button>').join('')+'</div></div>').join('')+'</div></div></details>':'')+
-  '<details class="native-fold"><summary>Dice Game Gewinner · '+diceHistory(cache.dice).length+'</summary>'+
-  '<div class="native-fold-body native-list">'+(diceHistory(cache.dice).length?diceHistory(cache.dice).map(x=>
-   '<button type="button" data-native-dice-date="'+e(x.ride_date)+'">🎲 '+e(x.ride_date)+' · '+e(x.winner_name)+(x.roll_value?' · '+e(x.roll_value):'')+'</button>').join(''):
-   '<p class="native-muted">Noch keine Dice-Game-Gewinner eingetragen.</p>')+'</div></details>'+
-  '<details class="native-fold"><summary>Vergangene Züge · '+(d.history?.length||0)+'</summary>'+
-  '<div class="native-fold-body native-list">'+(d.history||[]).slice(0,historyLimit).map(x=>
-   '<button type="button" data-native-train="'+e(x.date)+'">'+e(x.date)+' · '+e(x.driver)+' '+marker(x.status)+'</button>').join('')+
-  ((d.history||[]).length>historyLimit?'<button type="button" data-native-more="train">Weitere 20 Fahrten</button>':'')+
-  '</div></details><details class="native-fold native-train-rotation"><summary>Wochenrotation & Zuständigkeiten bearbeiten</summary><div class="native-fold-body" id="native-train-rotation-body"></div></details>';
+  '<details class="native-fold native-train-rotation"><summary>Wochenrotation & Zuständigkeiten bearbeiten</summary><div class="native-fold-body" id="native-train-rotation-body"></div></details>';
  renderTrainRotation(target);
 }
 function editTrain(target,date,allowDateChange=false,preferredMemberId=null){
