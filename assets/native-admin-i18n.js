@@ -123,6 +123,27 @@ Object.assign(TRANSLATION_ROWS.nl,{"Heute & nächste Züge":"Treinen van vandaag
 Object.assign(TRANSLATION_ROWS.th,{"Heute & nächste Züge":"รถไฟวันนี้และที่กำลังจะมาถึง","Vergangene Züge & Dice Game":"เที่ยวรถไฟที่ผ่านมาและ Dice Game","Weitere geplante Züge":"รถไฟที่วางแผนเพิ่มเติม","Offene / abgesagte Einträge":"รายการที่ยังไม่ชัดเจน / ยกเลิก","Dice-Gewinn ist keine bestätigte Zugfahrt – Fahrtenstatistik/Fairness zählen nur tatsächlich gefahrene Züge.":"การชนะ Dice Game ไม่ได้ยืนยันว่าได้ขึ้นรถไฟ สถิติและความเป็นธรรมจะนับเฉพาะเที่ยวที่เดินทางจริงเท่านั้น","Noch keine vergangenen Einträge.":"ยังไม่มีรายการที่ผ่านมา","Weitere 20 Einträge":"แสดงอีก 20 รายการ","Datum unbekannt":"ไม่ทราบวันที่"});
 Object.assign(TRANSLATION_ROWS.km,{"Heute & nächste Züge":"រថភ្លើងថ្ងៃនេះ និងពេលខាងមុខ","Vergangene Züge & Dice Game":"ការធ្វើដំណើររថភ្លើងកន្លងមក និង Dice Game","Weitere geplante Züge":"រថភ្លើងដែលបានគ្រោងទុកបន្ថែម","Offene / abgesagte Einträge":"កំណត់ត្រាមិនទាន់ច្បាស់ ឬបានលុបចោល","Dice-Gewinn ist keine bestätigte Zugfahrt – Fahrtenstatistik/Fairness zählen nur tatsächlich gefahrene Züge.":"ការឈ្នះ Dice Game មិនមែនជាការបញ្ជាក់ថាបានជិះរថភ្លើងទេ។ ស្ថិតិ និងភាពយុត្តិធម៌រាប់តែការធ្វើដំណើរដែលបានប្រព្រឹត្តពិតប្រាកដ។","Noch keine vergangenen Einträge.":"មិនទាន់មានកំណត់ត្រាចាស់ទេ។","Weitere 20 Einträge":"បង្ហាញបន្ថែម 20 កំណត់ត្រា","Datum unbekannt":"មិនស្គាល់កាលបរិច្ឆេទ"});
 Object.assign(TRANSLATION_ROWS.fil,{"Heute & nächste Züge":"Mga tren ngayon at paparating","Vergangene Züge & Dice Game":"Mga nakaraang biyahe at Dice Game","Weitere geplante Züge":"Iba pang nakaplanong tren","Offene / abgesagte Einträge":"Mga hindi pa malinaw / kinanselang tala","Dice-Gewinn ist keine bestätigte Zugfahrt – Fahrtenstatistik/Fairness zählen nur tatsächlich gefahrene Züge.":"Ang panalo sa Dice Game ay hindi kumpirmadong biyahe sa tren. Ang estadistika at patas na pagpili ay binibilang lamang ang mga aktuwal na biyahe.","Noch keine vergangenen Einträge.":"Wala pang mga nakaraang tala.","Weitere 20 Einträge":"20 pang tala","Datum unbekannt":"Hindi alam ang petsa"});
+const TRAIN_HISTORY_FILTER_LABELS=['Mitglied suchen','Datum filtern','Spielername …','Filter zurücksetzen','Keine passenden Einträge.','Treffer','von'];
+const TRAIN_HISTORY_FILTER_TRANSLATIONS={
+ en:['Search member','Filter date','Player name …','Clear filters','No matching entries.','matches','of'],
+ uk:['Пошук учасника','Фільтр за датою','Ім’я гравця …','Скинути фільтри','Збігів не знайдено.','збігів','з'],
+ ja:['メンバーを検索','日付で絞り込み','プレイヤー名 …','フィルターを解除','一致する履歴がありません。','件','中'],
+ fr:['Rechercher un membre','Filtrer par date','Nom du joueur …','Effacer les filtres','Aucune entrée correspondante.','résultats','sur'],
+ it:['Cerca membro','Filtra per data','Nome giocatore …','Cancella filtri','Nessuna voce corrispondente.','risultati','di'],
+ id:['Cari anggota','Saring tanggal','Nama pemain …','Hapus filter','Tidak ada entri yang cocok.','hasil','dari'],
+ ar:['ابحث عن عضو','تصفية حسب التاريخ','اسم اللاعب …','مسح عوامل التصفية','لا توجد سجلات مطابقة.','نتائج','من'],
+ ko:['멤버 검색','날짜로 필터','플레이어 이름 …','필터 지우기','일치하는 기록이 없습니다.','건','중'],
+ sv:['Sök medlem','Filtrera datum','Spelarnamn …','Rensa filter','Inga matchande poster.','träffar','av'],
+ pt:['Buscar membro','Filtrar data','Nome do jogador …','Limpar filtros','Nenhum registro correspondente.','resultados','de'],
+ nl:['Lid zoeken','Filter op datum','Spelersnaam …','Filters wissen','Geen overeenkomende vermeldingen.','resultaten','van'],
+ th:['ค้นหาสมาชิก','กรองตามวันที่','ชื่อผู้เล่น …','ล้างตัวกรอง','ไม่พบรายการที่ตรงกัน','ผลลัพธ์','จาก'],
+ km:['ស្វែងរកសមាជិក','ត្រងតាមកាលបរិច្ឆេទ','ឈ្មោះអ្នកលេង …','សម្អាតតម្រង','មិនមានកំណត់ត្រាដែលត្រូវគ្នា។','លទ្ធផល','ក្នុងចំណោម'],
+ fil:['Maghanap ng miyembro','Salain ayon sa petsa','Pangalan ng manlalaro …','Alisin ang mga filter','Walang katugmang tala.','resulta','sa']
+};
+for(const [lang,values] of Object.entries(TRAIN_HISTORY_FILTER_TRANSLATIONS)){
+ if(values.length!==TRAIN_HISTORY_FILTER_LABELS.length)throw new Error('Incomplete train history translations: '+lang);
+ TRAIN_HISTORY_FILTER_LABELS.forEach((label,index)=>{TRANSLATION_ROWS[lang][label]=values[index]});
+}
 export const OFFICER_TEXT=TRANSLATION_ROWS;
 export const OFFICER_LANGUAGES=Object.freeze(['de','en','uk','ja','fr','it','id','ar','ko','sv','pt','nl','th','km','fil']);
 export function officerLanguage(documentRef=globalThis.document){

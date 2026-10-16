@@ -11,7 +11,8 @@ import {formerArchiveFromTrain} from './former-train-archive.js';
 const apiBase=ALLIANCE_CONFIG.commandCenterEmbedUrl.replace('/?embed=1','');
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
 let sessionToken='',officer=null,panel='overview',cache={},pageLimit=20,historyLimit=20,activityLimit=30,registryFilter='all',activityCategory='all',activityGroupBy='type';
-export function clearOfficer(){statViewer.close();clearReviewImages();sessionToken='';officer=null;cache={};panel='overview';pageLimit=20;historyLimit=20;activityLimit=30;registryFilter='all';activityCategory='all';activityGroupBy='type';}
+let trainHistoryFilters={member:'',date:''},trainHistoryExpanded=false;
+export function clearOfficer(){statViewer.close();clearReviewImages();sessionToken='';officer=null;cache={};panel='overview';pageLimit=20;historyLimit=20;trainHistoryFilters={member:'',date:''};trainHistoryExpanded=false;activityLimit=30;registryFilter='all';activityCategory='all';activityGroupBy='type';}
 export const hasOfficer=()=>Boolean(sessionToken);
 const canManageSite=()=>officer?.role==='R5'||officer?.siteOwner===true;
 async function request(path,options={}){
@@ -780,7 +781,8 @@ export function isIsoTrainDate(value){
 export function berlinTrainToday(now=new Date()){
  return new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
 }
-export function trainTimelineGroups({history=[],dice=[],today=berlinTrainToday(),limit=20,visibleCalendarDates=[]}={}){
+const normalizeTrainName=value=>String(value??'').normalize('NFKC').replace(/[\u200B-\u200D\u2060\uFEFF]/gu,'').toLocaleLowerCase('de-DE').trim();
+export function trainTimelineGroups({history=[],dice=[],today=berlinTrainToday(),limit=20,visibleCalendarDates=[],member='',date='',members=[]}={}){
  if(!isIsoTrainDate(today))throw new RangeError('today must be a real ISO date');
  const calendar=new Set(visibleCalendarDates.filter(isIsoTrainDate));
  const rides=Array.isArray(history)?history:[];
@@ -804,24 +806,47 @@ export function trainTimelineGroups({history=[],dice=[],today=berlinTrainToday()
  const newest=(a,b)=>b.date.localeCompare(a.date)||(a.kind===b.kind?0:a.kind==='train'?-1:1)||a.index-b.index;
  past.sort(newest);future.sort(newest);
  unresolved.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))||a.index-b.index);
+ const memberQuery=normalizeTrainName(member),memberNames=new Map((Array.isArray(members)?members:[]).filter(item=>item?.id&&item.name).map(item=>[item.id,item.name]));
+ const filtered=past.filter(item=>{
+  if(date&&(!isIsoTrainDate(date)||item.date!==date))return false;
+  if(!memberQuery)return true;
+  const entry=item.entry,id=item.kind==='dice'?(entry.winner_id||entry.member_id):entry.member_id;
+  const names=item.kind==='dice'?[entry.winner_name,memberNames.get(id)]:[entry.driver,entry.original_name,memberNames.get(id)];
+  return names.some(name=>normalizeTrainName(name).includes(memberQuery));
+ });
  const pageSize=Number.isInteger(limit)&&limit>=0?limit:20;
- return {past:past.slice(0,pageSize),pastCount:past.length,hasMore:past.length>pageSize,future,unresolved};
+ return {past:filtered.slice(0,pageSize),pastCount:filtered.length,totalPastCount:past.length,hasMore:filtered.length>pageSize,future,unresolved};
+}
+function trainTimelineButton(item,lang){
+ const english=lang==='en',trainWord=(de,en)=>english?en:de;
+ const dateLabel=date=>isIsoTrainDate(date)?new Intl.DateTimeFormat(english?'en-GB':'de-DE',{timeZone:'Europe/Berlin',weekday:'long'}).format(new Date(date+'T12:00:00Z'))+' · '+date:String(date||translateOfficerText('Datum unbekannt',lang));
+ const dice=item.kind==='dice',date=item.date,entry=item.entry;
+ const kind=dice?'Dice Game':trainWord('Zugfahrt','Train ride');
+ const state=dice?trainWord('Gewinner','Winner'):(entry.status==='completed'?trainWord('Gefahren','Completed'):entry.status==='cancelled'?trainWord('Abgesagt','Cancelled'):entry.status==='planned'?trainWord('Geplant','Planned'):trainWord('Offen','Unresolved'));
+ const name=dice?entry.winner_name:entry.driver||trainWord('Noch kein Fahrer eingetragen','No driver registered yet');
+ const action=dice?'data-native-dice-date':'data-native-train';
+ const label=trainWord('Bearbeiten','Edit')+' '+kind+' · '+dateLabel(date)+' · '+state+' · '+name;
+ return '<button type="button" class="native-train-timeline-row" '+action+'="'+e(date)+'" aria-label="'+e(label)+'"><span class="native-train-timeline-date">'+e(dateLabel(date))+'</span><span class="native-train-timeline-type">'+e(kind)+' · '+e(state)+'</span><strong data-native-no-translate>'+e(name)+'</strong><span class="native-train-timeline-action" aria-hidden="true">'+trainWord('Bearbeiten','Edit')+' ›</span></button>';
+}
+function updateTrainHistoryResults(target){
+ const fold=target?.querySelector('.native-train-history');
+ if(!fold||!cache.trains)return;
+ const d=cache.trains,today=isIsoTrainDate(d.today)?d.today:berlinTrainToday();
+ const upcoming=(d.calendar||[]).filter(x=>isIsoTrainDate(x.date)&&x.date>=today&&x.entry?.status!=='cancelled').slice(0,7);
+ const members=[d.members,cache.diceMembers,cache.members].flatMap(list=>Array.isArray(list)?list:[]);
+ const timeline=trainTimelineGroups({history:d.history,dice:cache.dice,today,limit:historyLimit,visibleCalendarDates:upcoming.map(x=>x.date),...trainHistoryFilters,members});
+ fold.querySelector('[data-native-history-count]').textContent=String(timeline.pastCount);
+ const status=fold.querySelector('[data-native-history-results]');
+ status.textContent=timeline.pastCount+' '+translateOfficerText('Treffer',officerLanguage(target.ownerDocument))+' '+translateOfficerText('von',officerLanguage(target.ownerDocument))+' '+timeline.totalPastCount;
+ const list=fold.querySelector('.native-train-history-list');
+ list.innerHTML=(timeline.past.length?timeline.past.map(item=>trainTimelineButton(item,officerLanguage(target.ownerDocument))).join(''):'<p class="native-muted">'+((trainHistoryFilters.member||trainHistoryFilters.date)?'Keine passenden Einträge.':'Noch keine vergangenen Einträge.')+'</p>')+
+  (timeline.hasMore?'<button type="button" data-native-more="train">Weitere 20 Einträge</button>':'');
+ localizeOfficerTree(list);
 }
 function renderTrain(target){
  const d=cache.trains,today=isIsoTrainDate(d.today)?d.today:berlinTrainToday(),unlinked=groupUnlinkedTrainRides(d.history),unlinkedCount=unlinked.reduce((n,x)=>n+x.count,0),assignVerb=translateOfficerText('Zuordnen',officerLanguage(target.ownerDocument)),upcoming=(d.calendar||[]).filter(x=>isIsoTrainDate(x.date)&&x.date>=today&&x.entry?.status!=='cancelled').slice(0,7);
  const timeline=trainTimelineGroups({history:d.history,dice:cache.dice,today,limit:historyLimit,visibleCalendarDates:upcoming.map(x=>x.date)});
- const lang=officerLanguage(target.ownerDocument),english=lang==='en';
- const trainWord=(de,en)=>english?en:de;
- const dateLabel=date=>isIsoTrainDate(date)?new Intl.DateTimeFormat(english?'en-GB':'de-DE',{timeZone:'Europe/Berlin',weekday:'long'}).format(new Date(date+'T12:00:00Z'))+' · '+date:String(date||trainWord('Datum unbekannt','Unknown date'));
- const timelineButton=item=>{
-  const dice=item.kind==='dice',date=item.date,entry=item.entry;
-  const kind=dice?'Dice Game':trainWord('Zugfahrt','Train ride');
-  const state=dice?trainWord('Gewinner','Winner'):(entry.status==='completed'?trainWord('Gefahren','Completed'):entry.status==='cancelled'?trainWord('Abgesagt','Cancelled'):entry.status==='planned'?trainWord('Geplant','Planned'):trainWord('Offen','Unresolved'));
-  const name=dice?entry.winner_name:entry.driver||trainWord('Noch kein Fahrer eingetragen','No driver registered yet');
-  const action=dice?'data-native-dice-date':'data-native-train';
-  const label=trainWord('Bearbeiten','Edit')+' '+kind+' · '+dateLabel(date)+' · '+state+' · '+name;
-  return '<button type="button" class="native-train-timeline-row" '+action+'="'+e(date)+'" aria-label="'+e(label)+'"><span class="native-train-timeline-date">'+e(dateLabel(date))+'</span><span class="native-train-timeline-type">'+e(kind)+' · '+e(state)+'</span><strong data-native-no-translate>'+e(name)+'</strong><span class="native-train-timeline-action" aria-hidden="true">'+trainWord('Bearbeiten','Edit')+' ›</span></button>';
- };
+ const lang=officerLanguage(target.ownerDocument);
  const absent=(id,date)=>memberAbsentOn(id,date,d.absences||[]);
  const slot=x=>'<article class="native-train-item '+(x.date===d.today?'native-train-today':'')+'">'+
   '<div><span class="native-kicker">'+(x.date===d.today?'HEUTE':e(x.date))+' · '+e(x.type||'Zug')+'</span>'+
@@ -841,12 +866,14 @@ function renderTrain(target){
   '<div class="native-train-highlights">'+cards([['Gefahren (Historie)',d.counts?.completed??'—'],['Geplant',d.counts?.planned??'—'],['Noch zuordnen',unlinkedCount]])+'</div>'+
   '<h3 class="native-section-heading">Heute & nächste Züge</h3><div class="native-list native-train-week">'+toShow+'</div>'+
   '<div id="native-train-form"></div>'+
-  '<details class="native-fold native-train-history" open><summary><span>Vergangene Züge & Dice Game</span> · <b>'+timeline.pastCount+'</b></summary>'+
+  '<details class="native-fold native-train-history" '+(trainHistoryExpanded?'open':'')+'><summary><span>Vergangene Züge & Dice Game</span> · <b data-native-history-count>'+timeline.pastCount+'</b></summary>'+
   '<div class="native-fold-body"><p class="native-muted native-train-note">Dice-Gewinn ist keine bestätigte Zugfahrt – Fahrtenstatistik/Fairness zählen nur tatsächlich gefahrene Züge.</p>'+
-  '<div class="native-list">'+(timeline.past.length?timeline.past.map(timelineButton).join(''):'<p class="native-muted">Noch keine vergangenen Einträge.</p>')+
-  (timeline.hasMore?'<button type="button" data-native-more="train">Weitere 20 Einträge</button>':'')+'</div></div></details>'+
-  (timeline.future.length?'<details class="native-fold native-train-future"><summary><span>Weitere geplante Züge</span> · <b>'+timeline.future.length+'</b></summary><div class="native-fold-body native-list">'+timeline.future.map(timelineButton).join('')+'</div></details>':'')+
-  (timeline.unresolved.length?'<details class="native-fold native-train-unresolved"><summary><span>Offene / abgesagte Einträge</span> · <b>'+timeline.unresolved.length+'</b></summary><div class="native-fold-body native-list">'+timeline.unresolved.map(timelineButton).join('')+'</div></details>':'')+
+  '<div class="native-train-history-filters"><label for="native-train-history-member">Mitglied suchen<input id="native-train-history-member" type="search" placeholder="Spielername …" autocomplete="off" value="'+e(trainHistoryFilters.member)+'"></label>'+
+  '<label for="native-train-history-date">Datum filtern<input id="native-train-history-date" type="date" value="'+e(trainHistoryFilters.date)+'"></label>'+
+  '<button type="button" data-native-history-reset title="Filter zurücksetzen" aria-label="Filter zurücksetzen">Filter zurücksetzen</button></div>'+
+  '<p class="native-muted native-train-history-results" role="status" aria-live="polite" data-native-history-results></p><div class="native-list native-train-history-list"></div></div></details>'+
+  (timeline.future.length?'<details class="native-fold native-train-future"><summary><span>Weitere geplante Züge</span> · <b>'+timeline.future.length+'</b></summary><div class="native-fold-body native-list">'+timeline.future.map(item=>trainTimelineButton(item,lang)).join('')+'</div></details>':'')+
+  (timeline.unresolved.length?'<details class="native-fold native-train-unresolved"><summary><span>Offene / abgesagte Einträge</span> · <b>'+timeline.unresolved.length+'</b></summary><div class="native-fold-body native-list">'+timeline.unresolved.map(item=>trainTimelineButton(item,lang)).join('')+'</div></details>':'')+
   (unlinkedCount?'<details class="native-fold native-train-unlinked"><summary><span>Fahrerzuordnung prüfen</span> · <b>'+unlinkedCount+'</b> <span>Fahrten</span></summary>'+
    '<div class="native-fold-body"><p class="native-muted">Nur sichere Identitäten zuordnen; Originalnamen bleiben erhalten.</p>'+
    '<div class="native-train-unlinked-list">'+unlinked.map(group=>
@@ -855,6 +882,7 @@ function renderTrain(target){
      '<button type="button" data-native-train="'+e(date)+'" aria-label="'+e(group.name)+' · '+e(date)+' · '+e(assignVerb)+'"><span>'+e(date.slice(5))+'</span> <span>Zuordnen</span></button>').join('')+'</div></div>').join('')+'</div></div></details>':'')+
   '<details class="native-fold native-train-rotation"><summary>Wochenrotation & Zuständigkeiten bearbeiten</summary><div class="native-fold-body" id="native-train-rotation-body"></div></details>';
  renderTrainRotation(target);
+ updateTrainHistoryResults(target);
 }
 function editTrain(target,date,allowDateChange=false,preferredMemberId=null){
  const d=cache.trains,entry=(d.history||[]).find(x=>x.date===date);
@@ -1712,9 +1740,16 @@ export function initNativeAdmin(mount){
   const localizer=new Observer(()=>localizeOfficerTree(mount));
   localizer.observe(mount,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['placeholder','title','aria-label']});
  }
+ mount.addEventListener('toggle',event=>{
+  if(event.target.matches?.('.native-train-history')&&mount.contains(event.target))trainHistoryExpanded=event.target.open;
+ },true);
  mount.lang=officerLanguage(mount.ownerDocument);
  mount.dir=mount.lang==='ar'?'rtl':'ltr';
  mount.addEventListener('click',async event=>{
+  if(event.target.closest?.('.native-train-history > summary')){
+   trainHistoryExpanded=!event.target.closest('.native-train-history').open;
+   return;
+  }
   const proof=event.target.closest?.('[data-native-stat-evidence],[data-native-stat-close],[data-native-stat-prev],[data-native-stat-next],[data-native-stat-link],[data-native-stat-browse]');
   if(proof){
    const area=mount.querySelector('#native-admin-content');
@@ -1732,8 +1767,14 @@ export function initNativeAdmin(mount){
    if(url.startsWith('blob:'))window.open(url,'_blank','noopener,noreferrer');
    return;
   }
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-dice-delete],[data-native-train-choice],[data-native-access-mode],[data-native-access-copy],[data-native-access-signout],[data-native-member-create],[data-native-registry-quick],[data-native-access-link],[data-native-access-disable],[data-audit-category],[data-native-vs-image],[data-native-vs-image-close],[data-native-requirements-reload]');
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-dice-delete],[data-native-train-choice],[data-native-history-reset],[data-native-access-mode],[data-native-access-copy],[data-native-access-signout],[data-native-member-create],[data-native-registry-quick],[data-native-access-link],[data-native-access-disable],[data-audit-category],[data-native-vs-image],[data-native-vs-image-close],[data-native-requirements-reload]');
   if(!button)return;
+  if(button.hasAttribute('data-native-history-reset')){
+   trainHistoryFilters={member:'',date:''};historyLimit=20;
+   const fold=button.closest('.native-train-history');
+   fold.querySelector('#native-train-history-member').value='';fold.querySelector('#native-train-history-date').value='';
+   updateTrainHistoryResults(mount.querySelector('#native-admin-content'));return;
+  }
   if(button.hasAttribute('data-officer-logout')){
    try{await request('/api/native-logout',{method:'POST',body:{}})}catch{}clearOfficer();await renderNativeAdmin(mount);return;
   }
@@ -1890,7 +1931,7 @@ export function initNativeAdmin(mount){
    return;
   }
   if(button.dataset.nativeMore==='members'){pageLimit+=20;renderMembers(target,target.querySelector('#native-member-search')?.value||'');return}
-  if(button.dataset.nativeMore==='train'){historyLimit+=20;renderTrain(target);return}
+  if(button.dataset.nativeMore==='train'){historyLimit+=20;updateTrainHistoryResults(target);return}
   if(button.dataset.nativeMore==='registry'){pageLimit+=20;renderRegistry(target,target.querySelector('#registry-search')?.value||'');return}
   if(button.dataset.nativeMore==='reviews'){historyLimit+=20;renderReviews(target,target.querySelector('#review-search-native')?.value||'');return}
   if(button.dataset.nativeReviewPick){
@@ -1978,6 +2019,10 @@ export function initNativeAdmin(mount){
   if(button.dataset.nativeNew||button.dataset.nativeEdit){editRecord(target,panel,button.dataset.nativeEdit||'');return}
  });
  mount.addEventListener('input',event=>{
+  if(event.target.id==='native-train-history-member'||event.target.id==='native-train-history-date'){
+   trainHistoryFilters[event.target.id==='native-train-history-member'?'member':'date']=event.target.value;
+   historyLimit=20;updateTrainHistoryResults(mount.querySelector('#native-admin-content'));return;
+  }
   if(event.target.id==='native-member-search'){pageLimit=20;renderMembers(mount.querySelector('#native-admin-content'),event.target.value)}
   if(event.target.id==='registry-search'){pageLimit=20;renderRegistry(mount.querySelector('#native-admin-content'),event.target.value)}
   if(event.target.id==='native-diplomacy-search')renderDiplomacy(mount.querySelector('#native-admin-content'),event.target.value);
@@ -1990,6 +2035,9 @@ export function initNativeAdmin(mount){
   }
  });
  mount.addEventListener('change',event=>{
+  if(event.target.id==='native-train-history-date'){
+   trainHistoryFilters.date=event.target.value;historyLimit=20;updateTrainHistoryResults(mount.querySelector('#native-admin-content'));return;
+  }
   if(event.target.matches('[data-native-capture-choice]')){
    const card=event.target.closest('.native-review-card');
    if(card){selectedProfileCaptures.delete(card.dataset.reviewId);const attach=card.querySelector('[data-native-capture-attach]');if(attach)attach.disabled=true;

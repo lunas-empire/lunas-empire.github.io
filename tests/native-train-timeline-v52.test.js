@@ -74,6 +74,8 @@ test('logged-in train DOM shows Wednesday Dice beside train, keeps other states 
  q('[data-officer-tab=train]').click();
  await wait(()=>q('.native-train-history'));
  const past=q('.native-train-history');
+ assert.equal(past.open,false);
+ past.querySelector('summary').click();
  assert.equal(past.open,true);
  assert.match(past.querySelector('summary').textContent,/Vergangene Züge & Dice Game/);
  assert.equal(past.querySelectorAll('[data-native-train="2026-10-14"]').length,1);
