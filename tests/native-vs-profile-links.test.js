@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {JSDOM} from 'jsdom';
-import {initNativeAdmin,renderNativeAdmin,clearOfficer,profileMetricChanges} from '../assets/native-admin.js';
+import {initNativeAdmin,renderNativeAdmin,clearOfficer,hasOfficer,profileMetricChanges} from '../assets/native-admin.js';
 async function openMore(mount) {
  for(let i=0;i<160;i++){
   const more=mount.querySelector('[data-officer-tab=more]');
@@ -164,6 +164,7 @@ test('R5 can choose eligible officers and create a member; codes appear once, wi
  const until=async fn=>{for(let i=0;i<120;i++){if(fn())return;await new Promise(r=>setTimeout(r,5))}assert.ok(fn(),'UI did not settle')};
  initNativeAdmin(mount);await renderNativeAdmin(mount);
  q('[name=code]').value='synthetic';q('form').dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true}));
+ await until(()=>q('.native-officer-badge')?.textContent.includes('R5 · Chief'));
  await openMore(mount);
  await until(()=>q('[data-officer-tab=access]'));
  await openMore(mount);
@@ -187,6 +188,7 @@ test('R5 can choose eligible officers and create a member; codes appear once, wi
  await until(()=>posts.some(([path,method])=>path==='/api/member-registry/create'&&method==='POST'));
  const payload=JSON.parse(posts.find(([path,method])=>path==='/api/member-registry/create'&&method==='POST')[2]);
  assert.deepEqual({name:payload.name,rank:payload.rank},{name:'Manual Player',rank:'R2'});
+ await until(()=>q('[data-native-member-create]')&&!q('#native-member-create-save'));
 });
 
 test('R4 can rotate own code but not issue or reset other accounts',async t=>{
@@ -208,6 +210,7 @@ test('R4 can rotate own code but not issue or reset other accounts',async t=>{
  const until=async fn=>{for(let i=0;i<100;i++){if(fn())return;await new Promise(r=>setTimeout(r,5))}assert.ok(fn(),'UI did not settle')};
  initNativeAdmin(mount);await renderNativeAdmin(mount);
  q('[name=code]').value='synthetic';q('form').dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true}));
+ await until(()=>q('.native-officer-badge')?.textContent.includes('R4 · Deputy'));
  await openMore(mount);
  await until(()=>q('[data-officer-tab=access]'));
  await openMore(mount);
@@ -254,6 +257,7 @@ test('R5 explicitly links a legacy account and can disable access without exposi
  const until=async fn=>{for(let i=0;i<140;i++){if(fn())return;await new Promise(r=>setTimeout(r,5))}assert.ok(fn(),'UI did not settle')};
  initNativeAdmin(mount);await renderNativeAdmin(mount);
  q('[name=code]').value='synthetic';q('form').dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true}));
+ await until(()=>q('.native-officer-badge')?.textContent.includes('R5 · Chief'));
  await openMore(mount);
  await until(()=>q('[data-officer-tab=access]'));
  await openMore(mount);
@@ -276,7 +280,7 @@ test('R5 explicitly links a legacy account and can disable access without exposi
  const disableForm=q('#native-access-save');
  disableForm.elements.namedItem('reason').value='Officer access retired by R5';
  disableForm.dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true}));
- await until(()=>!account.enabled&&q('[data-native-access-disable=old-r4]')===null);
+ await until(()=>!account.enabled&&q('#native-access-result')?.textContent.includes('deaktiviert'));
  assert.match(q('#native-access-result').textContent,/deaktiviert/);
  assert.equal(q('[data-native-access-disable=old-r4]'),null);
 });
@@ -304,6 +308,7 @@ test('Site owner Luna remains R4 in-game but sees and uses all R5-only managemen
  const until=async fn=>{for(let i=0;i<130;i++){if(fn())return;await new Promise(r=>setTimeout(r,5))}assert.ok(fn(),'UI did not settle')};
  initNativeAdmin(mount);await renderNativeAdmin(mount);
  q('[name=code]').value='synthetic';q('form').dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true}));
+ await until(()=>q('.native-officer-badge')?.textContent.includes('R4 · Luna · Website-Eigentümerin'));
  await openMore(mount);
  await until(()=>q('[data-officer-tab=access]'));
  assert.match(q('.native-officer-badge').textContent,/R4 · Luna · Website-Eigentümerin/);
@@ -320,4 +325,37 @@ test('Site owner Luna remains R4 in-game but sees and uses all R5-only managemen
  assert.deepEqual([...q('#native-member-create-save [name=rank]').options].map(x=>x.value),['R1','R2','R3','R4','R5']);
  q('[data-registry-edit=deputy-member]').click();
  assert.equal(q('#registry-save [name=rank]').options.length,5);
+});
+
+test('A late 401 from an old session cannot revoke a newer owner login',async t=>{
+ const dom=new JSDOM('<main id="mount"></main>',{url:'https://lunas-empire.github.io/#admin'});
+ const win=dom.window,prevWindow=globalThis.window,prevFetch=globalThis.fetch;
+ globalThis.window=win;win.HTMLElement.prototype.scrollIntoView=()=>{};
+ t.after(()=>{clearOfficer();globalThis.window=prevWindow;globalThis.fetch=prevFetch;dom.window.close()});
+ let resolveOldOverview,overviewCalls=0;
+ const oldOverview=new Promise(resolve=>{resolveOldOverview=resolve});
+ globalThis.fetch=async url=>{
+  const path=new URL(url).pathname;
+  if(path==='/api/native-login')return Response.json({token:'synthetic',name:'Luna',role:'R4',siteOwner:true});
+  if(path==='/api/overview')return ++overviewCalls===1?oldOverview:Response.json({active:1,reviews:0});
+  if(path==='/api/operations')return Response.json({tasks:[],events:[],members:[]});
+  if(path==='/api/train-manager')return Response.json({today:'2026-10-14',calendar:[],history:[],counts:{}});
+  if(path==='/api/officer-alerts')return Response.json({});
+  if(path==='/api/officer-access')return Response.json({error:'Session disabled'},{status:401});
+  throw Error(path);
+ };
+ const mount=win.document.querySelector('#mount'),q=s=>mount.querySelector(s);
+ const until=async fn=>{for(let i=0;i<120;i++){if(fn())return;await new Promise(r=>setTimeout(r,5))}assert.ok(fn(),'UI did not settle')};
+ initNativeAdmin(mount);await renderNativeAdmin(mount);
+ const login=()=>{q('[name=code]').value='synthetic';q('form').dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true}))};
+ login();await until(()=>overviewCalls===1&&hasOfficer());
+ const oldTarget=q('#native-admin-content');
+ clearOfficer();await renderNativeAdmin(mount);
+ login();await until(()=>overviewCalls===2&&q('.native-dashboard'));
+ resolveOldOverview(Response.json({error:'Old session expired'},{status:401}));
+ await until(()=>oldTarget?.textContent.includes('Old session expired'));
+ assert.equal(hasOfficer(),true);
+ assert.match(q('.native-officer-badge').textContent,/R4 · Luna · Website-Eigentümerin/);
+ q('[data-officer-tab=access]').click();
+ await until(()=>!hasOfficer());
 });

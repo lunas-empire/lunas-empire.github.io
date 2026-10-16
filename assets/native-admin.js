@@ -11,15 +11,17 @@ import {formerArchiveFromTrain} from './former-train-archive.js';
 const apiBase=ALLIANCE_CONFIG.commandCenterEmbedUrl.replace('/?embed=1','');
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
 let sessionToken='',officer=null,panel='overview',cache={},pageLimit=20,historyLimit=20,activityLimit=30,registryFilter='all',activityCategory='all',activityGroupBy='type';
+let sessionGeneration=0;
 let trainHistoryFilters={member:'',date:''},trainHistoryExpanded=false;
-export function clearOfficer(){statViewer.close();clearReviewImages();sessionToken='';officer=null;cache={};panel='overview';pageLimit=20;historyLimit=20;trainHistoryFilters={member:'',date:''};trainHistoryExpanded=false;activityLimit=30;registryFilter='all';activityCategory='all';activityGroupBy='type';}
+export function clearOfficer(){sessionGeneration++;statViewer.close();clearReviewImages();sessionToken='';officer=null;cache={};panel='overview';pageLimit=20;historyLimit=20;trainHistoryFilters={member:'',date:''};trainHistoryExpanded=false;activityLimit=30;registryFilter='all';activityCategory='all';activityGroupBy='type';}
 export const hasOfficer=()=>Boolean(sessionToken);
-const canManageSite=()=>officer?.role==='R5'||officer?.siteOwner===true;
+const canManageSite=()=>officer?.role==='R5'||(officer?.role==='R4'&&officer?.siteOwner===true);
 async function request(path,options={}){
+ const generation=sessionGeneration;
  const headers={'Accept':'application/json',...(options.body?{'Content-Type':'application/json'}:{}),...(sessionToken?{'Authorization':'Bearer '+sessionToken}:{})};
  const response=await fetch(apiBase+path,{method:options.method||'GET',headers,body:options.body?JSON.stringify(options.body):undefined,mode:'cors',credentials:'omit',cache:'no-store'});
  let result;try{result=await response.json()}catch{throw Error('Die Cloudflare-API antwortet nicht korrekt.')}
- if(!response.ok){if(response.status===401&&path!=='/api/native-login')clearOfficer();throw Object.assign(Error(result.error||'HTTP '+response.status),{status:response.status})}
+ if(!response.ok){if(response.status===401&&path!=='/api/native-login'&&generation===sessionGeneration)clearOfficer();throw Object.assign(Error(result.error||'HTTP '+response.status),{status:response.status})}
  return result;
 }
 const statViewer=createStatEvidenceViewer({request,getToken:()=>sessionToken,apiBase});
@@ -2124,7 +2126,7 @@ export function initNativeAdmin(mount){
    form.querySelector('#native-login-status').textContent='Anmeldung wird geprüft …';
    try{
     const login=await request('/api/native-login',{method:'POST',body:{code:form.elements.namedItem('code').value}});
-    sessionToken=login.token;officer=login;form.elements.namedItem('code').value='';await view(mount);
+    sessionGeneration++;sessionToken=login.token;officer=login;form.elements.namedItem('code').value='';await view(mount);
    }catch(err){form.querySelector('#native-login-status').textContent=err.message;button.disabled=false}
    return;
   }
