@@ -16,6 +16,7 @@ const fixture=role=>`(() => {
   {id:'case-zero',kind:'vs_day',category:'vs_uncertain',metric:'Montag',source_name:'Synthetic Zero',source_batch:'vs/2026-W41',source_value:null,context:{date:'2026-10-05'},evidence_sha:'${sha}'},
   {id:'case-next',kind:'profile',category:'missing',metric:'power',source_name:'Synthetic Next',source_batch:'profiles/2026-10-11',source_value:null,evidence_sha:'${sha}'}];
  window.__syntheticWrites=[];
+ let aliases=[{alias:'Prior & Exact',normalized:'prior & exact',origin:'historical',verified:true}];
  window.fetch=(input,options={})=>{
   const path=new URL(input,location.href).pathname;
   if(!path.startsWith('/api/'))return original(input,options);
@@ -28,7 +29,16 @@ const fixture=role=>`(() => {
    {date:'2026-07-17',status:'completed',linked:false,member_id:null,driver:'Synthetic Short',original_name:'Synthetic Short',revision:5}],members:[
    {id:'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa',name:'Synthetic Confirmed',rank:'R4',status:'active'},
    {id:'bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb',name:'Synthetic Former',rank:'R3',status:'former'}]});
-  if(path==='/api/train-dice'||path==='/api/members')return json([]);
+  if(path==='/api/train-dice')return json([]);
+  if(path==='/api/members')return json([{id:'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa',name:'Synthetic Confirmed',rank:'R4',status:'active'}]);
+  if(path==='/api/member/aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa')return json({member:{id:'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa',name:'Synthetic Confirmed',rank:'R4',status:'active'},stats:[],weeks:[]});
+  if(path==='/api/member/aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa/aliases'){
+   if(options.method==='POST'){
+    const body=JSON.parse(options.body);window.__syntheticWrites.push({path,body});
+    aliases.push({alias:body.alias,normalized:body.alias.toLowerCase(),origin:'officer',verified:true});return json({ok:true});
+   }
+   return json({member_id:'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa',name:'Synthetic Confirmed',aliases});
+  }
   if(path==='/api/officer-alerts')return json({});
   if(path==='/api/reviews')return json(cases);
   if(path==='/api/identity-options'||path.startsWith('/api/profile-captures'))return json([]);
@@ -125,8 +135,22 @@ async function browserQA(executable,role){
    await send('Emulation.setDeviceMetricsOverride',{width,height:820,deviceScaleFactor:2,mobile:true});
    assert.ok(await evaluate(`document.documentElement.scrollWidth`)<=width,`${executable} train repair ${width}: horizontal scroll`);
   }
+  await evaluate(`document.querySelector('[data-officer-tab=members]').click()`);
+  await until(`Boolean(document.querySelector('[data-native-member]'))`);
+  await evaluate(`document.querySelector('[data-native-member]').click()`);
+  await until(`document.querySelector('[data-native-alias-count]')?.textContent==='1'`);
+  assert.equal(await evaluate(`document.querySelector('.native-member-aliases').open`),false);
+  await evaluate(`(()=>{document.querySelector('.native-member-aliases').open=true;document.querySelector('[data-native-alias-open]').click()})()`);
+  for(const width of [320,375,390,430])for(const theme of ['dark','light']){
+   await send('Emulation.setDeviceMetricsOverride',{width,height:820,deviceScaleFactor:2,mobile:true});
+   await send('Emulation.setEmulatedMedia',{features:[{name:'prefers-color-scheme',value:theme}]});
+   assert.ok(await evaluate(`document.documentElement.scrollWidth`)<=width,`${executable} alias profile ${width} ${theme}: horizontal scroll`);
+  }
+  await evaluate(`(()=>{const form=document.querySelector('[data-native-alias-form]');form.elements.alias.value='Exact New Name';form.elements.reason.value='Historical screenshot';form.elements.ack.checked=true;form.requestSubmit()})()`);
+  await until(`document.querySelector('[data-native-alias-count]')?.textContent==='2'`);
+  assert.equal(await evaluate(`document.querySelector('[data-native-alias-list] li:last-child').textContent`),'Exact New Name');
   socket.close();
-  return `${executable.split('\\').at(-1)} ${role}: ${measures.join(', ')}; synthetic OCR zoom/save/next and train repair passed`;
+  return `${executable.split('\\').at(-1)} ${role}: ${measures.join(', ')}; synthetic OCR, train repair, and member aliases passed`;
  }finally{
   child.kill();await delay(250);
   await rm(profile,{recursive:true,force:true,maxRetries:8,retryDelay:200});

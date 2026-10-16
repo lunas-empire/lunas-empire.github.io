@@ -361,6 +361,26 @@ function deltaLabel(n){
  if(n===null)return 'Kein bestätigter Vergleich';
  return (n>0?'+':'')+numberText(n)+' seit der vorherigen Aufnahme';
 }
+function renderMemberAliases(details,aliases,notice=''){
+ if(!details)return;
+ const rows=Array.isArray(aliases)?aliases:[];
+ details.querySelector('[data-native-alias-count]').textContent=String(rows.length);
+ details.querySelector('[data-native-alias-list]').innerHTML=rows.length?
+  '<ul>'+rows.map(item=>'<li data-native-no-translate>'+e(item.alias)+'</li>').join('')+'</ul>':
+  '<p class="native-muted">Noch keine früheren Spielernamen bestätigt.</p>';
+ const status=details.querySelector('[data-native-alias-status]');
+ status.textContent=notice;
+}
+async function loadMemberAliases(details,id){
+ const requestId=String(Number(details.dataset.nativeAliasRequest||0)+1);
+ details.dataset.nativeAliasRequest=requestId;
+ try{
+  const result=await request('/api/member/'+encodeURIComponent(id)+'/aliases');
+  if(details.isConnected&&details.dataset.nativeAliasRequest===requestId)renderMemberAliases(details,result.aliases);
+ }catch{
+  if(details.isConnected&&details.dataset.nativeAliasRequest===requestId)details.querySelector('[data-native-alias-status]').textContent='Frühere Spielernamen konnten nicht geladen werden. Bitte Profil neu öffnen.';
+ }
+}
 async function showPerson(target,id){
  const node=target.querySelector('#native-person');if(!node)return;
  node.innerHTML='<p role="status" class="native-muted">Spielerakte wird geladen …</p>';
@@ -438,6 +458,15 @@ async function showPerson(target,id){
   '<div class="native-profile-identity"><span class="native-kicker">SPIELERAKTE · '+e(member.status==='active'?'AKTIV':member.status==='former'?'ARCHIV':'STATUS UNGEKLÄRT')+'</span>'+
   '<h3>'+e(member.name||'Unbekannt')+'</h3><p>'+e(member.state_source==='registry'?'Verwalteter Rang':'Letzter importierter Rang')+
   (member.blacklisted?' · Manuell gesperrt':'')+'</p></div></div>'+
+  '<details class="native-fold native-member-aliases" data-native-alias-member="'+e(id)+'"><summary><span>Frühere Spielernamen</span> · <span data-native-alias-count>…</span></summary>'+
+   '<div class="native-fold-body"><div data-native-alias-list><p class="native-muted">Frühere Spielernamen werden geladen …</p></div>'+
+   '<p role="status" aria-live="polite" data-native-alias-status></p>'+
+   (['R4','R5'].includes(officer?.role)?'<button type="button" data-native-alias-open>+ Name bestätigen</button>'+
+    '<form class="native-alias-form" data-native-alias-form hidden><label>Früherer Spielername (genaue Schreibweise)<input name="alias" required maxlength="80" autocomplete="off"></label>'+
+    '<label>Begründung / Quelle<input name="reason" required minlength="8" maxlength="300" autocomplete="off"></label>'+
+    '<label class="native-alias-ack"><input name="ack" type="checkbox" required> Ich habe die historische Schreibweise anhand einer Quelle geprüft.</label>'+
+    '<div class="native-alias-actions"><button type="submit">Namen bestätigen</button><button type="button" data-native-alias-cancel>Abbrechen</button></div></form>':'')+
+   '</div></details>'+
   (active.length?'<p class="native-absence-warning">Aktuell als abwesend eingetragen. Zugvorschläge berücksichtigen diesen Zeitraum.</p>':'')+
   (member.source_difference?'<p class="native-evidence-note">Abweichender Import: '+e(member.imported_rank||'Rang unbekannt')+' · '+e(member.source_status||'Status ungeklärt')+'. Der bestätigte Verwaltungsstand hat Vorrang.</p>':'')+
   (member.registry_updated_by?'<p class="native-muted">Letzte Rang-/Statusänderung: '+e(member.registry_updated_by)+' · '+e(formatOfficerTime(member.registry_updated_at))+'</p>':'')+
@@ -459,6 +488,7 @@ async function showPerson(target,id){
     '<button type="button" data-native-member-log="'+e(id)+'">Änderungen anzeigen</button></div>'+
     '<div id="native-person-log"></div><div id="registry-form"></div></div></details></section>';
  node.scrollIntoView({behavior:'smooth',block:'nearest'});
+ await loadMemberAliases(node.querySelector('.native-member-aliases'),id);
 }
 function showVsEvidenceUpload(area,key,message,source=null){
  area.innerHTML='<p class="native-evidence-note">'+e(message)+'</p>'+
@@ -1750,6 +1780,19 @@ export function initNativeAdmin(mount){
    trainHistoryExpanded=!event.target.closest('.native-train-history').open;
    return;
   }
+  const aliasAction=event.target.closest?.('[data-native-alias-open],[data-native-alias-cancel]');
+  if(aliasAction){
+   const details=aliasAction.closest('.native-member-aliases'),form=details?.querySelector('[data-native-alias-form]');
+   if(!form)return;
+   if(aliasAction.hasAttribute('data-native-alias-cancel')){
+    form.reset();form.hidden=true;details.querySelector('[data-native-alias-open]').hidden=false;
+    details.querySelector('[data-native-alias-status]').textContent='';
+    details.querySelector('[data-native-alias-open]').focus();
+   }else{
+    form.hidden=false;aliasAction.hidden=true;form.elements.namedItem('alias').focus();
+   }
+   return;
+  }
   const proof=event.target.closest?.('[data-native-stat-evidence],[data-native-stat-close],[data-native-stat-prev],[data-native-stat-next],[data-native-stat-link],[data-native-stat-browse]');
   if(proof){
    const area=mount.querySelector('#native-admin-content');
@@ -2047,6 +2090,35 @@ export function initNativeAdmin(mount){
  if(event.target.name==='event_type'&&event.target.closest('#native-record-save'))updateEventForm(event.target.form);if(event.target.id==='native-vs-week')renderVs(mount.querySelector('#native-admin-content'));if(event.target.id==='native-donation-week')renderDonations(mount.querySelector('#native-admin-content'));if(['review-image-native','review-batch-native','review-kind-native'].includes(event.target.id)){historyLimit=20;const target=mount.querySelector('#native-admin-content');renderReviews(target,target.querySelector('#review-search-native')?.value||'')}});
  mount.addEventListener('submit',async event=>{
   const form=event.target;event.preventDefault();
+  if(form.matches('[data-native-alias-form]')){
+   const details=form.closest('.native-member-aliases');
+   const status=details.querySelector('[data-native-alias-status]');
+   if(!['R4','R5'].includes(officer?.role)){status.textContent='Nur R4/R5 dürfen Namen bestätigen.';return}
+   const alias=form.elements.namedItem('alias').value,reason=form.elements.namedItem('reason').value;
+   if(!alias.trim()||reason.trim().length<8||!form.elements.namedItem('ack').checked||!form.checkValidity()){
+    status.textContent='Bitte genaue Schreibweise, eine Begründung mit mindestens 8 Zeichen und die Bestätigung eingeben.';
+    return;
+   }
+   const submit=form.querySelector('[type=submit]');submit.disabled=true;
+   status.textContent='Name wird bestätigt …';
+   let saved=false;
+   try{
+    await request('/api/member/'+encodeURIComponent(details.dataset.nativeAliasMember)+'/aliases',{method:'POST',body:{alias,reason}});
+    saved=true;
+    details.dataset.nativeAliasRequest=String(Number(details.dataset.nativeAliasRequest||0)+1);
+    const result=await request('/api/member/'+encodeURIComponent(details.dataset.nativeAliasMember)+'/aliases');
+    if(!details.isConnected)return;
+    renderMemberAliases(details,result.aliases,'Spielername bestätigt.');
+    form.reset();form.hidden=true;details.querySelector('[data-native-alias-open]').hidden=false;
+    details.querySelector('[data-native-alias-open]').focus();
+   }catch(error){
+    if(details.isConnected)status.textContent=saved?'Name bestätigt, aber Liste konnte nicht aktualisiert werden. Bitte Profil neu öffnen.':
+     error.status===409?'Name gehört bereits zu einem anderen Mitglied. Bitte Zuordnung prüfen.':
+     error.status===403?'Keine Berechtigung für diese Bestätigung.':error.status===401?'Sitzung abgelaufen. Bitte erneut anmelden.':
+     error.status===400?'Name oder Begründung ungültig. Bitte Angaben prüfen.':'Bestätigung fehlgeschlagen. Bitte erneut versuchen.';
+   }finally{if(details.isConnected)submit.disabled=false}
+   return;
+  }
   if(form.id==='native-officer-login'){
    const button=form.querySelector('[type=submit]');button.disabled=true;
    form.querySelector('#native-login-status').textContent='Anmeldung wird geprüft …';

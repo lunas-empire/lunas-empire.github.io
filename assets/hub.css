@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-16.52.1');
+@import url('./tokens.css?v=2026-10-16.53');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -689,6 +689,21 @@ input[type='checkbox'],input[type='radio']{accent-color:var(--color-game-orange)
 .native-profile-identity{min-width:0}
 .native-profile-identity h3{margin:.05rem 0;font-size:1.25rem;overflow-wrap:anywhere}
 .native-profile-identity p{font-size:.8rem;color:var(--color-muted);margin:.15rem 0}
+.native-admin .native-member-aliases{margin:.65rem 0 1rem;padding:.45rem .7rem;min-width:0}
+.native-admin .native-member-aliases>summary{min-height:44px;font-size:.85rem}
+.native-admin .native-member-aliases ul{margin:.2rem 0 .6rem;padding-left:1.25rem;overflow-wrap:anywhere}
+.native-admin .native-member-aliases li+li{margin-top:.3rem}
+.native-admin .native-member-aliases [role=status]:empty{display:none}
+.native-admin .native-member-aliases [role=status]{font-size:.8rem;overflow-wrap:anywhere}
+.native-admin .native-alias-form{display:grid;gap:.55rem;max-width:32rem;margin-top:.6rem}
+.native-admin .native-alias-form[hidden],.native-admin .native-member-aliases [hidden]{display:none}
+.native-admin .native-alias-form label{display:grid;gap:.25rem;font-size:.82rem;min-width:0}
+.native-admin .native-alias-form input:not([type=checkbox]){width:100%;max-width:100%;min-width:0;box-sizing:border-box}
+.native-admin .native-alias-form .native-alias-ack{display:flex;align-items:flex-start;gap:.45rem}
+.native-admin .native-alias-form .native-alias-ack input{flex:none;margin-top:.18rem}
+.native-admin .native-alias-actions{display:flex;flex-wrap:wrap;gap:.45rem}
+.native-admin .native-member-aliases button{min-height:44px;white-space:normal}
+.native-admin .native-alias-form input:focus-visible{outline:3px solid var(--color-focus);outline-offset:2px}
 .native-profile-actions{display:flex;flex-wrap:wrap;gap:.5rem;margin:.85rem 0}
 .native-profile-actions button{min-height:44px;white-space:normal}
 .native-section-heading{border-bottom:1px solid var(--color-rule);padding-bottom:.45rem;margin:1.1rem 0 .65rem}
