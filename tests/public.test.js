@@ -50,7 +50,7 @@ test('all public assets, including i18n, are served; private paths are not',asyn
     const seasonLibrarySource=await (await fetch(url+'/assets/season-library.js')).text();
     const trainGuideSource=await (await fetch(url+'/assets/train-guide.js')).text();
     const techGuideSource=await (await fetch(url+'/assets/tech-guide.js')).text();
-    assert.ok(configSource.includes("https://rzsn-command-center-staging.cynthiawong2837128.workers.dev/") && configSource.includes("'/admin/'"),'staging uses protected Cloudflare backend while production retains encrypted wiki');
+    assert.ok(configSource.includes("https://rzsn-staging-api-bridge.pages.dev/") && configSource.includes("'/admin/'"),'staging uses protected Cloudflare backend while production retains encrypted wiki');
     assert.ok(appSource.includes('trainGuideDisclosure') && trainGuideSource.includes('50,000 Train Rating'),'Alliance Train guide is shipped and rendered');
     assert.ok(trainGuideSource.includes('/assets/member/train-guide-ui.webp'),'Alliance Train guide includes the annotated screenshot');
     assert.ok(trainGuideSource.includes('Alliance & Events') && !trainGuideSource.includes('Alliance tools'),'Train guide lives under the clearer Alliance & Events section');

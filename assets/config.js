@@ -11,7 +11,7 @@ export const ALLIANCE_CONFIG = {
   // Staging renders a native admin view. Cloudflare D1 remains private behind officer bearer auth.
   // RZSN production retains its existing encrypted admin wiki.
   adminUrl: globalThis.location?.hostname===productionHost ? '/admin/' : '#admin',
-  commandCenterEmbedUrl: 'https://rzsn-command-center-staging.cynthiawong2837128.workers.dev/?embed=1',
+  commandCenterEmbedUrl: 'https://rzsn-staging-api-bridge.pages.dev/?embed=1',
 };
 export const LIVE_NOTICE = {
   active: false, priority: 'critical',

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile,readdir} from 'node:fs/promises';
 import {createPublicServer} from '../scripts/serve.js';
 
-const worker='https://rzsn-command-center-staging.cynthiawong2837128.workers.dev/';
+const worker='https://rzsn-staging-api-bridge.pages.dev/';
 
 test('Lunas Empire admin entry is only a redirect; no private database or demo bundle is published',async()=>{
  const dir=new URL('../command-center/',import.meta.url);
