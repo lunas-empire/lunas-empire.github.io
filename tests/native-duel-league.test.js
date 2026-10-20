@@ -99,6 +99,40 @@ test('manual OCR fallback submits the exact proposal contract after evidence upl
  assert.deepEqual(payload.evidence_ids,[uuid]);assert.deepEqual(payload.ocr_texts,['1. [RZSN] RisingSun #2261 | unknown, upcoming, upcoming, upcoming']);controller.destroy();
 });
 
+test('mobile upload preview preserves image order, supports removal, and is accessibly described',async t=>{
+ const dom=new JSDOM('<main id="root"></main>',{url:'https://example.test'});t.after(()=>dom.window.close());
+ const root=dom.window.document.querySelector('#root'),api={read:async()=>sample,saveMatch:async()=>{},saveLeagueSnapshot:async()=>{},uploadEvidence:async()=>({evidence_id:uuid}),createOcrProposal:async()=>{},loadEvidence:async()=>new Blob()};
+ const controller=createDuelLeagueController({root,api,language:'en',cryptoRef:webcrypto,textDetectorClass:null});await controller.load();
+ const form=root.querySelector('.native-dl-upload-form'),first=new File([new Uint8Array([1])],'first.png',{type:'image/png'}),second=new File([new Uint8Array([2])],'second.jpg',{type:'image/jpeg'});
+ Object.defineProperty(form.elements.files,'files',{configurable:true,value:[first,second]});form.elements.files.dispatchEvent(new dom.window.Event('change',{bubbles:true}));
+ const preview=form.querySelector('[data-native-dl-upload-preview]');assert.match(preview.textContent,/first\.png.*second\.jpg/s);assert.equal(preview.querySelectorAll('li').length,2);
+ assert.equal(form.elements.files.getAttribute('aria-describedby'),'native-dl-upload-help native-dl-upload-status');assert.equal(form.elements.ocr_text.getAttribute('aria-describedby'),'native-dl-ocr-help');
+ preview.querySelector('[data-native-dl-remove-file="1"]').click();assert.equal(preview.querySelectorAll('li').length,1);assert.doesNotMatch(preview.textContent,/second\.jpg/);assert.equal(dom.window.document.activeElement,preview.querySelector('[data-native-dl-remove-file="0"]'));controller.destroy();
+});
+
+test('manual OCR block mismatch is rejected before any private image upload',async t=>{
+ const dom=new JSDOM('<main id="root"></main>',{url:'https://example.test'});t.after(()=>dom.window.close());
+ const calls=[],root=dom.window.document.querySelector('#root'),api={read:async()=>sample,saveMatch:async()=>{},saveLeagueSnapshot:async()=>{},uploadEvidence:async payload=>{calls.push(payload);return {evidence_id:uuid}},createOcrProposal:async()=>{},loadEvidence:async()=>new Blob()};
+ const controller=createDuelLeagueController({root,api,language:'en',cryptoRef:webcrypto,textDetectorClass:null});await controller.load();const form=root.querySelector('.native-dl-upload-form');
+ form.elements.scope_key.value='S38';form.elements.captured_at.value='2026-10-20T12:00';form.elements.ocr_text.value='only one OCR block';
+ const files=[new File([new Uint8Array([1])],'one.png',{type:'image/png'}),new File([new Uint8Array([2])],'two.png',{type:'image/png'})];Object.defineProperty(form.elements.files,'files',{configurable:true,value:files});form.elements.files.required=false;
+ form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));await new Promise(resolve=>setTimeout(resolve,0));
+ assert.equal(calls.length,0);assert.match(form.querySelector('[role=status]').textContent,/must match the number of images/);controller.destroy();
+});
+
+test('partial multi-image failure reports progress and reuses upload idempotency keys on retry',async t=>{
+ const dom=new JSDOM('<main id="root"></main>',{url:'https://example.test'});t.after(()=>dom.window.close());
+ const calls=[],root=dom.window.document.querySelector('#root');let failurePending=true;
+ const api={read:async()=>sample,saveMatch:async()=>{},saveLeagueSnapshot:async()=>{},createOcrProposal:async()=>{},loadEvidence:async()=>new Blob(),uploadEvidence:async payload=>{calls.push(payload);if(calls.length===2&&failurePending){failurePending=false;throw Error('Synthetic offline interruption')}return {evidence_id:uuid}}};
+ const controller=createDuelLeagueController({root,api,language:'en',cryptoRef:webcrypto,textDetectorClass:null});await controller.load();const form=root.querySelector('.native-dl-upload-form');
+ form.elements.scope_key.value='S38';form.elements.kind.value='league_scroll';form.elements.captured_at.value='2026-10-20T12:00';
+ const files=[new File([new Uint8Array([1])],'one.png',{type:'image/png',lastModified:1}),new File([new Uint8Array([2])],'two.png',{type:'image/png',lastModified:2})];Object.defineProperty(form.elements.files,'files',{configurable:true,value:files});form.elements.files.required=false;form.elements.files.dispatchEvent(new dom.window.Event('change',{bubbles:true}));
+ form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));for(let index=0;index<50&&calls.length<2;index++)await new Promise(resolve=>setTimeout(resolve,5));
+ assert.match(form.querySelector('[role=status]').textContent,/1 of 2 images were saved.*safe to retry/s);assert.equal(form.querySelector('[type=submit]').disabled,false);
+ form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));for(let index=0;index<50&&calls.length<4;index++)await new Promise(resolve=>setTimeout(resolve,5));
+ assert.equal(calls[0].metadata.idempotency_key,calls[2].metadata.idempotency_key);assert.equal(calls[1].metadata.idempotency_key,calls[3].metadata.idempotency_key);controller.destroy();
+});
+
 test('native admin sends exact Bearer upload headers, SHA, binary body, and /image GET path',async t=>{
  const dom=new JSDOM('<main id="mount"></main>',{url:'https://lunas-empire.github.io/#admin'});
  const previousWindow=globalThis.window,previousFetch=globalThis.fetch;

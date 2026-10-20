@@ -1170,6 +1170,17 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 .native-admin .native-dl-day-edit>strong{align-self:center;font-size:.8rem}
 .native-admin .native-dl-rank-row{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.45rem;margin:.35rem 0;padding:.55rem;border:1px solid var(--color-rule)}
 .native-admin .native-dl-file{grid-column:1/-1}
+.native-admin .native-dl-upload-preview{grid-column:1/-1;display:grid;gap:.4rem;min-width:0}
+.native-admin .native-dl-upload-preview:empty{display:none}
+.native-admin .native-dl-upload-preview>strong{font-size:.78rem;color:var(--color-muted)}
+.native-admin .native-dl-upload-preview ol{display:grid;gap:.4rem;margin:0;padding:0;list-style:none;counter-reset:duel-upload}
+.native-admin .native-dl-upload-preview li{counter-increment:duel-upload;position:relative;display:grid;grid-template-columns:56px minmax(0,1fr) 44px;align-items:center;gap:.55rem;min-width:0;padding:.4rem;border:1px solid var(--color-rule);border-radius:5px;background:var(--color-raised)}
+.native-admin .native-dl-upload-preview li::before{content:counter(duel-upload);position:absolute;transform:translate(.2rem,-.9rem);min-width:20px;padding:.1rem;border-radius:3px;background:var(--color-game-orange);color:#172238;text-align:center;font-size:.68rem;font-weight:850}
+.native-admin .native-dl-upload-preview img{width:56px;height:56px;object-fit:cover;border:1px solid var(--color-rule);background:#111}
+.native-admin .native-dl-upload-preview span{display:grid;gap:.15rem;min-width:0}
+.native-admin .native-dl-upload-preview b{overflow-wrap:anywhere;font-size:.78rem}
+.native-admin .native-dl-upload-preview small{color:var(--color-muted);font-variant-numeric:tabular-nums}
+.native-admin .native-dl-upload-preview button{min-width:44px;min-height:44px;padding:.25rem;font-size:1.1rem}
 .native-admin .native-dl-proposals{display:grid;gap:.55rem}
 .native-admin .native-dl-proposal{display:grid;gap:.55rem;min-width:0;padding:.75rem;border:1px solid var(--color-rule);border-radius:5px;background:var(--color-panel)}
 .native-admin .native-dl-proposal>div:first-child{display:grid;gap:.15rem}
