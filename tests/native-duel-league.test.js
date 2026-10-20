@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {webcrypto} from 'node:crypto';
 import {JSDOM} from 'jsdom';
-import {DUEL_DAY_WEIGHTS,createDuelLeagueController,matchPayload,normalizeDuelLeague,renderDuelLeague,sha256Hex,snapshotPayload} from '../assets/native-duel-league.js';
+import {DUEL_DAY_WEIGHTS,createDuelLeagueController,matchPayload,normalizeDuelLeague,prepareEvidence,renderDuelLeague,sha256Hex,snapshotPayload} from '../assets/native-duel-league.js';
 import {clearOfficer,initNativeAdmin,renderNativeAdmin} from '../assets/native-admin.js';
 
 const uuid='12345678-1234-4234-8234-123456789abc';
@@ -69,6 +69,17 @@ test('SHA-256 is lowercase hex over exact bytes',async()=>{
  assert.equal(await sha256Hex(new TextEncoder().encode('abc'),webcrypto),'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
 });
 
+test('oversized Safari upload uses HTML image fallback and releases its object URL and decoded image',async()=>{
+ let created=0,revoked=0,cleared=0,drawn=false;
+ class FakeImage{set src(value){if(!value){cleared++;return}this.naturalWidth=1200;this.naturalHeight=800;queueMicrotask(()=>this.onload())}}
+ const view={Image:FakeImage,URL:{createObjectURL:()=>{created++;return 'blob:safari-fallback'},revokeObjectURL:url=>{assert.equal(url,'blob:safari-fallback');revoked++}}};
+ const canvas={getContext:()=>({drawImage:()=>{drawn=true}}),toBlob:resolve=>resolve(new Blob([new Uint8Array([1,2,3])],{type:'image/jpeg'}))};
+ const documentRef={defaultView:view,createElement:name=>{assert.equal(name,'canvas');return canvas}},file=new File([new Uint8Array(950001)],'large.png',{type:'image/png'});
+ const prepared=await prepareEvidence(file,documentRef);
+ assert.equal(prepared.reduced,true);assert.equal(prepared.filename,'large.png.downsampled.jpg');assert.equal(prepared.file.type,'image/jpeg');assert.equal(drawn,true);
+ assert.equal(created,1);assert.equal(revoked,1);assert.equal(cleared,1);
+});
+
 test('proposal review fills an editable form and confirms only through saveMatch',async t=>{
  const dom=new JSDOM('<main id="root"></main>',{url:'https://example.test'});t.after(()=>dom.window.close());
  const calls=[],root=dom.window.document.querySelector('#root');
@@ -120,17 +131,37 @@ test('manual OCR block mismatch is rejected before any private image upload',asy
  assert.equal(calls.length,0);assert.match(form.querySelector('[role=status]').textContent,/must match the number of images/);controller.destroy();
 });
 
-test('partial multi-image failure reports progress and reuses upload idempotency keys on retry',async t=>{
+test('partial multi-image failure retries exact pending payload without duplicate evidence and safely retries the proposal',async t=>{
  const dom=new JSDOM('<main id="root"></main>',{url:'https://example.test'});t.after(()=>dom.window.close());
- const calls=[],root=dom.window.document.querySelector('#root');let failurePending=true;
- const api={read:async()=>sample,saveMatch:async()=>{},saveLeagueSnapshot:async()=>{},createOcrProposal:async()=>{},loadEvidence:async()=>new Blob(),uploadEvidence:async payload=>{calls.push(payload);if(calls.length===2&&failurePending){failurePending=false;throw Error('Synthetic offline interruption')}return {evidence_id:uuid}}};
+ const calls=[],proposalCalls=[],stored=new Map(),root=dom.window.document.querySelector('#root'),retrySample={...sample,evidence:[...sample.evidence,{id:'existing-league-evidence',evidence_kind:'league_scroll',scope_key:'S38',image_order:4}]};let uploadFailurePending=true,proposalFailurePending=true;
+ const api={read:async()=>retrySample,saveMatch:async()=>{},saveLeagueSnapshot:async()=>{},loadEvidence:async()=>new Blob(),uploadEvidence:async payload=>{
+  calls.push(payload);if(calls.length===2&&uploadFailurePending){uploadFailurePending=false;throw Error('Synthetic offline interruption')}
+  if(!stored.has(payload.metadata.idempotency_key))stored.set(payload.metadata.idempotency_key,'evidence-'+stored.size);return {evidence_id:stored.get(payload.metadata.idempotency_key)};
+ },createOcrProposal:async payload=>{proposalCalls.push(payload);if(proposalFailurePending){proposalFailurePending=false;throw Error('Synthetic proposal interruption')}}};
  const controller=createDuelLeagueController({root,api,language:'en',cryptoRef:webcrypto,textDetectorClass:null});await controller.load();const form=root.querySelector('.native-dl-upload-form');
- form.elements.scope_key.value='S38';form.elements.kind.value='league_scroll';form.elements.captured_at.value='2026-10-20T12:00';
+ form.elements.scope_key.value='S38';form.elements.kind.value='league_scroll';form.elements.captured_at.value='2026-10-20T12:00';form.elements.ocr_text.value='first\n--- IMAGE ---\nsecond';
  const files=[new File([new Uint8Array([1])],'one.png',{type:'image/png',lastModified:1}),new File([new Uint8Array([2])],'two.png',{type:'image/png',lastModified:2})];Object.defineProperty(form.elements.files,'files',{configurable:true,value:files});form.elements.files.required=false;form.elements.files.dispatchEvent(new dom.window.Event('change',{bubbles:true}));
  form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));for(let index=0;index<50&&calls.length<2;index++)await new Promise(resolve=>setTimeout(resolve,5));
  assert.match(form.querySelector('[role=status]').textContent,/1 of 2 images were saved.*safe to retry/s);assert.equal(form.querySelector('[type=submit]').disabled,false);
- form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));for(let index=0;index<50&&calls.length<4;index++)await new Promise(resolve=>setTimeout(resolve,5));
- assert.equal(calls[0].metadata.idempotency_key,calls[2].metadata.idempotency_key);assert.equal(calls[1].metadata.idempotency_key,calls[3].metadata.idempotency_key);controller.destroy();
+ const failedPayload=calls[1];form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));for(let index=0;index<50&&proposalCalls.length<1;index++)await new Promise(resolve=>setTimeout(resolve,5));
+ assert.equal(calls.length,3,'the completed first image is not uploaded again');assert.deepEqual(calls[2],failedPayload,'the interrupted image reuses its exact file and metadata payload');
+ assert.deepEqual(calls.map(call=>call.metadata.image_order),[5,6,6]);assert.equal(stored.size,2,'the server sees exactly one idempotency record per selected image');
+ assert.deepEqual(proposalCalls[0].evidence_ids,['evidence-0','evidence-1']);assert.equal(form.querySelector('[type=submit]').disabled,false);
+ form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));for(let index=0;index<50&&proposalCalls.length<2;index++)await new Promise(resolve=>setTimeout(resolve,5));
+ assert.equal(calls.length,3,'proposal retry does not upload evidence again');assert.deepEqual(proposalCalls[1],proposalCalls[0],'proposal retry reuses the exact payload and idempotency key');controller.destroy();
+});
+
+test('kind, scope, and capture-time edits reset the persisted upload attempt metadata',async t=>{
+ const dom=new JSDOM('<main id="root"></main>',{url:'https://example.test'});t.after(()=>dom.window.close());
+ const calls=[],root=dom.window.document.querySelector('#root');let reject=true;
+ const api={read:async()=>sample,saveMatch:async()=>{},saveLeagueSnapshot:async()=>{},createOcrProposal:async()=>{},loadEvidence:async()=>new Blob(),uploadEvidence:async payload=>{calls.push(payload);if(reject){reject=false;throw Error('offline')}return {evidence_id:uuid}}};
+ const controller=createDuelLeagueController({root,api,language:'en',cryptoRef:webcrypto,textDetectorClass:null});await controller.load();const form=root.querySelector('.native-dl-upload-form');
+ form.elements.kind.value='match_week';form.elements.scope_key.value='2026-W43';form.elements.captured_at.value='2026-10-20T12:00';
+ const image=new File([new Uint8Array([1])],'proof.png',{type:'image/png',lastModified:1});Object.defineProperty(form.elements.files,'files',{configurable:true,value:[image]});form.elements.files.required=false;form.elements.files.dispatchEvent(new dom.window.Event('change',{bubbles:true}));
+ form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));for(let index=0;index<50&&calls.length<1;index++)await new Promise(resolve=>setTimeout(resolve,5));
+ form.elements.kind.value='league_scroll';form.elements.scope_key.value='S39';form.elements.captured_at.value='2026-10-21T13:30';form.elements.scope_key.dispatchEvent(new dom.window.Event('change',{bubbles:true}));
+ form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));for(let index=0;index<50&&calls.length<2;index++)await new Promise(resolve=>setTimeout(resolve,5));
+ assert.notEqual(calls[1].metadata.idempotency_key,calls[0].metadata.idempotency_key);assert.equal(calls[1].metadata.kind,'league_scroll');assert.equal(calls[1].metadata.scope_key,'S39');assert.equal(calls[1].metadata.image_order,1);assert.notEqual(calls[1].metadata.captured_at,calls[0].metadata.captured_at);controller.destroy();
 });
 
 test('native admin sends exact Bearer upload headers, SHA, binary body, and /image GET path',async t=>{
