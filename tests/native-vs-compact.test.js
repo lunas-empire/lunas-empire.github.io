@@ -35,7 +35,7 @@ test('VS data starts compact with under-target and day breakdown collapsed, whil
  assert.equal(q('.native-command-tasks'),null,'no empty task cards when no open tasks');
  assert.equal(mount.querySelectorAll('.native-dashboard-mini-tile').length,2,'two small signal tiles replace big duplicate cards');
  q('[data-officer-tab=more]').click();
- assert.equal(mount.querySelectorAll('.native-hub-tile[data-officer-tab]').length,10,'all officer destinations including settings remain reachable from the dedicated More page');
+ assert.equal(mount.querySelectorAll('.native-hub-tile[data-officer-tab]').length,12,'all officer destinations including protected planning and settings remain reachable from the dedicated More page');
  q('[data-officer-tab=vs]').click();
  await until(()=>q('.native-vs-group'));
  const groups=mount.querySelectorAll('.native-vs-group');

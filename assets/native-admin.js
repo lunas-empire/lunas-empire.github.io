@@ -9,13 +9,15 @@ import {renderVsOverview,derivedVsWeekTotal} from './native-vs-overview.js';
 import {createDuelLeagueController} from './native-duel-league.js';
 import {diceHistory} from './dice-winners.js';
 import {formerArchiveFromTrain} from './former-train-archive.js';
+import {createOfficerPlanning,renderImpactWarnings} from './native-officer-planning.js';
 const apiBase=ALLIANCE_CONFIG.commandCenterEmbedUrl.replace('/?embed=1','');
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
 let sessionToken='',officer=null,panel='overview',cache={},pageLimit=20,historyLimit=20,activityLimit=30,registryFilter='all',activityCategory='all',activityGroupBy='type';
 let sessionGeneration=0;
 let duelLeagueController=null;
+let planningController=null;
 let trainHistoryFilters={member:'',date:''},trainHistoryExpanded=false;
-export function clearOfficer(){sessionGeneration++;statViewer.close();clearReviewImages();duelLeagueController?.destroy();duelLeagueController=null;sessionToken='';officer=null;cache={};panel='overview';pageLimit=20;historyLimit=20;trainHistoryFilters={member:'',date:''};trainHistoryExpanded=false;activityLimit=30;registryFilter='all';activityCategory='all';activityGroupBy='type';}
+export function clearOfficer(){sessionGeneration++;statViewer.close();clearReviewImages();duelLeagueController?.destroy();duelLeagueController=null;planningController=null;sessionToken='';officer=null;cache={};panel='overview';pageLimit=20;historyLimit=20;trainHistoryFilters={member:'',date:''};trainHistoryExpanded=false;activityLimit=30;registryFilter='all';activityCategory='all';activityGroupBy='type';}
 export const hasOfficer=()=>Boolean(sessionToken);
 const canManageSite=()=>officer?.role==='R5'||(officer?.role==='R4'&&officer?.siteOwner===true);
 async function request(path,options={}){
@@ -52,18 +54,21 @@ const primaryPanels=[
 const secondaryPanels=[
  ['registry','Ränge & Archiv'],['watch','Mitglieder-Abgleich'],['diplomacy','Diplomatie'],
  ['reviews','OCR-Prüffälle'],['tasks','Admin-Aufgaben'],['absences','Abwesenheiten'],['events','Allianz-Events'],
+ ['generalTrial','General Trial'],['desertWarRoom','Desert Storm War Room'],
  ['activity','Änderungsprotokoll'],['access','Zugangscodes'],['requirements','Einstellungen']
 ];
 const parentPanel=key=>({
  overview:'overview',vs:'vs',duelLeague:'vs',donations:'vs',members:'members',train:'train',more:'more',
  registry:'more',watch:'more',diplomacy:'more',reviews:'more',tasks:'more',
- absences:'more',events:'more',activity:'more',access:'more',requirements:'more'
+ absences:'more',events:'more',generalTrial:'more',desertWarRoom:'more',activity:'more',access:'more',requirements:'more'
 }[key]||'overview');
 const moreSections=[
  {title:'Allianz & Planung',items:[
   ['tasks','Aufgaben','tasks','Verantwortung & Fristen'],
   ['absences','Abwesenheiten','today','Vertretung & Urlaub'],
   ['events','Allianz-Events','hero','Einsätze organisieren'],
+  ['generalTrial','General Trial x1–x9','power','Beobachtete Stufen dokumentieren'],
+  ['desertWarRoom','Desert Storm War Room','alliance','Teams und Bestätigungen planen'],
   ['diplomacy','Diplomatie','alliance','Verbündete & Kontakte']]},
  {title:'Mitglieder & Kontrolle',items:[
   ['registry','Ränge & Archiv','alliance','Ränge und ehemalige Mitglieder'],
@@ -114,6 +119,7 @@ function marker(status){return '<span class="native-status">'+e(status||'Unbekan
 async function view(mount){
  clearReviewImages();
  duelLeagueController?.destroy();duelLeagueController=null;
+ planningController=null;
  const header='<div class="native-officer-strip" role="group" aria-label="Offiziersbereich">'+
   '<a class="native-return-link" href="#today">← Zur Website</a>'+
   '<div class="native-officer-controls"><span class="native-officer-badge">'+e(officer?.role||'Offizier')+' · '+e(officer?.name||'')+(officer?.siteOwner?' · Website-Eigentümerin':'')+
@@ -187,6 +193,7 @@ async function view(mount){
      summaryTile('donations-open',word('Spenden','Donations'),
       donationAlert===null?'—':donationAlert,word('Bestätigt unter Wochenziel','Confirmed below weekly goal'),'donations')+
     '</section>'+
+    renderImpactWarnings(ops.warnings||[],officerLanguage(target.ownerDocument))+
     (pending.length?'<section class="native-command-tasks"><div class="native-command-section-label"><strong>'+
      word('Offene Aufgaben','Open tasks')+' · '+pending.length+'</strong>'+
      actionPill('tasks-open',word('Alle öffnen','View all'))+'</div>'+
@@ -299,6 +306,14 @@ async function view(mount){
     loadEvidence:id=>binaryRequest('/api/duel-league/evidence/'+encodeURIComponent(id)+'/image')
    }});
    await duelLeagueController.load();
+  }else if(panel==='generalTrial'||panel==='desertWarRoom'){
+   target.innerHTML='<div class="native-planning-root" data-native-planning-root><p>Daten werden geladen …</p></div>';
+   planningController=createOfficerPlanning({
+    root:target.querySelector('[data-native-planning-root]'),
+    mode:panel==='generalTrial'?'trial':'war',request,
+    language:officerLanguage(target.ownerDocument),role:officer?.role
+   });
+   await planningController.load();
   }else if(panel==='donations'){
    cache.donations=await request('/api/donations-intelligence');
    target.innerHTML='<div class="native-row native-data-heading"><div><h2>Allianzspenden</h2><p class="native-muted">Wöchentliches Forschungsziel · mindestens 20.000 pro Mitglied</p></div>'+
@@ -313,7 +328,7 @@ async function view(mount){
    target.innerHTML='<div class="native-row"><h2>Zugplanung</h2><div class="native-row-actions"><button type="button" data-native-dice-date="'+e(cache.trains.today)+'">🎲 Dice Game</button><button data-native-new="train">+ Fahrer / Datum</button></div></div><div id="native-train-body"></div>';renderTrain(target);
   }else if(['tasks','absences','events'].includes(panel)){
    cache.ops=await request('/api/operations');
-   target.innerHTML='<div class="native-row"><h2>'+({tasks:'Admin-Aufgaben',absences:'Abwesenheiten & Vertretung',events:'Allianz-Events'}[panel])+'</h2><button data-native-new="'+panel+'">+ Eintragen</button></div><div id="native-form"></div><div id="native-records"></div>';
+   target.innerHTML='<div class="native-row"><h2>'+({tasks:'Admin-Aufgaben',absences:'Abwesenheiten & Vertretung',events:'Allianz-Events'}[panel])+'</h2><button data-native-new="'+panel+'">+ Eintragen</button></div>'+renderImpactWarnings(cache.ops.warnings||[],officerLanguage(target.ownerDocument))+'<div id="native-form"></div><div id="native-records"></div>';
    renderRecords(target);
   }
  }catch(err){target.innerHTML='<p class="native-error" role="alert">'+e(err.message)+'</p><button data-native-refresh>Erneut laden</button>'}
@@ -1021,11 +1036,13 @@ export function summarizeAllianceEventRuns(source,type){
 function renderEventRuns(target){
  const data=cache.ops,entries=data?.events||[];
  const names=new Map((data?.members||[]).map(m=>[m.id,m.name]));
+ const german=officerLanguage(target.ownerDocument)==='de';
+ const attendanceLabel=x=>Number.isInteger(x.attendance)?x.attendance+(german?' Teilnehmer · Offizierseintrag':' participants · officer entry'):(german?'Teilnahme nicht belegt':'Attendance not evidenced');
  const eventRow=x=>'<button type="button" class="native-event-history-row" data-native-edit="'+e(x.id)+'">'+
   '<span><b>'+e(x.event_date)+'</b><small>'+e(allianceEventOutcomeLabels[x.outcome]||'Nicht bestätigt')+'</small></span>'+
   '<span><strong>'+e(x.level??'—')+'</strong><small>Level</small></span>'+
   (x.event_type==='zombie_siege'?'<span><strong>'+e(x.waves??'—')+'</strong><small>Wellen</small></span>':'')+
-  '<span class="native-event-history-actor">'+e(names.get(x.lead_id)||'Leitung offen')+'</span></button>';
+   '<span class="native-event-history-actor">'+e(names.get(x.lead_id)||'Leitung offen')+'<small>'+e(attendanceLabel(x))+'</small></span></button>';
  const groups=['zombie_siege','marshall_guard'].map(type=>{
   const data=summarizeAllianceEventRuns(entries,type);
   const last=data.latest,latestLevel=data.level??'—';
@@ -1058,7 +1075,7 @@ function renderEventRuns(target){
     '<p class="native-muted">Noch keine erfassten Durchgänge.</p>')+'</div></details></section>';
  }).join('');
  const other=entries.filter(x=>x.event_type==='desert_storm');
- target.querySelector('#native-records').innerHTML='<div class="native-event-intro"><p>Alle paar Tage erfassen: <strong>Level, Wellen, Ergebnis und Teilnahme</strong>. Jeder Durchgang bleibt mit Datum und verantwortlichem Officer erhalten.</p></div>'+
+ target.querySelector('#native-records').innerHTML='<div class="native-event-intro"><p>Alle paar Tage erfassen: <strong>Level, Wellen, Ergebnis und Teilnahme</strong>. Jeder Durchgang bleibt mit Datum und verantwortlichem Officer erhalten.</p><p class="native-muted">'+(german?'Teilnahme ist ein manueller Offizierseintrag und wird ohne Beleg nicht automatisch ergänzt.':'Attendance is entered manually by an officer and is never inferred without evidence.')+'</p></div>'+
   '<div class="native-event-panels">'+groups+'</div>'+
   '<details class="native-fold"><summary>Weitere Events · Desert Storm ('+other.length+')</summary>'+
   '<div class="native-fold-body native-event-history">'+(other.length?other.map(eventRow).join(''):

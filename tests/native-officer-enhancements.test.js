@@ -52,3 +52,10 @@ test('Responsive mobile rank group and Officer More menu have explicit layout ru
  assert.match(css,/\.native-rank-group>summary>\.native-rank-count\{grid-column:2;grid-row:2/);
  assert.match(css,/\.native-more-menu\{position:absolute;right:0;left:auto/);
 });
+
+test('Alliance event attendance is labelled as officer evidence and never inferred',()=>{
+ const source=readFileSync(new URL('../assets/native-admin.js',import.meta.url),'utf8');
+ assert.match(source,/Teilnehmer · Offizierseintrag/);
+ assert.match(source,/Teilnahme nicht belegt/);
+ assert.match(source,/ohne Beleg nicht automatisch ergänzt/);
+});

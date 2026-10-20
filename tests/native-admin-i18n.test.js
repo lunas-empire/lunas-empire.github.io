@@ -43,7 +43,7 @@ test('Officer localization translates exact static labels but not player text or
  assert.equal(localizeOfficerTree(mount,'fr'),0,'No double translation');
  dom.window.close();
 });
-test('All 15 languages localize the login, fifth tab, ten tile labels, settings and dynamic navigation',async()=>{
+test('All 15 languages localize the login, fifth tab, twelve tile labels, settings and dynamic navigation',async()=>{
  for(const lang of OFFICER_LANGUAGES){
   clearOfficer();
   const dom=new JSDOM('<!doctype html><html lang="'+lang+'"><body><main id="mount"></main></body></html>',{url:'https://lunas-empire.github.io/#admin'});
@@ -76,7 +76,7 @@ test('All 15 languages localize the login, fifth tab, ten tile labels, settings 
    await wait(()=>q('.native-hub-section h3'));
    await wait(()=>q('.native-hub-section h3').textContent===translateOfficerText('Allianz & Planung',lang));
    assert.equal(q('.native-hub-heading'),null,'More hub header must not exist');
-   assert.equal(mount.querySelectorAll('.native-hub-tile').length,10,lang);
+   assert.equal(mount.querySelectorAll('.native-hub-tile').length,12,lang);
    assert.equal(mount.querySelectorAll('.native-hub-tile-gold').length,0,lang);
    assert.equal(q('.native-hub-section h3').textContent,translateOfficerText('Allianz & Planung',lang));
    assert.equal(q('[data-officer-tab=tasks].native-hub-tile strong').textContent,translateOfficerText('Aufgaben',lang));

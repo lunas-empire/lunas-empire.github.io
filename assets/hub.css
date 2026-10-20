@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-16.53');
+@import url('./tokens.css?v=2026-10-20.54');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -1846,6 +1846,63 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 .native-train-unlinked-dates{display:flex;flex-wrap:wrap;gap:.4rem}
 .native-train-unlinked-dates button{min-height:44px;padding:.35rem .65rem;font-size:.78rem}
 @media(min-width:48rem){.native-train-unlinked-group{grid-template-columns:minmax(10rem,.4fr) minmax(0,1fr);align-items:start}}
+
+/* v54 protected officer planning: native General Trial, War Room and read-only impacts. */
+.native-admin .native-planning-root{display:grid;gap:1rem;min-width:0}
+.native-admin .native-planning-title,.native-admin .native-planning-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:.8rem}
+.native-admin .native-planning-title{padding:1rem;border:1px solid #42566d;border-radius:12px;background:linear-gradient(145deg,#172638,#22374c);color:#f7fbff}
+.native-admin .native-planning-title h2,.native-admin .native-planning-heading h3{margin:.1rem 0 .35rem}
+.native-admin .native-planning-title p{max-width:68ch;margin:0;color:#d8e5f2;font-size:.85rem;line-height:1.55}
+.native-admin .native-no-auto{display:inline-block;margin-top:.6rem;padding:.25rem .5rem;border:1px solid #d8a75c;border-radius:999px;color:#ffe2aa;font-size:.72rem}
+.native-admin .native-planning-count{display:inline-grid;place-items:center;min-width:2.25rem;min-height:2.25rem;padding:.25rem;border:1px solid #d8a75c;border-radius:999px;background:#2c4055;color:#fff;font-weight:800}
+.native-admin .native-planning-actions{display:flex;flex-wrap:wrap;gap:.55rem}
+.native-admin .native-planning-row-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:.35rem}
+.native-admin .native-planning-actions button,.native-admin .native-planning-form button{min-height:44px}
+.native-admin .native-planning-list{display:grid;gap:.85rem}
+.native-admin .native-planning-card{min-width:0;overflow:hidden;border:1px solid var(--color-rule);border-radius:12px;background:var(--color-panel);box-shadow:0 .2rem .7rem color-mix(in oklch,var(--color-ink) 8%,transparent)}
+.native-admin .native-planning-card>header{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.8rem 1rem;border-bottom:1px solid var(--color-rule);background:color-mix(in oklch,var(--color-panel) 92%,var(--color-accent))}
+.native-admin .native-planning-card h3,.native-admin .native-planning-card p{margin:0}
+.native-admin .native-planning-card header p{margin-top:.2rem;color:var(--color-muted);font-size:.78rem}
+.native-admin .native-planning-table{max-width:100%;overflow:auto;-webkit-overflow-scrolling:touch}
+.native-admin .native-planning-table:focus-visible{outline:3px solid var(--color-accent);outline-offset:-3px}
+.native-admin .native-planning-table table{width:100%;min-width:38rem;border-collapse:collapse}
+.native-admin .native-planning-table th,.native-admin .native-planning-table td{padding:.68rem .8rem;border-bottom:1px solid var(--color-rule-soft);text-align:start;vertical-align:middle}
+.native-admin .native-planning-table th{font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--color-muted)}
+.native-admin .native-planning-table td button{min-height:38px}
+.native-admin .native-squad-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.75rem;padding:.85rem}
+.native-admin .native-squad-grid section{min-width:0;padding:.65rem;border:1px solid var(--color-rule-soft);border-radius:9px;background:color-mix(in oklch,var(--color-panel) 96%,var(--color-accent))}
+.native-admin .native-squad-grid h4{margin:.05rem 0 .55rem;font-size:.82rem;text-transform:uppercase;letter-spacing:.05em}
+.native-admin .native-squad-grid ol{display:grid;gap:.4rem;margin:0;padding:0;list-style:none}
+.native-admin .native-squad-grid li button{display:grid;width:100%;min-height:48px;padding:.55rem;text-align:start}
+.native-admin .native-planning-slot{display:grid;grid-template-columns:minmax(0,1fr) 44px;align-items:stretch;gap:.3rem}
+.native-admin .native-planning-slot>[data-planning-archive-slot]{display:grid;place-items:center;width:44px;min-height:44px;padding:0;font-size:1.15rem}
+.native-admin .native-squad-grid li small{margin-top:.16rem;white-space:normal;color:var(--color-muted)}
+.native-admin .native-planning-form{margin:.25rem 0;padding:1rem;border:2px solid color-mix(in oklch,var(--color-accent) 65%,var(--color-rule));border-radius:12px;background:var(--color-panel)}
+.native-admin .native-planning-form h3{grid-column:1/-1;margin:0 0 .2rem}
+.native-admin .native-planning-form [role=status]{grid-column:1/-1;min-height:1.2rem;margin:0;color:var(--color-danger)}
+.native-admin .native-planning-empty{padding:.7rem;color:var(--color-muted);font-size:.82rem}
+.native-admin .native-impact-warnings{margin:.75rem 0;padding:.85rem;border:1px solid #b07b38;border-inline-start:4px solid #d3933f;border-radius:10px;background:color-mix(in oklch,var(--color-panel) 94%,#d3933f)}
+.native-admin .native-impact-warnings .native-planning-heading{align-items:center}
+.native-admin .native-impact-warnings .native-kicker{color:#b56e18}
+.native-admin .native-impact-warnings ul{display:grid;gap:.4rem;margin:.65rem 0 0;padding:0;list-style:none}
+.native-admin .native-impact-warnings li{display:flex;align-items:center;justify-content:space-between;gap:.7rem;padding:.55rem .65rem;border:1px solid var(--color-rule-soft);border-radius:8px;background:var(--color-panel)}
+.native-admin .native-impact-warnings li span,.native-admin .native-impact-warnings li small{display:block;min-width:0}
+.native-admin .native-impact-warnings li small{margin-top:.12rem;color:var(--color-muted);overflow-wrap:anywhere}
+.native-admin .native-impact-warnings li>b{flex:0 1 auto;font-size:.75rem;text-align:end}
+@media(max-width:700px){
+ .native-admin .native-squad-grid{grid-template-columns:minmax(0,1fr)}
+ .native-admin .native-planning-title{padding:.8rem}
+ .native-admin .native-planning-card>header{align-items:flex-start;padding:.7rem}
+ .native-admin .native-planning-card>header button{min-height:44px}
+}
+@media(max-width:390px){
+ .native-admin .native-planning-title,.native-admin .native-planning-heading{gap:.45rem}
+ .native-admin .native-planning-title h2{font-size:1.25rem}
+ .native-admin .native-planning-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+ .native-admin .native-planning-actions button{min-width:0;white-space:normal}
+ .native-admin .native-impact-warnings li{align-items:flex-start;flex-direction:column}
+ .native-admin .native-impact-warnings li>b{text-align:start}
+}
 
 /* Read-only historic train rides in Alliance > Members archive. */
 .native-admin .native-member-archive-record{display:grid;gap:.35rem;padding:.75rem .8rem;border-bottom:1px solid var(--color-rule);min-width:0}
