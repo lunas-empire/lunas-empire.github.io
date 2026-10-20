@@ -34,9 +34,9 @@ test('More opens real game-style tile page with twelve accessible links, back na
  assert.equal(mount.querySelectorAll('.native-hub-section').length,3);
  assert.equal(mount.querySelectorAll('.native-hub-grid').length,3);
  const tiles=[...mount.querySelectorAll('.native-hub-tile[data-officer-tab]')];
- assert.equal(tiles.length,12);
- assert.equal(new Set(tiles.map(x=>x.dataset.officerTab)).size,12);
- assert.deepEqual(tiles.map(x=>x.dataset.officerTab),['tasks','absences','events','generalTrial','desertWarRoom','diplomacy','registry','watch','reviews','activity','access','requirements']);
+ assert.equal(tiles.length,10);
+ assert.equal(new Set(tiles.map(x=>x.dataset.officerTab)).size,10);
+ assert.deepEqual(tiles.map(x=>x.dataset.officerTab),['tasks','absences','events','diplomacy','registry','watch','reviews','activity','access','requirements']);
  for(const tile of tiles){
   assert.equal(tile.tagName,'BUTTON');
   assert.equal(tile.getAttribute('type'),'button');
@@ -50,7 +50,7 @@ test('More opens real game-style tile page with twelve accessible links, back na
  assert.equal(q('[data-officer-tab=more]').getAttribute('aria-current'),'page');
  assert.ok(q('.native-hub-return [data-officer-tab=more]'));
  q('.native-hub-return [data-officer-tab=more]').click();
- assert.equal(mount.querySelectorAll('.native-hub-tile').length,12);
+ assert.equal(mount.querySelectorAll('.native-hub-tile').length,10);
  q('.native-hub-tile[data-officer-tab=activity]').click();
  await until(()=>q('#activity-list'));
  assert.ok(q('.native-hub-return'));

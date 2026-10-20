@@ -32,7 +32,7 @@ const mk=(path)=>{
 };
 
 for(const locale of Object.keys(LANGUAGES)){
- test('All 16 officer panels render for '+locale+' with safe localized text (synthetic R4)',async t=>{
+ test('All 14 officer panels render for '+locale+' with safe localized text (synthetic R4)',async t=>{
   const dom=new JSDOM('<!doctype html><html lang="'+locale+'"><body><main id="mount"></main></body></html>',{url:'https://lunas-empire.github.io/#admin'});
   dom.window.HTMLElement.prototype.scrollIntoView=()=>{};
   const prior={window:globalThis.window,fetch:globalThis.fetch};
@@ -42,7 +42,7 @@ for(const locale of Object.keys(LANGUAGES)){
   initNativeAdmin(mount);await renderNativeAdmin(mount);
   q('[name=code]').value='synthetic';q('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
   await until(()=>q('[data-officer-tab=more]'));
-  for(const panel of ['overview','members','vs','train','registry','watch','diplomacy','tasks','absences','events','generalTrial','desertWarRoom','activity','reviews','access','requirements']){
+  for(const panel of ['overview','members','vs','train','registry','watch','diplomacy','tasks','absences','events','activity','reviews','access','requirements']){
    if(!['overview','members','vs','train'].includes(panel)){
     q('[data-officer-tab=more]').click();
     await until(()=>q('.native-hub-tile[data-officer-tab='+panel+']'));

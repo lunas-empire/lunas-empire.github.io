@@ -10,15 +10,14 @@ import {createDuelLeagueController} from './native-duel-league.js';
 import {duelCopy} from './native-duel-league-i18n.js';
 import {diceHistory} from './dice-winners.js';
 import {formerArchiveFromTrain} from './former-train-archive.js';
-import {createOfficerPlanning,renderImpactWarnings} from './native-officer-planning.js';
+import {renderImpactWarnings} from './native-impact-warnings.js';
 const apiBase=ALLIANCE_CONFIG.commandCenterEmbedUrl.replace('/?embed=1','');
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
 let sessionToken='',officer=null,panel='overview',cache={},pageLimit=20,historyLimit=20,activityLimit=30,registryFilter='all',activityCategory='all',activityGroupBy='type';
 let sessionGeneration=0;
 let duelLeagueController=null;
-let planningController=null;
 let trainHistoryFilters={member:'',date:''},trainHistoryExpanded=false;
-export function clearOfficer(){sessionGeneration++;statViewer.close();clearReviewImages();duelLeagueController?.destroy();duelLeagueController=null;planningController=null;sessionToken='';officer=null;cache={};panel='overview';pageLimit=20;historyLimit=20;trainHistoryFilters={member:'',date:''};trainHistoryExpanded=false;activityLimit=30;registryFilter='all';activityCategory='all';activityGroupBy='type';}
+export function clearOfficer(){sessionGeneration++;statViewer.close();clearReviewImages();duelLeagueController?.destroy();duelLeagueController=null;sessionToken='';officer=null;cache={};panel='overview';pageLimit=20;historyLimit=20;trainHistoryFilters={member:'',date:''};trainHistoryExpanded=false;activityLimit=30;registryFilter='all';activityCategory='all';activityGroupBy='type';}
 export const hasOfficer=()=>Boolean(sessionToken);
 const canManageSite=()=>officer?.role==='R5'||(officer?.role==='R4'&&officer?.siteOwner===true);
 async function request(path,options={}){
@@ -55,21 +54,18 @@ const primaryPanels=[
 const secondaryPanels=[
  ['registry','Ränge & Archiv'],['watch','Mitglieder-Abgleich'],['diplomacy','Diplomatie'],
  ['reviews','OCR-Prüffälle'],['tasks','Admin-Aufgaben'],['absences','Abwesenheiten'],['events','Allianz-Events'],
- ['generalTrial','General Trial'],['desertWarRoom','Desert Storm War Room'],
  ['activity','Änderungsprotokoll'],['access','Zugangscodes'],['requirements','Einstellungen']
 ];
 const parentPanel=key=>({
  overview:'overview',vs:'vs',duelLeague:'vs',donations:'vs',members:'members',train:'train',more:'more',
  registry:'more',watch:'more',diplomacy:'more',reviews:'more',tasks:'more',
- absences:'more',events:'more',generalTrial:'more',desertWarRoom:'more',activity:'more',access:'more',requirements:'more'
+ absences:'more',events:'more',activity:'more',access:'more',requirements:'more'
 }[key]||'overview');
 const moreSections=[
  {title:'Allianz & Planung',items:[
   ['tasks','Aufgaben','tasks','Verantwortung & Fristen'],
   ['absences','Abwesenheiten','today','Vertretung & Urlaub'],
   ['events','Allianz-Events','hero','Einsätze organisieren'],
-  ['generalTrial','General Trial x1–x9','power','Beobachtete Stufen dokumentieren'],
-  ['desertWarRoom','Desert Storm War Room','alliance','Teams und Bestätigungen planen'],
   ['diplomacy','Diplomatie','alliance','Verbündete & Kontakte']]},
  {title:'Mitglieder & Kontrolle',items:[
   ['registry','Ränge & Archiv','alliance','Ränge und ehemalige Mitglieder'],
@@ -120,7 +116,7 @@ function marker(status){return '<span class="native-status">'+e(status||'Unbekan
 async function view(mount){
  clearReviewImages();
  duelLeagueController?.destroy();duelLeagueController=null;
- planningController=null;
+ 
  const header='<div class="native-officer-strip" role="group" aria-label="Offiziersbereich">'+
   '<a class="native-return-link" href="#today">← Zur Website</a>'+
   '<div class="native-officer-controls"><span class="native-officer-badge">'+e(officer?.role||'Offizier')+' · '+e(officer?.name||'')+(officer?.siteOwner?' · Website-Eigentümerin':'')+
@@ -307,14 +303,6 @@ async function view(mount){
     loadEvidence:id=>binaryRequest('/api/duel-league/evidence/'+encodeURIComponent(id)+'/image')
    }});
    await duelLeagueController.load();
-  }else if(panel==='generalTrial'||panel==='desertWarRoom'){
-   target.innerHTML='<div class="native-planning-root" data-native-planning-root><p>Daten werden geladen …</p></div>';
-   planningController=createOfficerPlanning({
-    root:target.querySelector('[data-native-planning-root]'),
-    mode:panel==='generalTrial'?'trial':'war',request,
-    language:officerLanguage(target.ownerDocument),role:officer?.role
-   });
-   await planningController.load();
   }else if(panel==='donations'){
    cache.donations=await request('/api/donations-intelligence');
    target.innerHTML='<div class="native-row native-data-heading"><div><h2>Allianzspenden</h2><p class="native-muted">Wöchentliches Forschungsziel · mindestens 20.000 pro Mitglied</p></div>'+

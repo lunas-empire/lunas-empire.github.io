@@ -76,7 +76,7 @@ test('All 15 languages localize the login, fifth tab, twelve tile labels, settin
    await wait(()=>q('.native-hub-section h3'));
    await wait(()=>q('.native-hub-section h3').textContent===translateOfficerText('Allianz & Planung',lang));
    assert.equal(q('.native-hub-heading'),null,'More hub header must not exist');
-   assert.equal(mount.querySelectorAll('.native-hub-tile').length,12,lang);
+   assert.equal(mount.querySelectorAll('.native-hub-tile').length,10,lang);
    assert.equal(mount.querySelectorAll('.native-hub-tile-gold').length,0,lang);
    assert.equal(q('.native-hub-section h3').textContent,translateOfficerText('Allianz & Planung',lang));
    assert.equal(q('[data-officer-tab=tasks].native-hub-tile strong').textContent,translateOfficerText('Aufgaben',lang));
