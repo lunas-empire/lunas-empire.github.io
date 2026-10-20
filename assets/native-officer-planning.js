@@ -79,8 +79,17 @@ export function createOfficerPlanning({root,mode,request,language='de',role}){
  const draw=()=>{root.innerHTML=mode==='trial'?renderGeneralTrial(data,language):renderDesertWarRoom(data,language)};
  const load=async()=>{
   if(!allowed){root.innerHTML='<p class="native-error" role="alert">R4/R5 authorization required.</p>';return}
-  data=await request(mode==='trial'?'/api/general-trial':'/api/desert-war-room');
-  data.language=language;draw();
+  const payload=await request(mode==='trial'?'/api/general-trial':'/api/desert-war-room');
+  if(!payload||typeof payload!=='object')throw Error('Invalid planning response');
+  const keys=mode==='trial'?['runs','entries','members']:['rooms','slots','members'];
+  const safe={...payload};
+  for(const key of keys){
+   if(!Array.isArray(payload[key]))throw Error('Invalid planning list: '+key);
+   if(payload[key].length>(key==='members'?250:60))throw Error('Zu viele Planungsdaten fuer die mobile Ansicht ('+key+'). Bitte am Desktop pruefen.');
+   safe[key]=payload[key];
+  }
+  safe.language=language;data=safe;
+  draw();
  };
  const showForm=(kind,row={})=>{
   const host=root.querySelector('[data-planning-form]');
