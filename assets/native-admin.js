@@ -6,14 +6,16 @@ import {buildOfficerActions} from './officer-cockpit.js';
 import {createStatEvidenceViewer} from './native-stat-evidence.js';
 import {renderEvidenceRow} from './native-evidence-row.js';
 import {renderVsOverview,derivedVsWeekTotal} from './native-vs-overview.js';
+import {createDuelLeagueController} from './native-duel-league.js';
 import {diceHistory} from './dice-winners.js';
 import {formerArchiveFromTrain} from './former-train-archive.js';
 const apiBase=ALLIANCE_CONFIG.commandCenterEmbedUrl.replace('/?embed=1','');
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
 let sessionToken='',officer=null,panel='overview',cache={},pageLimit=20,historyLimit=20,activityLimit=30,registryFilter='all',activityCategory='all',activityGroupBy='type';
 let sessionGeneration=0;
+let duelLeagueController=null;
 let trainHistoryFilters={member:'',date:''},trainHistoryExpanded=false;
-export function clearOfficer(){sessionGeneration++;statViewer.close();clearReviewImages();sessionToken='';officer=null;cache={};panel='overview';pageLimit=20;historyLimit=20;trainHistoryFilters={member:'',date:''};trainHistoryExpanded=false;activityLimit=30;registryFilter='all';activityCategory='all';activityGroupBy='type';}
+export function clearOfficer(){sessionGeneration++;statViewer.close();clearReviewImages();duelLeagueController?.destroy();duelLeagueController=null;sessionToken='';officer=null;cache={};panel='overview';pageLimit=20;historyLimit=20;trainHistoryFilters={member:'',date:''};trainHistoryExpanded=false;activityLimit=30;registryFilter='all';activityCategory='all';activityGroupBy='type';}
 export const hasOfficer=()=>Boolean(sessionToken);
 const canManageSite=()=>officer?.role==='R5'||(officer?.role==='R4'&&officer?.siteOwner===true);
 async function request(path,options={}){
@@ -23,6 +25,17 @@ async function request(path,options={}){
  let result;try{result=await response.json()}catch{throw Error('Die Cloudflare-API antwortet nicht korrekt.')}
  if(!response.ok){if(response.status===401&&path!=='/api/native-login'&&generation===sessionGeneration)clearOfficer();throw Object.assign(Error(result.error||'HTTP '+response.status),{status:response.status})}
  return result;
+}
+async function binaryRequest(path,{method='GET',body,headers={}}={}){
+ const generation=sessionGeneration;
+ const response=await fetch(apiBase+path,{method,headers:{'Accept':method==='GET'?'image/*':'application/json',...(sessionToken?{'Authorization':'Bearer '+sessionToken}:{}),...headers},body,mode:'cors',credentials:'omit',cache:'no-store'});
+ if(!response.ok){
+  let message='HTTP '+response.status;
+  try{const result=await response.clone().json();message=result.error||message}catch{}
+  if(response.status===401&&generation===sessionGeneration)clearOfficer();
+  throw Object.assign(Error(message),{status:response.status});
+ }
+ return method==='GET'?response.blob():response.json();
 }
 const statViewer=createStatEvidenceViewer({request,getToken:()=>sessionToken,apiBase});
 const statEvidenceKey=(snapshot,member,metric)=>snapshot&&member&&['power','kills','donations_weekly'].includes(metric)?String(snapshot)+'|'+member+'|'+metric:'';
@@ -42,7 +55,7 @@ const secondaryPanels=[
  ['activity','Änderungsprotokoll'],['access','Zugangscodes'],['requirements','Einstellungen']
 ];
 const parentPanel=key=>({
- overview:'overview',vs:'vs',donations:'vs',members:'members',train:'train',more:'more',
+ overview:'overview',vs:'vs',duelLeague:'vs',donations:'vs',members:'members',train:'train',more:'more',
  registry:'more',watch:'more',diplomacy:'more',reviews:'more',tasks:'more',
  absences:'more',events:'more',activity:'more',access:'more',requirements:'more'
 }[key]||'overview');
@@ -62,7 +75,7 @@ const moreSections=[
   ['requirements','Einstellungen','research','Mindestwerte & Regeln']]}
 ];
 const sectionPanels={
- vs:[['vs','VS-Duell'],['donations','Allianzspenden']],
+ vs:[['vs','VS-Duell'],['duelLeague','Duell & Liga'],['donations','Allianzspenden']],
  members:[['members','Mitglieder'],['diplomacy','Diplomatie']],
  train:[['train','Züge'],['events','Allianz-Events']]
 };
@@ -71,17 +84,18 @@ const contextTools={
  train:{label:'Aufgaben & Abwesenheiten',items:[['tasks','Aufgaben'],['absences','Abwesenheiten']]}
 };
 
-const navButton=([key,label],cls='')=>'<button type="button" class="'+cls+'" data-officer-tab="'+key+'" '+(panel===key?'aria-current="page"':'')+'>'+e(label)+'</button>';
-function nav(){
+const navButton=([key,label],cls='',language='de')=>'<button type="button" class="'+cls+'" data-officer-tab="'+key+'" '+(panel===key?'aria-current="page"':'')+'>'+e(key==='duelLeague'&&language!=='de'?'Duel & League':label)+'</button>';
+function nav(documentRef){
  const parent=parentPanel(panel);
+ const language=officerLanguage(documentRef);
  return '<nav class="native-admin-nav" aria-label="Command Center Hauptbereiche">'+
   primaryPanels.map(([key,label,art])=>'<button type="button" class="native-primary-tab" data-officer-tab="'+key+'" '+(parent===key?'aria-current="page"':'')+'>'+icon(art,'native-tab-icon')+'<span>'+e(label)+'</span></button>').join('')+
   '<button type="button" class="native-primary-tab native-more-tab" data-officer-tab="more" '+(parent==='more'?'aria-current="page"':'')+'>'+icon('guides','native-tab-icon')+'<span>Mehr</span></button></nav>'+
   (sectionPanels[parent]?'<nav class="native-admin-subnav" aria-label="Unterbereiche">'+
-   sectionPanels[parent].map(pair=>navButton(pair)).join('')+
+   sectionPanels[parent].map(pair=>navButton(pair,'',language)).join('')+
    (contextTools[parent]?'<details class="native-context-tools" '+(contextTools[parent].items.some(([k])=>k===panel)?'open':'')+
     '><summary>'+e(contextTools[parent].label)+'</summary><div>'+
-     contextTools[parent].items.map(pair=>navButton(pair)).join('')+'</div></details>':'')+
+     contextTools[parent].items.map(pair=>navButton(pair,'',language)).join('')+'</div></details>':'')+
    '</nav>':'');
 }
 function moreHub(){
@@ -99,11 +113,12 @@ function cards(items){return '<div class="native-cards">'+items.map(([name,value
 function marker(status){return '<span class="native-status">'+e(status||'Unbekannt')+'</span>'}
 async function view(mount){
  clearReviewImages();
+ duelLeagueController?.destroy();duelLeagueController=null;
  const header='<div class="native-officer-strip" role="group" aria-label="Offiziersbereich">'+
   '<a class="native-return-link" href="#today">← Zur Website</a>'+
   '<div class="native-officer-controls"><span class="native-officer-badge">'+e(officer?.role||'Offizier')+' · '+e(officer?.name||'')+(officer?.siteOwner?' · Website-Eigentümerin':'')+
   '</span><button type="button" data-officer-tab="access">Mein Zugang</button><button type="button" data-officer-logout>Abmelden</button></div></div>';
- mount.innerHTML='<section class="native-admin"><h1 class="sr-only">RZSN Command Center</h1>'+header+nav()+
+ mount.innerHTML='<section class="native-admin"><h1 class="sr-only">RZSN Command Center</h1>'+header+nav(mount.ownerDocument)+
   (parentPanel(panel)==='more'&&panel!=='more'?'<div class="native-hub-return"><button type="button" data-officer-tab="more">← Weitere Verwaltung</button><span>'+e(secondaryPanels.find(([key])=>key===panel)?.[1]||'Verwaltung')+'</span></div>':'')+
   '<div class="native-admin-content" id="native-admin-content"><p>Daten werden geladen …</p></div></section>';
  const target=mount.querySelector('#native-admin-content');
@@ -268,6 +283,22 @@ async function view(mount){
    target.innerHTML='<div class="native-vs-week-toolbar"><label>'+(officerLanguage(target.ownerDocument)==='de'?'Woche':'Week')+
     ' <select id="native-vs-week">'+data.weeks.map(w=>'<option value="'+e(w.week)+'">'+e(w.week)+'</option>').join('')+'</select></label></div>'+
     '<div id="native-vs-body"></div>';renderVs(target);
+  }else if(panel==='duelLeague'){
+   target.innerHTML='<div id="native-duel-league-root"></div>';
+   const root=target.querySelector('#native-duel-league-root');
+   duelLeagueController=createDuelLeagueController({root,language:officerLanguage(target.ownerDocument),api:{
+    read:()=>request('/api/duel-league'),
+    saveMatch:body=>request('/api/duel-league/match',{method:'POST',body}),
+    saveLeagueSnapshot:body=>request('/api/duel-league/league-snapshot',{method:'POST',body}),
+    createOcrProposal:body=>request('/api/duel-league/ocr-proposal',{method:'POST',body}),
+    uploadEvidence:({file,metadata})=>binaryRequest('/api/duel-league/evidence',{method:'POST',body:file,headers:{
+     'Content-Type':file.type,'Idempotency-Key':metadata.idempotency_key,
+     'X-Duel-Filename':encodeURIComponent(metadata.filename),'X-Duel-Kind':metadata.kind,
+     'X-Duel-Scope':metadata.scope_key,'X-Duel-Order':String(metadata.image_order),
+     'X-Duel-Captured-At':metadata.captured_at,'X-Duel-SHA256':metadata.sha256}}),
+    loadEvidence:id=>binaryRequest('/api/duel-league/evidence/'+encodeURIComponent(id)+'/image')
+   }});
+   await duelLeagueController.load();
   }else if(panel==='donations'){
    cache.donations=await request('/api/donations-intelligence');
    target.innerHTML='<div class="native-row native-data-heading"><div><h2>Allianzspenden</h2><p class="native-muted">Wöchentliches Forschungsziel · mindestens 20.000 pro Mitglied</p></div>'+

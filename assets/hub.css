@@ -1146,6 +1146,55 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 .native-admin .native-operational-item small{font-size:.75rem;color:var(--color-muted);overflow-wrap:anywhere}
 .native-admin .native-task-check{flex:none;align-self:center;min-height:44px;border-radius:5px;border:1px solid var(--color-action);color:var(--color-action);background:transparent;font-size:.79rem}
 .native-admin .native-danger-action{border:1px solid #d87d7d;color:#ffdede;background:#6c303b;min-height:44px}
+
+/* Native Duel & League: authenticated data only; original evidence remains API-backed. */
+.native-admin .native-dl{display:grid;gap:1rem;min-width:0}
+.native-admin .native-dl h3{font-size:1rem;margin:.25rem 0 .55rem}
+.native-admin .native-dl-match>summary,.native-admin .native-dl-league>summary{display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap}
+.native-admin .native-dl-match>summary>span:last-child,.native-admin .native-dl-league>summary>span{font-size:.78rem;color:var(--color-muted)}
+.native-admin .native-dl-days{display:grid;gap:.25rem;min-width:0}
+.native-admin .native-dl-day{display:grid;grid-template-columns:minmax(7rem,1fr) repeat(4,minmax(4.25rem,.65fr));align-items:center;gap:.35rem;min-height:44px;padding:.35rem .45rem;border-bottom:1px solid var(--color-rule);font-size:.8rem;font-variant-numeric:tabular-nums}
+.native-admin .native-dl-day-head{min-height:32px;color:var(--color-muted);font-size:.7rem;font-weight:750}
+.native-admin .native-dl-day>span:not(:first-child){text-align:end}
+.native-admin .native-dl-unknown{color:var(--color-muted);font-style:italic}
+.native-admin .native-dl-evidence-link{display:block;min-height:30px;margin:.2rem 0 0 auto;padding:.2rem .4rem;font-size:.68rem;white-space:normal}
+.native-admin .native-dl-snapshots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.45rem}
+.native-admin .native-dl-snapshots article{display:grid;gap:.2rem;min-width:0;padding:.6rem;border:1px solid var(--color-rule);border-top:3px solid var(--color-game-orange);border-radius:4px;background:var(--color-raised);font-size:.78rem}
+.native-admin .native-dl-snapshots small{color:var(--color-muted);overflow-wrap:anywhere}
+.native-admin .native-dl-entry{margin:.5rem 0}
+.native-admin .native-dl-entry>summary{min-height:48px}
+.native-admin .native-dl-entry .native-form{margin:.5rem 0 0}
+.native-admin .native-dl-match-form fieldset{grid-column:1/-1;display:grid;gap:.45rem;min-width:0;margin:0;padding:.65rem;border:1px solid var(--color-rule)}
+.native-admin .native-dl-day-editor{display:grid;gap:.45rem}
+.native-admin .native-dl-day-edit{display:grid;grid-template-columns:minmax(7rem,1fr) repeat(3,minmax(0,1fr));align-items:end;gap:.45rem}
+.native-admin .native-dl-day-edit>strong{align-self:center;font-size:.8rem}
+.native-admin .native-dl-rank-row{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.45rem;margin:.35rem 0;padding:.55rem;border:1px solid var(--color-rule)}
+.native-admin .native-dl-file{grid-column:1/-1}
+.native-admin .native-dl-proposals{display:grid;gap:.55rem}
+.native-admin .native-dl-proposal{display:grid;gap:.55rem;min-width:0;padding:.75rem;border:1px solid var(--color-rule);border-radius:5px;background:var(--color-panel)}
+.native-admin .native-dl-proposal>div:first-child{display:grid;gap:.15rem}
+.native-admin .native-dl-proposal small{color:var(--color-muted)}
+.native-admin .native-dl-proposal>[data-native-dl-review-proposal]{min-height:48px;justify-self:start}
+.native-admin .native-dl-evidence:empty{display:none}
+.native-admin .native-dl-evidence .native-fold{display:grid;gap:.6rem}
+.native-admin .native-dl-evidence img{display:block;width:100%;max-height:70dvh;object-fit:contain;background:#111}
+.native-admin .native-dl-evidence button{min-height:48px;justify-self:start}
+@media(max-width:600px){
+ .native-admin .native-dl-snapshots{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .native-admin .native-dl-day{grid-template-columns:minmax(5.5rem,1fr) repeat(4,minmax(3.25rem,.65fr));gap:.2rem;padding-inline:.2rem;font-size:.72rem}
+ .native-admin .native-dl-rank-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .native-admin .native-dl-day-head{font-size:.64rem}
+ .native-admin .native-dl-evidence-link{font-size:.64rem}
+}
+@media(max-width:390px){
+ .native-admin .native-dl{gap:.75rem}
+ .native-admin .native-dl-match,.native-admin .native-dl-league,.native-admin .native-dl-entry{padding:.6rem}
+ .native-admin .native-dl-day-edit{grid-template-columns:minmax(0,1fr) repeat(2,minmax(0,1fr));gap:.3rem}
+ .native-admin .native-dl-day-edit>strong,.native-admin .native-dl-day-edit>label:last-child{grid-column:1/-1}
+ .native-admin .native-dl-snapshots{grid-template-columns:minmax(0,1fr)}
+ .native-admin .native-dl-day{grid-template-columns:minmax(4.7rem,1fr) repeat(4,minmax(2.7rem,.62fr));font-size:.68rem;overflow-x:auto}
+ .native-admin .native-dl-day-head{font-size:.58rem}
+}
 .native-admin .native-operation-group{margin:.7rem 0 1rem}
 .native-admin .native-operation-group h3{font-size:1rem;margin:.3rem 0 .5rem}
 .native-admin .native-admin-more[open]{z-index:75}
