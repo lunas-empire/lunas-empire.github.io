@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {webcrypto} from 'node:crypto';
 import {JSDOM} from 'jsdom';
 import {DUEL_DAY_WEIGHTS,createDuelLeagueController,matchPayload,normalizeDuelLeague,renderDuelLeague,sha256Hex,snapshotPayload} from '../assets/native-duel-league.js';
+import {DUEL_COPY,DUEL_ENUM_KEYS,DUEL_LANGUAGES} from '../assets/native-duel-league-i18n.js';
 import {clearOfficer,initNativeAdmin,renderNativeAdmin} from '../assets/native-admin.js';
 
 const uuid='12345678-1234-4234-8234-123456789abc';
@@ -39,6 +40,36 @@ test('renders exact overview safely in DE and EN without a backend-pending warni
  assert.doesNotMatch(de,/<img src=x/);assert.match(de,/&lt;img src=x onerror=alert\(1\)&gt;/);
  assert.match(de,/1:0 ist nur ein Zwischenstand/);assert.doesNotMatch(de,/Backend-Freigabe/);
  const en=renderDuelLeague(sample,'en');assert.match(en,/Historic 4-week leagues/);assert.match(en,/TextDetector/);assert.doesNotMatch(en,/Duellverlauf|Unbekannt/);
+});
+
+test('all 15 languages have complete native copy and localized enum displays without changing values or player data',()=>{
+ const expectedTextKeys=Object.keys(DUEL_COPY.en).filter(key=>!['dayNames','enums'].includes(key));
+ assert.deepEqual(Object.keys(DUEL_COPY),DUEL_LANGUAGES);
+ for(const language of DUEL_LANGUAGES){
+  const copy=DUEL_COPY[language];
+  assert.deepEqual(Object.keys(copy).filter(key=>!['dayNames','enums'].includes(key)),expectedTextKeys,language+' text coverage');
+  assert.deepEqual(Object.keys(copy.enums),DUEL_ENUM_KEYS,language+' enum coverage');
+  assert.equal(copy.dayNames.length,6,language+' day coverage');
+  assert.ok([...expectedTextKeys.map(key=>copy[key]),...copy.dayNames,...Object.values(copy.enums)].every(value=>typeof value==='string'&&value.trim()),language+' blank copy');
+  if(!['de','en'].includes(language)){
+   for(const key of ['title','intro','current','manual','saveMatch','readError','noPrediction'])assert.notEqual(copy[key],DUEL_COPY.en[key],language+'/'+key+' English fallback');
+   for(const key of ['unknown','win','loss','tie','upcoming','scheduled','unverified','final','silver','diamond','partial','promoted','relegated','match_week','league_scroll'])assert.notEqual(copy.enums[key],key,language+'/'+key+' raw enum');
+  }
+  const dom=new JSDOM(renderDuelLeague(sample,language));
+  const root=dom.window.document.querySelector('.native-dl');
+  assert.equal(root.lang,language);assert.equal(root.dir,language==='ar'?'rtl':'ltr');
+  assert.match(root.textContent,/<img src=x onerror=alert\(1\)>/,'escaped alliance/player data must remain verbatim text');
+  assert.equal(root.querySelector('[name=tier] option[value=silver]').textContent,copy.enums.silver);
+  assert.equal(root.querySelector('[name=status] option[value=live]').textContent,copy.enums.live);
+  assert.equal(root.querySelector('[name=result_1] option[value=win]').textContent,copy.enums.win);
+  assert.equal(root.querySelector('[name=official_outcome] option[value=promoted]').textContent,copy.enums.promoted);
+  assert.match(root.querySelector('.native-dl-match summary').textContent,new RegExp(copy.enums.live));
+  assert.match(root.querySelector('.native-dl-league summary').textContent,new RegExp(copy.enums.partial));
+  assert.match(root.querySelector('.native-dl-proposal strong').textContent,new RegExp(copy.enums.match_week));
+  assert.equal(root.querySelector('[name=tier] option:checked').value,'silver');
+  assert.equal(root.querySelector('[name=status] option:checked').value,'live');
+  dom.window.close();
+ }
 });
 
 test('match payload uses backend keys, six exact days, null blanks, and never finalizes 1:0 live',()=>{

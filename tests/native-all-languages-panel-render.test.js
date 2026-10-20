@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {JSDOM} from 'jsdom';
 import {initNativeAdmin,renderNativeAdmin,clearOfficer} from '../assets/native-admin.js';
 import {LANGUAGES} from '../assets/i18n.js';
+import {DUEL_COPY} from '../assets/native-duel-league-i18n.js';
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const until=async fn=>{for(let i=0;i<160;i++){if(fn())return;await sleep(6)}assert.ok(fn(),'UI did not settle')};
 const mk=(path)=>{
@@ -26,11 +27,12 @@ const mk=(path)=>{
  if(path==='/api/officer-access')return {accounts:[]};
  if(path==='/api/vs-intelligence')return {weeks:[{week:'2026-W41',threshold:3600000,dayTotals:[],rankings:[],records:[],players:[],rows:[],groups:[],priority:0,unknownDays:12,failedDays:173,perfect:17}]};
  if(path==='/api/donations-intelligence')return {weeks:[{week:'2026-W41',captured_at:'2026-10-11T00:19:00Z',is_complete:true,met:78,below:14,unknown:0,verified:92,active:92,rows:[],players:[],members:[]}]};
+ if(path==='/api/duel-league')return {matches:[{iso_week:'2026-W41',opponent_tag_snapshot:'DATA',opponent_name_snapshot:'Player Name Untranslated',opponent_server_snapshot:2261,status:'live',days:[{day_index:1,result:'win'}]}],leagues:[{id:'l1',cycle_label:'S38',starts_week:'2026-W41',ends_week:'2026-W44',tier:'silver'}],snapshots:[{league_id:'l1',coverage_status:'partial',rows:[]}],proposals:[],evidence:[]};
  throw Error('unmocked '+path);
 };
 
 for(const locale of Object.keys(LANGUAGES)){
- test('All 14 officer panels render for '+locale+' with safe localized text (synthetic R4)',async t=>{
+ test('All 15 officer panels render for '+locale+' with safe localized text (synthetic R4)',async t=>{
   const dom=new JSDOM('<!doctype html><html lang="'+locale+'"><body><main id="mount"></main></body></html>',{url:'https://lunas-empire.github.io/#admin'});
   dom.window.HTMLElement.prototype.scrollIntoView=()=>{};
   const prior={window:globalThis.window,fetch:globalThis.fetch};
@@ -40,8 +42,8 @@ for(const locale of Object.keys(LANGUAGES)){
   initNativeAdmin(mount);await renderNativeAdmin(mount);
   q('[name=code]').value='synthetic';q('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
   await until(()=>q('[data-officer-tab=more]'));
-  for(const panel of ['overview','members','vs','train','registry','watch','diplomacy','tasks','absences','events','activity','reviews','access','requirements']){
-   if(!['overview','members','vs','train'].includes(panel)){
+  for(const panel of ['overview','members','vs','duelLeague','train','registry','watch','diplomacy','tasks','absences','events','activity','reviews','access','requirements']){
+   if(!['overview','members','vs','duelLeague','train'].includes(panel)){
     q('[data-officer-tab=more]').click();
     await until(()=>q('.native-hub-tile[data-officer-tab='+panel+']'));
    }
@@ -54,6 +56,12 @@ for(const locale of Object.keys(LANGUAGES)){
    assert.doesNotMatch(region.textContent,/\uFFFD/u,locale+'/'+panel+' damaged Unicode');
    assert.equal(q('.native-report-panel'),null,locale+'/'+panel+' report draft unexpectedly visible');
    assert.equal(q('[data-native-jump-report]'),null,locale+'/'+panel+' report shortcut unexpectedly visible');
+   if(panel==='duelLeague'){
+    assert.match(region.textContent,new RegExp(DUEL_COPY[locale].title),locale+' duel title fallback');
+    assert.match(region.textContent,/Player Name Untranslated/,locale+' player data translated');
+    assert.equal(region.querySelector('.native-dl')?.getAttribute('dir'),locale==='ar'?'rtl':'ltr');
+    assert.equal(q('[data-officer-tab=duelLeague]').textContent,DUEL_COPY[locale].title,locale+' duel nav title');
+   }
   }
  });
 }
