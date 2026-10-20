@@ -7,6 +7,7 @@ import {createStatEvidenceViewer} from './native-stat-evidence.js';
 import {renderEvidenceRow} from './native-evidence-row.js';
 import {renderVsOverview,derivedVsWeekTotal} from './native-vs-overview.js';
 import {createDuelLeagueController} from './native-duel-league.js';
+import {duelCopy} from './native-duel-league-i18n.js';
 import {diceHistory} from './dice-winners.js';
 import {formerArchiveFromTrain} from './former-train-archive.js';
 import {createOfficerPlanning,renderImpactWarnings} from './native-officer-planning.js';
@@ -89,7 +90,7 @@ const contextTools={
  train:{label:'Aufgaben & Abwesenheiten',items:[['tasks','Aufgaben'],['absences','Abwesenheiten']]}
 };
 
-const navButton=([key,label],cls='',language='de')=>'<button type="button" class="'+cls+'" data-officer-tab="'+key+'" '+(panel===key?'aria-current="page"':'')+'>'+e(key==='duelLeague'&&language!=='de'?'Duel & League':label)+'</button>';
+const navButton=([key,label],cls='',language='de')=>'<button type="button" class="'+cls+'" data-officer-tab="'+key+'" '+(panel===key?'aria-current="page"':'')+'>'+e(key==='duelLeague'?duelCopy(language).title:label)+'</button>';
 function nav(documentRef){
  const parent=parentPanel(panel);
  const language=officerLanguage(documentRef);
