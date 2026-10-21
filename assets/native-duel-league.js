@@ -51,7 +51,8 @@ export async function sha256Hex(bytes,cryptoRef=globalThis.crypto){const buffer=
 async function prepareEvidence(file,documentRef,copy){
  if(file.size<=MAX_EVIDENCE_BYTES)return {file,filename:file.name,reduced:false};
  if(!globalThis.createImageBitmap)throw Object.assign(Error(copy.oversizeUnsupported),{localized:true});
- const bitmap=await globalThis.createImageBitmap(file),scale=Math.min(.92,Math.sqrt(850000/file.size)),canvas=documentRef.createElement('canvas');canvas.width=Math.max(1,Math.floor(bitmap.width*scale));canvas.height=Math.max(1,Math.floor(bitmap.height*scale));canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close?.();
+ const bitmap=await globalThis.createImageBitmap(file),scale=Math.min(.92,Math.sqrt(850000/file.size),1600/bitmap.width,1600/bitmap.height,Math.sqrt(2000000/(bitmap.width*bitmap.height))),canvas=documentRef.createElement('canvas');
+ try{canvas.width=Math.max(1,Math.floor(bitmap.width*scale));canvas.height=Math.max(1,Math.floor(bitmap.height*scale));const context=canvas.getContext('2d');if(!context)throw Object.assign(Error(copy.oversizeUnsupported),{localized:true});context.drawImage(bitmap,0,0,canvas.width,canvas.height)}finally{bitmap.close?.()}
  const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.82));if(!blob||blob.size>MAX_EVIDENCE_BYTES)throw Object.assign(Error(copy.downsampleTooLarge),{localized:true});
  return {file:blob,filename:file.name+'.downsampled.jpg',reduced:true};
 }
