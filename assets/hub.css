@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-22.59');
+@import url('./tokens.css?v=2026-10-22.60');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -1939,3 +1939,18 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 .teleport-guide .teleport-photo figcaption{font-size:.77rem;line-height:1.35;margin:.35rem 0 0;overflow-wrap:anywhere}
 @media(max-width:640px){.teleport-guide .teleport-photos--vs{grid-template-columns:repeat(2,minmax(0,1fr))}.teleport-guide .teleport-photos--vs .teleport-photo:last-child{grid-column:1 / -1;max-width:300px;justify-self:center}}
 @media(max-width:360px){.teleport-guide .teleport-photos--season{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Hot Deals guide: responsive schedule and localized advisory */
+.hot-deals-guide h3{font-size:1.05rem;line-height:1.35;margin:1.6rem 0 .7rem}
+.hot-deals-caution{border-inline-start:3px solid #c39a4f;padding:.7rem 1rem;margin:1rem 0;background:var(--surface-2,rgba(180,139,66,.07));border-radius:5px}
+.hot-deals-caution p{margin:.3rem 0 0;line-height:1.55}
+.hot-deals-table-scroll{max-width:100%;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;border-radius:10px;border:1px solid var(--border,#536175);margin:.6rem 0 1.25rem}
+.hot-deals-table{width:100%;border-collapse:collapse;table-layout:auto;font-size:.88rem}
+.hot-deals-table th,.hot-deals-table td{border-bottom:1px solid var(--border,#526177);padding:.65rem .7rem;text-align:start;vertical-align:top;line-height:1.5}
+.hot-deals-table thead th{background:var(--surface-2,rgba(95,115,133,.17))}
+.hot-deals-table tbody tr:last-child th,.hot-deals-table tbody tr:last-child td{border-bottom:0}
+.hot-deals-table tbody th{width:6rem;white-space:nowrap;font-weight:700}
+.hot-deals-event{display:inline-block;max-width:100%;margin:.14rem .26rem .14rem 0;padding:.2rem .5rem;background:var(--surface-2,rgba(127,148,172,.12));border-radius:7px;overflow-wrap:anywhere}
+.hot-deals-tips{padding-inline-start:1.3rem;margin:.7rem 0 1.3rem}
+.hot-deals-tips li{padding-inline-start:.2rem;margin:.6rem 0;line-height:1.55}
+@media(max-width:430px){.hot-deals-table{font-size:.8rem}.hot-deals-table th,.hot-deals-table td{padding:.55rem .45rem}.hot-deals-table tbody th{width:4.2rem;white-space:normal}.hot-deals-event{display:block;margin:.2rem 0}}

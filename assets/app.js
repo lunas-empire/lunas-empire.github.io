@@ -8,6 +8,7 @@ import { TECH_GUIDE_TITLE, techGuideHtml, t10GuideHtml, t10GuideTitle, T10_GUIDE
 import { blackMarketGuideHtml, blackMarketGuideTitle, BLACK_MARKET_SEARCH } from './black-market-guide.js';
 import { professionGuideHtml, PROFESSION_GUIDE_SEARCH } from './profession-guide.js';
 import { trainGuideHtml, trainGuideTitle, TRAIN_GUIDE_SEARCH } from './train-guide.js';
+import { HOT_DEALS_ID, HOT_DEALS_SEARCH, hotDealsTitle, hotDealsHtml } from './hot-deals-guide.js';
 import { TELEPORT_GUIDE_ID, TELEPORT_GUIDE_SEARCH, teleportGuideTitle, teleportGuideHtml } from './teleport-guide.js';
 import {diceDisclosure,HISTORY} from './dice-winners.js';
 import { PRACTICAL_GUIDES, practicalGuideHtml, practicalGuideTitle } from './practical-guides.js';
@@ -138,6 +139,10 @@ function teleportGuideDisclosure() {
   const id=TELEPORT_GUIDE_ID;
   return `<details class="guide-disclosure guide-disclosure--teleport" data-search data-filter-item data-guide-id="${id}" data-guide-category="account" data-guide-current="false" data-search-extra="${escape(TELEPORT_GUIDE_SEARCH)}"><summary>${escape(teleportGuideTitle(lang))}</summary><article class="guide-card guide-card--inside"><div class="guide-card__info">${teleportGuideHtml(lang,escape)}${guideShareButton(id)}</div></article></details>`;
 }
+function hotDealsGuideDisclosure() {
+ const id=HOT_DEALS_ID;
+ return '<details class="guide-disclosure guide-disclosure--hot-deals" data-search data-filter-item data-guide-id="'+id+'" data-guide-category="account" data-guide-current="false" data-search-extra="'+escape(HOT_DEALS_SEARCH)+'"><summary>'+escape(hotDealsTitle(lang))+'</summary><article class="guide-card guide-card--inside"><div class="guide-card__info">'+hotDealsHtml(lang,escape)+guideShareButton(id)+'</div></article></details>';
+}
 function practicalGuideDisclosure(id) {
   const title=practicalGuideTitle(lang,id);
   const guide=PRACTICAL_GUIDES[id];
@@ -177,6 +182,7 @@ function shortGuideTitle(id) {
   if (id==='t10') return t10GuideTitle(lang);
   if (id==='train') return trainGuideTitle(lang);
   if (id===TELEPORT_GUIDE_ID) return teleportGuideTitle(lang);
+  if (id===HOT_DEALS_ID) return hotDealsTitle(lang);
   if (id==='black-market') return blackMarketGuideTitle(lang);
   if (PRACTICAL_GUIDES[id]) return practicalGuideTitle(lang,id);
   return SEASON_LIBRARY_GUIDES[id]?t(SEASON_LIBRARY_GUIDES[id].title):guideAlt(MEMBER_MEDIA[id]);
@@ -453,7 +459,7 @@ function guides() {
   const power=guideTopicSection('power',lang,escape,disclosures(practical('power')+techGuideDisclosure()+t10GuideDisclosure())+`<details class="guide-reference-extra" data-search-group><summary>${tx('quickReference')}</summary>${referenceLibrary()}</details>`);
   const vs=guideTopicSection('vs',lang,escape,disclosures(vsGuides.map(guideDisclosure).join('')));
   const season=guideTopicSection('season',lang,escape,seasonGuidePosition()+seasonGuideRoadmapLibrary());
-  const economy=guideTopicSection('economy',lang,escape,disclosures(practical('economy')+blackMarketGuideDisclosure()));
+  const economy=guideTopicSection('economy',lang,escape,disclosures(practical('economy')+hotDealsGuideDisclosure()+blackMarketGuideDisclosure()));
   return `${guideContextBar()}<h1>${tx('guides')}</h1>${notice()}${search}${landing}<div class="guide-library">${alliance}${power}${vs}${season}${economy}</div>`;
 }
 function adminView(){
