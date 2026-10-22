@@ -1,7 +1,7 @@
 // Guide library navigation. Keep category identity independent of translated guide names.
 export const GUIDE_TOPIC_ORDER=Object.freeze(['alliance','power','vs','season','economy']);
 const ITEMS=Object.freeze({
-  alliance:Object.freeze(['generals-trial','zombie-siege','marshals-guard','rally-combat-fundamentals','desert-storm','alliance-tech-donations','train']),
+  alliance:Object.freeze(['generals-trial','zombie-siege','marshals-guard','rally-combat-fundamentals','desert-storm','alliance-tech-donations','free-teleport','train']),
   power:Object.freeze(['hero-squad-formations','drone-chips-components','ur-gear-blueprints','waterfall-troop-training','minister-capitol-buffs','tech','t10']),
   economy:Object.freeze(['store-buy-priorities','black-market'])
 });
@@ -33,6 +33,7 @@ const SEARCH_SYNONYMS={
  'black-market':'schwarzmarkt black market marktplatz',
  'desert-storm':'desert storm wüste sturm',
  'train':'allianzzug zug train tickets gold',
+ 'free-teleport':'free teleport hive grouping warzone vs jump kostenlos kostenloser teleport samstag saison assembly point rally',
  'profession':'beruf engineer kriegsherr war leader'
 };
 export function guideSearchExtra(id){return SEARCH_SYNONYMS[id]||'';}

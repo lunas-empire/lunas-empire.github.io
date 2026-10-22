@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-22.58');
+@import url('./tokens.css?v=2026-10-22.59');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -1917,3 +1917,25 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 .native-admin .native-list>.native-registry-archive-row{display:grid;gap:.15rem;min-height:52px;align-content:center;padding:.55rem .75rem;margin:0;border:1px solid var(--color-rule);background:var(--color-raised);border-radius:4px}
 .native-admin .native-registry-archive-row>strong{overflow-wrap:anywhere}
 .native-admin .native-registry-archive-row>small{overflow-wrap:anywhere;font-size:.75rem;color:var(--color-muted);line-height:1.4}
+
+
+/* Scoped free teleport guide: readable in the native member guide library. */
+.teleport-guide h3{margin:1.5rem 0 .6rem;font-size:1.05rem;line-height:1.35}
+.teleport-guide .teleport-steps,.teleport-guide .teleport-warnings{padding-inline-start:1.45rem;margin:.6rem 0 1.1rem}
+.teleport-guide li{padding-inline-start:.25rem;margin:.5rem 0;line-height:1.6}
+.teleport-guide .teleport-figure{max-width:960px;margin:1.1rem 0 1.5rem}
+.teleport-guide .teleport-figure img{width:100%;height:auto;border-radius:14px;display:block}
+.teleport-guide .teleport-figure figcaption{font-size:.84rem;line-height:1.5}
+.teleport-guide .practical-sources{overflow-wrap:anywhere}
+@media(max-width:440px){.teleport-guide h3{font-size:1rem}.teleport-guide .teleport-steps,.teleport-guide .teleport-warnings{padding-inline-start:1.2rem}}
+
+
+/* Original gameplay screenshots, independently credited and responsive. */
+.teleport-guide .teleport-photos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.8rem;margin:.75rem 0 1.4rem;align-items:start}
+.teleport-guide .teleport-photos--season{grid-template-columns:repeat(2,minmax(0,230px));justify-content:center}
+.teleport-guide .teleport-photo{margin:0;min-width:0}
+.teleport-guide .teleport-photo>a{display:block;line-height:0}
+.teleport-guide .teleport-photo img{display:block;width:100%;height:auto;border-radius:10px;border:1px solid var(--border,#526477);background:#162034}
+.teleport-guide .teleport-photo figcaption{font-size:.77rem;line-height:1.35;margin:.35rem 0 0;overflow-wrap:anywhere}
+@media(max-width:640px){.teleport-guide .teleport-photos--vs{grid-template-columns:repeat(2,minmax(0,1fr))}.teleport-guide .teleport-photos--vs .teleport-photo:last-child{grid-column:1 / -1;max-width:300px;justify-self:center}}
+@media(max-width:360px){.teleport-guide .teleport-photos--season{grid-template-columns:repeat(2,minmax(0,1fr))}}
