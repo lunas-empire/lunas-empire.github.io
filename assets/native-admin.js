@@ -294,12 +294,6 @@ async function view(mount){
     read:()=>request('/api/duel-league'),
     saveMatch:body=>request('/api/duel-league/match',{method:'POST',body}),
     saveLeagueSnapshot:body=>request('/api/duel-league/league-snapshot',{method:'POST',body}),
-    createOcrProposal:body=>request('/api/duel-league/ocr-proposal',{method:'POST',body}),
-    uploadEvidence:({file,metadata})=>binaryRequest('/api/duel-league/evidence',{method:'POST',body:file,headers:{
-     'Content-Type':file.type,'Idempotency-Key':metadata.idempotency_key,
-     'X-Duel-Filename':encodeURIComponent(metadata.filename),'X-Duel-Kind':metadata.kind,
-     'X-Duel-Scope':metadata.scope_key,'X-Duel-Order':String(metadata.image_order),
-     'X-Duel-Captured-At':metadata.captured_at,'X-Duel-SHA256':metadata.sha256}}),
     loadEvidence:id=>binaryRequest('/api/duel-league/evidence/'+encodeURIComponent(id)+'/image')
    }});
    await duelLeagueController.load();

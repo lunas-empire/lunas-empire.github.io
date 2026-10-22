@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {webcrypto} from 'node:crypto';
 import {JSDOM} from 'jsdom';
-import {DUEL_DAY_WEIGHTS,createDuelLeagueController,matchPayload,normalizeDuelLeague,renderDuelLeague,sha256Hex,snapshotPayload} from '../assets/native-duel-league.js';
+import {DUEL_DAY_WEIGHTS,createDuelLeagueController,matchPayload,normalizeDuelLeague,renderDuelLeague,snapshotPayload} from '../assets/native-duel-league.js';
 import {DUEL_COPY,DUEL_ENUM_KEYS,DUEL_LANGUAGES} from '../assets/native-duel-league-i18n.js';
 import {clearOfficer,initNativeAdmin,renderNativeAdmin} from '../assets/native-admin.js';
 
@@ -39,7 +39,7 @@ test('renders exact overview safely in DE and EN without a backend-pending warni
  const de=renderDuelLeague(sample,'de');
  assert.doesNotMatch(de,/<img src=x/);assert.match(de,/&lt;img src=x onerror=alert\(1\)&gt;/);
  assert.match(de,/1:0 ist nur ein Zwischenstand/);assert.doesNotMatch(de,/Backend-Freigabe/);
- const en=renderDuelLeague(sample,'en');assert.match(en,/Historic 4-week leagues/);assert.match(en,/TextDetector/);assert.doesNotMatch(en,/Duellverlauf|Unbekannt/);
+ const en=renderDuelLeague(sample,'en');assert.match(en,/Historic 4-week leagues/);assert.match(en,/Duel &amp; League/);assert.doesNotMatch(en,/Duellverlauf|Unbekannt/);
 });
 
 test('all 15 languages have complete native copy and localized enum displays without changing values or player data',()=>{
@@ -96,10 +96,6 @@ test('snapshot payload matches backend contract and preserves editable four-week
  assert.match(payload.captured_at,/[zZ]|[+-]\d\d:\d\d$/);assert.equal(payload.official_snapshot,false);assert.equal(payload.official_outcome,null);dom.window.close();
 });
 
-test('SHA-256 is lowercase hex over exact bytes',async()=>{
- assert.equal(await sha256Hex(new TextEncoder().encode('abc'),webcrypto),'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
-});
-
 test('proposal review fills an editable form and confirms only through saveMatch',async t=>{
  const dom=new JSDOM('<main id="root"></main>',{url:'https://example.test'});t.after(()=>dom.window.close());
  const calls=[],root=dom.window.document.querySelector('#root');
@@ -112,53 +108,42 @@ test('proposal review fills an editable form and confirms only through saveMatch
  assert.equal(calls[0][0],'match');assert.equal(calls[0][1].proposal_id,uuid);assert.deepEqual(calls[0][1].days.map(day=>day.evidence_id),Array(6).fill(uuid));controller.destroy();
 });
 
-test('manual OCR fallback submits the exact proposal contract after evidence upload',async t=>{
- const dom=new JSDOM('<main id="root"></main>',{url:'https://example.test'});t.after(()=>dom.window.close());
- const calls=[],root=dom.window.document.querySelector('#root');
- const api={read:async()=>sample,saveMatch:async()=>{},saveLeagueSnapshot:async()=>{},loadEvidence:async()=>new Blob(),
-  uploadEvidence:async payload=>{calls.push(['upload',payload]);return {evidence_id:uuid}},createOcrProposal:async payload=>calls.push(['ocr',payload])};
- const controller=createDuelLeagueController({root,api,language:'en',cryptoRef:webcrypto,textDetectorClass:null});await controller.load();
- const form=root.querySelector('.native-dl-upload-form');form.elements.scope_key.value='S38';form.elements.kind.value='league_scroll';
- form.elements.captured_at.value='2026-10-20T12:00';form.elements.ocr_text.value='1. [RZSN] RisingSun #2261 | unknown, upcoming, upcoming, upcoming';
- const image=new File([new Uint8Array([137,80,78,71,13,10,26,10,...Array(50).fill(1)])],'scroll.png',{type:'image/png'});
- Object.defineProperty(form.elements.files,'files',{configurable:true,value:[image]});form.elements.files.required=false;
- form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
- for(let index=0;index<50&&!calls.some(call=>call[0]==='ocr');index++)await new Promise(resolve=>setTimeout(resolve,5));
- const payload=calls.find(call=>call[0]==='ocr')[1];
- assert.deepEqual(Object.keys(payload),['idempotency_key','proposal_kind','scope_key','evidence_ids','ocr_texts']);
- assert.match(payload.idempotency_key,/^duel-[0-9a-f-]{36}$/);assert.equal(payload.proposal_kind,'league_scroll');assert.equal(payload.scope_key,'S38');
- assert.deepEqual(payload.evidence_ids,[uuid]);assert.deepEqual(payload.ocr_texts,['1. [RZSN] RisingSun #2261 | unknown, upcoming, upcoming, upcoming']);controller.destroy();
+
+test('Zentrale captures appear without any screenshot or text upload UI',()=>{
+ const incoming={
+  ...sample,capture_sessions:[{kind:'duel',scope_key:'2026-W43',
+    captured_at:'2026-10-22T10:00:00Z',source_count:1,agreement:'agreed',
+    parsed:{opponent:{tag:'BAD',name:'<img src=x onerror=alert(1)>'},
+     interim_our_wins:1,interim_opponent_wins:0,official_result:null}}]
+ };
+ const dom=new JSDOM(renderDuelLeague(incoming,'de'));
+ assert.equal(dom.window.document.querySelector('input[type=file]'),null);
+ assert.equal(dom.window.document.querySelector('.native-dl-upload-form'),null);
+ assert.equal(dom.window.document.querySelector('.native-dl-capture')!==null,true);
+ assert.match(dom.window.document.body.textContent,/Zentrale/);
+ assert.match(dom.window.document.body.textContent,/Nicht offiziell bestätigt/);
+ assert.doesNotMatch(dom.window.document.body.innerHTML,/<img src=x onerror/);
+ assert.match(dom.window.document.body.innerHTML,/&lt;img src=x onerror/);
+ dom.window.close();
 });
 
-test('native admin sends exact Bearer upload headers, SHA, binary body, and /image GET path',async t=>{
- const dom=new JSDOM('<main id="mount"></main>',{url:'https://lunas-empire.github.io/#admin'});
- const previousWindow=globalThis.window,previousFetch=globalThis.fetch;
- globalThis.window=dom.window;dom.window.HTMLElement.prototype.scrollIntoView=()=>{};dom.window.document.documentElement.lang='en';
- t.after(()=>{clearOfficer();globalThis.window=previousWindow;globalThis.fetch=previousFetch;dom.window.close()});
- const calls=[];globalThis.fetch=async(url,options={})=>{
-  const path=new URL(url).pathname;calls.push({path,options});
-  if(path==='/api/native-login')return Response.json({token:'duel-token',name:'Officer',role:'R5'});
-  if(path==='/api/overview')return Response.json({active:1,reviews:0});if(path==='/api/operations')return Response.json({tasks:[],events:[],members:[]});
-  if(path==='/api/train-manager')return Response.json({today:'2026-10-20',history:[],calendar:[],counts:{}});if(path==='/api/duel-league')return Response.json(sample);
-  if(path==='/api/duel-league/evidence')return Response.json({ok:true,evidence_id:uuid});
-  if(path===`/api/duel-league/evidence/${uuid}/image`)return new Response(new Uint8Array([1,2,3]),{headers:{'Content-Type':'image/png'}});
-  throw Error('Unexpected '+path);
- };
- const mount=dom.window.document.querySelector('#mount');
- const until=async predicate=>{for(let index=0;index<100;index++){if(predicate())return;await new Promise(resolve=>setTimeout(resolve,5))}assert.ok(predicate(),'render timeout: '+mount.textContent)};
- initNativeAdmin(mount);await renderNativeAdmin(mount);mount.querySelector('[name=code]').value='code';
- mount.querySelector('#native-officer-login').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));await until(()=>mount.querySelector('[data-officer-tab=vs]'));
- mount.querySelector('[data-officer-tab=vs]').click();await until(()=>mount.querySelector('[data-officer-tab=duelLeague]'));mount.querySelector('[data-officer-tab=duelLeague]').click();await until(()=>mount.querySelector('.native-dl-upload-form'));
- const upload=mount.querySelector('.native-dl-upload-form');upload.elements.scope_key.value='2026-W44';upload.elements.captured_at.value='2026-10-20T12:00';
- const bytes=new Uint8Array([137,80,78,71,13,10,26,10,...Array(50).fill(1)]);const image=new File([bytes],'proof one.png',{type:'image/png'});
- Object.defineProperty(upload.elements.files,'files',{configurable:true,value:[image]});upload.elements.files.required=false;
- upload.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));await until(()=>calls.some(call=>call.path==='/api/duel-league/evidence'));
- const evidenceCall=calls.find(call=>call.path==='/api/duel-league/evidence');
- assert.equal(evidenceCall.options.credentials,'omit');assert.equal(evidenceCall.options.headers.Authorization,'Bearer duel-token');
- assert.equal(evidenceCall.options.headers['Content-Type'],'image/png');assert.equal(evidenceCall.options.headers['X-Duel-Filename'],'proof%20one.png');
- assert.equal(evidenceCall.options.headers['X-Duel-Kind'],'match_week');assert.equal(evidenceCall.options.headers['X-Duel-Scope'],'2026-W44');
- assert.equal(evidenceCall.options.headers['X-Duel-Order'],'1');assert.match(evidenceCall.options.headers['X-Duel-Captured-At'],/[zZ]|[+-]\d\d:\d\d$/);
- assert.match(evidenceCall.options.headers['X-Duel-SHA256'],/^[a-f0-9]{64}$/);assert.equal(evidenceCall.options.body,image);
- mount.querySelector(`[data-native-dl-evidence="${uuid}"]`).click();await until(()=>calls.some(call=>call.path.endsWith('/image')));
- assert.equal(calls.find(call=>call.path.endsWith('/image')).path,`/api/duel-league/evidence/${uuid}/image`);
+test('Zentrale OCR is editable but never marks a match official without officer confirmation',async t=>{
+ const key='c'.repeat(64),dom=new JSDOM('<main id="root"></main>',{url:'https://example.test'});
+ t.after(()=>dom.window.close());
+ const root=dom.window.document.querySelector('#root'),calls=[];
+ const incoming={...sample,capture_sessions:[{idempotency_key:key,kind:'duel',
+  scope_key:'2026-W43',source_count:1,agreement:'agreed',
+  captured_at:'2026-10-22T10:00:00Z',parsed:{opponent:{tag:'ABC',name:'Other Alliance',server_number:999},
+   interim_our_wins:1,interim_opponent_wins:0,official_result:null}}]};
+ const controller=createDuelLeagueController({root,api:{read:async()=>incoming,saveMatch:async payload=>calls.push(payload)},language:'en'});
+ await controller.load();
+ root.querySelector('[data-native-dl-review-capture]').click();
+ const form=root.querySelector('.native-dl-match-form');
+ assert.equal(form.elements.opponent_tag.value,'ABC');
+ assert.equal(form.elements.opponent_name.value,'Other Alliance');
+ assert.equal(form.elements.iso_week.value,'2026-W43');
+ assert.equal(form.elements.status.value,'unverified');
+ assert.equal(form.elements.official_result.value,'');
+ assert.equal(calls.length,0);
+ controller.destroy();
 });
