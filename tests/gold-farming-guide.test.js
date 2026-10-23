@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {GOLD_GUIDE_ID,GOLD_LANGS,GOLD_GUIDE_SEARCH,goldGuideCopy,goldGuideTitle,goldGuideHtml} from '../assets/gold-farming-guide.js';
+import {GOLD_GUIDE_ID,GOLD_LANGS,GOLD_GUIDE_SEARCH,GOLD_QUICK,GOLD_SHORT_LABELS,goldGuideCopy,goldGuideTitle,goldGuideHtml} from '../assets/gold-farming-guide.js';
 import {guideTopicCount,guideTopicOf} from '../assets/guide-library-nav.js';
 const langs=['de','en','uk','ja','fr','it','id','ar','ko','sv','pt','nl','th','km','fil'];
 const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -20,12 +20,12 @@ test('all 15 translations have original complete content, correct group counts a
   copy.forEach((value,i)=>{assert.equal(typeof value,'string',lang+' '+i);assert.ok(value.trim().length>=3,lang+' '+i);assert.ok(!value.includes('undefined')&&!value.includes('???'),lang+' '+i);});
   titles.add(goldGuideTitle(lang));
   const html=goldGuideHtml(lang,escape);
-  assert.equal((html.match(/class="gold-section"/g)||[]).length,4,lang);
+  assert.equal((html.match(/class="gold-section gold-section--quick"/g)||[]).length,1,lang);
   assert.equal((html.match(/<li>/g)||[]).length,18,lang);
   assert.ok(html.includes('gold-mine.png'),lang);
   assert.ok(html.includes('rel="noopener noreferrer"'),lang);
   assert.ok(html.includes('lastwarvault.com/plunder-calculator/'),lang);
-  assert.ok(html.includes('Secretary of the Interior'),lang);
+  assert.ok(html.includes('Interior'),lang);
   assert.ok(html.includes('Replenish All'),lang);
   assert.ok(html.includes('Resource Choice'),lang);
   assert.ok(html.includes('Monica')&&html.includes('Taylor'),lang);
@@ -61,4 +61,25 @@ test('gold image is valid PNG and guide has verified source credits',async()=>{
  assert.equal(image.subarray(1,4).toString(),'PNG');
  const source=await readFile(new URL('../docs/gold-farming-sources.md',import.meta.url),'utf8');
  assert.ok(source.includes('lastwarsurvival.com/buildings'));
+});
+
+test('compact checklist has 18 actionable bullets plus one short explanation in all locales',()=>{
+ const scripts={uk:/[\u0400-\u04ff]/,ja:/[\u3040-\u30ff\u4e00-\u9fff]/,ar:/[\u0600-\u06ff]/,ko:/[\uac00-\ud7af]/,th:/[\u0e00-\u0e7f]/,km:/[\u1780-\u17ff]/};
+ for(const lang of langs){
+  const tips=GOLD_QUICK[lang],labels=GOLD_SHORT_LABELS[lang];
+  assert.equal(tips?.length,18,'18 quick tips '+lang);
+  assert.equal(labels?.length,3,'translated headings and explainer '+lang);
+  assert.ok(tips.every(s=>typeof s==='string'&&s.length>=12&&s.length<=195),'short scannable tips '+lang);
+  assert.ok(labels[2].length>=70&&labels[2].length<=400,'short explanation '+lang);
+  assert.ok(tips.some(s=>s.includes('3v3'))&&tips.some(s=>s.includes('Zombie Invasion')),'daily steps '+lang);
+  assert.ok(tips.some(s=>s.includes('Taylor'))&&tips.some(s=>s.includes('4★')),'Taylor breakpoint '+lang);
+  assert.ok(tips.some(s=>s.includes('Replenish All')),'replenish warning '+lang);
+  assert.ok(tips.some(s=>s.includes('Resource Choice')),'choice chest '+lang);
+  const h=goldGuideHtml(lang,escape);
+  assert.ok(h.includes('gold-quick-list')&&h.includes('gold-explainer'),'new layout '+lang);
+  assert.equal((h.match(/<li>/g)||[]).length,18,'only 18 list entries '+lang);
+  assert.ok(h.includes('<details class="gold-sources">'),'sources collapsed '+lang);
+  assert.ok(h.length<4500,'less page text '+lang);
+  if(scripts[lang])assert.match(labels[0],scripts[lang],'native heading '+lang);
+ }
 });

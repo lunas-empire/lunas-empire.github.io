@@ -15,3 +15,6 @@ References and verified caveats:
 - https://lastwartactics.com/en/basics/gold-farming-guide-last-war/ – PvE, markets and resource collection
 
 For 3v3, rewards vary; no specific gold payout is asserted. Replenish All warning is contextual, not a categorical mechanic in every screen. Stamina saving refers to items, not permanently capped natural regeneration. Alliance diplomacy is respected.
+
+## 2026-10-23 compact revision
+Rendered guide shortened to an 18-item localized list plus one brief explanatory section and expandable references. Source detail strings retained in source module for audit and regression tests. No image or backend changes.

@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-23.61');
+@import url('./tokens.css?v=2026-10-23.62');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -1969,3 +1969,18 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 .gold-guide .gold-caution{border-inline-start:3px solid #c49748;padding:.65rem .85rem;line-height:1.55;background:var(--surface-2,rgba(188,150,80,.08));border-radius:7px}
 .gold-guide .practical-sources{overflow-wrap:anywhere;line-height:1.8}
 @media(max-width:430px){.gold-guide .gold-intro{grid-template-columns:1fr}.gold-guide .gold-photo{max-width:145px;justify-self:center}.gold-guide .gold-guide-list{padding-inline-start:1.23rem}.gold-guide .gold-section h3{font-size:1rem}}
+
+/* Compact Gold guide checklist without affecting other member guides. */
+.gold-guide--quick .gold-section{margin:1rem 0 .85rem}
+.gold-guide--quick .gold-quick-list{list-style:disc;display:grid;gap:.32rem;margin:.2rem 0;padding-inline-start:1.3rem}
+.gold-guide--quick .gold-quick-list li{margin:0;padding-inline-start:.12rem;line-height:1.45}
+.gold-guide--quick .gold-quick-list strong{font-weight:700}
+.gold-guide--quick .gold-explainer{margin:.95rem 0 .7rem}
+.gold-guide--quick .gold-explainer h3{margin:.5rem 0 .35rem}
+.gold-guide--quick .gold-explainer p{line-height:1.52;margin:.5rem 0}
+.gold-guide--quick .gold-photo{max-width:125px}
+.gold-guide--quick .gold-photo figcaption{font-size:.7rem}
+.gold-guide--quick .gold-sources{margin:.85rem 0 .25rem}
+.gold-guide--quick .gold-sources summary{cursor:pointer;font-weight:650}
+.gold-guide--quick .gold-sources .practical-sources{padding:.55rem 0}
+@media(max-width:430px){.gold-guide--quick .gold-photo{max-width:104px}.gold-guide--quick .gold-quick-list{gap:.36rem}}
