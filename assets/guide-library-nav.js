@@ -3,7 +3,7 @@ export const GUIDE_TOPIC_ORDER=Object.freeze(['alliance','power','vs','season','
 const ITEMS=Object.freeze({
   alliance:Object.freeze(['generals-trial','zombie-siege','marshals-guard','rally-combat-fundamentals','desert-storm','alliance-tech-donations','free-teleport','train']),
   power:Object.freeze(['hero-squad-formations','drone-chips-components','ur-gear-blueprints','waterfall-troop-training','minister-capitol-buffs','tech','t10']),
-  economy:Object.freeze(['store-buy-priorities','hot-deals-events','black-market'])
+  economy:Object.freeze(['store-buy-priorities','gold-farming','hot-deals-events','black-market'])
 });
 export function guideTopicOf(id){
   if(!id)return '';
@@ -32,6 +32,7 @@ const SEARCH_SYNONYMS={
  'store-buy-priorities':'shop einkaufen kaufen honor vip alliance campaign',
  'black-market':'schwarzmarkt black market marktplatz',
  'hot-deals-events':'hot deals event guide rotation calendar weekly rewards season offseason off season bounty hunter glittering market bullseye moonstone einkaufen angebote angebot',
+ 'gold-farming':'gold coins geld münzen goldminen zombie invasion monica taylor interior buff engineer resource choice goldplunder plunder farm marauder resources stamina mine f2p 3v3 store',
  'desert-storm':'desert storm wüste sturm',
  'train':'allianzzug zug train tickets gold',
  'free-teleport':'free teleport hive grouping warzone vs jump kostenlos kostenloser teleport samstag saison assembly point rally',
