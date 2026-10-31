@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-23.63');
+@import url('./tokens.css?v=2026-10-31.64');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -1991,7 +1991,7 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 
 :root[data-theme='light']{--vs-trend-up:#1b6541;--vs-trend-down:#9b2929}@media(prefers-color-scheme:light){:root:not([data-theme='dark']){--vs-trend-up:#1b6541;--vs-trend-down:#9b2929}}
 
-.native-admin .native-day-mini-open{display:grid;gap:.25rem;width:100%;height:100%;min-height:84px;
+.native-admin .native-day-mini-open{display:grid;gap:.25rem;width:100%;height:auto;min-width:0;min-height:84px;
  margin:0;padding:.45rem;color:var(--color-text);background:transparent;border:0;border-radius:4px;text-align:start;cursor:pointer}
 .native-admin .native-day-mini-open:hover,.native-admin .native-day-mini-open[aria-pressed=true]{background:var(--color-raised);box-shadow:inset 0 0 0 2px var(--color-text)}
 .native-admin .native-day-mini-heading{display:flex;gap:.3rem;justify-content:space-between;align-items:center;flex-wrap:wrap}
@@ -2008,3 +2008,5 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 .native-admin .native-vs-group-footer{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.4rem;padding:.35rem;font-size:.75rem;color:var(--color-muted)}
 .native-admin .native-day-mini-open:focus-visible,.native-admin .native-vs-results :is(button,select,summary):focus-visible{outline:3px solid var(--color-text);outline-offset:2px}
 .native-admin .native-vs-selected-day{font-variant-numeric:tabular-nums}
+
+.native-admin .native-day-mini-open>small{font-size:.7rem;white-space:normal;overflow-wrap:anywhere}
