@@ -83,3 +83,22 @@ test('compact checklist has 18 actionable bullets plus one short explanation in 
   if(scripts[lang])assert.match(labels[0],scripts[lang],'native heading '+lang);
  }
 });
+
+
+test('all 15 locales distinguish Campaign Store from Honor Shop and reserve Honor Points for blueprints',()=>{
+ for(const lang of langs){
+  const detailed=goldGuideCopy(lang)[19];
+  const short=GOLD_QUICK[lang][14];
+  for(const line of [detailed,short]){
+   assert.match(line,/Honorable Campaign Store/,lang+' campaign');
+   assert.match(line,/Honor Shop/,lang+' honor');
+   assert.match(line,/Gear Blueprints/,lang+' blueprints');
+   assert.match(line,/Gold/,lang+' never gold warning');
+  }
+  const html=goldGuideHtml(lang,escape);
+  assert.match(html,/Honor Shop/);
+  assert.match(html,/Gear Blueprints/);
+  assert.match(html,/lastwartutorial\.com\/stores/);
+  assert.equal((html.match(/<li>/g)||[]).length,18,lang+' remains concise');
+ }
+});

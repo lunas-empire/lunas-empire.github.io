@@ -18,3 +18,6 @@ For 3v3, rewards vary; no specific gold payout is asserted. Replenish All warnin
 
 ## 2026-10-23 compact revision
 Rendered guide shortened to an 18-item localized list plus one brief explanatory section and expandable references. Source detail strings retained in source module for audit and regression tests. No image or backend changes.
+
+## Honor Shop clarification (2026-10-23)
+Honor Shop (Honor Points) and Honorable Campaign Store (Campaign Medals) are different. Honor Shop: only Gear Blueprints, never Gold/Resource Choice chests. Honorable Campaign Store: its resource boxes can still be an option for Gold. Source: https://www.lastwartutorial.com/stores/ and https://cpt-hedge.com/guides/stores/honor-store
