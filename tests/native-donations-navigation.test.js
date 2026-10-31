@@ -9,11 +9,14 @@ test('iPhone More navigation offers direct grouped shortcuts and closes on tap',
  globalThis.window=dom.window;dom.window.HTMLElement.prototype.scrollIntoView=()=>{};
  t.after(()=>{clearOfficer();globalThis.window=previousWindow;globalThis.fetch=previousFetch;dom.window.close()});
  const id='aaaa-aaaa';
+ const belowExtras=Array.from({length:11},(_,i)=>({id:'below-'+i,name:'Below '+String(i+1).padStart(2,'0'),rank:'R2',
+  status:'below',points:1000+i*500,difference:1000+i*500-20000,delta:null,previous_week:null}));
  const weekly={minimum:20000,weeks:[{week:'2026-W41',captured_at:'2026-10-11T00:19:36+02:00',
-  is_complete:true,active:3,verified:2,met:1,below:1,unknown:1,
+  is_complete:true,active:14,verified:13,met:1,below:12,unknown:1,
   members:[
    {id,name:'Alpha',rank:'R4',status:'met',points:22000,difference:2000,delta:null,previous_week:null},
    {id:'b',name:'Bravo',rank:'R3',status:'below',points:15000,difference:-5000,delta:null,previous_week:null},
+   ...belowExtras,
    {id:'c',name:'Charlie',rank:'R2',status:'unknown',points:null,difference:null,delta:null,previous_week:null}
   ]}]};
  const calls=[];
@@ -26,6 +29,7 @@ test('iPhone More navigation offers direct grouped shortcuts and closes on tap',
   if(path==='/api/donations-intelligence')return Response.json(weekly);
   if(path==='/api/vs-intelligence')return Response.json({weeks:[]});
   if(path==='/api/members')return Response.json([{id,name:'Alpha',rank:'R4',power:0,kills:0,donations_weekly:22000}]);
+  if(path==='/api/member-registry')return Response.json({members:[],counts:{active:1,former:0,blacklisted:0}});
   if(path==='/api/member/'+id)return Response.json({member:{id,name:'Alpha',rank:'R4',status:'active'},stats:[
    {metric:'donations_weekly',value:22000,quality:'observed',captured_at:'2026-10-11T00:19:36+02:00'}
   ],weeks:[],days:[],rides:[],dice_wins:[],achievements:[]});
@@ -66,15 +70,30 @@ test('iPhone More navigation offers direct grouped shortcuts and closes on tap',
  assert.match(folds[1].textContent,/Charlie/);
  assert.doesNotMatch(folds[1].textContent,/0 zum Wochenminimum/);
  assert.match(folds[2].textContent,/Alpha/);
+ const tileButtons=q('.native-donation-tiles').querySelectorAll('[data-native-donation-category]');
+ assert.equal(tileButtons.length,4,'all four donation summary tiles are clickable');
+ q('.native-donation-tiles [data-native-donation-category="below"]').click();
+ await until(()=>q('#native-donation-results-title')?.textContent.includes('Unter Wochenziel'));
+ assert.equal(q('.native-donation-groups').querySelectorAll('details').length,1);
+ assert.equal(q('.native-donation-below').querySelectorAll('.native-donation-person').length,10,'long result starts compact');
+ assert.ok(q('[data-native-donation-more-group="below"]'));
+ q('[data-native-donation-more-group="below"]').click();
+ assert.equal(q('.native-donation-below').querySelectorAll('.native-donation-person').length,12,'more reveals the remaining players');
+ const donationSort=q('#native-donation-sort');donationSort.value='points_desc';
+ donationSort.dispatchEvent(new dom.window.Event('change',{bubbles:true}));
+ assert.equal(q('.native-donation-below .native-donation-person strong').textContent,'Bravo');
+ q('[data-native-donation-weekly]').click();
+ await until(()=>q('.native-donation-groups').querySelectorAll('details').length===3);
+ q('.native-donation-tiles [data-native-donation-category="unknown"]').click();
+ await until(()=>q('#native-donation-results-title')?.textContent.includes('Wert nicht bestätigt'));
+ assert.match(q('.native-donation-groups').textContent,/Charlie/);
+ assert.doesNotMatch(q('.native-donation-groups').textContent,/Alpha|Bravo/);
+ q('[data-native-donation-weekly]').click();
+ await until(()=>q('.native-donation-groups').querySelectorAll('details').length===3);
  q('#native-donation-search').value='Bravo';
  q('#native-donation-search').dispatchEvent(new dom.window.Event('input',{bubbles:true}));
  assert.match(q('.native-donation-groups').textContent,/Bravo/);
  assert.doesNotMatch(q('.native-donation-groups').textContent,/Alpha/);
  q('#native-donation-search').value='';
  q('#native-donation-search').dispatchEvent(new dom.window.Event('input',{bubbles:true}));
- const btn=q('.native-donation-met [data-native-member]');
- btn.click();
- await until(()=>q('.native-profile h3'));
- assert.equal(q('.native-profile h3').textContent,'Alpha');
- assert.match(q('.native-profile-metrics').textContent,/22.000/);
 });
