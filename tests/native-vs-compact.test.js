@@ -68,7 +68,7 @@ test('day tiles reveal attributable scores, categories, sorting and pagination w
  people.push({id:'met',name:'Winner',rank:'R3',failed:0,unknown:0,days:Array.from({length:6},(_,weekday)=>({weekday,verified:true,points:5000000,passed:true}))},
   {id:'missing',name:'Missing',failed:0,unknown:1,days:[{weekday:0,verified:false,points:10000000}]},
   {id:'joined',name:'Newcomer',failed:0,unknown:0,beforeJoin:1,days:[{weekday:0,quality:'before_join'}]});
- const weeks=['2026-W43','2026-W42'].map(week=>({week,threshold:3600000,failedDays:25,unknownDays:1,perfect:1,
+ const weeks=['2026-W44','2026-W42'].map(week=>({week,state:'final',threshold:3600000,failedDays:25,unknownDays:1,perfect:1,
   dayTotals:[{weekday:0,passed:1,failed:25,unknown:1,beforeJoin:1}],members:people}));
  const requests=[];
  globalThis.fetch=async url=>{
@@ -91,8 +91,12 @@ test('day tiles reveal attributable scores, categories, sorting and pagination w
  q('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
  await until(()=>q('[data-officer-tab=vs]'));q('[data-officer-tab=vs]').click();await until(()=>q('[data-native-vs-day]'));
  assert.equal(rows().length,10,'long groups start with ten rows');
+ assert.match(q('.native-capture-state.is-final').textContent,/Finalisiert/);
+ assert.match(q('.native-capture-banner').textContent,/W44/);
+ assert.equal(q('#native-vs-body .native-vs-trends,#native-vs-body svg'),null);
+ assert.doesNotMatch(q('.native-day-overview-grid').textContent,/Vortag|[+\u2212]/);
  q('[data-native-vs-day="0"]').click();
- assert.match(q('#native-vs-results-title').textContent,/Montag.*2026-W43/);
+ assert.match(q('#native-vs-results-title').textContent,/Montag.*2026-W44/);
  assert.equal(q('[data-native-vs-day="0"]').getAttribute('aria-pressed'),'true');
  assert.equal(dom.window.document.activeElement,q('#native-vs-results-title'));
  assert.equal(q('[data-native-vs-group=low]').open,true);

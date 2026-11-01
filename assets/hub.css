@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026-10-31.64');
+@import url('./tokens.css?v=2026.11.01-no-vs-trends');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -1985,12 +1985,6 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 .gold-guide--quick .gold-sources .practical-sources{padding:.55rem 0}
 @media(max-width:430px){.gold-guide--quick .gold-photo{max-width:104px}.gold-guide--quick .gold-quick-list{gap:.36rem}}
 
-.native-vs-trends{padding:12px;border:1px solid #647f98;border-radius:8px;background:var(--panel-bg,transparent);margin-block:12px}.native-vs-trends svg{display:block;width:100%;max-width:680px;height:auto}.native-vs-trends p,.native-vs-person-day small,.native-day-mini>small{font-size:.75rem;overflow-wrap:anywhere}.native-day-mini>small{display:block}.native-vs-person-day small{display:block;white-space:normal}
-
-.native-admin .trend-up{color:var(--vs-trend-up,#9cddb7)}.native-admin .trend-down{color:var(--vs-trend-down,#ffb2b2)}@media(max-width:520px){.native-admin .native-vs-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
-
-:root[data-theme='light']{--vs-trend-up:#1b6541;--vs-trend-down:#9b2929}@media(prefers-color-scheme:light){:root:not([data-theme='dark']){--vs-trend-up:#1b6541;--vs-trend-down:#9b2929}}
-
 .native-admin .native-day-mini-open{display:grid;gap:.25rem;width:100%;height:auto;min-width:0;min-height:84px;
  margin:0;padding:.45rem;color:var(--color-text);background:transparent;border:0;border-radius:4px;text-align:start;cursor:pointer}
 .native-admin .native-day-mini-open:hover,.native-admin .native-day-mini-open[aria-pressed=true]{background:var(--color-raised);box-shadow:inset 0 0 0 2px var(--color-text)}
@@ -2010,3 +2004,5 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 .native-admin .native-vs-selected-day{font-variant-numeric:tabular-nums}
 
 .native-admin .native-day-mini-open>small{font-size:.7rem;white-space:normal;overflow-wrap:anywhere}
+
+@media(max-width:520px){.native-admin .native-vs-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}

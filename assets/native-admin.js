@@ -5,7 +5,7 @@ import {localizeOfficerTree,officerLanguage,officerLocale,translateOfficerText} 
 import {buildOfficerActions} from './officer-cockpit.js';
 import {createStatEvidenceViewer} from './native-stat-evidence.js';
 import {renderEvidenceRow} from './native-evidence-row.js';
-import {renderVsOverview,derivedVsWeekTotal,renderVsTrend,enrichVsWeeks} from './native-vs-overview.js';
+import {renderVsOverview,derivedVsWeekTotal,enrichVsWeeks} from './native-vs-overview.js';
 import {createDuelLeagueController} from './native-duel-league.js';
 import {duelCopy} from './native-duel-league-i18n.js';
 import {diceHistory} from './dice-winners.js';
@@ -815,7 +815,7 @@ function renderVs(target){
   (notices.length?'<div class="native-vs-single-insight"><b>'+ (enUi?'Note':'Hinweis')+'</b>'+
     '<span>'+notices.map(e).join(' · ')+'</span></div>':'')+
   '<p class="native-muted">'+(enUi?'One member can contribute six below-goal days. Scope: ':'Ein Spieler kann sechs Unterschreitungen beitragen. Umfang: ')+e(week.scopeMembers??'?')+(enUi?' unique IDs. Raw rows: ':' eindeutige IDs. Originalzeilen: ')+e(week.rawPlayerDays??'?')+(enUi?'; unlinked rows: ':'; davon ohne ID: ')+e(week.unresolvedPlayerDays??'?')+'</p>'+
-  layout.dayTiles+renderVsTrend(cache.vs.weeks,week.week,{esc:e,numberText,language:officerLanguage(target.ownerDocument)})+layout.groupsHtml+
+  layout.dayTiles+layout.groupsHtml+
   '<details class="native-fold native-vs-explainer"><summary>'+ (enUi?'How are results assessed?':'Wie werden die Werte bewertet?')+'</summary>'+
    '<p class="native-fold-body native-muted">'+(enUi?'Weekly totals are calculated from six confirmed daily scores. Missing or unclear values are never zero; partial sums remain marked as incomplete.':'Die Wochensumme wird aus sechs bestätigten Tageswerten berechnet. Fehlende oder unklare Tage sind nie automatisch 0; Teilstände bleiben als unvollständig gekennzeichnet.')+'</p></details>'+
   '</section>';
