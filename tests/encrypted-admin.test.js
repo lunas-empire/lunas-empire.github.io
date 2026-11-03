@@ -37,57 +37,40 @@ function shellAt(url) {
   const dom=new JSDOM(shellHtml,{url,runScripts:'outside-only'});
   dom.window.__nativeCalls={init:0,render:0};
   dom.window.__loadNative=()=>Promise.resolve({
+    async openNativeReviews(){},
     initNativeAdmin(mount){dom.window.__nativeCalls.init++;mount.dataset.nativeReady='1';},
     async renderNativeAdmin(mount){dom.window.__nativeCalls.render++;mount.innerHTML='<form id="native-officer-login"><input type="password" name="code"></form>';}
   });
   dom.window.eval(shellApp.replace("import('/assets/native-admin.js')","window.__loadNative()"));
   return dom;
 }
-test('single staging frame, constrained CSP/sandbox, deep links and keyboard tabs',async()=>{
-  const dom=shellAt('https://lunas-empire.github.io/admin/#review');
-  try {
-    const {document}=dom.window;
-    const frame=document.querySelector('iframe');
-    assert.equal(document.querySelectorAll('iframe').length,1);
-    assert.equal(frame.src,'https://rzsn-command-center-staging.cynthiawong2837128.workers.dev/?embed=1#review');
-    assert.equal(frame.getAttribute('referrerpolicy'),'no-referrer');
-    assert.equal(frame.getAttribute('sandbox'),'allow-scripts allow-forms allow-same-origin allow-downloads');
-    const csp=document.querySelector('[http-equiv="Content-Security-Policy"]').content;
-    assert.match(csp,/script-src 'self';/);
-    assert.match(csp,/frame-src https:\/\/rzsn-command-center-staging\.cynthiawong2837128\.workers\.dev$/);
-    const review=document.querySelector('#tab-review');
-    assert.equal(review.getAttribute('aria-selected'),'true');
-    review.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));
-    await new Promise(resolve=>setTimeout(resolve,10));
-    assert.equal(document.activeElement.id,'tab-wissen');
-    assert.equal(document.querySelector('#wiki-panel').hidden,false);
-    assert.equal(document.querySelector('#worker-panel').hidden,true);
-    assert.equal(dom.window.location.pathname,'/admin/');
-    document.querySelector('#tab-overview').click();
-    await new Promise(resolve=>setTimeout(resolve,10));
-    assert.equal(frame.src,'https://rzsn-command-center-staging.cynthiawong2837128.workers.dev/?embed=1#review');
-    assert.equal(document.querySelector('#native-panel').hidden,false);
-    assert.equal(document.querySelector('#worker-panel').hidden,true);
-    assert.equal(dom.window.__nativeCalls.init,1);
-  } finally {dom.window.close();}
+test('native shell has no review or wiki navigation and preserves archival access',async()=>{
+ for(const hash of ['overview','review','wissen']){
+  const dom=shellAt('https://lunas-empire.github.io/admin/#'+hash);
+  await new Promise(r=>setTimeout(r,10));
+  const doc=dom.window.document;
+  assert.equal(doc.querySelector('iframe'),null);
+  assert.equal(doc.querySelector('[data-view]'),null);
+  assert.equal(doc.querySelector('#wiki-panel').hidden,hash!=='wissen');
+  assert.equal(doc.querySelector('#native-panel').hidden,hash==='wissen');
+  assert.equal(dom.window.__nativeCalls.init,hash==='wissen'?0:1);
+  assert.match(doc.querySelector('[http-equiv="Content-Security-Policy"]').content,/frame-src 'none'/);
+  const csp=doc.querySelector('[http-equiv="Content-Security-Policy"]').content;
+  assert.match(csp,/script-src 'self';/);
+  assert.match(csp,/connect-src 'self' https:\/\/rzsn-staging-api-bridge\.pages\.dev;/);
+  assert.match(csp,/img-src 'self' blob:/);
+  dom.window.close();
+ }
+ for(const host of ['rzsn-home.github.io','example.org','lunas-empire.github.io.example.org']){
+  const dom=shellAt(`https://${host}/admin/#review`);
+  assert.equal(dom.window.document.querySelector('#commander-shell').hidden,true);
+  assert.equal(dom.window.document.querySelector('#wiki-panel').hidden,false);
+  assert.equal(dom.window.document.querySelector('#login-title').textContent,'R4/R5 Admin');
+  assert.equal(dom.window.document.querySelector('iframe'),null);
+  dom.window.close();
+ }
 });
-test('wiki deep link is lazy; production and unknown hosts retain encrypted entry',()=>{
-  for (const host of ['lunas-empire.github.io','localhost','127.0.0.1']) {
-    const dom=shellAt(`https://${host}/admin/#wissen`);
-    assert.equal(dom.window.document.querySelector('#wiki-panel').hidden,false);
-    assert.equal(dom.window.document.querySelector('iframe').hasAttribute('src'),false);
-    dom.window.close();
-  }
-  for (const host of ['rzsn-home.github.io','example.org','lunas-empire.github.io.example.org']) {
-    const dom=shellAt(`https://${host}/admin/#review`);
-    const doc=dom.window.document;
-    assert.equal(doc.querySelector('#commander-shell').hidden,true);
-    assert.equal(doc.querySelector('iframe').hasAttribute('src'),false);
-    assert.equal(doc.querySelector('#wiki-panel').hidden,false);
-    assert.equal(doc.querySelector('#login-title').textContent,'R4/R5 Admin');
-    dom.window.close();
-  }
-});
+
 test('wiki runtime preserves decryption and provides same-route return links',()=>{
   assert.match(shellApp,/deriveAdminKey\(password,manifest\)/);
   assert.match(shellApp,/decryptAdminBytes\(encryptedWiki,manifest.files.wiki,key\)/);
@@ -104,32 +87,15 @@ test('hub menu and legacy admin hash resolve to the sole Commander Center route'
   assert.ok(app.includes("if (route.view==='admin' && ['lunas-empire.github.io','localhost','127.0.0.1','[::1]'].includes(location.hostname)) { location.replace('/admin/'); return; }"));
 });
 
-test('native overview is initialized once and keeps its mount while reviews load once',async()=>{
-  const dom=shellAt('https://lunas-empire.github.io/admin/#overview');
-  const tick=()=>new Promise(resolve=>setTimeout(resolve,10));
-  try {
-    await tick();
-    const doc=dom.window.document,frame=doc.querySelector('iframe');
-    assert.equal(frame.hasAttribute('src'),false,'overview must not load Worker');
-    assert.deepEqual({...dom.window.__nativeCalls},{init:1,render:1});
-    const login=doc.querySelector('#native-officer-login');
-    login.querySelector('input').value='unsent-local-test';
-    let loads=0;
-    const observer=new dom.window.MutationObserver(records=>{loads+=records.filter(r=>r.attributeName==='src').length;});
-    observer.observe(frame,{attributes:true});
-    for (const id of ['review','wissen','overview','review','overview']) {
-      doc.querySelector('#tab-'+id).click();
-      await tick();
-    }
-    assert.equal(loads,1,'review iframe is retained, never navigated on tab return');
-    assert.equal(doc.querySelector('#native-officer-login'),login,'native mount is never replaced');
-    assert.equal(login.querySelector('input').value,'unsent-local-test');
-    assert.deepEqual({...dom.window.__nativeCalls},{init:1,render:1});
-    observer.disconnect();
-    assert.ok(shellHtml.indexOf('/assets/hub.css')<shellHtml.indexOf('href="styles.css"'));
-    assert.match(shellApp,/import\('\/assets\/native-admin\.js'\)/);
-    const csp=doc.querySelector('[http-equiv="Content-Security-Policy"]').content;
-    assert.match(csp,/connect-src 'self' https:\/\/rzsn-staging-api-bridge\.pages\.dev;/);
-    assert.match(csp,/img-src 'self' blob:/);
-  } finally {dom.window.close();}
+test('native mount is retained across archival hash navigation',async()=>{
+ const dom=shellAt('https://lunas-empire.github.io/admin/#overview');
+ try{
+  await new Promise(r=>setTimeout(r,10));
+  const login=dom.window.document.querySelector('#native-officer-login');
+  login.querySelector('input').value='unsent';
+  for(const hash of ['wissen','overview']){dom.window.location.hash=hash;await new Promise(r=>setTimeout(r,10))}
+  assert.equal(dom.window.document.querySelector('#native-officer-login'),login);
+  assert.equal(login.querySelector('input').value,'unsent');
+  assert.deepEqual({...dom.window.__nativeCalls},{init:1,render:1});
+ }finally{dom.window.close()}
 });

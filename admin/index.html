@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="robots" content="noindex,nofollow,noarchive">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; connect-src 'self' https://rzsn-staging-api-bridge.pages.dev; img-src 'self' blob:; base-uri 'none'; form-action 'none'; frame-src https://rzsn-command-center-staging.cynthiawong2837128.workers.dev">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; connect-src 'self' https://rzsn-staging-api-bridge.pages.dev; img-src 'self' blob:; base-uri 'none'; form-action 'none'; frame-src 'none'">
   <title>R4/R5 Admin · RZSN</title>
   <link rel="stylesheet" href="/assets/hub.css">
   <link rel="stylesheet" href="styles.css">
@@ -13,19 +13,10 @@
   <section id="commander-shell" class="commander-shell" aria-label="Commander Center" hidden>
     <header class="commander-header">
       <div class="commander-heading"><h1>Commander Center</h1><a href="/">Member Hub</a></div>
-      <nav role="tablist" aria-label="Admin-Bereiche">
-        <button id="tab-overview" type="button" role="tab" aria-controls="native-panel" aria-selected="true" data-view="overview">Commander Center</button>
-        <button id="tab-review" type="button" role="tab" aria-controls="worker-panel" aria-selected="false" tabindex="-1" data-view="review">Manuelle Reviews</button>
-        <button id="tab-wissen" type="button" role="tab" aria-controls="wiki-panel" aria-selected="false" tabindex="-1" data-view="wissen">Wissen &amp; Guides</button>
-      </nav>
-      <p id="access-note">R4/R5-Code für Commander Center; manuelle Reviews ggf. separat anmelden. Wissen &amp; Guides: Wiki-Passwort.</p>
     </header>
-    <main id="native-panel" class="native-panel" role="tabpanel" aria-labelledby="tab-overview" hidden>
+    <main id="native-panel" class="native-panel" aria-label="Commander Center" hidden>
       <div id="native-officer-root"><p role="status">Commander Center wird geladen.</p></div>
     </main>
-    <div id="worker-panel" class="worker-panel" role="tabpanel" aria-labelledby="tab-review" hidden>
-      <iframe id="commander-frame" title="Privates R4/R5 Commander Center" referrerpolicy="no-referrer" sandbox="allow-scripts allow-forms allow-same-origin allow-downloads"></iframe>
-    </div>
   </section>
   <main id="wiki-panel" class="login-shell">
     <a class="back-link" href="/">← Member Hub</a>

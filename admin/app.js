@@ -5,16 +5,12 @@ const passwordInput=document.querySelector('#admin-password');
 const submitButton=document.querySelector('#unlock-button');
 const status=document.querySelector('#unlock-status');
 
-// Reuse the native officer UI; only source-bound publication reviews use the Worker.
+// One native officer UI; encrypted wiki remains accessible by archival hash only.
 const embeddedHost=location.hostname==='lunas-empire.github.io' || ['localhost','127.0.0.1','[::1]'].includes(location.hostname);
-const workerUrl='https://rzsn-command-center-staging.cynthiawong2837128.workers.dev/?embed=1#review';
 const shell=document.querySelector('#commander-shell');
 const wikiPanel=document.querySelector('#wiki-panel');
-const workerPanel=document.querySelector('#worker-panel');
-const frame=document.querySelector('#commander-frame');
 const nativePanel=document.querySelector('#native-panel');
 const nativeMount=document.querySelector('#native-officer-root');
-const tabs=[...document.querySelectorAll('[data-view]')];
 
 if (embeddedHost) {
   shell.hidden=false;
@@ -22,10 +18,11 @@ if (embeddedHost) {
     const language=localStorage.getItem('rzsn-language');
     if (['de','en','uk','ja','fr','it','id','ar','ko','sv','pt','nl','th','km','fil'].includes(language)) document.documentElement.lang=language;
   } catch { /* Storage is optional; native German remains available. */ }
-  let nativeReady;
+  let nativeReady, nativeModule;
   function loadNative() {
     if (!nativeReady) {
       nativeReady=import('/assets/native-admin.js').then(async module=>{
+        nativeModule=module;
         module.initNativeAdmin(nativeMount);
         await module.renderNativeAdmin(nativeMount);
       }).catch(()=>{
@@ -45,8 +42,6 @@ if (embeddedHost) {
   }
   document.body.classList.add('embedded-admin');
   document.title='Commander Center - Luna';
-  wikiPanel.setAttribute('role','tabpanel');
-  wikiPanel.setAttribute('aria-labelledby','tab-wissen');
   shell.append(wikiPanel);
   document.querySelector('#login-title').textContent='Wissen & Guides';
   document.querySelector('.intro').textContent='Verschlüsseltes Wiki mit dem bestehenden Wiki-Passwort öffnen.';
@@ -55,30 +50,9 @@ if (embeddedHost) {
   submitButton.textContent='Wiki öffnen';
   function showView() {
     const view=['review','wissen'].includes(location.hash.slice(1))?location.hash.slice(1):'overview';
-    for (const tab of tabs) {
-      const selected=tab.dataset.view===view;
-      tab.setAttribute('aria-selected',String(selected));
-      tab.tabIndex=selected?0:-1;
-    }
     wikiPanel.hidden=view!=='wissen';
-    workerPanel.hidden=view!=='review';
-    nativePanel.hidden=view!=='overview';
-    if (view==='overview') void loadNative();
-    if (view==='review' && !frame.hasAttribute('src')) frame.src=workerUrl;
-  }
-  for (const tab of tabs) {
-    tab.addEventListener('click',()=>{location.hash=tab.dataset.view;showView();});
-    tab.addEventListener('keydown',event=>{
-      let index=tabs.indexOf(tab);
-      if (event.key==='ArrowRight') index=(index+1)%tabs.length;
-      else if (event.key==='ArrowLeft') index=(index+tabs.length-1)%tabs.length;
-      else if (event.key==='Home') index=0;
-      else if (event.key==='End') index=tabs.length-1;
-      else return;
-      event.preventDefault();
-      tabs[index].focus();
-      tabs[index].click();
-    });
+    nativePanel.hidden=view==='wissen';
+    if (view!=='wissen') void loadNative().then(()=>{if(view==='review')void nativeModule?.openNativeReviews(nativeMount)});
   }
   addEventListener('hashchange',()=>showView());
   showView();
@@ -108,7 +82,7 @@ async function unlock(password) {
   if (html.includes('src="images/')) throw new Error('Encrypted package is incomplete.');
   const policy="default-src 'none'; script-src 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src blob:; connect-src 'none'; base-uri 'none'; form-action 'none'";
   const environment=location.hostname==='lunas-empire.github.io'?'STAGING':'PRODUCTION';
-  const returnLinks=embeddedHost?'<a class="admin-runtime-home" href="/admin/#overview">Commander Center</a><a class="admin-runtime-home" href="/admin/#review">Manuelle Reviews</a>':'';
+  const returnLinks=embeddedHost?'<a class="admin-runtime-home" href="/admin/#overview">Commander Center</a><a class="admin-runtime-home" href="/admin/#review">OCR-Prüffälle</a>':'';
   const runtimeBar=`<div class="admin-runtime-bar"><div class="admin-runtime-brand">Commander Center</div><div class="admin-runtime-actions"><span class="admin-runtime-env">${environment}</span>${returnLinks}<a class="admin-runtime-home" href="/">← Member Hub</a></div></div>`;
   html=html.replace('<head>',`<head><meta http-equiv="Content-Security-Policy" content="${policy}">`);
   html=html.replace('</head>','<link rel="stylesheet" href="/admin/wiki-theme.css"></head>');

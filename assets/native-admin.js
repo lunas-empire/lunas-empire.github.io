@@ -17,7 +17,7 @@ let sessionToken='',officer=null,panel='overview',cache={},pageLimit=20,historyL
 let sessionGeneration=0;
 let duelLeagueController=null;
 let trainHistoryFilters={member:'',date:''},trainHistoryExpanded=false;
-export function clearOfficer(){sessionGeneration++;statViewer.close();clearReviewImages();duelLeagueController?.destroy();duelLeagueController=null;sessionToken='';officer=null;cache={};panel='overview';pageLimit=20;historyLimit=20;trainHistoryFilters={member:'',date:''};trainHistoryExpanded=false;activityLimit=30;registryFilter='all';activityCategory='all';activityGroupBy='type';}
+export function clearOfficer(){clearSourceImages();sessionGeneration++;statViewer.close();clearReviewImages();duelLeagueController?.destroy();duelLeagueController=null;sessionToken='';officer=null;cache={};panel='overview';pageLimit=20;historyLimit=20;trainHistoryFilters={member:'',date:''};trainHistoryExpanded=false;activityLimit=30;registryFilter='all';activityCategory='all';activityGroupBy='type';}
 export const hasOfficer=()=>Boolean(sessionToken);
 const canManageSite=()=>officer?.role==='R5'||(officer?.role==='R4'&&officer?.siteOwner===true);
 async function request(path,options={}){
@@ -28,7 +28,7 @@ async function request(path,options={}){
  if(!response.ok){if(response.status===401&&path!=='/api/native-login'&&generation===sessionGeneration)clearOfficer();throw Object.assign(Error(result.error||'HTTP '+response.status),{status:response.status})}
  return result;
 }
-async function binaryRequest(path,{method='GET',body,headers={}}={}){
+async function binaryRequest(path,{method='GET',body,headers={},raw=false}={}){
  const generation=sessionGeneration;
  const response=await fetch(apiBase+path,{method,headers:{'Accept':method==='GET'?'image/*':'application/json',...(sessionToken?{'Authorization':'Bearer '+sessionToken}:{}),...headers},body,mode:'cors',credentials:'omit',cache:'no-store'});
  if(!response.ok){
@@ -37,7 +37,7 @@ async function binaryRequest(path,{method='GET',body,headers={}}={}){
   if(response.status===401&&generation===sessionGeneration)clearOfficer();
   throw Object.assign(Error(message),{status:response.status});
  }
- return method==='GET'?response.blob():response.json();
+ return raw?response:method==='GET'?response.blob():response.json();
 }
 const statViewer=createStatEvidenceViewer({request,getToken:()=>sessionToken,apiBase});
 const statEvidenceKey=(snapshot,member,metric)=>snapshot&&member&&['power','kills','donations_weekly'].includes(metric)?String(snapshot)+'|'+member+'|'+metric:'';
@@ -114,6 +114,7 @@ function moreHub(){
 function cards(items){return '<div class="native-cards">'+items.map(([name,value,sub])=>'<article><small>'+e(name)+'</small><strong>'+e(value)+'</strong><span>'+e(sub||'')+'</span></article>').join('')+'</div>'}
 function marker(status){return '<span class="native-status">'+e(status||'Unbekannt')+'</span>'}
 async function view(mount){
+ clearSourceImages();
  clearReviewImages();
  duelLeagueController?.destroy();duelLeagueController=null;
  
@@ -273,6 +274,8 @@ async function view(mount){
      '<label>Quelle <select id="review-batch-native"><option value="">Alle Wochen und Profile</option>'+batches.map(b=>'<option value="'+e(b)+'">'+e(b)+'</option>').join('')+'</select></label>'+
     '<label>Prüftyp <select id="review-kind-native"><option value="">Alle</option><option value="vs_day">VS-Tageswert</option><option value="identity">Identität</option><option value="profile">Profilwert</option></select></label></div></details>'+
     '<p id="native-review-finished" role="status" aria-live="polite"></p><div id="review-list-native"></div>';renderReviews(target,'');
+   const sources=mount.ownerDocument.createElement('section');sources.id='native-source-reviews';target.append(sources);
+   initSourceReviews(sources);
   }else if(panel==='members'){
     const [list,trains]=await Promise.all([request('/api/members'),request('/api/train-manager').catch(()=>null)]);
     cache.members=list;cache.archivedTrains=trains;
@@ -1537,6 +1540,129 @@ function renderActivity(target,term=''){
 }
 // Evidence never receives a public URL. A protected Blob URL exists only for the
 // current officer's in-memory session and is revoked on navigation/logout.
+// Publication reviews deliberately do not share OCR cases, counters or evidence state.
+const sourceImages=new Set();
+function clearSourceImages(){for(const url of sourceImages)URL.revokeObjectURL(url);sourceImages.clear()}
+export function sourceDecisionBody(item,input,verified,members){
+ if(!item.source_archive_id||! /^[a-f0-9]{64}$/i.test(item.image_sha256||'')||!Number.isFinite(item.row_y)||item.row_y<0||item.row_y>1200)throw Error('Originalquelle unvollst\u00e4ndig.');
+ if(!verified)throw Error('Originalbild und Zeilenposition zuerst prüfen.');
+ if(!members.some(m=>m.id===input.member_id))throw Error('Bestehende Mitglied-ID ausdrücklich auswählen.');
+ const value=reviewNumericValue(input.value);
+ if(value===null)throw Error('Exakten Wert eingeben; unbekannt bleibt unbekannt.');
+ if(input.reason.trim().length<8)throw Error('Prüfgrund mit mindestens 8 Zeichen eingeben.');
+ if(!input.confirmed)throw Error('Bild und genauen Wert ausdrücklich bestätigen.');
+ const body={row_key:item.row_key,member_id:input.member_id,value,reason:input.reason.trim(),sha256:item.image_sha256,row_y:item.row_y,source_archive_id:item.source_archive_id};
+ if(!Number.isInteger(item.rank)||item.rank<1||item.rank>200){
+  if(!String(input.rank??'').trim()||!Number.isInteger(Number(input.rank))||Number(input.rank)<1||Number(input.rank)>200||!input.rank_visually_confirmed)throw Error('Rang im Originalbild visuell bestätigen.');
+  body.rank=Number(input.rank);body.rank_visually_confirmed=true;
+ }
+ return body;
+}
+export async function verifySourceBytes(response,item){
+ if(!/^[a-f0-9]{64}$/i.test(item.image_sha256||'')||!Number.isFinite(item.row_y)||item.row_y<0||item.row_y>1200)throw Error('Quell-Prüfsumme oder Zeilenposition fehlt.');
+ if(response.headers.get('X-Evidence-SHA256')?.toLowerCase()!==item.image_sha256.toLowerCase()||response.headers.get('X-Evidence-Row-Y')===null||Number(response.headers.get('X-Evidence-Row-Y'))!==item.row_y)throw Error('Beleg-Header stimmen nicht überein (SHA/Zeile).');
+ const bytes=await response.arrayBuffer();
+ const sha=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),v=>v.toString(16).padStart(2,'0')).join('');
+ if(sha!==item.image_sha256.toLowerCase())throw Error('Originalbild: SHA-256 stimmt nicht überein.');
+ if(!/^image\/(png|jpeg|webp)$/.test(response.headers.get('Content-Type')?.split(';')[0]||''))throw Error('Originalbildformat nicht unterstützt.');
+ return new Blob([bytes],{type:response.headers.get('Content-Type')});
+}
+function initSourceReviews(host){
+ const generation=sessionGeneration;
+ let offset=0,decisionOffset=0,epoch=0;
+ const live=()=>host.isConnected&&panel==='reviews'&&generation===sessionGeneration;
+ host.innerHTML='<h2>Source publication reviews</h2><p>Save a decision, then apply it separately. OCR cases and unknown donation values are counted independently. Unknown never means confirmed zero.</p><form data-source-filters class="native-row"><label>Week<input name="week" type="week"></label><label>Kind<select name="kind"><option value="">All</option><option value="profile">Profile</option><option value="vs">VS</option></select></label><label>Metric<select name="metric"><option value="">All</option><option>power</option><option>kills</option><option>donations_weekly</option><option>vs_day_0</option><option>vs_day_1</option><option>vs_day_2</option><option>vs_day_3</option><option>vs_day_4</option><option>vs_day_5</option></select></label><button>Load filters</button></form><p data-source-status role="status" aria-live="polite"></p><div data-source-list></div><button type="button" data-source-more>More cases (25)</button><h3>Saved decisions</h3><div data-source-decisions></div><button type="button" data-source-decisions-more>More saved decisions (25)</button>';
+ const status=host.querySelector('[data-source-status]'),form=host.querySelector('form');
+ let pendingBusy=false,savedBusy=false;
+ async function loadPending(append=false){
+  if(pendingBusy)return;
+  pendingBusy=true;const version=epoch;
+  const params=new URLSearchParams({limit:'25',offset:String(offset)});
+  for(const key of ['week','kind'])if(form.elements[key].value)params.set(key,form.elements[key].value);
+  const more=host.querySelector('[data-source-more]');more.disabled=true;
+  try{
+   const pending=await request('/api/capture-publication-review?'+params);
+   if(!live()||version!==epoch)return;
+   if(!append)host.querySelector('[data-source-list]').replaceChildren();
+   status.textContent=(cache.reviews||[]).length+' OCR open; '+(pending.total_pending??'unbekannt')+' source reviews pending. Metric filter covers loaded pages; load more cases.';
+   for(const item of pending.items||[])if(!form.elements.metric.value||item.metric===form.elements.metric.value)renderSourceCard(host.querySelector('[data-source-list]'),item,pending.member_options||[],false,live);
+   offset+=(pending.items||[]).length;
+   more.disabled=offset>=pending.total_pending||(pending.items||[]).length===0;
+  }catch(err){if(live()&&version===epoch)status.textContent='Source reviews unavailable: '+err.message}
+  finally{pendingBusy=false}
+ }
+ async function loadSaved(append=false){
+  if(savedBusy)return;
+  savedBusy=true;const version=epoch;
+  const params=new URLSearchParams({limit:'25',offset:String(decisionOffset)});
+  for(const key of ['week','kind'])if(form.elements[key].value)params.set(key,form.elements[key].value);
+  const more=host.querySelector('[data-source-decisions-more]');more.disabled=true;
+  try{
+   const saved=await request('/api/capture-publication-review/decisions?'+params);
+   if(!live()||version!==epoch)return;
+   if(!append)host.querySelector('[data-source-decisions]').replaceChildren();
+   for(const item of saved.items||[])if(!form.elements.metric.value||item.metric===form.elements.metric.value)renderSourceCard(host.querySelector('[data-source-decisions]'),item,[],true,live);
+   decisionOffset+=(saved.items||[]).length;more.disabled=(saved.items||[]).length<25;
+  }catch(err){if(live()&&version===epoch)host.querySelector('[data-source-decisions]').textContent='Saved decisions unavailable: '+err.message}
+  finally{savedBusy=false}
+ }
+ form.addEventListener('submit',event=>{event.preventDefault();if(pendingBusy||savedBusy)return;epoch++;offset=0;decisionOffset=0;clearSourceImages();host.querySelector('[data-source-list]').replaceChildren();host.querySelector('[data-source-decisions]').replaceChildren();void loadPending();void loadSaved()});
+ host.querySelector('[data-source-more]').onclick=()=>void loadPending(true);
+ host.querySelector('[data-source-decisions-more]').onclick=()=>void loadSaved(true);
+ void loadPending();void loadSaved();
+}
+function renderSourceCard(list,item,members,saved,live){
+ const card=list.ownerDocument.createElement('details');card.className='native-source-card';
+ const evidence=saved?{image_sha256:item.source_sha256,row_y:item.source_row_y}:item;
+ let verified=false,busy=false,completed=false,imageVersion=0;
+ const url='/api/capture-publication-review/'+encodeURIComponent(item.batch_id);
+ card.innerHTML='<summary>'+e(item.source_name||item.row_key)+' / '+e(item.week)+' / '+e(item.metric)+' / '+e(item.proposed_value??'unbekannt')+'</summary><p data-native-no-translate>'+e(item.source_path)+' | SHA-256: '+e(item.image_sha256)+' | '+e(item.source_status)+'</p><button type="button" data-source-image>Originalbild prüfen / Verify source</button><div class="native-source-image"></div><form class="native-source-form"><label>Mitglied / Immutable member ID<select name="member_id" required><option value="">Bitte ausdrücklich auswählen</option>'+members.map(m=>'<option value="'+e(m.id)+'">'+e(m.name)+' / '+e(m.rank)+' / '+e(m.status)+' / '+e(m.id)+' / '+e(m.history?JSON.stringify(m.history):'Historische Berechtigung wird serverseitig geprüft')+'</option>').join('')+'</select></label><label>Exakter Wert / Exact value<input name="value" inputmode="numeric" required></label><label>Prüfgrund / Reason<input name="reason" minlength="8" maxlength="500" required></label>'+(!Number.isInteger(item.rank)||item.rank<1||item.rank>200?'<label>Tabellenplatz im Originalbild (1-200)<input type="number" name="rank" min="1" max="200" step="1" required></label><label><input type="checkbox" name="rank_confirmed"> Rang visuell bestätigt / Rank visually confirmed</label>':'<p>Quellrang: '+e(item.rank)+'</p>')+'<label><input type="checkbox" name="confirmed"> Originalbild, Zeile, Mitglied und exakten Wert visuell bestätigt / Confirm</label><button type="submit" disabled>'+ (saved?'Geprüften Wert in Bericht übernehmen':'Entscheidung speichern')+'</button></form><p data-source-message role="status" aria-live="polite"></p>';
+ list.append(card);
+ if(saved){
+  card.innerHTML='<summary>Gespeicherte Entscheidung / '+e(item.name||item.chosen_member_id)+' / '+e(item.chosen_value)+'</summary><p>Mitglied: '+e(item.name||'')+' / '+e(item.chosen_member_id)+' / Wert: '+e(item.chosen_value)+'</p><p>SHA-256: '+e(item.source_sha256)+' / Y: '+e(item.source_row_y)+'</p><p>'+e(item.reason)+' / '+e(item.decided_at)+' / '+e(item.stage)+'</p>'+(item.stage==='APPLIED'?'<p>\u00dcbernahme abgeschlossen.</p>':'<button type="button" data-source-image>Originalbild pr\u00fcfen</button><div class="native-source-image"></div><form><label><input type="checkbox" name="confirmed"> Gespeicherte Entscheidung mit Originalbild und markierter Zeile gepr\u00fcft</label><button type="submit" disabled>Gepr\u00fcften Wert in Bericht \u00fcbernehmen</button></form>')+'<p data-source-message role="status" aria-live="polite"></p>';
+  if(item.stage==='APPLIED')return;
+ }
+ const form=card.querySelector('form'),button=form.querySelector('button'),message=card.querySelector('[data-source-message]');
+ if(!saved&&(item.source_available===false||!item.source_archive_id))card.querySelector('[data-source-image]').disabled=true;
+ card.querySelector('[data-source-image]').onclick=async()=>{
+  if(busy||completed)return;
+  const version=++imageVersion;
+  verified=false;button.disabled=true;form.elements.confirmed.checked=false;
+  try{
+   if(item.source_available===false)throw Error('Originalquelle fehlt.');
+   const response=await binaryRequest(url+'/image?'+new URLSearchParams({row_key:item.row_key}),{raw:true});
+   const blob=await verifySourceBytes(response,evidence);
+   if(!live()||!card.isConnected||version!==imageVersion)return;
+   const objectURL=URL.createObjectURL(blob);sourceImages.add(objectURL);
+   const frame=card.querySelector('.native-source-image');frame.replaceChildren();
+   const image=card.ownerDocument.createElement('img');image.alt='Vollständiges unverändertes Originalbild';
+   image.onload=()=>{if(!live()||!card.isConnected||version!==imageVersion)return;if(!image.naturalHeight||evidence.row_y>=image.naturalHeight){message.textContent='Zeilenposition außerhalb des Originalbildes.';return}const marker=card.ownerDocument.createElement('span');marker.className='native-source-marker';marker.textContent='Y '+evidence.row_y;marker.style.top=(100*evidence.row_y/image.naturalHeight)+'%';marker.setAttribute('aria-label','Zu prüfende Quellzeile');frame.append(marker);verified=true;button.disabled=false;message.textContent='Original-SHA und Zeilenposition verifiziert. Bitte visuell prüfen.'};
+   image.onerror=()=>{if(!live()||version!==imageVersion)return;verified=false;button.disabled=true;message.textContent='Originalbild kann nicht angezeigt werden.'};image.src=objectURL;frame.append(image);
+  }catch(err){if(live())message.textContent=err.message}
+ };
+ form.onsubmit=async event=>{
+  event.preventDefault();if(busy||completed||!live()||!card.isConnected)return;
+  try{
+   const body=saved?{row_key:item.row_key,member_id:item.chosen_member_id,value:item.chosen_value}:sourceDecisionBody(item,{member_id:form.elements.member_id.value,value:form.elements.value.value,reason:form.elements.reason.value,confirmed:form.elements.confirmed.checked,rank:form.elements.rank?.value,rank_visually_confirmed:form.elements.rank_confirmed?.checked},verified,members);
+   if(saved&&(!verified||!form.elements.confirmed.checked))throw Error('Originalbild und gespeicherte Entscheidung best\u00e4tigen.');
+   busy=true;button.disabled=true;
+   if(saved){
+    const result=await request(url+'/apply',{method:'POST',body:{row_key:item.row_key}});
+    if(!live()||!card.isConnected)return;
+    if(result.state!=='APPLIED'||result.applied_to_report!==true||(typeof result.audit_id!=='string'||!result.audit_id.trim())||result.batch_id!==item.batch_id||result.row_key!==body.row_key||result.member_id!==body.member_id||result.value!==body.value)throw Error('Übernahme nicht vollständig bestätigt. Status vor erneutem Versuch prüfen.');
+    completed=true;verified=false;
+    cache.vs=null;cache.donations=null;cache.members=null;
+    message.textContent='Übernahme vom Server bestätigt. Bericht wird beim nächsten öffnen neu geladen.';
+    card.querySelector('[data-source-image]').disabled=true;
+   }else{
+    const result=await request(url+'/decision',{method:'POST',body});
+    if(!live()||!card.isConnected)return;
+    if(result.ok!==true||result.state!=='verified_pending_application'||result.applied_to_report!==false||result.batch_id!==item.batch_id||result.row_key!==body.row_key||result.member_id!==body.member_id||result.value!==body.value)throw Error('Entscheidung nicht vollständig bestätigt. Vor erneutem Versuch neu laden.');
+    completed=true;verified=false;card.querySelector('[data-source-image]').disabled=true;message.textContent='Entscheidung gespeichert. Filter neu laden und unter "Gespeichert" erneut visuell prüfen, bevor der Bericht geändert wird.';
+   }
+  }catch(err){if(live())message.textContent=err.message;if(busy){completed=true;verified=false;card.querySelector('[data-source-image]').disabled=true}button.disabled=!verified}finally{busy=false}
+ };
+}
 const reviewBlobUrls=new Map();
 const selectedProfileCaptures=new Map();
 function clearReviewImages(){
@@ -1552,7 +1678,7 @@ export function reviewNumericValue(raw){
  const text=String(raw??'').trim().replace(/[\s.,]/g,'');
  if(!/^\d{1,15}$/.test(text))return null;
  const value=Number(text);
- return Number.isSafeInteger(value)&&value<=1e14?value:null;
+ return Number.isSafeInteger(value)&&value<=9999999999999?value:null;
 }
 function reviewMemberOptions(card,term){
  const root=card.querySelector('.native-review-people');
@@ -1836,6 +1962,7 @@ async function completeReview(card,action){
 }
 
 export async function renderNativeAdmin(mount){
+ if(mount.ownerDocument.defaultView?.location.hash==='#review')panel='reviews';
  if(!sessionToken){
   mount.innerHTML='<section class="native-admin native-login"><div><span class="admin-eyebrow">RZSN / R4–R5</span><h1>Command Center</h1><p>Melde dich mit deinem Offizierscode an. Alle privaten Daten bleiben bei Cloudflare.</p><form id="native-officer-login"><label>Offizierscode<input type="password" name="code" autocomplete="off" required placeholder="RZSN-…"></label><button type="submit">Anmelden</button><p id="native-login-status" role="status"></p></form></div></section>';
   localizeOfficerTree(mount);
@@ -1844,6 +1971,7 @@ export async function renderNativeAdmin(mount){
  await view(mount);
  localizeOfficerTree(mount);
 }
+export async function openNativeReviews(mount){panel='reviews';if(sessionToken)await renderNativeAdmin(mount)}
 export function initNativeAdmin(mount){
  if(mount.dataset.nativeReady)return;
  mount.dataset.nativeReady='1';

@@ -2006,3 +2006,15 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 .native-admin .native-day-mini-open>small{font-size:.7rem;white-space:normal;overflow-wrap:anywhere}
 
 @media(max-width:520px){.native-admin .native-vs-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Source-bound publication review inside the existing OCR panel. */
+#native-source-reviews { margin-block-start: 2rem; border-block-start: 1px solid var(--color-rule); padding-block-start: 1rem; min-width: 0; }
+.native-source-card { margin-block: 1rem; padding: 1rem; border: 1px solid var(--color-rule); overflow-wrap: anywhere; min-width: 0; }
+.native-source-card summary { cursor: pointer; }
+.native-source-form { display: grid; gap: 1rem; margin-block: 1rem; }
+.native-source-form label { display: grid; gap: .4rem; min-width: 0; }
+.native-source-form select, .native-source-form input { max-width: 100%; min-width: 0; }
+.native-source-image { position: relative; max-width: 100%; }
+.native-source-image img { display: block; width: 100%; height: auto; }
+.native-source-marker { position: absolute; inset-inline: 0; border-block-start: 3px solid var(--color-accent); pointer-events: none; }
+.native-source-card :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
