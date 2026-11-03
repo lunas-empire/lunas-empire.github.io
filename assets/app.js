@@ -8,6 +8,10 @@ import { TECH_GUIDE_TITLE, techGuideHtml, t10GuideHtml, t10GuideTitle, T10_GUIDE
 import { blackMarketGuideHtml, blackMarketGuideTitle, BLACK_MARKET_SEARCH } from './black-market-guide.js';
 import { professionGuideHtml, PROFESSION_GUIDE_SEARCH } from './profession-guide.js';
 import { trainGuideHtml, trainGuideTitle, TRAIN_GUIDE_SEARCH } from './train-guide.js';
+import { HOT_DEALS_ID, HOT_DEALS_SEARCH, hotDealsTitle, hotDealsHtml } from './hot-deals-guide.js';
+import { GOLD_GUIDE_ID, GOLD_GUIDE_SEARCH, goldGuideTitle, goldGuideHtml } from './gold-farming-guide.js';
+import { TELEPORT_GUIDE_ID, TELEPORT_GUIDE_SEARCH, teleportGuideTitle, teleportGuideHtml } from './teleport-guide.js';
+import {diceDisclosure,HISTORY} from './dice-winners.js';
 import { PRACTICAL_GUIDES, practicalGuideHtml, practicalGuideTitle } from './practical-guides.js';
 import { GUIDE_TOPIC_ORDER, guideTopicOf, guideTopicCount, guideSearchExtra } from './guide-library-nav.js';
 import { guideNavText } from './guide-library-nav-i18n.js';
@@ -132,6 +136,18 @@ function trainGuideDisclosure() {
   const title=trainGuideTitle(lang);
   return `<details class="guide-disclosure guide-disclosure--train" data-search data-filter-item data-guide-id="train" data-guide-category="account" data-guide-current="false" data-search-extra="${escape(TRAIN_GUIDE_SEARCH)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside guide-card--train">${trainGuideHtml(lang,escape)}${guideShareButton('train')}</article></details>`;
 }
+function teleportGuideDisclosure() {
+  const id=TELEPORT_GUIDE_ID;
+  return `<details class="guide-disclosure guide-disclosure--teleport" data-search data-filter-item data-guide-id="${id}" data-guide-category="account" data-guide-current="false" data-search-extra="${escape(TELEPORT_GUIDE_SEARCH)}"><summary>${escape(teleportGuideTitle(lang))}</summary><article class="guide-card guide-card--inside"><div class="guide-card__info">${teleportGuideHtml(lang,escape)}${guideShareButton(id)}</div></article></details>`;
+}
+function goldGuideDisclosure() {
+ const id=GOLD_GUIDE_ID;
+ return '<details class="guide-disclosure guide-disclosure--gold" data-search data-filter-item data-guide-id="'+id+'" data-guide-category="account" data-guide-current="false" data-search-extra="'+escape(GOLD_GUIDE_SEARCH)+'"><summary>'+escape(goldGuideTitle(lang))+'</summary><article class="guide-card guide-card--inside"><div class="guide-card__info">'+goldGuideHtml(lang,escape)+guideShareButton(id)+'</div></article></details>';
+}
+function hotDealsGuideDisclosure() {
+ const id=HOT_DEALS_ID;
+ return '<details class="guide-disclosure guide-disclosure--hot-deals" data-search data-filter-item data-guide-id="'+id+'" data-guide-category="account" data-guide-current="false" data-search-extra="'+escape(HOT_DEALS_SEARCH)+'"><summary>'+escape(hotDealsTitle(lang))+'</summary><article class="guide-card guide-card--inside"><div class="guide-card__info">'+hotDealsHtml(lang,escape)+guideShareButton(id)+'</div></article></details>';
+}
 function practicalGuideDisclosure(id) {
   const title=practicalGuideTitle(lang,id);
   const guide=PRACTICAL_GUIDES[id];
@@ -170,6 +186,9 @@ function shortGuideTitle(id) {
   if (id==='tech') return localizeTerms(TECH_GUIDE_TITLE,lang);
   if (id==='t10') return t10GuideTitle(lang);
   if (id==='train') return trainGuideTitle(lang);
+  if (id===TELEPORT_GUIDE_ID) return teleportGuideTitle(lang);
+  if (id===HOT_DEALS_ID) return hotDealsTitle(lang);
+  if (id===GOLD_GUIDE_ID) return goldGuideTitle(lang);
   if (id==='black-market') return blackMarketGuideTitle(lang);
   if (PRACTICAL_GUIDES[id]) return practicalGuideTitle(lang,id);
   return SEASON_LIBRARY_GUIDES[id]?t(SEASON_LIBRARY_GUIDES[id].title):guideAlt(MEMBER_MEDIA[id]);
@@ -210,7 +229,7 @@ function serverTime(s=state) {
 function commandHud(items) {
   const stats=taskProgress(items);
   const points=new Intl.NumberFormat(LOCALES[lang],{notation:'compact',maximumFractionDigits:1}).format(ALLIANCE_CONFIG.vsDailyMinimum);
-  return `<section class="command-hud" aria-labelledby="command-hud-title"><div class="command-hud__heading"><div><span class="eyebrow">${escape(hudText(lang,'server'))} ${GUIDE_CONFIG.server}</span><h2 id="command-hud-title">${escape(hudText(lang,'commandCenter'))}</h2></div><span class="command-hud__season">${escape(hudText(lang,'season'))} · ${escape(phaseLabel(state))}</span></div><div class="command-hud__cells"><div class="command-hud__cell" data-hud-vs-target="${ALLIANCE_CONFIG.vsDailyMinimum}"><span>${escape(hudText(lang,'vsTarget'))}</span><strong>${escape(points)}</strong><small>${escape(hudText(lang,'allianceTarget'))}</small></div><div class="command-hud__cell" data-hud-tasks data-refs="${escape(JSON.stringify(items.map(item=>item.refs)))}"><span>${escape(hudText(lang,'tasksComplete'))}</span><strong data-hud-task-count>${stats.done} / ${stats.total}</strong><progress value="${stats.done}" max="${stats.total||1}" aria-label="${escape(hudText(lang,'tasksComplete'))}" data-hud-progress></progress></div><div class="command-hud__cell"><span>${escape(hudText(lang,'serverTime'))}</span><strong data-server-time data-server-minute="${state.serverMinute}">${serverTime()}</strong><small>${escape(hudText(lang,'timeAnchor'))}</small></div></div></section>`;
+  return `<section class="command-hud" aria-label="${escape(hudText(lang,'commandCenter'))}"><div class="command-hud__cells"><div class="command-hud__cell" data-hud-vs-target="${ALLIANCE_CONFIG.vsDailyMinimum}"><span>${escape(hudText(lang,'vsTarget'))}</span><strong>${escape(points)}</strong><small>${escape(hudText(lang,'allianceTarget'))}</small></div><div class="command-hud__cell" data-hud-tasks data-refs="${escape(JSON.stringify(items.map(item=>item.refs)))}"><span>${escape(hudText(lang,'tasksComplete'))}</span><strong data-hud-task-count>${stats.done} / ${stats.total}</strong><progress value="${stats.done}" max="${stats.total||1}" aria-label="${escape(hudText(lang,'tasksComplete'))}" data-hud-progress></progress></div><div class="command-hud__cell"><span>${escape(hudText(lang,'serverTime'))}</span><strong data-server-time data-server-minute="${state.serverMinute}">${serverTime()}</strong><small>${escape(hudText(lang,'timeAnchor'))}</small></div></div></section>`;
 }
 function remainingReset() {
   const minutes=Math.max(0,Math.ceil((nextReset(state)-state.now)/60000));
@@ -324,6 +343,16 @@ function nextRoadmapText(s=state) {
   const next=SEASON_ROADMAP.find(entry=>entry.day>s.seasonDay);
   return next ? `${t('seasonDay')} ${next.day} · ${t(next.label)}` : t('post');
 }
+function diceHome(){
+ return '<details class="guide-disclosure guide-disclosure--dice-home">'+
+ '<summary>'+(lang==='de'?'Dice Gewinner':'Dice Game Winners')+' · '+HISTORY.length+'</summary>'+
+ '<div class="guide-card guide-card--inside"><p>'+
+ escape(lang==='de'?'Bestätigte Gewinner aus der Zugliste. Ohne Namen kein bestätigter Gewinn.':
+ 'Confirmed winners from the train sheet; unnamed entries are not counted.')+'</p>'+
+ '<ul class="dice-winners-list">'+[...HISTORY].reverse().map(w=>
+ '<li><time datetime="'+escape(w.ride_date)+'">'+escape(w.ride_date)+'</time> — <strong>'+
+ escape(w.winner_name)+'</strong></li>').join('')+'</ul></div></details>';
+}
 function today() {
   const guide=DAILY_GUIDES[state.weekday];
   const routine=allTaskItems();
@@ -334,8 +363,8 @@ function today() {
   const related=[`vs-${state.weekday}`,...seasonSynergies(state).map(id=>TASK_GUIDES[id]),...(state.week>=1&&state.week<=8?['profession']:[])].filter(Boolean);
   const next=SEASON_ROADMAP.find(entry=>entry.day>state.seasonDay);
   return `<header class="page-heading"><div><p class="eyebrow">${escape(longDate(state.date))}</p><h1>${tx('today')}</h1></div>${status()}</header>${notice()}${commandHud(routine)}${enemyBusterBanner(state)}
-    <section class="focus-panel"><div class="focus-panel__main"><span class="eyebrow">${tx('focus')}</span><h2>${tx(state.weekday)}</h2><p>${tx(guide.focus)}</p>${minimum()}<a class="primary-link" href="#vs">${tx('doNow')} →</a></div><div class="focus-panel__time"><span class="eyebrow">${tx('bestArms')}</span>${arms(state,guide)}${resetCard()}</div><div class="focus-panel__save"><strong>${tx('save')}</strong><span>${guide.save.filter(permitted).map(id=>tx(id)).join(' · ')}</span></div></section>
-    <div class="overview-columns"><section class="open-tasks"><div class="section-heading"><h2>${tx('doNow')}</h2><a href="#daily">${tx('tasks')} →</a></div>${progressMarkup(routine,t('tasks'))}${quickTasks||`<p class="empty-state">${tx('allDone')}</p>`}<p class="empty-state" data-today-empty hidden>${tx('allDone')}</p><a class="text-link" href="#daily">${tx('checklist')} →</a></section><aside class="overview-aside"><section><h2>${tx('relevantGuides')}</h2><div class="related-guides">${[...new Set(related)].slice(0,3).map(id=>`<a href="${guideHash(id)}"><span>${escape(shortGuideTitle(id))}</span><span aria-hidden="true">↗</span></a>`).join('')}</div></section><section class="next-preview"><span class="eyebrow">${tx('nextMilestone')}</span><h2>${next?tx(next.label):tx('post')}</h2>${next?`<p>${tx('seasonDay')} ${next.day} · ${tx('week')} ${Math.ceil(next.day/7)}</p>`:''}<a href="#season">${tx('season')} →</a></section></aside></div>`;
+    <section class="focus-panel"><div class="focus-panel__main"><span class="eyebrow">${tx('focus')}</span><h2>${tx(state.weekday)}</h2><p>${tx(guide.focus)}</p><a class="primary-link" href="#vs">${tx('doNow')} →</a></div><div class="focus-panel__time"><span class="eyebrow">${tx('bestArms')}</span>${arms(state,guide)}${resetCard()}</div><div class="focus-panel__save"><strong>${tx('save')}</strong><span>${guide.save.filter(permitted).map(id=>tx(id)).join(' · ')}</span></div></section>
+    <div class="overview-columns"><section class="open-tasks"><div class="section-heading"><h2>${tx('doNow')}</h2><a href="#daily">${tx('tasks')} →</a></div>${quickTasks||`<p class="empty-state">${tx('allDone')}</p>`}<p class="empty-state" data-today-empty hidden>${tx('allDone')}</p><a class="text-link" href="#daily">${tx('checklist')} →</a></section><aside class="overview-aside"><section><h2>${tx('relevantGuides')}</h2><div class="related-guides">${[...new Set(related)].slice(0,3).map(id=>`<a href="${guideHash(id)}"><span>${escape(shortGuideTitle(id))}</span><span aria-hidden="true">↗</span></a>`).join('')}</div></section><section class="next-preview"><span class="eyebrow">${tx('nextMilestone')}</span><h2>${next?tx(next.label):tx('post')}</h2>${next?`<p>${tx('seasonDay')} ${next.day} · ${tx('week')} ${Math.ceil(next.day/7)}</p>`:''}<a href="#season">${tx('season')} →</a></section></aside></div>${diceHome()}`;
 }
 function daySelector() {
   return `<div class="week-selector" role="group" aria-label="${tx('vs')}">${WEEKDAYS.map((day,index)=>{
@@ -432,14 +461,18 @@ function guides() {
   const landing=guideLanding({lang,escape,t,guideHash,shortTitle:shortGuideTitle,weekday:state.weekday,week:state.week,seasonGroups:SEASON_GUIDE_ROADMAP,weekdays:WEEKDAYS});
   const practical=topic=>Object.entries(PRACTICAL_GUIDES).filter(([id])=>guideTopicOf(id)===topic).map(([id])=>practicalGuideDisclosure(id)).join('');
   const disclosures=html=>`<div class="guide-disclosures">${html}</div>`;
-  const alliance=guideTopicSection('alliance',lang,escape,disclosures(practical('alliance')+trainGuideDisclosure()));
+  const alliance=guideTopicSection('alliance',lang,escape,disclosures(practical('alliance')+teleportGuideDisclosure()+trainGuideDisclosure()+diceDisclosure(lang,escape)));
   const power=guideTopicSection('power',lang,escape,disclosures(practical('power')+techGuideDisclosure()+t10GuideDisclosure())+`<details class="guide-reference-extra" data-search-group><summary>${tx('quickReference')}</summary>${referenceLibrary()}</details>`);
   const vs=guideTopicSection('vs',lang,escape,disclosures(vsGuides.map(guideDisclosure).join('')));
   const season=guideTopicSection('season',lang,escape,seasonGuidePosition()+seasonGuideRoadmapLibrary());
-  const economy=guideTopicSection('economy',lang,escape,disclosures(practical('economy')+blackMarketGuideDisclosure()));
+  const economy=guideTopicSection('economy',lang,escape,disclosures(practical('economy')+goldGuideDisclosure()+hotDealsGuideDisclosure()+blackMarketGuideDisclosure()));
   return `${guideContextBar()}<h1>${tx('guides')}</h1>${notice()}${search}${landing}<div class="guide-library">${alliance}${power}${vs}${season}${economy}</div>`;
 }
-const views = {today,daily,vs,season,guides,admin:()=>`<h1>${tx('admin')}</h1>${paragraph('adminPending')}`};
+function adminView(){
+  if(location.hostname==='rzsn-home.github.io')return `<h1>${tx('admin')}</h1>${paragraph('adminPending')}`;
+  return '<div id="native-officer-root" aria-live="polite"></div>';
+}
+const views = {today,daily,vs,season,guides,admin:adminView};
 function syncChrome() {
   document.documentElement.lang = lang;
   document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
@@ -457,7 +490,7 @@ function syncChrome() {
   document.querySelector('.main-nav').setAttribute('aria-label',t('menu'));
   syncThemeControls();
   const adminUrl = ALLIANCE_CONFIG.adminUrl;
-  if (adminUrl && (/^https:\/\//i.test(adminUrl) || /^\/admin\/$/.test(adminUrl))) {
+  if (adminUrl && (adminUrl==='#admin' || /^https:\/\//i.test(adminUrl) || /^\/(?:admin|command-center)\/$/.test(adminUrl))) {
     document.querySelector('#admin-link').href = adminUrl;
     document.querySelector('#admin-link').rel = 'noreferrer';
   }
@@ -599,10 +632,23 @@ function render({focus = false,preserve = false} = {}) {
   const route=memberRoute(location.hash);
   if (route.view === 'main') { main.focus(); return; }
   currentView = Object.hasOwn(views,route.view) ? route.view : 'today';
+  document.documentElement.dataset.officerMode=String(currentView==='admin'&&location.hostname!=='rzsn-home.github.io');
   if(currentView==='guides' && route.guideId){guideTopicSelected=guideTopicOf(route.guideId);guideSearchQuery='';}
   else if(currentView==='guides'&&!preserve){guideTopicSelected='';guideSearchQuery='';}
   const open = preserve ? new Set([...main.querySelectorAll('details[open][data-disclosure]')].map(el=>el.dataset.disclosure)) : null;
   main.innerHTML = views[currentView]();
+  if(currentView==='admin'&&location.hostname!=='rzsn-home.github.io'){
+    import('./native-admin.js').then(async mod=>{
+      const mount=main.querySelector('#native-officer-root');
+      if(!mount)return;
+      mod.initNativeAdmin(mount);
+      await mod.renderNativeAdmin(mount);
+    }).catch(error=>{
+      const mount=main.querySelector('#native-officer-root');
+      if(mount)mount.textContent='Adminansicht derzeit nicht verfügbar: '+error.message;
+    });
+  }
+
   if (open) main.querySelectorAll('[data-disclosure]').forEach(el=>{el.open=open.has(el.dataset.disclosure);});
   decorateGuidePreviews();
   syncTaskState();

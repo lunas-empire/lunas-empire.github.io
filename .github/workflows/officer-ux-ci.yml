@@ -1,0 +1,32 @@
+name: Luna Native Officer UX CI
+# Do not test every intermediate feature-branch commit: those produced
+# avoidable failed-run emails while code/tests were still being edited.
+# Open a draft PR while working; mark ready once the change is cohesive.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+  workflow_dispatch:
+concurrency:
+  group: luna-officer-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  web-ui:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Syntax, security and site validation
+        run: npm run lint
+      - name: Unit and DOM regressions
+        run: npm test
+      - name: Check officer module syntax directly
+        run: node --check assets/native-admin.js

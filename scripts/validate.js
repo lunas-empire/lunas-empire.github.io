@@ -11,6 +11,7 @@ import { SEASON_LIBRARY_COPY, SEASON_LIBRARY_GUIDES, SEASON_LIBRARY_MEDIA } from
 import { LIVE_NOTICE } from '../assets/config.js';
 await Promise.all(Object.keys(LANGUAGES).map(loadLanguage));
 const root=fileURLToPath(new URL('../',import.meta.url));
+const contentOnly=process.argv.includes('--content-only');
 const translationTables={UI,COPY,SEASON_COPY,GUIDE_COPY,SEASON_LIBRARY_COPY};
 const keyOwners=new Map();
 for (const [tableName,table] of Object.entries(translationTables)) {
@@ -77,7 +78,7 @@ for (const file of await files(root)) {
   if (publicPath.startsWith('admin/')) {
     assert.match(publicPath,/^admin\/(?:(?:index\.html|styles\.css|wiki-theme\.css|app\.js|crypto\.js)|data\/(?:manifest\.json|wiki\.bin|images\/(?:image|\d+)\.(?:png|jpg)\.bin))$/,'Unexpected file in encrypted admin tree');
   }
-  if (/\.(?:js|mjs)$/.test(file)) {
+  if (!contentOnly && /\.(?:js|mjs)$/.test(file)) {
     const result=spawnSync(process.execPath,['--check',file],{encoding:'utf8'});
     assert.equal(result.status,0,`${relative(root,file)}: ${result.stderr}`);
   }
@@ -91,4 +92,4 @@ for (const file of await files(root)) {
 const manifest=JSON.parse(await readFile(join(root,'admin','data','manifest.json'),'utf8'));
 assert.equal(manifest.kdf?.iterations,600000,'Encrypted admin PBKDF2 work factor');
 assert.equal(Object.keys(manifest.files?.images || {}).length,29,'All encrypted admin images are present');
-console.log(`Validation passed: ${Object.keys(dictionary).length} translation keys × ${Object.keys(LANGUAGES).length} languages; task references, syntax, encrypted admin separation.`);
+console.log(`Validation passed: ${Object.keys(dictionary).length} translation keys × ${Object.keys(LANGUAGES).length} languages; task references, ${contentOnly?'syntax NOT CHECKED (run node --check separately)':'syntax'}, encrypted admin separation.`);

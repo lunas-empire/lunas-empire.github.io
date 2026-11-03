@@ -1,0 +1,2413 @@
+/** Native Luna officer workspace. Private data is held only in a live memory token. */
+import {ALLIANCE_CONFIG} from './config.js';
+import {icon} from './icons.js';
+import {localizeOfficerTree,officerLanguage,officerLocale,translateOfficerText} from './native-admin-i18n.js';
+import {buildOfficerActions} from './officer-cockpit.js';
+import {createStatEvidenceViewer} from './native-stat-evidence.js';
+import {renderEvidenceRow} from './native-evidence-row.js';
+import {renderVsOverview,derivedVsWeekTotal,enrichVsWeeks} from './native-vs-overview.js';
+import {createDuelLeagueController} from './native-duel-league.js';
+import {duelCopy} from './native-duel-league-i18n.js';
+import {diceHistory} from './dice-winners.js';
+import {formerArchiveFromTrain} from './former-train-archive.js';
+import {renderImpactWarnings} from './native-impact-warnings.js';
+const apiBase=ALLIANCE_CONFIG.commandCenterEmbedUrl.replace('/?embed=1','');
+const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+let sessionToken='',officer=null,panel='overview',cache={},pageLimit=20,historyLimit=20,activityLimit=30,registryFilter='all',activityCategory='all',activityGroupBy='type';
+let sessionGeneration=0;
+let duelLeagueController=null;
+let trainHistoryFilters={member:'',date:''},trainHistoryExpanded=false;
+export function clearOfficer(){sessionGeneration++;statViewer.close();clearReviewImages();duelLeagueController?.destroy();duelLeagueController=null;sessionToken='';officer=null;cache={};panel='overview';pageLimit=20;historyLimit=20;trainHistoryFilters={member:'',date:''};trainHistoryExpanded=false;activityLimit=30;registryFilter='all';activityCategory='all';activityGroupBy='type';}
+export const hasOfficer=()=>Boolean(sessionToken);
+const canManageSite=()=>officer?.role==='R5'||(officer?.role==='R4'&&officer?.siteOwner===true);
+async function request(path,options={}){
+ const generation=sessionGeneration;
+ const headers={'Accept':'application/json',...(options.body?{'Content-Type':'application/json'}:{}),...(sessionToken?{'Authorization':'Bearer '+sessionToken}:{})};
+ const response=await fetch(apiBase+path,{method:options.method||'GET',headers,body:options.body?JSON.stringify(options.body):undefined,mode:'cors',credentials:'omit',cache:'no-store'});
+ let result;try{result=await response.json()}catch{throw Error('Die Cloudflare-API antwortet nicht korrekt.')}
+ if(!response.ok){if(response.status===401&&path!=='/api/native-login'&&generation===sessionGeneration)clearOfficer();throw Object.assign(Error(result.error||'HTTP '+response.status),{status:response.status})}
+ return result;
+}
+async function binaryRequest(path,{method='GET',body,headers={}}={}){
+ const generation=sessionGeneration;
+ const response=await fetch(apiBase+path,{method,headers:{'Accept':method==='GET'?'image/*':'application/json',...(sessionToken?{'Authorization':'Bearer '+sessionToken}:{}),...headers},body,mode:'cors',credentials:'omit',cache:'no-store'});
+ if(!response.ok){
+  let message='HTTP '+response.status;
+  try{const result=await response.clone().json();message=result.error||message}catch{}
+  if(response.status===401&&generation===sessionGeneration)clearOfficer();
+  throw Object.assign(Error(message),{status:response.status});
+ }
+ return method==='GET'?response.blob():response.json();
+}
+const statViewer=createStatEvidenceViewer({request,getToken:()=>sessionToken,apiBase});
+const statEvidenceKey=(snapshot,member,metric)=>snapshot&&member&&['power','kills','donations_weekly'].includes(metric)?String(snapshot)+'|'+member+'|'+metric:'';
+const statValueButton=(value,snapshot,member,metric)=>{
+ const key=statEvidenceKey(snapshot,member,metric);
+ return key?'<button type="button" class="native-stat-value-link" data-native-stat-evidence="'+e(key)+'" title="Originalbild zum Spielerwert ansehen">'+numberText(value)+' <small aria-hidden="true">↗</small></button>':numberText(value);
+};
+const options=(members,value='')=>'<option value="">Nicht besetzt</option>'+members.map(m=>'<option value="'+e(m.id)+'" '+(m.id===value?'selected':'')+'>'+e(m.name)+' · '+e(m.rank)+'</option>').join('');
+// Keep existing feature panel IDs and API workflows; the fifth main tab is a dedicated tile-based More page.
+const primaryPanels=[
+ ['overview','Kommando','today'],['vs','VS & Daten','vs'],
+ ['members','Allianz','alliance'],['train','Einsätze','hero']
+];
+const secondaryPanels=[
+ ['registry','Ränge & Archiv'],['watch','Mitglieder-Abgleich'],['diplomacy','Diplomatie'],
+ ['reviews','OCR-Prüffälle'],['tasks','Admin-Aufgaben'],['absences','Abwesenheiten'],['events','Allianz-Events'],
+ ['activity','Änderungsprotokoll'],['access','Zugangscodes'],['requirements','Einstellungen']
+];
+const parentPanel=key=>({
+ overview:'overview',vs:'vs',duelLeague:'vs',donations:'vs',members:'members',train:'train',more:'more',
+ registry:'more',watch:'more',diplomacy:'more',reviews:'more',tasks:'more',
+ absences:'more',events:'more',activity:'more',access:'more',requirements:'more'
+}[key]||'overview');
+const moreSections=[
+ {title:'Allianz & Planung',items:[
+  ['tasks','Aufgaben','tasks','Verantwortung & Fristen'],
+  ['absences','Abwesenheiten','today','Vertretung & Urlaub'],
+  ['events','Allianz-Events','hero','Einsätze organisieren'],
+  ['diplomacy','Diplomatie','alliance','Verbündete & Kontakte']]},
+ {title:'Mitglieder & Kontrolle',items:[
+  ['registry','Ränge & Archiv','alliance','Ränge und ehemalige Mitglieder'],
+  ['watch','Mitglieder-Abgleich','power','Zuordnungen prüfen'],
+  ['reviews','OCR-Prüffälle','vs','Screenshots kontrollieren']]},
+ {title:'System & Sicherheit',items:[
+  ['activity','Admin-Protokoll','standard','Wer hat was geändert?'],
+  ['access','Zugangscodes','guides','Offizierszugänge'],
+  ['requirements','Einstellungen','research','Mindestwerte & Regeln']]}
+];
+const sectionPanels={
+ vs:[['vs','VS-Duell'],['duelLeague','Duell & Liga'],['donations','Allianzspenden']],
+ members:[['members','Mitglieder'],['diplomacy','Diplomatie']],
+ train:[['train','Züge'],['events','Allianz-Events']]
+};
+const contextTools={
+ members:{label:'Weitere Mitglieder-Werkzeuge',items:[['watch','Mitglieder-Abgleich'],['registry','Ränge & Archiv']]},
+ train:{label:'Aufgaben & Abwesenheiten',items:[['tasks','Aufgaben'],['absences','Abwesenheiten']]}
+};
+
+const navButton=([key,label],cls='',language='de')=>'<button type="button" class="'+cls+'" data-officer-tab="'+key+'" '+(panel===key?'aria-current="page"':'')+'>'+e(key==='duelLeague'?duelCopy(language).title:label)+'</button>';
+function nav(documentRef){
+ const parent=parentPanel(panel);
+ const language=officerLanguage(documentRef);
+ return '<nav class="native-admin-nav" aria-label="Command Center Hauptbereiche">'+
+  primaryPanels.map(([key,label,art])=>'<button type="button" class="native-primary-tab" data-officer-tab="'+key+'" '+(parent===key?'aria-current="page"':'')+'>'+icon(art,'native-tab-icon')+'<span>'+e(label)+'</span></button>').join('')+
+  '<button type="button" class="native-primary-tab native-more-tab" data-officer-tab="more" '+(parent==='more'?'aria-current="page"':'')+'>'+icon('guides','native-tab-icon')+'<span>Mehr</span></button></nav>'+
+  (sectionPanels[parent]?'<nav class="native-admin-subnav" aria-label="Unterbereiche">'+
+   sectionPanels[parent].map(pair=>navButton(pair,'',language)).join('')+
+   (contextTools[parent]?'<details class="native-context-tools" '+(contextTools[parent].items.some(([k])=>k===panel)?'open':'')+
+    '><summary>'+e(contextTools[parent].label)+'</summary><div>'+
+     contextTools[parent].items.map(pair=>navButton(pair,'',language)).join('')+'</div></details>':'')+
+   '</nav>':'');
+}
+function moreHub(){
+ return '<div class="native-more-hub" aria-label="Weitere Verwaltung">'+
+  moreSections.map((section,index)=>'<section class="native-hub-section" aria-labelledby="native-hub-title-'+index+'">'+
+   '<h3 tabindex="-1" id="native-hub-title-'+index+'">'+e(section.title)+'</h3>'+
+   '<div class="native-hub-grid">'+section.items.map(([key,title,art,description])=>
+    '<button type="button" class="native-hub-tile" data-officer-tab="'+e(key)+'" aria-label="'+e(title)+': '+e(description)+'">'+
+    '<span class="native-hub-tile-icon" aria-hidden="true">'+icon(art,'native-hub-svg')+'</span>'+
+    '<span class="native-hub-tile-copy"><strong>'+e(title)+'</strong><small>'+e(description)+'</small></span>'+
+    '<span class="native-hub-tile-chevron" aria-hidden="true">›</span></button>').join('')+
+   '</div></section>').join('')+'</div>';
+}
+function cards(items){return '<div class="native-cards">'+items.map(([name,value,sub])=>'<article><small>'+e(name)+'</small><strong>'+e(value)+'</strong><span>'+e(sub||'')+'</span></article>').join('')+'</div>'}
+function marker(status){return '<span class="native-status">'+e(status||'Unbekannt')+'</span>'}
+async function view(mount){
+ clearReviewImages();
+ duelLeagueController?.destroy();duelLeagueController=null;
+ 
+ const header='<div class="native-officer-strip" role="group" aria-label="Offiziersbereich">'+
+  '<a class="native-return-link" href="#today">← Zur Website</a>'+
+  '<div class="native-officer-controls"><span class="native-officer-badge">'+e(officer?.role||'Offizier')+' · '+e(officer?.name||'')+(officer?.siteOwner?' · Website-Eigentümerin':'')+
+  '</span><button type="button" data-officer-tab="access">Mein Zugang</button><button type="button" data-officer-logout>Abmelden</button></div></div>';
+ mount.innerHTML='<section class="native-admin"><h1 class="sr-only">RZSN Command Center</h1>'+header+nav(mount.ownerDocument)+
+  (parentPanel(panel)==='more'&&panel!=='more'?'<div class="native-hub-return"><button type="button" data-officer-tab="more">← Weitere Verwaltung</button><span>'+e(secondaryPanels.find(([key])=>key===panel)?.[1]||'Verwaltung')+'</span></div>':'')+
+  '<div class="native-admin-content" id="native-admin-content"><p>Daten werden geladen …</p></div></section>';
+ const target=mount.querySelector('#native-admin-content');
+ try{
+  if(panel==='more'){
+   target.innerHTML=moreHub();
+  }else if(panel==='overview'){
+   const [summary,ops,trains,alerts]=await Promise.all([request('/api/overview'),request('/api/operations'),request('/api/train-manager'),request('/api/officer-alerts').catch(()=>null)]);
+   cache.ops=ops;cache.trains=trains;cache.alerts=alerts;
+   const day=trains.today||new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+   const pending=(ops.tasks||[]).filter(x=>x.status!=='done').sort((a,b)=>
+    (a.due_date||'9999').localeCompare(b.due_date||'9999'));
+   const days=(trains.calendar||[]).filter(x=>x.date>=day);
+   const todayTrain=days.find(x=>x.date===day);
+   const tomorrowTrain=days.find(x=>x.date>day);
+   const nextEvent=(ops.events||[]).filter(x=>x.event_date>=day&&!['completed','cancelled'].includes(x.outcome))
+    .sort((a,b)=>a.event_date.localeCompare(b.event_date))[0];
+   const eventNames={marshall_guard:'Marshall Guard',zombie_siege:'Zombie Siege',desert_storm:'Desert Storm'};
+   const trainLine=slot=>slot?(slot.entry?.driver
+    ? e(slot.entry.driver)+' · '+e(slot.entry.status||'Unbestätigt')
+    : 'Fahrer noch nicht eingetragen'):'Kein Eintrag im Wochenplan';
+   const actions=buildOfficerActions({today:day,summary,operations:ops,trains,alerts,vs:cache.vs,donations:cache.donations});
+   const enUi=officerLanguage(target.ownerDocument)!=='de';
+   const word=(de,en)=>enUi?en:de;
+   const alertCount=(obj,key)=>Number.isSafeInteger(obj?.[key])?obj[key]:null;
+   const vsAlert=alertCount(alerts?.vs,'confirmed_repeated_low');
+   const donationAlert=alertCount(alerts?.donations,'confirmed_below');
+   const dateText=day.split('-').reverse().join('.');
+   const todayType=todayTrain?.type||word('Nicht geplant','Not scheduled');
+   const nextDate=tomorrowTrain?.date?tomorrowTrain.date.split('-').reverse().join('.'):'—';
+   const nextType=tomorrowTrain?.type||word('Kein nächster Zug bekannt','No upcoming train listed');
+   const tasksDue=pending.filter(item=>item.due_date&&item.due_date<=day);
+   const unknownDriver=todayTrain&&!todayTrain.entry?.driver;
+   const urgent=actions.filter(item=>!['train-today','vs-open','donations-open'].includes(item.action)).slice(0,2);
+   const actionPill=(key,label,count)=>'<button type="button" class="native-dashboard-quick-link" data-native-action="'+key+'">'+
+     e(label)+(count!==undefined?'<b>'+e(count)+'</b>':'')+'</button>';
+   const summaryTile=(key,label,value,sub,shade)=>'<button type="button" class="native-dashboard-mini-tile '+shade+
+    '" data-native-action="'+key+'"><span>'+e(label)+'</span><strong>'+e(value)+'</strong>'+
+    '<small>'+e(sub)+'</small><span class="native-dashboard-tile-chevron" aria-hidden="true">›</span></button>';
+   target.innerHTML='<div class="native-dashboard native-dashboard-v39">'+
+    '<header class="native-command-header"><div><h2>'+word('Heute','Today')+'</h2>'+
+      '<p>'+e(dateText)+'</p></div>'+
+     '<div class="native-dashboard-microstats">'+
+      '<span>'+word('Aktiv','Active')+' <b>'+e(summary.active??'—')+'</b></span>'+
+
+     '</div></header>'+
+    '<section class="native-command-today" aria-label="'+word('Heute wichtig','Today priorities')+'">'+
+     '<div class="native-command-section-label"><strong>'+word('Heute wichtig','Today at a glance')+'</strong>'+
+     (unknownDriver?'<span class="native-command-attention">'+word('Fahrer offen','Driver needed')+'</span>':'')+'</div>'+
+     '<div class="native-command-train-line">'+
+      '<div class="native-command-train-text"><small>'+word('ZUG HEUTE','TODAY’S TRAIN')+'</small>'+
+      '<strong>'+e(todayType)+'</strong><span>'+trainLine(todayTrain)+'</span></div>'+
+      '<button type="button" data-native-action="train-today">'+word('Zug öffnen','Open train')+' ›</button></div>'+
+     '<div class="native-command-next-row"><span>'+word('Nächster Zug','Next train')+'</span>'+
+      '<b>'+e(nextDate)+' · '+e(nextType)+'</b></div>'+
+     (nextEvent?'<div class="native-command-next-row"><span>'+word('Nächstes Event','Next event')+'</span>'+
+      '<b>'+e(nextEvent.event_date)+' · '+e(eventNames[nextEvent.event_type]||nextEvent.event_type||'Event')+'</b></div>':'')+
+     (urgent.length?'<div class="native-command-alerts" aria-label="'+word('Offene Hinweise','Open alerts')+'">'+
+       urgent.map(item=>'<button type="button" data-native-action="'+e(item.action)+'">'+
+        '<span>'+e(item.title)+'</span><small>'+e(item.detail)+'</small><b aria-hidden="true">›</b></button>').join('')+
+       '</div>':'')+
+    '</section>'+
+    '<section class="native-dashboard-signal-tiles" aria-label="'+word('Datenstatus','Data status')+'">'+
+     summaryTile('vs-open',word('VS-Duell','Alliance Duel'),
+      vsAlert===null?'—':vsAlert,word('Spieler wiederholt unter Ziel','Members below target repeatedly'),'vs')+
+     summaryTile('donations-open',word('Spenden','Donations'),
+      donationAlert===null?'—':donationAlert,word('Bestätigt unter Wochenziel','Confirmed below weekly goal'),'donations')+
+    '</section>'+
+    renderImpactWarnings(ops.warnings||[],officerLanguage(target.ownerDocument))+
+    (pending.length?'<section class="native-command-tasks"><div class="native-command-section-label"><strong>'+
+     word('Offene Aufgaben','Open tasks')+' · '+pending.length+'</strong>'+
+     actionPill('tasks-open',word('Alle öffnen','View all'))+'</div>'+
+     '<div class="native-command-task-list">'+pending.slice(0,2).map(t=>'<p><b>'+e(t.title)+'</b>'+
+      '<span>'+e(t.due_date||word('Ohne Frist','No due date'))+'</span></p>').join('')+'</div></section>':'')+
+    '<nav class="native-dashboard-quick" aria-label="'+word('Schnellzugriff','Quick access')+'">'+
+      actionPill('tasks-open',word('Aufgaben','Tasks'))+
+      actionPill('member-find',word('Spieler','Members'))+
+      actionPill('review-open',word('OCR prüfen','Review OCR'),summary.reviews??'—')+
+      actionPill('train-today',word('Zugplanung','Train plan'))+
+    '</nav>'+
+
+    '</div>';
+
+  }else if(panel==='requirements'){
+   cache.requirements=await request('/api/alliance-requirements');
+   renderRequirements(target);
+  }else if(panel==='access'){
+   cache.access=await request('/api/officer-access');
+   cache.registry=canManageSite()?await request('/api/member-registry'):null;
+   target.innerHTML='<div class="native-row"><h2>Offizierszugänge</h2></div>'+
+    '<p class="native-muted">Nur R4 und R5 können sich anmelden. Codes werden nur einmal gezeigt und nie dauerhaft angezeigt. Bei Änderungen werden bisherige Sitzungen ungültig.</p>'+
+    '<div class="native-row"><button type="button" data-native-access-mode="self">Eigenen Code ändern</button>'+
+    (canManageSite()?'<button type="button" data-native-access-mode="issue">Neuen Admin hinzufügen</button><button type="button" data-native-access-mode="reset">Code eines Admins zurücksetzen</button>':'')+'</div>'+
+    '<div id="native-access-form"></div><div id="native-access-result" role="status"></div>'+
+    (canManageSite()&&cache.access.accounts.some(x=>x.enabled&&!x.member_id)?'<p class="native-evidence-note" role="status">'+cache.access.accounts.filter(x=>x.enabled&&!x.member_id).length+' bestehende Offizierszugänge sind noch nicht zugeordnet. R5 oder Luna als Website-Eigentümerin prüft jede Zuordnung ausdrücklich.</p>':'')+
+    '<details class="native-fold" open><summary>Offizierszugänge ('+e(cache.access.accounts.filter(x=>x.enabled).length)+' aktiv)</summary>'+
+     '<div class="native-fold-body native-list">'+cache.access.accounts.map(x=>'<div class="native-access-account"><strong>'+e(x.ingame_name)+' · '+e(x.role)+'</strong>'+
+      '<small>'+(x.enabled?(x.member_id?'Mit Mitglied verknüpft':'Nicht zugeordnet – R5-Prüfung nötig'):'Deaktiviert')+'</small>'+
+      (canManageSite()&&x.enabled?'<div class="native-row">'+(!x.member_id?'<button type="button" data-native-access-link="'+e(x.id)+'">Spieler zuordnen</button>':'')+
+       (x.ingame_name!==officer.name&&!x.is_site_owner?'<button type="button" data-native-access-disable="'+e(x.id)+'">Zugang deaktivieren</button>':'')+'</div>':'')+'</div>').join('')+'</div></details>';
+  }else if(panel==='registry'){
+    [cache.registry,cache.archivedTrains]=await Promise.all([request('/api/member-registry'),request('/api/train-manager').catch(()=>null)]);
+    await formerArchiveFromTrain(cache.archivedTrains,cache.registry.members);
+   const historicalArchive=historicalFormerRegistryEntries(cache.archivedTrains?.archivedFormerTrainDrivers||[],cache.registry.members);
+   target.innerHTML='<div class="native-row"><h2>Mitgliederverwaltung</h2><button type="button" data-native-member-create>+ Mitglied anlegen</button><input id="registry-search" type="search" placeholder="Spieler suchen"></div>'+
+    '<nav class="native-status-filter" aria-label="Mitgliederstatus">'+[['all','Alle'],['active','Aktiv'],['former','Archiv'],['blacklist','Blacklist']].map(([key,label])=>
+    '<button type="button" data-native-registry-filter="'+key+'" aria-pressed="'+(registryFilter===key?'true':'false')+'">'+label+'</button>').join('')+'</nav>'+
+    cards([['Aktiv',cache.registry.counts.active],['Archiv',Number(cache.registry.counts.former||0)+historicalArchive.length],['Blacklist',cache.registry.counts.blacklisted]])+
+    '<div id="registry-list"></div><div id="registry-form"></div>';renderRegistry(target,'');
+  }else if(panel==='watch'){
+   target.innerHTML='<div class="native-row"><div><h2>Mitglieder-Abgleich</h2><p class="native-muted">VS- und Stärke-Aufnahmen vergleichen. Kein automatischer Austritt und keine automatische Blacklist.</p></div></div><div id="native-watch-list" role="region" aria-label="Mitglieder zum Prüfen"></div>';
+   try{[cache.watch,cache.archiveEligibility]=await Promise.all([request('/api/membership-watch'),request('/api/archive-eligibility').catch(()=>null)]);renderMembershipWatch(target)}
+   catch(error){
+    target.querySelector('#native-watch-list').innerHTML=
+     '<p class="native-evidence-note" role="status">Die automatische Erkennung wird erst nach dem geschützten Cloudflare-Update freigeschaltet. Die bestehende manuelle Mitgliederverwaltung funktioniert weiterhin.</p>';
+   }
+  }else if(panel==='diplomacy'){
+   target.innerHTML='<div class="native-row"><div><h2>Allianz-Diplomatie</h2><p class="native-muted">Private Offiziersnotizen, keine automatischen Ingame-Verträge oder Aktionen.</p></div><button type="button" data-native-diplomacy-new>+ Allianz</button></div>'+
+    '<label class="native-ios-search">Allianz suchen<input type="search" id="native-diplomacy-search" placeholder="Tag, Name oder Server" autocomplete="off"></label>'+
+    '<div id="native-diplomacy-form"></div><div id="native-diplomacy-list"></div>';
+   try{cache.diplomacy=await request('/api/diplomacy');renderDiplomacy(target)}
+   catch(error){
+    const newButton=target.querySelector('[data-native-diplomacy-new]');if(newButton)newButton.disabled=true;
+    target.querySelector('#native-diplomacy-list').innerHTML='<p class="native-evidence-note" role="status">Das private Diplomatiebuch ist vorbereitet, aber auf Cloudflare-Staging noch nicht aktiviert. Es wurden keine Bündnisse oder Zusagen gespeichert.</p>';
+   }
+  }else if(panel==='activity'){
+   cache.activity=await request('/api/activity?limit=500');
+   target.innerHTML='<div class="native-audit-head"><div><span class="native-kicker">ALLIANZ · VERWALTUNG</span><h2>Admin-Protokoll</h2><p>Nachvollziehbare Änderungen durch Offiziere</p></div>'+icon('tasks','native-audit-title-icon')+'</div>'+
+    '<div id="activity-filters"></div><div id="activity-list"></div>';renderActivity(target,'');
+  }else if(panel==='reviews'){
+   const [cases,members,session]=await Promise.all([
+    request('/api/reviews?status=open'),
+    request('/api/identity-options').catch(()=>[]),
+    request('/api/session').catch(()=>({reviewWritesEnabled:false}))
+   ]);
+   cache.reviewWritesEnabled=session?.reviewWritesEnabled===true;
+   cache.reviews=cases;cache.reviewMembers=Array.isArray(members)?members:members.members||[];
+   const profileMetrics=['power','kills','donations_weekly'];
+   cache.profileCaptures=Object.fromEntries(await Promise.all(profileMetrics.map(async metric=>{
+    try {const rows=await request('/api/profile-captures?metric='+metric);return [metric,Array.isArray(rows)?rows:[]]}
+    catch{return [metric,[]]}
+   })));
+   const batches=[...new Set(cache.reviews.map(x=>x.source_batch).filter(Boolean))].sort();
+   const withEvidence=cache.reviews.filter(x=>Boolean(x.evidence_sha)).length;
+   const withoutEvidence=cache.reviews.length-withEvidence;
+   target.innerHTML='<div class="native-review-search-head"><h2>OCR-Prüfung</h2><label>Spieler oder Fall suchen<input id="review-search-native" type="search" placeholder="Spieler oder Fall suchen"></label></div>'+
+    (!cache.reviewWritesEnabled?'<p class="native-evidence-note" role="status">Private Bild- und Korrekturfunktionen werden erst nach dem Cloudflare-Backend-Update freigeschaltet. Die bestehenden Prüffälle bleiben offen.</p>':'')+
+    '<details class="native-fold native-review-filter-fold"><summary>Filter</summary><div class="native-fold-body native-row"><label>Bildstatus <select id="review-image-native"><option value="all">Alle Fälle ('+cache.reviews.length+')</option><option value="with">Mit Bild ('+withEvidence+')</option><option value="without">Ohne Bild ('+withoutEvidence+')</option></select></label>'+
+     '<label>Quelle <select id="review-batch-native"><option value="">Alle Wochen und Profile</option>'+batches.map(b=>'<option value="'+e(b)+'">'+e(b)+'</option>').join('')+'</select></label>'+
+    '<label>Prüftyp <select id="review-kind-native"><option value="">Alle</option><option value="vs_day">VS-Tageswert</option><option value="identity">Identität</option><option value="profile">Profilwert</option></select></label></div></details>'+
+    '<p id="native-review-finished" role="status" aria-live="polite"></p><div id="review-list-native"></div>';renderReviews(target,'');
+  }else if(panel==='members'){
+    const [list,trains]=await Promise.all([request('/api/members'),request('/api/train-manager').catch(()=>null)]);
+    cache.members=list;cache.archivedTrains=trains;
+    cache.membersArchive=await formerArchiveFromTrain(trains,list);
+    cache.membersArchiveAvailable=Boolean(trains);
+   target.innerHTML='<div class="native-row"><h2>Allianzmitglieder</h2><input id="native-member-search" type="search" placeholder="Spieler suchen" autocomplete="off"></div>'+
+    '<p class="native-muted">Nach Rang sortiert. Spieler antippen: Profil, Messwerte, Wochenverlauf, Erfolge und Zug-Historie.</p><div id="native-member-list"></div>';
+   renderMembers(target,'');
+  }else if(panel==='vs'){
+   const [data,summary]=await Promise.all([request('/api/vs-intelligence'),request('/api/overview')]);
+   cache.vs=enrichVsWeeks(data);cache.overview=summary;
+   target.innerHTML='<div class="native-vs-week-toolbar"><label>'+(officerLanguage(target.ownerDocument)==='de'?'Woche':'Week')+
+    ' <select id="native-vs-week">'+data.weeks.map(w=>'<option value="'+e(w.week)+'">'+e(w.week)+'</option>').join('')+'</select></label></div>'+
+    '<input type="search" id="native-vs-search" aria-label="Spieler suchen" placeholder="Spieler suchen" autocomplete="off"><div id="native-vs-body"></div>';renderVs(target);
+  }else if(panel==='duelLeague'){
+   target.innerHTML='<div id="native-duel-league-root"></div>';
+   const root=target.querySelector('#native-duel-league-root');
+   duelLeagueController=createDuelLeagueController({root,language:officerLanguage(target.ownerDocument),api:{
+    read:()=>request('/api/duel-league'),
+    saveMatch:body=>request('/api/duel-league/match',{method:'POST',body}),
+    saveLeagueSnapshot:body=>request('/api/duel-league/league-snapshot',{method:'POST',body}),
+    loadEvidence:id=>binaryRequest('/api/duel-league/evidence/'+encodeURIComponent(id)+'/image')
+   }});
+   await duelLeagueController.load();
+  }else if(panel==='donations'){
+   cache.donations=await request('/api/donations-intelligence');
+   target.innerHTML='<div class="native-row native-data-heading"><div><h2>Allianzspenden</h2><p class="native-muted">Wöchentliches Forschungsziel · mindestens 20.000 pro Mitglied</p></div>'+
+    '<label>Aufnahmewoche<select id="native-donation-week">'+(cache.donations.weeks||[]).map(w=>'<option value="'+e(w.week)+'">'+e(w.week)+'</option>').join('')+'</select></label></div>'+
+    '<div id="native-donations-body"></div>';
+   renderDonations(target);
+  }else if(panel==='train'){
+   [cache.trains,cache.dice,cache.diceMembers]=await Promise.all([
+    request('/api/train-manager'),request('/api/train-dice').catch(()=>[]),request('/api/members').catch(()=>[])]);
+    await formerArchiveFromTrain(cache.trains,cache.diceMembers);
+    cache.rotation=await request('/api/train-rotation').catch(()=>null);
+   target.innerHTML='<div class="native-row"><h2>Zugplanung</h2><div class="native-row-actions"><button type="button" data-native-dice-date="'+e(cache.trains.today)+'">🎲 Dice Game</button><button data-native-new="train">+ Fahrer / Datum</button></div></div><div id="native-train-body"></div>';renderTrain(target);
+  }else if(['tasks','absences','events'].includes(panel)){
+   cache.ops=await request('/api/operations');
+   target.innerHTML='<div class="native-row"><h2>'+({tasks:'Admin-Aufgaben',absences:'Abwesenheiten & Vertretung',events:'Allianz-Events'}[panel])+'</h2><button data-native-new="'+panel+'">+ Eintragen</button></div>'+renderImpactWarnings(cache.ops.warnings||[],officerLanguage(target.ownerDocument))+'<div id="native-form"></div><div id="native-records"></div>';
+   renderRecords(target);
+  }
+ }catch(err){target.innerHTML='<p class="native-error" role="alert">'+e(err.message)+'</p><button data-native-refresh>Erneut laden</button>'}
+}
+const rankOrder=['R5','R4','R3','R2','R1','Ungeklärt'];
+const metricNames={power:'Stärke',kills:'Kills',donations_weekly:'Wöchentliche Spenden',tech_donations:'Forschungsspenden'};
+const metricQuality={observed:'Abgelesen',corrected:'Manuell bestätigt',inferred:'Geschätzt',
+ unknown:'Nicht geprüft',missing:'Fehlt'};
+const numberText=value=>typeof value==='number'&&Number.isSafeInteger(value)?
+ value.toLocaleString('de-DE'):'—';
+export function profileMetricChanges(stats){
+ const groups=new Map();
+ for(const row of Array.isArray(stats)?stats:[]){
+  if(!row||!['observed','corrected'].includes(row.quality)||!Number.isSafeInteger(row.value)||!row.captured_at)continue;
+  if(!groups.has(row.metric))groups.set(row.metric,[]);
+  const group=groups.get(row.metric);
+  if(!group.some(x=>x.captured_at===row.captured_at))group.push(row);
+ }
+ return [...groups.entries()].map(([metric,records])=>{
+  records.sort((a,b)=>String(b.captured_at).localeCompare(String(a.captured_at)));
+  const latest=records[0],previous=records[1]||null;
+  return {metric,label:metricNames[metric]||metric.replaceAll('_',' '),value:latest.value,
+   date:String(latest.captured_at).slice(0,10),quality:latest.quality,
+   previous:previous?.value??null,previousDate:previous?String(previous.captured_at).slice(0,10):null,
+   first:records.at(-1)?.value??null,firstDate:String(records.at(-1)?.captured_at||'').slice(0,10),
+   count:records.length,deltaSinceFirst:records.length>1?latest.value-records.at(-1).value:null,
+   delta:previous?latest.value-previous.value:null};
+ });
+}
+function renderMembers(target,query=''){
+ const host=target.querySelector('#native-member-list');if(!host)return;
+ const lang=officerLanguage(target.ownerDocument),tr=k=>e(translateOfficerText(k,lang));
+ const records=Array.isArray(cache.members)?cache.members:[];
+ const text=String(query).trim().toLocaleLowerCase('de-DE');
+ const isFormer=m=>['former','archived','inactive'].includes(String(m.lifecycle||m.status||'').toLowerCase());
+ const list=records.filter(m=>String(m.name||'').toLocaleLowerCase('de-DE').includes(text));
+ const active=list.filter(m=>!isFormer(m)),realFormer=list.filter(isFormer);
+ const historical=(cache.membersArchive||[]).filter(x=>String(x.name).toLocaleLowerCase('de-DE').includes(text));
+ const opened=new Set([...host.querySelectorAll('details.native-rank-group[open]')].map(x=>x.dataset.rank));
+ const initial=!host.querySelector('.native-rank-group');
+ const firstRank=rankOrder.find(rank=>active.some(m=>(rankOrder.includes(m.rank)?m.rank:'Ungeklärt')===rank));
+ const rankGroups=rankOrder.map(rank=>{
+  const group=active.filter(m=>(rankOrder.includes(m.rank)?m.rank:'Ungeklärt')===rank)
+   .sort((a,b)=>String(a.name).localeCompare(String(b.name),'de',{sensitivity:'base'}));
+  if(!group.length)return '';
+  const open=text.length>0||opened.has(rank)||(initial&&rank===firstRank);
+  const rows=group.map(m=>'<button type="button" data-native-member="'+e(m.id)+'">'+
+   '<span class="native-rank-tag">'+e(m.rank||'?')+'</span><span><strong>'+e(m.name)+'</strong>'+
+   '<small>Stärke '+numberText(m.power)+' · Kills '+numberText(m.kills)+
+   ' · Spenden '+numberText(m.donations_weekly)+'</small></span><span class="native-member-open" aria-hidden="true">Profil →</span></button>').join('');
+  return '<details class="native-rank-group" data-rank="'+e(rank)+'" '+(open?'open':'')+'>'+
+   '<summary><span class="native-rank-tag">'+e(rank)+'</span><strong>'+e(rank==='Ungeklärt'?'Rang ungeklärt':'Rang '+rank)+'</strong>'+
+   '<span class="native-rank-count">'+group.length+' Spieler</span></summary>'+
+   '<div class="native-list native-rank-members">'+rows+'</div></details>';
+ }).join('');
+ const archiveEntries=mergeFormerMemberRows(realFormer,historical);
+ const archiveRows=archiveEntries.map(entry=>entry.kind==='member'?(
+  '<button type="button" data-native-member="'+e(entry.value.id)+'">'+
+   '<span class="native-rank-tag">A</span><span><strong>'+e(entry.value.name)+'</strong>'+
+   '<small>'+tr('Bestehende Spielerakte')+' · '+e(entry.value.rank||tr('Rang unbekannt'))+'</small></span>'+
+   '<span class="native-member-open" aria-hidden="true">Profil →</span></button>'
+ ):'<div class="native-member-archive-record native-archive-row">'+
+  '<span class="native-rank-tag" aria-hidden="true">A</span><span><strong>'+e(entry.value.name)+'</strong>'+
+  '<small>'+tr('Zugfahrt')+' · '+entry.value.ride_count+'×'+
+  (entry.value.dates.length?' · '+e(entry.value.dates.join(', ')):'')+'</small></span></div>').join('');
+ const archiveCount=archiveEntries.length;
+ const archiveOpen=text.length>0||opened.has('Archiv')||(!active.length&&archiveCount>0);
+ const archive=archiveCount?'<details class="native-rank-group native-members-archive" data-rank="Archiv" '+(archiveOpen?'open':'')+'>'+
+  '<summary><span class="native-rank-tag">'+tr('Archiv')+'</span><strong>'+tr('Ehemalige Mitglieder')+'</strong>'+
+   '<span class="native-rank-count">'+archiveCount+' '+tr('Einträge')+'</span></summary>'+
+  '<div class="native-list native-rank-members">'+archiveRows+'</div></details>':'';
+ const unavailable=!cache.membersArchiveAvailable?'<p class="native-evidence-note" role="status">'+tr('Historische Zugbelege momentan nicht erreichbar. Die vorhandenen Mitglieder werden weiter angezeigt.')+'</p>':'';
+ host.innerHTML='<p class="native-muted">'+(archiveCount?((active.length+archiveCount)+' '+tr('Einträge')+(text?' '+tr('gefunden'):' · '+tr('nach Rang und Archiv gruppiert'))):(list.length+' Spieler'+(text?' für „'+e(query)+'“ gefunden':' · nach Allianzrang gruppiert')) )+'</p>'+
+  unavailable+'<div class="native-member-folds">'+(rankGroups+archive||'<p class="native-muted">Keine Spieler gefunden.</p>')+'</div>'+
+  '<div id="native-person"></div>';
+}
+function deltaLabel(n){
+ if(n===null)return 'Kein bestätigter Vergleich';
+ return (n>0?'+':'')+numberText(n)+' seit der vorherigen Aufnahme';
+}
+function renderMemberAliases(details,aliases,notice=''){
+ if(!details)return;
+ const rows=Array.isArray(aliases)?aliases:[];
+ details.querySelector('[data-native-alias-count]').textContent=String(rows.length);
+ details.querySelector('[data-native-alias-list]').innerHTML=rows.length?
+  '<ul>'+rows.map(item=>'<li data-native-no-translate>'+e(item.alias)+'</li>').join('')+'</ul>':
+  '<p class="native-muted">Noch keine früheren Spielernamen bestätigt.</p>';
+ const status=details.querySelector('[data-native-alias-status]');
+ status.textContent=notice;
+}
+async function loadMemberAliases(details,id){
+ const requestId=String(Number(details.dataset.nativeAliasRequest||0)+1);
+ details.dataset.nativeAliasRequest=requestId;
+ try{
+  const result=await request('/api/member/'+encodeURIComponent(id)+'/aliases');
+  if(details.isConnected&&details.dataset.nativeAliasRequest===requestId)renderMemberAliases(details,result.aliases);
+ }catch{
+  if(details.isConnected&&details.dataset.nativeAliasRequest===requestId)details.querySelector('[data-native-alias-status]').textContent='Frühere Spielernamen konnten nicht geladen werden. Bitte Profil neu öffnen.';
+ }
+}
+async function showPerson(target,id){
+ const node=target.querySelector('#native-person');if(!node)return;
+ node.innerHTML='<p role="status" class="native-muted">Spielerakte wird geladen …</p>';
+ let p;
+ try{p=await request('/api/member/'+encodeURIComponent(id))}
+ catch(error){
+  node.innerHTML='<p class="native-error" role="alert">Spielerakte konnte nicht geladen werden: '+e(error.message)+'</p>'+
+   '<button type="button" data-native-member="'+e(id)+'">Erneut versuchen</button>';
+  return;
+ }
+ const member=p.member||{},metrics=profileMetricChanges(p.stats||[]);
+ const weeks=(p.weeks||[]).slice().sort((a,b)=>String(b.week).localeCompare(String(a.week)));
+ // The roster is still in the DOM so search state and expanded ranks survive Back.
+ const roster=target.querySelector('.native-member-folds');if(roster)roster.hidden=true;
+ const searchRow=target.querySelector('.native-row');if(searchRow)searchRow.hidden=true;
+ let absences=[];
+ try{
+  if(!cache.ops?.absences)cache.ops=await request('/api/operations');
+  absences=(cache.ops.absences||[]).filter(a=>a.member_id===id);
+ }catch{ /* Profile remains usable if operation permissions / endpoint are unavailable. */ }
+ const now=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date());
+ const active=absences.filter(a=>a.start_date<=now&&a.end_date>=now);
+ const attendance=absences.slice().sort((a,b)=>b.start_date.localeCompare(a.start_date)).slice(0,8);
+ const safeStats=(p.stats||[]).filter(s=>['observed','corrected'].includes(s.quality)&&Number.isSafeInteger(s.value));
+ const metricHtml=metrics.length?'<div class="native-profile-metrics">'+metrics.map(m=>{
+  const timeline=safeStats.filter(s=>s.metric===m.metric).sort((a,b)=>String(b.captured_at).localeCompare(String(a.captured_at)));
+  return '<details class="native-profile-metric-card"><summary><small>'+e(m.label)+'</small><strong>'+numberText(m.value)+'</strong>'+
+   '<span class="'+(m.delta===null?'':'native-metric-change')+'">'+e(deltaLabel(m.delta))+'</span>'+
+   '<small>'+e(m.deltaSinceFirst===null?'Erst eine bestätigte Aufnahme – noch kein Langzeitvergleich':
+    'Seit '+m.firstDate+': '+(m.deltaSinceFirst>0?'+':'')+numberText(m.deltaSinceFirst))+'</small>'+
+   '<small>'+e(metricQuality[m.quality]||'Bestätigt')+' · '+e(m.date)+'</small><em>Alle '+timeline.length+' Messungen anzeigen ›</em></summary>'+
+   '<div class="native-profile-timeline">'+timeline.map((s,i)=>'<div><time>'+e(String(s.captured_at).slice(0,10))+'</time><b>'+statValueButton(s.value,s.snapshot_id,id,s.metric)+'</b>'+
+     '<small>'+e(i+1<timeline.length?deltaLabel(s.value-timeline[i+1].value):'Erste Messung')+'</small></div>').join('')+'</div></details>';
+ }).join('')+'</div>':
+  '<p class="native-muted">Noch keine bestätigten Messungen. Fehlende Werte werden nicht als Null bewertet.</p>';
+ const weekdays=['Mo','Di','Mi','Do','Fr','Sa'];
+ const weekSummary=weeks.length?'<div class="native-profile-weeks">'+weeks.map((w,i)=>{
+  const days=(p.days||[]).filter(d=>d.week===w.week);
+  const older=weeks[i+1]||null;
+  const computed=derivedVsWeekTotal(days);
+  const olderComputed=older?derivedVsWeekTotal((p.days||[]).filter(d=>d.week===older.week)):null;
+  const comparable=w.state==='final'&&older?.state==='final'&&computed.complete&&olderComputed?.complete;
+  const weeklyDelta=comparable?computed.total-olderComputed.total:null;
+  const totalLabel=computed.complete?numberText(computed.total)+' Wochenpunkte':
+   (computed.partial===null?'Keine bestätigten Tageswerte':'Teilstand '+numberText(computed.partial))+
+   ' · '+computed.confirmed+'/6 bestätigt';
+  return '<details class="native-profile-week"><summary><b>'+e(w.week)+'</b><span>'+e(totalLabel)+'</span>'+
+   '<small>'+e(w.state==='final'?'Finalisiert':'Vorläufig / unvollständig')+' · '+e(w.verified_goal_days??0)+'/'+e(w.verified_days??0)+' bestätigte Zieltage'+
+   (w.uncertain_days?' · '+e(w.uncertain_days)+' unklar':'')+'</small>'+
+   (weeklyDelta!==null?'<small class="native-week-change">'+(weeklyDelta>0?'+':'')+numberText(weeklyDelta)+' zum '+e(older.week)+'</small>':'')+'</summary>'+
+   '<div class="native-profile-timeline"><div class="native-vs-weekly-proof"><span>'+
+    (computed.complete?'Wochensumme aus 6 Tageswerten: '+numberText(computed.total):
+    'Bestätigter Teilstand: '+(computed.partial===null?'—':numberText(computed.partial))+' · '+computed.confirmed+'/6')+
+    '</span></div>'+days.map(day=>'<div><span>'+e(weekdays[day.weekday]||'?')+'</span><button type="button" class="native-vs-day-link" data-native-vs-image="'+e(w.week+'|'+id+'|'+day.weekday)+'" title="Privaten Screenshot öffnen"><b>'+
+    (['observed','corrected'].includes(day.quality)&&day.points!==null?numberText(day.points):'Unbekannt')+
+    '</b><small>'+e(day.quality||'nicht gelesen')+' · Bild ansehen</small></button></div>').join('')+'</div></details>';
+ }).join('')+'</div>':
+  '<p class="native-muted">Noch kein VS-Wochenverlauf vorhanden.</p>';
+ const rides=(p.rides||[]).slice().sort((a,b)=>b.date.localeCompare(a.date));
+ const dice=(p.dice_wins||[]).slice().sort((a,b)=>b.ride_date.localeCompare(a.ride_date));
+ const achievements=p.achievements||[];
+ const line=(date,detail,sub)=>'<div><time>'+e(date)+'</time><b>'+e(detail)+'</b><small>'+e(sub||'')+'</small></div>';
+ const historyCards='<div class="native-profile-metrics native-player-history-cards">'+
+  '<details class="native-profile-metric-card"><summary><small>Zugfahrten</small><strong>'+rides.filter(x=>x.status==='completed').length+'</strong><span>Bestätigte Fahrten</span><em>Alle '+rides.length+' Einträge ansehen ›</em></summary>'+
+   '<div class="native-profile-timeline">'+(rides.length?rides.map(x=>line(x.date,x.type||'Zug',x.status||'')).join(''):'<p>Keine zugeordneten Fahrten</p>')+'</div></details>'+
+  '<details class="native-profile-metric-card"><summary><small>Dice Game</small><strong>'+dice.length+'</strong><span>Gewonnene Ziehungen</span><em>Gewinne anzeigen ›</em></summary>'+
+   '<div class="native-profile-timeline">'+(dice.length?dice.map(x=>line(x.ride_date,'Dice Game gewonnen',x.roll_value===null?'Wurf unbekannt':'Wurf: '+x.roll_value)).join(''):'<p>Noch kein bestätigter Gewinn</p>')+'</div></details></div>';
+ const achievementHtml=achievements.length?'<details class="native-fold"><summary>Erfolge & Meilensteine · '+achievements.length+'</summary>'+
+  '<div class="native-profile-timeline native-fold-body">'+achievements.map(a=>line(String(a.date).slice(0,10),a.title,
+   a.delta!==null&&a.delta!==undefined?deltaLabel(a.delta):'Bestätigte VS-Leistung')).join('')+'</div></details>':
+  '<p class="native-muted">Noch keine nachweisbaren Meilensteine (+100.000 Kills, +1 Mio. Stärke oder 6/6 VS).</p>';
+ node.innerHTML='<section class="native-profile"><div class="native-profile-header">'+
+  '<button type="button" class="native-back" data-native-member-close>← Alle Spieler</button>'+
+  '<span class="native-profile-rank" aria-label="Allianzrang">'+e(member.rank||'?')+'</span>'+
+  '<div class="native-profile-identity"><span class="native-kicker">SPIELERAKTE · '+e(member.status==='active'?'AKTIV':member.status==='former'?'ARCHIV':'STATUS UNGEKLÄRT')+'</span>'+
+  '<h3>'+e(member.name||'Unbekannt')+'</h3><p>'+e(member.state_source==='registry'?'Verwalteter Rang':'Letzter importierter Rang')+
+  (member.blacklisted?' · Manuell gesperrt':'')+'</p></div></div>'+
+  '<details class="native-fold native-member-aliases" data-native-alias-member="'+e(id)+'"><summary><span>Frühere Spielernamen</span> · <span data-native-alias-count>…</span></summary>'+
+   '<div class="native-fold-body"><div data-native-alias-list><p class="native-muted">Frühere Spielernamen werden geladen …</p></div>'+
+   '<p role="status" aria-live="polite" data-native-alias-status></p>'+
+   (['R4','R5'].includes(officer?.role)?'<button type="button" data-native-alias-open>+ Name bestätigen</button>'+
+    '<form class="native-alias-form" data-native-alias-form hidden><label>Früherer Spielername (genaue Schreibweise)<input name="alias" required maxlength="80" autocomplete="off"></label>'+
+    '<label>Begründung / Quelle<input name="reason" required minlength="8" maxlength="300" autocomplete="off"></label>'+
+    '<label class="native-alias-ack"><input name="ack" type="checkbox" required> Ich habe die historische Schreibweise anhand einer Quelle geprüft.</label>'+
+    '<div class="native-alias-actions"><button type="submit">Namen bestätigen</button><button type="button" data-native-alias-cancel>Abbrechen</button></div></form>':'')+
+   '</div></details>'+
+  (active.length?'<p class="native-absence-warning">Aktuell als abwesend eingetragen. Zugvorschläge berücksichtigen diesen Zeitraum.</p>':'')+
+  (member.source_difference?'<p class="native-evidence-note">Abweichender Import: '+e(member.imported_rank||'Rang unbekannt')+' · '+e(member.source_status||'Status ungeklärt')+'. Der bestätigte Verwaltungsstand hat Vorrang.</p>':'')+
+  (member.registry_updated_by?'<p class="native-muted">Letzte Rang-/Statusänderung: '+e(member.registry_updated_by)+' · '+e(formatOfficerTime(member.registry_updated_at))+'</p>':'')+
+  '<h4 class="native-section-heading">Werte & Entwicklung</h4>'+metricHtml+
+  '<details class="native-fold"><summary>VS-Erfolge & Wochen · '+weeks.length+'</summary>'+
+   '<div class="native-fold-body">'+weekSummary+'</div></details>'+
+  '<h4 class="native-section-heading">Züge & Dice Game</h4>'+historyCards+
+  '<h4 class="native-section-heading">Persönliche Erfolge</h4>'+achievementHtml+
+  '<section class="native-person-absence"><div class="native-inline-heading"><h4>Abwesenheit</h4>'+
+   '<button type="button" data-native-add-absence="'+e(id)+'">+ Eintragen</button></div>'+
+   (attendance.length?'<div class="native-person-absence-list">'+attendance.map(a=>
+     '<p><b>'+e(a.start_date)+' – '+e(a.end_date)+'</b>'+
+     (a.note?' · '+e(a.note):'')+'</p>').join('')+'</div>':
+     '<p class="native-muted">Keine Abwesenheit eingetragen.</p>')+
+   '<div id="native-person-absence-form"></div></section>'+
+  '<details class="native-fold"><summary>Verwaltung & Protokoll</summary>'+
+   '<div class="native-fold-body"><div class="native-profile-actions">'+
+    '<button type="button" data-native-manage="'+e(id)+'">Rang & Status bearbeiten</button>'+
+    '<button type="button" data-native-member-log="'+e(id)+'">Änderungen anzeigen</button></div>'+
+    '<div id="native-person-log"></div><div id="registry-form"></div></div></details></section>';
+ node.scrollIntoView({behavior:'smooth',block:'nearest'});
+ await loadMemberAliases(node.querySelector('.native-member-aliases'),id);
+}
+function showVsEvidenceUpload(area,key,message,source=null){
+ area.innerHTML='<p class="native-evidence-note">'+e(message)+'</p>'+
+  (source?'<p class="native-review-source" data-native-no-translate>'+e(source.member_name||'')+' · '+e(source.source_name||'')+' · OCR: '+e(source.source_value??'unbekannt')+
+   (Number.isInteger(source.row_y)?' · Y: '+e(source.row_y):'')+
+   (source.sha256?' · SHA-256: '+e(source.sha256):'')+'</p>':'')+
+  '<form id="native-vs-evidence-upload" data-key="'+e(key)+'" data-expected-sha="'+e(source?.sha256||'')+'">'+
+  '<label>Originalaufnahme (PNG/JPG/WebP)<input type="file" name="image" accept="image/png,image/jpeg,image/webp" required></label>'+
+  '<label>Begründung / sichtbare Spielerzeile<input type="text" name="reason" required minlength="8" maxlength="300"></label>'+
+  '<button type="submit">Originalbild privat zuordnen</button>'+
+  '<p role="status" class="native-vs-evidence-upload-result"></p></form>';
+}
+async function openVsScreenshot(target,key){
+ const matched=/^(20\d{2}-W\d{2})\|([a-zA-Z0-9-]{1,80})\|([0-6])$/.exec(String(key));
+ if(!matched)return;
+ const [,week,memberId,weekday]=matched;
+ target.querySelector('#native-vs-evidence-viewer')?.remove();
+ const host=target.ownerDocument.createElement('section');
+ host.id='native-vs-evidence-viewer';
+ host.className='native-vs-evidence-backdrop';
+ host.setAttribute('role','dialog');host.setAttribute('aria-modal','true');
+ host.setAttribute('aria-label','Privater Originalbeleg zum VS-Wert');
+ host.innerHTML='<div class="native-vs-evidence-panel native-stat-evidence-panel">'+
+  '<div class="native-row"><h3>'+(weekday==='6'?'Wochenbeleg prüfen':'Original-Screenshot · <span>'+trainWeekdays[Number(weekday)]+'</span>')+' · '+e(week)+'</h3>'+
+  '<button type="button" data-native-vs-image-close aria-label="Bild schließen">Schließen ✕</button></div>'+
+  '<p class="native-muted">Geschützter Originalbeleg; nur für angemeldete Offiziere.</p>'+
+  '<div id="native-vs-evidence-image" class="native-stat-image" role="status">'+(weekday==='6'?'Wochenbeleg wird geprüft …':'Quellzeile wird ermittelt …')+'</div></div>';
+ target.append(host);
+ const area=host.querySelector('#native-vs-evidence-image');
+ host.querySelector('[data-native-vs-image-close]')?.focus();
+ const sourcePath='/api/vs-source/'+encodeURIComponent(week)+'/'+encodeURIComponent(memberId)+'/'+weekday;
+ let source=null;
+ try{
+  if(weekday!=='6'){
+   const info=await request(sourcePath);
+   if(!host.isConnected)return;
+   source=info.source?{...info.source,member_name:info.member_name}:null;
+   if(source&&!source.image_available){
+    showVsEvidenceUpload(area,key,'Die richtige Spielerzeile wurde gefunden, aber das Originalbild ist noch nicht im privaten Archiv verfügbar. Es wird kein anderer Screenshot angezeigt.',source);
+    return;
+   }
+  }
+  let fetchPath=weekday==='6'
+   ?'/api/vs-week/'+encodeURIComponent(week)+'/'+encodeURIComponent(memberId)+'/evidence'
+   :source?sourcePath+'/image':
+    '/api/vs-days/'+encodeURIComponent(week)+'/'+encodeURIComponent(memberId)+'/'+weekday+'/evidence';
+  const response=await fetch(apiBase+fetchPath,{
+   headers:{Authorization:'Bearer '+sessionToken,Accept:'image/png,image/jpeg,image/webp'},
+   mode:'cors',credentials:'omit',cache:'no-store'
+  });
+  if(!host.isConnected)return;
+  if(response.ok){
+   const mime=(response.headers.get('Content-Type')||'').split(';')[0];
+   if(!['image/png','image/jpeg','image/webp'].includes(mime))throw Error('Ungültiger Bildinhalt');
+   const blob=await response.blob();
+   if(blob.size<50||blob.size>950000)throw Error('Originalbildgröße ungültig');
+   if(source){
+    const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',await blob.arrayBuffer()))]
+     .map(v=>v.toString(16).padStart(2,'0')).join('');
+    if(hash!==source.sha256)throw Error('Das Originalbild stimmt nicht mit der gespeicherten Quelle überein');
+   }
+   if(!host.isConnected)return;
+   const urlKey='vs:'+key,previous=reviewBlobUrls.get(urlKey);
+   if(previous)URL.revokeObjectURL(previous);
+   const objectUrl=URL.createObjectURL(blob);
+   reviewBlobUrls.set(urlKey,objectUrl);
+   renderEvidenceRow(area,objectUrl,source?{
+    row_y:source.row_y,source_name:source.source_name,
+    member_name:source.member_name,
+    source_value:source.source_value
+   }:null,'Private Originalaufnahme zum ausgewählten VS-Wert',()=>host.isConnected);
+   if(source)area.insertAdjacentHTML('beforeend',
+    '<p class="native-evidence-note">Exakte Spielerzeile aus dem ursprünglichen VS-OCR-Import. '+
+    'Bild und gespeicherte Punktzahl per Prüfsumme abgeglichen. '+
+    (source.visually_checked?'Zusätzlich visuell bestätigt.':'OCR-Herkunft, keine gesonderte Officer-Abnahme.')+'</p>');
+   return;
+  }
+  const problem=await response.json().catch(()=>({}));
+  if(response.status!==404)throw Error(problem.error||'Privates Bild nicht abrufbar');
+  const weeklyCount=cache.vs?.weeks?.find(w=>w.week===week)?.weekly_screenshot_count;
+  const unavailable=weekday==='6'
+   ?weeklyCount===0
+     ?'Für diese Woche wurde kein Wochenranglisten-Screenshot archiviert. Der gespeicherte Wochenpunktestand ist kein Bildbeleg. Bitte die passende Originalaufnahme nachtragen.'
+     :weeklyCount>0
+      ?'Wochenranglistenbilder sind archiviert, jedoch keines diesem Spielerwert eindeutig zugeordnet. Original prüfen und gezielt nachtragen.'
+      :'Noch kein verifizierter Wochenranglisten-Beleg mit diesem Spielerwert verknüpft. Passendes Originalbild nachtragen.'
+   :'Kein eindeutig zugeordneter Original-Screenshot für diesen Spielerwert. Kein beliebiges Bild dieser Rangliste wird angezeigt.';
+  showVsEvidenceUpload(area,key,unavailable,source);
+ }catch(error){if(host.isConnected)area.textContent='Originalbeleg konnte nicht geöffnet werden: '+error.message}
+}
+
+async function submitVsScreenshot(form,target){
+ const key=form.dataset.key,matched=/^(20\d{2}-W\d{2})\|([a-zA-Z0-9-]{1,80})\|([0-6])$/.exec(String(key));
+ if(!matched)return;
+ const file=form.elements.namedItem('image')?.files?.[0],reason=form.elements.namedItem('reason')?.value||'';
+ const message=form.querySelector('.native-vs-evidence-upload-result'),button=form.querySelector('[type=submit]');
+ if(!file||file.size<50||file.size>950000||!['image/png','image/jpeg','image/webp'].includes(file.type)){
+  message.textContent='Bildformat ungültig oder über 950 KB';return;
+ }
+ if(reason.trim().length<8){message.textContent='Bitte die sichtbare Spielerzeile und den Wert begründen.';return}
+ button.disabled=true;
+ try{
+  const expected=form.dataset.expectedSha;
+  const hash=await evidenceHash(file);
+  if(expected&&hash!==expected)throw Error('Ausgewähltes Bild stimmt nicht mit der gespeicherten Quellen-Prüfsumme überein');
+  const path=matched[3]==='6'?'/api/vs-week/'+matched[1]+'/'+matched[2]+'/evidence':
+   '/api/vs-days/'+matched[1]+'/'+matched[2]+'/'+matched[3]+'/evidence';
+  const response=await fetch(apiBase+path,{
+   method:'PUT',mode:'cors',credentials:'omit',cache:'no-store',
+   headers:{Authorization:'Bearer '+sessionToken,'Content-Type':file.type,'X-Evidence-Reason':encodeURIComponent(reason)},
+   body:file});
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok)throw Error(result.error||'Screenshot konnte nicht gespeichert werden');
+  if(result.sha256&&result.sha256!==hash)throw Error('Gespeichertes Bild hat eine andere Prüfsumme. Bitte erneut laden und prüfen.');
+  await openVsScreenshot(target,key);
+ }catch(error){message.textContent='Nicht gespeichert: '+error.message;button.disabled=false}
+}
+function editProfileAbsence(target,id){
+ const host=target.querySelector('#native-person-absence-form');if(!host)return;
+ const roster=cache.ops?.members||[];
+ const leaderPool=roster.filter(x=>['R3','R4','R5'].includes(x.rank)&&x.id!==id);
+ host.innerHTML='<form id="native-record-save" class="native-form native-absence-form" data-kind="absences" data-profile-id="'+e(id)+'">'+
+  '<h4>Abwesenheit erfassen</h4><input type="hidden" name="member_id" value="'+e(id)+'">'+
+  '<label>Von<input type="date" name="start_date" required></label>'+
+  '<label>Bis<input type="date" name="end_date" required></label>'+
+  '<label>Vertretung (optional)<select name="substitute_id">'+options(leaderPool)+'</select></label>'+
+  '<label>Notiz (optional)<input name="note" maxlength="300" placeholder="Nur was für die Planung notwendig ist"></label>'+
+  '<button type="submit" class="native-game-primary">Abwesenheit speichern</button>'+
+  '<button type="button" data-native-form-reload hidden>Aktuellen Stand laden</button>'+
+  '<p id="native-form-message" role="status"></p></form>';
+ host.querySelector('[name=start_date]')?.focus();
+}
+
+const donationStatus={met:'Ziel erreicht',below:'Unter 20.000',unknown:'Wert unbekannt'};
+
+function renderRequirements(target){
+ const cfg=cache.requirements;if(!cfg)return;
+ const numeric=(name,value,min,max,step,help)=>'<label class="native-requirement-field"><span>'+e(name)+'</span>'+
+  '<input type="number" required inputmode="numeric" name="'+e(step)+'" min="'+min+'" max="'+max+'" step="1" value="'+e(value)+'">'+
+  '<small>'+e(help)+'</small></label>';
+ target.innerHTML='<div class="native-requirements-intro"><span class="native-kicker">ALLIANZ · VERWALTUNG</span>'+
+  '<h2>Allianzregeln & Mindestwerte</h2><p>Werte für das private Command Center. Keine automatische Bestrafung oder Änderung historischer Rohdaten.</p></div>'+
+  '<form id="native-requirements-save" class="native-requirements-form" data-revision="'+e(cfg.revision)+'">'+
+  '<section class="native-requirement-section"><h3>Verpflichtende Mindestpunkte</h3><div class="native-requirement-grid">'+
+   numeric('VS-Duell · pro Tag',cfg.vs_daily_minimum,0,100000000,'vs_daily_minimum','Montag–Samstag · derzeit 3,6 Millionen Punkte')+
+   numeric('Allianzspenden · pro Woche',cfg.donation_weekly_minimum,0,1000000,'donation_weekly_minimum','Nur bestätigte wöchentliche Spenden; nicht täglich')+
+  '</div></section>'+
+  '<section class="native-requirement-section"><h3>Aktivitäts-Hinweise</h3><div class="native-requirement-grid">'+
+   numeric('Mindestens aktive VS-Tage',cfg.min_active_vs_days,0,6,'min_active_vs_days','Empfehlung: 5 von 6 · 0 deaktiviert; nur bestätigte Tageswerte')+
+   numeric('Hinweis nach X Tagen unter VS-Ziel',cfg.low_vs_day_warning_count,0,6,'low_vs_day_warning_count','Empfehlung: 2 Tage · 0 deaktiviert; keine automatische Strafe')+
+  '</div><label class="native-requirement-check"><input type="checkbox" name="shield_reminder_saturday" '+(cfg.shield_reminder_saturday?'checked':'')+'>'+
+   '<span><strong>Samstag an den Schild erinnern</strong><small>Hinweis für Enemy Buster, kein behaupteter Nachweis eines tatsächlich aktiven Schilds.</small></span></label></section>'+
+  '<section class="native-requirement-section"><h3>Änderung dokumentieren</h3><label>Grund der Änderung'+
+   '<textarea name="reason" rows="2" minlength="8" maxlength="300" required placeholder="Weshalb gelten die neuen Mindestwerte?"></textarea></label>'+
+   '<div class="native-row"><button type="submit" class="native-game-primary">Allianzregeln speichern</button>'+
+   '<button type="button" data-native-requirements-reload>Neu laden</button></div>'+
+   '<p id="native-requirements-message" role="status" aria-live="polite"></p>'+
+   '<p class="native-muted">Stand: '+e(cfg.updated_at||'unbekannt')+' · Version '+e(cfg.revision)+
+   '. Neue Grenzwerte bewerten vorhandene bestätigte Messpunkte neu, ohne Spielerwerte zu überschreiben. Abwesenheiten und unbekannte OCR-Werte benötigen weiterhin eine faire manuelle Einzelfallprüfung.</p>'+
+  '</section></form>'+
+  '<details class="native-fold"><summary>Weitere sinnvolle Regeln – noch ohne automatische Bewertung</summary><div class="native-fold-body">'+
+   '<p><b>Schildpflicht am Samstag:</b> sinnvoll, aber ohne echten Schild-Nachweis keine automatische Verletzung ausweisen.</p>'+
+   '<p><b>Event-Teilnahme:</b> Siege, Guard und Desert Storm erst ab zuverlässig erfassten Teilnehmerlisten bewerten.</p>'+
+   '<p><b>Abwesenheit:</b> vorher angekündigte Ausnahmen individuell berücksichtigen und niemals fehlendes OCR als 0 zählen.</p>'+
+  '</div></details>';
+}
+function renderDonations(target,query=null,focusSelector=''){
+ const host=target.querySelector('#native-donations-body');if(!host)return;
+ const weeks=cache.donations?.weeks||[];
+ const week=weeks.find(w=>w.week===target.querySelector('#native-donation-week')?.value)||weeks[0];
+ if(!week){host.innerHTML='<p class="native-muted">Noch keine wöchentlichen Allianzspenden importiert. Werte werden nicht geschätzt.</p>';return}
+ if(cache.donationView?.week!==week.week)cache.donationView={week:week.week,category:'all',sort:'priority',query:'',limits:{},openGroups:['below']};
+ const view=cache.donationView;
+ if(query!==null){view.query=String(query);view.limits={}}
+ const minimum=cache.donations?.minimum||20000;
+ const search=String(view.query||'').trim().toLocaleLowerCase('de-DE');
+ const category=['all','below','unknown','met','verified'].includes(view.category)?view.category:'all';
+ const groups=[['below','Unter Wochenziel'],['unknown','Wert nicht bestätigt'],['met','Wochenziel erreicht']];
+ const visibleStates=category==='verified'?['below','met']:category==='all'?groups.map(([state])=>state):[category];
+ const allMembers=(week.members||[]).filter(m=>String(m.name||'').toLocaleLowerCase('de-DE').includes(search));
+ const members=allMembers.filter(m=>visibleStates.includes(m.status));
+ const previousAvailable=weeks.some(w=>w.week!==week.week&&w.week<week.week);
+ const rate=week.verified>0?Math.round(100*week.met/week.verified):null;
+ const counts={all:(week.members||[]).length,below:week.below||0,unknown:week.unknown||0,met:week.met||0,verified:week.verified||0};
+ const sortPlayers=list=>[...list].sort((a,b)=>{
+  if(view.sort==='points_desc')return (b.points??-1)-(a.points??-1)||String(a.name||'').localeCompare(String(b.name||''),'de');
+  if(view.sort==='points_asc')return (a.points??Number.MAX_SAFE_INTEGER)-(b.points??Number.MAX_SAFE_INTEGER)||String(a.name||'').localeCompare(String(b.name||''),'de');
+  if(view.sort==='name')return String(a.name||'').localeCompare(String(b.name||''),'de');
+  if(view.sort==='rank')return (Number(String(b.rank||'').slice(1))||0)-(Number(String(a.rank||'').slice(1))||0)||String(a.name||'').localeCompare(String(b.name||''),'de');
+  return 0;
+ });
+ const tile=(label,value,extra,state,bad=false)=>'<article class="native-day-mini native-donation-tile'+(bad?' has-failures':'')+'">'+
+  '<button type="button" class="native-day-mini-open" data-native-donation-category="'+state+'" aria-pressed="'+(category===state)+'" aria-controls="native-donation-results">'+
+  '<span class="native-day-mini-heading"><strong>'+e(label)+'</strong><span>'+e(extra)+'</span></span>'+
+  '<strong class="native-day-mini-count">'+e(value)+'</strong><span class="native-day-mini-meta"><span>Spieler anzeigen</span></span></button></article>';
+ const person=m=>'<article class="native-donation-person"><div class="native-donation-person-head">'+
+  '<strong>'+e(m.name)+'</strong><small>'+e(m.rank||'?')+'</small><b>'+
+  (m.points===null?'Unbekannt':statValueButton(m.points,m.snapshot_id||week.snapshot_id,m.id,'donations_weekly',m.name))+'</b></div>'+
+  (m.points===null?'<p class="native-muted">Unbekannte Spenden sind keine 0.</p>':
+  '<div class="native-donation-progress" role="progressbar" aria-label="Anteil zum Wochenziel" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+Math.min(100,Math.round(m.points/minimum*100))+'">'+
+  '<span style="width:'+Math.min(100,Math.round(m.points/minimum*100))+'%"></span></div>'+
+  '<p class="native-donation-delta">'+(m.difference>=0?'+':'')+numberText(m.difference)+' zum Wochenminimum'+
+  (m.delta!==null?' · '+(m.delta>0?'+':'')+numberText(m.delta)+' zu '+e(m.previous_week):
+  ' · Kein verifizierter Vorwochenvergleich')+'</p>')+
+  '<button type="button" data-native-member="'+e(m.id)+'">Spielerakte & Spendenverlauf ansehen ›</button></article>';
+ const section=([state,label])=>{
+  if(!visibleStates.includes(state))return '';
+  const players=sortPlayers(allMembers.filter(m=>m.status===state)),n=players.length;
+  const limit=Math.max(10,Number(view.limits?.[state])||10),shown=players.slice(0,limit);
+  const open=Boolean(search)||(view.openGroups||[]).includes(state)||category!=='all';
+  return '<details class="native-fold native-donation-group native-donation-'+state+'" data-native-donation-group="'+state+'" '+(open?'open':'')+'><summary><strong>'+e(label)+'</strong><span>'+n+' Spieler</span></summary>'+
+   '<div class="native-fold-body">'+(n?shown.map(person).join(''):'<p class="native-muted">Keine Spieler in dieser Gruppe.</p>')+
+   (n?'<div class="native-vs-group-footer"><span>'+shown.length+' / '+n+' Spieler</span>'+
+    (shown.length<n?'<button type="button" data-native-donation-more-group="'+state+'">Weitere Spieler</button>':'')+'</div>':'')+
+   '</div></details>';
+ };
+ const existingSearch=target.querySelector('#native-donation-search');
+ const focused=existingSearch===target.ownerDocument?.activeElement;
+ const position=focused?existingSearch.selectionStart:null;
+ const resultTitle={all:'Spieler nach Ergebnis',below:'Unter Wochenziel',unknown:'Wert nicht bestätigt',met:'Wochenziel erreicht',verified:'Bestätigte Werte'}[category];
+ host.innerHTML='<section class="native-vs-brief native-donation-summary" aria-label="Allianzspenden Wochenauswertung">'+
+  '<div class="native-capture-banner '+(week.captured_at?'is-dated':'is-undated')+'">'+
+   '<div class="native-capture-banner-main"><small>DATENSTAND · SPENDEN '+e(week.week)+'</small>'+
+    '<strong>'+(week.captured_at?'Screenshot-Aufnahme: '+e(formatOfficerTime(week.captured_at)):'Screenshot-Uhrzeit nicht erfasst')+'</strong>'+
+    '<span>'+e(week.is_complete?'Vollständige Mitgliederaufnahme':'Teilaufnahme')+
+    ' · Der Wert gilt nur zum Aufnahmezeitpunkt</span></div>'+
+   '<span class="native-capture-state '+(week.is_complete?'is-final':'is-preliminary')+'">'+
+    (week.is_complete?'Vollständig':'Teilaufnahme')+'</span></div>'+
+  '<div class="native-vs-heading"><div><h3>Wochenauswertung '+e(week.week)+'</h3>'+
+   '<p class="native-muted">Alle Spendenwerte beziehen sich auf diesen Datenstand.</p></div>'+
+   '<span class="native-donation-goal">Ziel '+numberText(minimum)+'</span></div>'+
+  '<div class="native-donation-tiles">'+tile('Ziel erreicht',week.met,'Bestätigte Spieler','met')+
+   tile('Unter Ziel',week.below,'Bestätigte Spieler','below',true)+
+   tile('Unbekannt',week.unknown,'Nicht als 0 gewertet','unknown')+
+   tile('Zielquote',rate===null?'—':rate+' %','Von '+week.verified+' bestätigten Werten','verified')+'</div>'+
+  '<p class="native-evidence-note">Werte gelten zum Zeitpunkt des Screenshots. '+week.verified+'/'+week.active+
+   ' aktive Spieler mit bestätigten Wochenspenden. '+(previousAvailable?
+   'Vergleiche erscheinen nur bei zwei bestätigten Messpunkten.':
+   'Bisher liegt nur eine verlässliche Wochenaufnahme vor – kein erfundener Vorwochenvergleich.')+'</p>'+
+  '<section class="native-donation-results" id="native-donation-results" data-native-donation-matches="'+members.length+'">'+
+   '<div class="native-intel-section-head"><h3 id="native-donation-results-title" tabindex="-1">'+e(resultTitle)+' · '+e(week.week)+'</h3>'+
+    '<span>'+members.length+' Spieler</span></div>'+
+   '<div class="native-vs-result-tools"><label><span>Sortieren nach</span><select id="native-donation-sort">'+
+    [['priority','Ergebnis'],['points_desc','Spenden: höchste zuerst'],['points_asc','Spenden: niedrigste zuerst'],['name','Name'],['rank','Allianzrang']].map(([value,label])=>'<option value="'+value+'" '+((view.sort||'priority')===value?'selected':'')+'>'+e(label)+'</option>').join('')+'</select></label>'+
+    (category!=='all'?'<button type="button" data-native-donation-weekly>Wochenauswertung</button>':'')+'</div>'+
+   '<nav class="native-vs-day-filters" aria-label="Spendenergebnisse">'+
+    [['all','Alle'],['met','Ziel erreicht'],['below','Unter Ziel'],['unknown','Unbekannt'],['verified','Bestätigt']].map(([value,label])=>
+     '<button type="button" data-native-donation-category="'+value+'" aria-pressed="'+(category===value)+'">'+e(label)+' <b>'+e(counts[value])+'</b></button>').join('')+'</nav>'+
+   '<label class="native-ios-search">Spieler suchen<input id="native-donation-search" type="search" value="'+e(view.query||'')+'" placeholder="Mitglied oder Name" autocomplete="off"></label>'+
+   '<div class="native-donation-groups">'+groups.map(section).join('')+
+    (!members.length?'<p class="native-muted" data-native-donation-search-empty role="status">Keine Spieler gefunden.</p>':'')+'</div></section>'+
+  '<details class="native-fold"><summary>So werden die Spenden bewertet</summary><div class="native-fold-body">'+
+   '<p>Mindestens 20.000 Spenden pro Spieler und Woche. Nur nachweislich erfasste Werte aus „Wöchentliche Spenden“ zählen. Fehlende Werte bleiben unbekannt, ein späterer Messzeitpunkt wird nicht erfunden.</p>'+
+   '<p>Die Aufnahme stellt einen Zeitpunkt innerhalb der angegebenen Woche dar; eine noch nicht abgeschlossene Woche ist keine endgültige Leistungsbewertung. Es werden bewusst keine täglichen Spendenwerte erzeugt.</p></div></details></section>';
+ localizeOfficerTree(host);
+ if(focused){const input=target.querySelector('#native-donation-search');input.focus();if(position!==null)input.setSelectionRange(position,position)}
+ else if(focusSelector)target.querySelector(focusSelector)?.focus({preventScroll:true});
+}
+function renderVs(target){
+ const week=cache.vs?.weeks?.find(w=>w.week===target.querySelector('#native-vs-week')?.value)||cache.vs?.weeks?.[0];
+ const host=target.querySelector('#native-vs-body');
+ if(!host)return;
+ if(!week){host.innerHTML='<p class="native-muted">Noch keine VS-Woche importiert.</p>';return}
+ const policy=cache.vs.policy||{};
+ if(cache.vsView?.week!==week.week)cache.vsView={week:week.week,day:-1,category:'all',sort:cache.vsView?.sort||'priority',query:'',limits:{},openGroups:[]};
+ const enUi=officerLanguage(target.ownerDocument)!=='de';
+ const layout=renderVsOverview(week,policy,{esc:e,numberText,formatTime:formatOfficerTime,language:officerLanguage(target.ownerDocument),view:cache.vsView});
+ const lowWarnings=(week.members||[]).filter(x=>x.repeatedLowDays).length;
+ const participationWarnings=(week.members||[]).filter(x=>x.participationStatus==='below').length;
+ const reviewCount=cache.overview?.reviews;
+ const repeatCount=Number.isSafeInteger(week.priority)?week.priority:lowWarnings;
+ const notices=[
+  repeatCount>0?(enUi?repeatCount+' members repeatedly below the daily goal.':repeatCount+' Spieler wiederholt unter dem Tagesziel.'):null,
+  participationWarnings>0?(enUi?participationWarnings+' members have too few active days with complete data.':participationWarnings+' Spieler mit zu wenigen aktiven Tagen bei vollständiger Erfassung.'):null,
+  policy.shield_reminder_saturday?(enUi?'Saturday shield: remind manually; not automatically verified.':'Samstag: Schildpflicht manuell erinnern (nicht automatisch geprüft).'):null
+ ].filter(Boolean);
+ const kpi=(label,value,kind)=>'<div class="native-vs-kpi '+kind+'"><span>'+e(label)+'</span><strong>'+e(value)+'</strong></div>';
+ host.innerHTML='<section class="native-vs-brief native-vs-v39" aria-label="'+(enUi?'Alliance duel weekly data':'VS-Wochendaten')+'">'+
+  layout.freshness+
+  '<div class="native-vs-compact-top">'+
+   '<span>'+(enUi?'Daily minimum':'Tagesziel')+' · <b>'+e(numberText(week.threshold))+'</b></span>'+
+   '<div class="native-vs-tools">'+
+    '<button type="button" class="native-vs-tool" data-native-action="review-open">'+
+    'OCR '+e(reviewCount??'—')+'</button>'+
+   '</div></div>'+
+  '<div class="native-vs-kpis" aria-label="'+(enUi?'Weekly metrics':'Wochenkennzahlen')+'">'+
+    kpi(enUi?'Below goal (player-days)':'Unterschreitungen (Spieler-Tage)',week.failedDays??'—','low')+
+    kpi(enUi?'Affected players (unique IDs)':'Betroffene Spieler (eindeutige IDs)',week.affectedMembers??(week.members||[]).filter(p=>p.failed>0).length,'low')+
+    kpi(enUi?'Met player-days':'Erreichte Spieler-Tage',(week.metPlayerDays??'?')+' / '+(week.scopePlayerDays??'?'),'perfect')+
+    kpi(enUi?'Unclear':'Unklar',week.unknownDays??'—','unknown')+
+    kpi(enUi?'Perfect 6/6':'6 von 6',week.perfect??'—','perfect')+
+  '</div>'+
+  (notices.length?'<div class="native-vs-single-insight"><b>'+ (enUi?'Note':'Hinweis')+'</b>'+
+    '<span>'+notices.map(e).join(' · ')+'</span></div>':'')+
+  '<p class="native-muted">'+(enUi?'One member can contribute six below-goal days. Scope: ':'Ein Spieler kann sechs Unterschreitungen beitragen. Umfang: ')+e(week.scopeMembers??'?')+(enUi?' unique IDs. Raw rows: ':' eindeutige IDs. Originalzeilen: ')+e(week.rawPlayerDays??'?')+(enUi?'; unlinked rows: ':'; davon ohne ID: ')+e(week.unresolvedPlayerDays??'?')+'</p>'+
+  layout.dayTiles+layout.groupsHtml+
+  '<details class="native-fold native-vs-explainer"><summary>'+ (enUi?'How are results assessed?':'Wie werden die Werte bewertet?')+'</summary>'+
+   '<p class="native-fold-body native-muted">'+(enUi?'Weekly totals are calculated from six confirmed daily scores. Missing or unclear values are never zero; partial sums remain marked as incomplete.':'Die Wochensumme wird aus sechs bestätigten Tageswerten berechnet. Fehlende oder unklare Tage sind nie automatisch 0; Teilstände bleiben als unvollständig gekennzeichnet.')+'</p></details>'+
+  '</section>';
+
+}
+function filterVsMembers(target){
+ if(!cache.vsView)return;
+ if(!cache.vsView.query)cache.vsView.openGroups=[...target.querySelectorAll('[data-native-vs-group][open]')].map(node=>node.dataset.nativeVsGroup);
+ cache.vsView.query=target.querySelector('#native-vs-search')?.value||'';cache.vsView.limits={};renderVsResults(target);
+}
+function renderVsResults(target,focusSelector=''){
+ const state=cache.vsView,week=cache.vs?.weeks?.find(row=>row.week===state?.week),host=target.querySelector('#native-vs-results');
+ if(!week||!host)return;
+ host.outerHTML=renderVsOverview(week,cache.vs.policy||{},{esc:e,numberText,formatTime:formatOfficerTime,language:officerLanguage(target.ownerDocument),view:state}).groupsHtml;
+ target.querySelectorAll('[data-native-vs-day]').forEach(button=>button.setAttribute('aria-pressed',String(Number(button.dataset.nativeVsDay)===state.day)));
+ localizeOfficerTree(target.querySelector('#native-vs-results'));
+ if(focusSelector)target.querySelector(focusSelector)?.focus({preventScroll:true});
+}
+const trainWeekdays=['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
+const trainRideTypes=['R5','R4','Members Day','Donation King','VS Hero'];
+export const memberAbsentOn=(memberId,date,absences=[])=>Boolean(memberId&&date&&absences.some(x=>x.member_id===memberId&&x.start_date<=date&&x.end_date>=date));
+function renderTrainRotation(target){
+ const host=target.querySelector('#native-train-rotation-body');if(!host)return;
+ const data=cache.rotation;
+ if(!data){host.innerHTML='<p class="native-muted">Rotationsbearbeitung erst nach Aktivierung des privaten Cloudflare-Dienstes verfügbar. Der bestehende Zugplan bleibt unverändert.</p>';return}
+ const opts=(list,current,empty=false)=>(empty?'<option value="">Keine feste Koordination</option>':'')+
+  list.map(([value,label])=>'<option value="'+e(value)+'" '+(current===value?'selected':'')+'>'+e(label)+'</option>').join('');
+ const leaders=(cache.trains?.members||[]).filter(m=>['R4','R5'].includes(m.rank)).map(m=>[m.id,m.name+' · '+m.rank]);
+ host.innerHTML='<form id="native-train-rotation-save" class="native-form native-rotation-form" data-revision="'+e(data.revision)+'">'+
+  '<p class="native-form-help">Hier legst du fest, welcher Zugtyp an welchem Wochentag gilt und welcher Officer koordiniert. Die Fahrer bleiben manuell bestätigt.</p>'+
+  '<div class="native-rotation-grid">'+trainWeekdays.map((day,i)=>
+   '<div class="native-rotation-day"><strong>'+day+'</strong><label>Zugtyp<select name="type'+i+'">'+opts(trainRideTypes.map(x=>[x,x]),data.types[i])+'</select></label>'+
+   '<label>Koordination<select name="coord'+i+'">'+opts(leaders,data.coordinators[i]||'',true)+'</select></label></div>').join('')+'</div>'+
+  '<label class="native-check"><input type="checkbox" name="auto_suggest" '+(data.auto_suggest?'checked':'')+'>Fahrerempfehlungen anzeigen</label>'+
+  '<label>Warum ändern wir die Rotation?<input name="reason" minlength="8" maxlength="500" required placeholder="z.B. neue R4-Dienstverteilung"></label>'+
+  '<button type="submit" class="native-game-primary">Wochenrotation speichern</button>'+
+  '<button type="button" data-native-rotation-reload hidden>Aktuellen Stand laden</button>'+
+  '<p id="native-rotation-message" role="status"></p></form>';
+}
+/** Unlinked imported train rides remain visible until a verified member is selected.
+ * No fuzzy or substring matching: a grouped source name is NOT a confirmed identity. */
+export function groupUnlinkedTrainRides(history=[]){
+ const groups=new Map();
+ for(const ride of history){
+  if(ride?.status!=='completed'||ride.linked!==false||ride.former_archive===true)continue;
+  const name=String(ride.original_name||ride.driver||'Nicht angegeben').trim()||'Nicht angegeben';
+  const key=name.normalize('NFKC').replace(/[\u200B-\u200D\u2060\uFEFF]/g,'').replace(/\s+/g,' ').trim().toLocaleLowerCase('en-US');
+  if(!groups.has(key))groups.set(key,{name,dates:[],count:0});
+  const group=groups.get(key);group.count++;
+  if(/^20\d\d-\d\d-\d\d$/.test(ride.date))group.dates.push(ride.date);
+ }
+ return [...groups.values()].map(x=>({...x,dates:[...new Set(x.dates)].sort().reverse()}))
+  .sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name,'de'));
+}
+export function trainSuggestionFacts(person,type){
+ const rides=Number.isInteger(person?.rides)&&person.rides>=0?person.rides:null;
+ const facts=[rides===null?'Fahrtenzahl unbekannt':rides===0?'Keine bestätigte Fahrt zugeordnet':
+  rides+' bestätigte '+(rides===1?'Fahrt':'Fahrten')];
+ facts.push(person?.last_ride?'Letzte Fahrt: '+person.last_ride:'Keine letzte Fahrt belegt');
+ // Older Worker releases sent 0 for BOTH unknown and observed-zero metrics.
+ // A zero without the explicit evidence flag must remain unconfirmed in Luna.
+ const metric=(value,label,known)=>value===null||value===undefined||!Number.isFinite(Number(value))||
+  (Number(value)===0&&known!==true)?label+': nicht belegt':
+  label+': '+new Intl.NumberFormat('de-DE').format(Number(value));
+ if(type==='Donation King')facts.push(metric(person?.donations_weekly,'Wochenspenden',person?.donations_weekly_known));
+ if(type==='VS Hero')facts.push(metric(person?.vs_weekly,'VS-Wochenpunkte',person?.vs_weekly_known));
+ return facts;
+}
+export function isIsoTrainDate(value){
+ if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
+ const [year,month,day]=value.split('-').map(Number);
+ const date=new Date(Date.UTC(year,month-1,day));
+ return date.getUTCFullYear()===year&&date.getUTCMonth()+1===month&&date.getUTCDate()===day;
+}
+export function berlinTrainToday(now=new Date()){
+ return new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
+}
+const normalizeTrainName=value=>String(value??'').normalize('NFKC').replace(/[\u200B-\u200D\u2060\uFEFF]/gu,'').toLocaleLowerCase('de-DE').trim();
+export function trainTimelineGroups({history=[],dice=[],today=berlinTrainToday(),limit=20,visibleCalendarDates=[],member='',date='',members=[]}={}){
+ if(!isIsoTrainDate(today))throw new RangeError('today must be a real ISO date');
+ const calendar=new Set(visibleCalendarDates.filter(isIsoTrainDate));
+ const rides=Array.isArray(history)?history:[];
+ const winners=diceHistory(Array.isArray(dice)?dice:[]);
+ const past=[],future=[],unresolved=[];
+ rides.forEach((ride,index)=>{
+  const date=ride?.date;
+  const item={kind:'train',date,entry:ride,index};
+  if(isIsoTrainDate(date)&&date<=today&&ride.status==='completed')past.push(item);
+  else if(isIsoTrainDate(date)&&date>today&&ride.status==='planned'){
+   if(!calendar.has(date))future.push(item);
+  }else if(!(isIsoTrainDate(date)&&date>today&&ride.status==='completed'&&calendar.has(date)))unresolved.push(item);
+ });
+ winners.forEach((winner,index)=>{
+  const date=winner.ride_date;
+  if(!isIsoTrainDate(date))return;
+  const item={kind:'dice',date,entry:winner,index};
+  if(date<=today)past.push(item);
+  else if(!calendar.has(date))future.push(item);
+ });
+ const newest=(a,b)=>b.date.localeCompare(a.date)||(a.kind===b.kind?0:a.kind==='train'?-1:1)||a.index-b.index;
+ past.sort(newest);future.sort(newest);
+ unresolved.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))||a.index-b.index);
+ const memberQuery=normalizeTrainName(member),memberNames=new Map((Array.isArray(members)?members:[]).filter(item=>item?.id&&item.name).map(item=>[item.id,item.name]));
+ const filtered=past.filter(item=>{
+  if(date&&(!isIsoTrainDate(date)||item.date!==date))return false;
+  if(!memberQuery)return true;
+  const entry=item.entry,id=item.kind==='dice'?(entry.winner_id||entry.member_id):entry.member_id;
+  const names=item.kind==='dice'?[entry.winner_name,memberNames.get(id)]:[entry.driver,entry.original_name,memberNames.get(id)];
+  return names.some(name=>normalizeTrainName(name).includes(memberQuery));
+ });
+ const pageSize=Number.isInteger(limit)&&limit>=0?limit:20;
+ return {past:filtered.slice(0,pageSize),pastCount:filtered.length,totalPastCount:past.length,hasMore:filtered.length>pageSize,future,unresolved};
+}
+function trainTimelineButton(item,lang){
+ const english=lang==='en',trainWord=(de,en)=>english?en:de;
+ const dateLabel=date=>isIsoTrainDate(date)?new Intl.DateTimeFormat(english?'en-GB':'de-DE',{timeZone:'Europe/Berlin',weekday:'long'}).format(new Date(date+'T12:00:00Z'))+' · '+date:String(date||translateOfficerText('Datum unbekannt',lang));
+ const dice=item.kind==='dice',date=item.date,entry=item.entry;
+ const kind=dice?'Dice Game':trainWord('Zugfahrt','Train ride');
+ const state=dice?trainWord('Gewinner','Winner'):(entry.status==='completed'?trainWord('Gefahren','Completed'):entry.status==='cancelled'?trainWord('Abgesagt','Cancelled'):entry.status==='planned'?trainWord('Geplant','Planned'):trainWord('Offen','Unresolved'));
+ const name=dice?entry.winner_name:entry.driver||trainWord('Noch kein Fahrer eingetragen','No driver registered yet');
+ const action=dice?'data-native-dice-date':'data-native-train';
+ const label=trainWord('Bearbeiten','Edit')+' '+kind+' · '+dateLabel(date)+' · '+state+' · '+name;
+ return '<button type="button" class="native-train-timeline-row" '+action+'="'+e(date)+'" aria-label="'+e(label)+'"><span class="native-train-timeline-date">'+e(dateLabel(date))+'</span><span class="native-train-timeline-type">'+e(kind)+' · '+e(state)+'</span><strong data-native-no-translate>'+e(name)+'</strong><span class="native-train-timeline-action" aria-hidden="true">'+trainWord('Bearbeiten','Edit')+' ›</span></button>';
+}
+function updateTrainHistoryResults(target){
+ const fold=target?.querySelector('.native-train-history');
+ if(!fold||!cache.trains)return;
+ const d=cache.trains,today=isIsoTrainDate(d.today)?d.today:berlinTrainToday();
+ const upcoming=(d.calendar||[]).filter(x=>isIsoTrainDate(x.date)&&x.date>=today&&x.entry?.status!=='cancelled').slice(0,7);
+ const members=[d.members,cache.diceMembers,cache.members].flatMap(list=>Array.isArray(list)?list:[]);
+ const timeline=trainTimelineGroups({history:d.history,dice:cache.dice,today,limit:historyLimit,visibleCalendarDates:upcoming.map(x=>x.date),...trainHistoryFilters,members});
+ fold.querySelector('[data-native-history-count]').textContent=String(timeline.pastCount);
+ const status=fold.querySelector('[data-native-history-results]');
+ status.textContent=timeline.pastCount+' '+translateOfficerText('Treffer',officerLanguage(target.ownerDocument))+' '+translateOfficerText('von',officerLanguage(target.ownerDocument))+' '+timeline.totalPastCount;
+ const list=fold.querySelector('.native-train-history-list');
+ list.innerHTML=(timeline.past.length?timeline.past.map(item=>trainTimelineButton(item,officerLanguage(target.ownerDocument))).join(''):'<p class="native-muted">'+((trainHistoryFilters.member||trainHistoryFilters.date)?'Keine passenden Einträge.':'Noch keine vergangenen Einträge.')+'</p>')+
+  (timeline.hasMore?'<button type="button" data-native-more="train">Weitere 20 Einträge</button>':'');
+ localizeOfficerTree(list);
+}
+function renderTrain(target){
+ const d=cache.trains,today=isIsoTrainDate(d.today)?d.today:berlinTrainToday(),unlinked=groupUnlinkedTrainRides(d.history),unlinkedCount=unlinked.reduce((n,x)=>n+x.count,0),assignVerb=translateOfficerText('Zuordnen',officerLanguage(target.ownerDocument)),upcoming=(d.calendar||[]).filter(x=>isIsoTrainDate(x.date)&&x.date>=today&&x.entry?.status!=='cancelled').slice(0,7);
+ const timeline=trainTimelineGroups({history:d.history,dice:cache.dice,today,limit:historyLimit,visibleCalendarDates:upcoming.map(x=>x.date)});
+ const lang=officerLanguage(target.ownerDocument);
+ const absent=(id,date)=>memberAbsentOn(id,date,d.absences||[]);
+ const slot=x=>'<article class="native-train-item '+(x.date===d.today?'native-train-today':'')+'">'+
+  '<div><span class="native-kicker">'+(x.date===d.today?'HEUTE':e(x.date))+' · '+e(x.type||'Zug')+'</span>'+
+  '<strong>'+e(x.entry?.driver||'Noch kein Fahrer eingetragen')+'</strong>'+
+  '<small>'+e(x.entry?.status||'Offen')+(x.entry?.linked===false?' · Zuordnung nicht verifiziert':'')+(x.unavailable_driver?' · Achtung: Abwesenheit eingetragen':'')+'</small>'+ (x.suggestions?.length?'<small class="native-train-recommendation">Vorschlag: '+e(x.suggestions[0].name)+' · '+e(x.suggestions[0].rank)+'</small>':'')+'</div>'+
+  '<div class="native-train-actions"><button type="button" data-native-train="'+e(x.date)+'">'+(x.entry?'Bearbeiten':'Fahrer wählen')+'</button>'+
+  '<button type="button" data-native-dice-date="'+e(x.date)+'">🎲 '+e((cache.dice||[]).find(d=>d.ride_date===x.date)?.winner_name||'Dice Game')+'</button>'+
+  (x.entry?.status==='planned'&&x.entry?.member_id&&(d.members||[]).some(m=>m.id===x.entry.member_id)?
+   '<button type="button" data-native-copy-train="'+e(x.date)+'">Zugtext kopieren</button>':'')+'</div>'+
+  (x.suggestions?.length?'<details class="native-train-shortlist"><summary>Kandidaten vergleichen · '+x.suggestions.length+'</summary>'+
+   '<p class="native-muted">Unverbindliche Reihenfolge nach zugeordneten Fahrten, Abstand und passenden Leistungswerten. Unbekannte Werte zählen nicht als null.</p>'+
+   '<ol class="native-train-candidates">'+x.suggestions.map(person=>'<li><div><b>'+e(person.name)+'</b><small>'+e(person.rank)+'</small>'+
+    '<span>'+trainSuggestionFacts(person,x.type).map(e).join(' · ')+'</span></div>'+
+    '<button type="button" data-native-train-choice="'+e(person.id)+'" data-date="'+e(x.date)+'" aria-label="'+e(person.name)+' als Fahrer für '+e(x.date)+' vormerken">Auswählen</button></li>').join('')+'</ol></details>':'')+'</article>';
+ const toShow=upcoming.length?upcoming.map(slot).join(''):'<p class="native-muted">Für diese Woche liegen keine Zugdaten vor.</p>';
+ target.querySelector('#native-train-body').innerHTML='<p class="native-muted">Fahrer ab R2 · historische Importe bleiben unverändert. Geplant, gefahren und noch nicht bestätigt sind unterschiedliche Zustände.</p>'+
+  '<div class="native-train-highlights">'+cards([['Gefahren (Historie)',d.counts?.completed??'—'],['Geplant',d.counts?.planned??'—'],['Noch zuordnen',unlinkedCount]])+'</div>'+
+  '<h3 class="native-section-heading">Heute & nächste Züge</h3><div class="native-list native-train-week">'+toShow+'</div>'+
+  '<div id="native-train-form"></div>'+
+  '<details class="native-fold native-train-history" '+(trainHistoryExpanded?'open':'')+'><summary><span>Vergangene Züge & Dice Game</span> · <b data-native-history-count>'+timeline.pastCount+'</b></summary>'+
+  '<div class="native-fold-body"><p class="native-muted native-train-note">Dice-Gewinn ist keine bestätigte Zugfahrt – Fahrtenstatistik/Fairness zählen nur tatsächlich gefahrene Züge.</p>'+
+  '<div class="native-train-history-filters"><label for="native-train-history-member">Mitglied suchen<input id="native-train-history-member" type="search" placeholder="Spielername …" autocomplete="off" value="'+e(trainHistoryFilters.member)+'"></label>'+
+  '<label for="native-train-history-date">Datum filtern<input id="native-train-history-date" type="date" value="'+e(trainHistoryFilters.date)+'"></label>'+
+  '<button type="button" data-native-history-reset title="Filter zurücksetzen" aria-label="Filter zurücksetzen">Filter zurücksetzen</button></div>'+
+  '<p class="native-muted native-train-history-results" role="status" aria-live="polite" data-native-history-results></p><div class="native-list native-train-history-list"></div></div></details>'+
+  (timeline.future.length?'<details class="native-fold native-train-future"><summary><span>Weitere geplante Züge</span> · <b>'+timeline.future.length+'</b></summary><div class="native-fold-body native-list">'+timeline.future.map(item=>trainTimelineButton(item,lang)).join('')+'</div></details>':'')+
+  (timeline.unresolved.length?'<details class="native-fold native-train-unresolved"><summary><span>Offene / abgesagte Einträge</span> · <b>'+timeline.unresolved.length+'</b></summary><div class="native-fold-body native-list">'+timeline.unresolved.map(item=>trainTimelineButton(item,lang)).join('')+'</div></details>':'')+
+  (unlinkedCount?'<details class="native-fold native-train-unlinked"><summary><span>Fahrerzuordnung prüfen</span> · <b>'+unlinkedCount+'</b> <span>Fahrten</span></summary>'+
+   '<div class="native-fold-body"><p class="native-muted">Nur sichere Identitäten zuordnen; Originalnamen bleiben erhalten.</p>'+
+   '<div class="native-train-unlinked-list">'+unlinked.map(group=>
+    '<div class="native-train-unlinked-group"><div><strong>'+e(group.name)+'</strong><small>'+group.count+' <span>'+(group.count===1?'Fahrt':'Fahrten')+'</span> · <span>Zuordnung offen</span></small></div>'+
+    '<div class="native-train-unlinked-dates">'+group.dates.map(date=>
+     '<button type="button" data-native-train="'+e(date)+'" aria-label="'+e(group.name)+' · '+e(date)+' · '+e(assignVerb)+'"><span>'+e(date.slice(5))+'</span> <span>Zuordnen</span></button>').join('')+'</div></div>').join('')+'</div></div></details>':'')+
+  '<details class="native-fold native-train-rotation"><summary>Wochenrotation & Zuständigkeiten bearbeiten</summary><div class="native-fold-body" id="native-train-rotation-body"></div></details>';
+ renderTrainRotation(target);
+ updateTrainHistoryResults(target);
+}
+function editTrain(target,date,allowDateChange=false,preferredMemberId=null){
+ const d=cache.trains,entry=(d.history||[]).find(x=>x.date===date);
+ const repair=entry?.status==='completed'&&entry.linked===false&&!entry.member_id;
+ const eligible=(d.members||[]).filter(m=>(!repair||['R2','R3','R4','R5'].includes(m.rank))&&m.status!=='former'&&m.status!=='archived'&&m.lifecycle!=='former'&&m.lifecycle!=='archived'&&
+  (!memberAbsentOn(m.id,date,d.absences||[])||m.id===entry?.member_id));
+ const optionsList=options(eligible,preferredMemberId||entry?.member_id);
+ const editor=target.querySelector('#native-train-form');
+ if(!editor)return;
+ editor.innerHTML='<form id="native-train-save" class="native-form native-fast-form" '+(repair?'data-repair-date="'+e(date)+'"':'')+'><h3>Zugfahrer · '+e(date)+'</h3>'+
+  (repair?'<p class="native-evidence-note"><span data-native-no-translate>'+e(entry.original_name||entry.driver||'Nicht angegeben')+' · '+e(date)+'</span> · <span>Zuordnung offen</span>. <span>Nur sichere Identitäten zuordnen; Originalnamen bleiben erhalten.</span></p>':'')+
+  '<p class="native-form-help">Fahrer ab R2. Wer an diesem Tag als abwesend eingetragen ist, wird nicht vorgeschlagen und kann nicht neu geplant werden.</p>'+
+  '<label>Fahrer aus Allianz<select name="member_id" '+(repair?'required':'')+'>'+optionsList+'</select></label>'+
+  (repair?'<input type="hidden" name="status" value="completed">':
+   '<label>Status<select name="status">'+[['planned','Geplant'],['completed','Gefahren'],['cancelled','Abgesagt']].map(([v,l])=>
+   '<option value="'+v+'" '+(v===(entry?.status||'planned')?'selected':'')+'>'+l+'</option>').join('')+'</select></label>')+
+  '<details class="native-form-more" '+(allowDateChange||repair?'open':'')+'><summary>Datum, freie Namen & Notizen</summary><div class="native-form-more-fields">'+
+  '<label>Datum<input name="date" type="date" value="'+e(date)+'" required '+(allowDateChange?'':'readonly')+'></label>'+
+  (repair?'':'<label>Nur wenn keine sichere Zuordnung möglich ist: freier Name<input name="driver_name" maxlength="80" value="'+e(entry?.member_id?'':entry?.driver||'')+'"></label>')+
+  (repair?'<label>Prüfnotiz<input data-native-repair-reason maxlength="300" minlength="8" required></label>'+
+   (entry.note?'<p class="native-muted" data-native-no-translate>'+e(entry.note)+'</p>':''):
+   '<label>Notiz<input name="note" maxlength="300" value="'+e(entry?.note||'')+'"></label>')+'</div></details>'+
+  '<button type="submit" class="native-game-primary">Zugzuordnung speichern</button>'+
+  '<button type="button" data-native-form-reload hidden>Aktuellen Zugstand laden</button>'+
+  '<p id="native-form-message" role="status"></p></form>';
+ editor.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function editDice(target,date){
+ const current=(cache.dice||[]).find(x=>x.ride_date===date);
+ const roster=(cache.diceMembers||[]).filter(m=>m.status==='active');
+ const editor=target.querySelector('#native-train-form');if(!editor)return;
+ editor.innerHTML='<form class="native-form native-fast-form" id="native-dice-save" data-revision="'+e(current?.revision||0)+'">'+
+  '<h3>🎲 Dice Game · '+e(date)+'</h3>'+
+  '<p class="native-form-help">Den tatsächlichen Gewinner eintragen. Fahrerauswahl und Zugrotation bleiben unabhängig.</p>'+
+  '<label>Datum<input type="date" name="date" value="'+e(date)+'" required></label>'+
+  '<label>Gewinner aus der Allianz<select name="winner_id" required>'+options(roster,current?.winner_id||'')+'</select></label>'+
+  '<label>Würfelwert (optional)<input type="number" name="roll_value" min="1" max="999" value="'+e(current?.roll_value??'')+'"></label>'+
+  '<label>Notiz (optional)<input name="note" maxlength="300" value="'+e(current?.note||'')+'"></label>'+
+  '<button type="submit" class="native-game-primary">Dice-Game-Gewinner speichern</button>'+
+  (current?'<button type="button" class="native-danger-action" data-native-dice-delete="'+e(date)+'" data-revision="'+e(current.revision)+'">Ziehung löschen</button>':'')+
+  '<p role="status" id="native-dice-message"></p></form>';
+ editor.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+const allianceEventLabels={
+ marshall_guard:'Marshall Guard · Allianzübung',
+ zombie_siege:'Zombie Siege · Zombiebelagerung',
+ desert_storm:'Desert Storm'
+};
+const allianceEventOutcomeLabels={
+ scheduled:'Geplant',completed:'Abgeschlossen',failed:'Nicht geschafft',cancelled:'Abgesagt'
+};
+// Preserve observations exactly. Unknown levels and wave values must not become zero,
+// and an upcoming run must never be mistaken for a successful historical attempt.
+export function summarizeAllianceEventRuns(source,type){
+ const entries=(Array.isArray(source)?source:[]).filter(x=>x&&x.event_type===type&&
+  typeof x.event_date==='string'&&/^20\d{2}-\d{2}-\d{2}$/.test(x.event_date))
+  .sort((a,b)=>b.event_date.localeCompare(a.event_date)||
+    String(b.updated_at||'').localeCompare(String(a.updated_at||'')));
+ const historical=entries.filter(x=>x.outcome==='completed'||x.outcome==='failed');
+ const completed=entries.filter(x=>x.outcome==='completed');
+ const planned=entries.filter(x=>x.outcome==='scheduled');
+ const latest=historical[0]||null,previous=historical[1]||null;
+ const number=x=>Number.isInteger(x)&&x>=1&&x<=999?x:null;
+ const level=number(latest?.level),previousLevel=number(previous?.level);
+ const validLevels=completed.map(x=>number(x.level)).filter(x=>x!==null);
+ const bestLevel=validLevels.length?Math.max(...validLevels):null;
+ const waveValue=x=>Number.isInteger(x)&&x>=0&&x<=999?x:null;
+ const waves=type==='zombie_siege'?waveValue(latest?.waves):null;
+ return {type,entries,historical,completed,planned,latest,previous,
+  level,bestLevel,waves,deltaLevel:level!==null&&previousLevel!==null?level-previousLevel:null,
+  confirmedCount:historical.length};
+}
+function renderEventRuns(target){
+ const data=cache.ops,entries=data?.events||[];
+ const names=new Map((data?.members||[]).map(m=>[m.id,m.name]));
+ const german=officerLanguage(target.ownerDocument)==='de';
+ const attendanceLabel=x=>Number.isInteger(x.attendance)?x.attendance+(german?' Teilnehmer · Offizierseintrag':' participants · officer entry'):(german?'Teilnahme nicht belegt':'Attendance not evidenced');
+ const eventRow=x=>'<button type="button" class="native-event-history-row" data-native-edit="'+e(x.id)+'">'+
+  '<span><b>'+e(x.event_date)+'</b><small>'+e(allianceEventOutcomeLabels[x.outcome]||'Nicht bestätigt')+'</small></span>'+
+  '<span><strong>'+e(x.level??'—')+'</strong><small>Level</small></span>'+
+  (x.event_type==='zombie_siege'?'<span><strong>'+e(x.waves??'—')+'</strong><small>Wellen</small></span>':'')+
+   '<span class="native-event-history-actor">'+e(names.get(x.lead_id)||'Leitung offen')+'<small>'+e(attendanceLabel(x))+'</small></span></button>';
+ const groups=['zombie_siege','marshall_guard'].map(type=>{
+  const data=summarizeAllianceEventRuns(entries,type);
+  const last=data.latest,latestLevel=data.level??'—';
+  const diff=data.deltaLevel===null?'Noch kein direkter Vergleich':
+   data.deltaLevel===0?'Level unverändert':(data.deltaLevel>0?'+':'')+data.deltaLevel+' Level zum vorherigen Durchgang';
+  const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date());
+  const upcoming=data.planned.filter(x=>x.event_date>=today).sort((a,b)=>a.event_date.localeCompare(b.event_date))[0];
+  const bars=data.historical.slice(0,7).reverse().filter(x=>Number.isInteger(x.level)&&x.level>0);
+  const ceiling=Math.max(1,...bars.map(x=>x.level));
+  return '<section class="native-event-panel" aria-label="'+e(allianceEventLabels[type])+'">'+
+   '<div class="native-event-panel-head"><div><span class="native-kicker">ALLIANZ-EINSATZ</span>'+
+   '<h3>'+e(allianceEventLabels[type])+'</h3></div>'+
+   '<button type="button" class="native-game-primary" data-native-event-quick="'+type+'">+ Durchgang</button></div>'+
+   '<div class="native-event-summary">'+
+   '<div><small>Letztes Ergebnis</small><strong>'+e(last?.event_date||'—')+'</strong>'+
+    '<span>'+e(last?allianceEventOutcomeLabels[last.outcome]:'Noch nicht dokumentiert')+'</span></div>'+
+   '<div><small>Letztes Level</small><strong>'+e(latestLevel)+'</strong><span>'+e(diff)+'</span></div>'+
+   '<div><small>'+(type==='zombie_siege'?'Letzte Wellen':'Höchstes abgeschlossenes Level')+'</small>'+
+   '<strong>'+e(type==='zombie_siege'?data.waves??'—':data.bestLevel??'—')+'</strong>'+
+   '<span>'+data.confirmedCount+' dokumentierte Ergebnisse</span></div></div>'+
+   (upcoming?'<p class="native-event-next">Nächster eingetragener Termin: <b>'+e(upcoming.event_date)+'</b> · Level '+e(upcoming.level??'offen')+'</p>':
+   '<p class="native-muted">Kein zukünftiger Termin eingetragen. Keine automatische Terminprognose.</p>')+
+   (bars.length?'<p class="native-muted native-event-trend-label">Dokumentierte Levelversuche · Grau = nicht geschafft</p><div class="native-event-trend" role="img" aria-label="'+e(type==='zombie_siege'?'Zombie Siege':'Marshall Guard')+
+     ': aufgezeichnete Level '+bars.map(x=>e(x.event_date)+': '+e(x.level)).join(', ')+'">'+
+     bars.map(x=>'<div><span class="native-event-bar '+(x.outcome==='failed'?'native-event-bar--failed':'')+'" style="height:'+Math.round(x.level/ceiling*100)+'%"></span>'+
+      '<b>'+e(x.level)+'</b><small>'+e(x.event_date.slice(5))+'</small></div>').join('')+'</div>':
+    '<p class="native-muted">Noch keine bestätigten Level für einen Verlauf vorhanden.</p>')+
+   '<details class="native-fold"><summary>Alle Durchgänge · '+data.entries.length+'</summary>'+
+    '<div class="native-fold-body native-event-history">'+(data.entries.length?data.entries.map(eventRow).join(''):
+    '<p class="native-muted">Noch keine erfassten Durchgänge.</p>')+'</div></details></section>';
+ }).join('');
+ const other=entries.filter(x=>x.event_type==='desert_storm');
+ target.querySelector('#native-records').innerHTML='<div class="native-event-intro"><p>Alle paar Tage erfassen: <strong>Level, Wellen, Ergebnis und Teilnahme</strong>. Jeder Durchgang bleibt mit Datum und verantwortlichem Officer erhalten.</p><p class="native-muted">'+(german?'Teilnahme ist ein manueller Offizierseintrag und wird ohne Beleg nicht automatisch ergänzt.':'Attendance is entered manually by an officer and is never inferred without evidence.')+'</p></div>'+
+  '<div class="native-event-panels">'+groups+'</div>'+
+  '<details class="native-fold"><summary>Weitere Events · Desert Storm ('+other.length+')</summary>'+
+  '<div class="native-fold-body native-event-history">'+(other.length?other.map(eventRow).join(''):
+   '<p class="native-muted">Noch keine Desert-Storm-Durchgänge dokumentiert.</p>')+'</div></details>';
+}
+function updateEventForm(form){
+ if(!form||form.dataset.kind!=='events')return;
+ const type=form.elements.namedItem('event_type')?.value;
+ const waveRow=form.querySelector('[data-event-waves]');
+ if(waveRow)waveRow.hidden=type!=='zombie_siege';
+ const wave=form.elements.namedItem('waves');if(wave)wave.disabled=type!=='zombie_siege';
+ const hint=form.querySelector('[data-event-guidance]');
+ if(hint)hint.textContent=type==='zombie_siege'?
+  'Schwierigkeit und tatsächlich erreichte Wellen eintragen (im üblichen Modus bis 20). Unbekannt bleibt leer.':
+  type==='marshall_guard'?
+   'Gewählte Stufe, Teilnahme und Abschluss festhalten. Gesamtschaden und Belohnungsphasen folgen in einer späteren Erweiterung.':
+   'Termin, Verantwortliche, Teamstärke und Ergebnis dokumentieren.';
+}
+function renderRecords(target){
+ if(panel==='events'){renderEventRuns(target);return}
+ const d=cache.ops,entries=d[panel]||[],names=new Map(d.members.map(m=>[m.id,m.name]));
+ const title=x=>panel==='tasks'?x.title:(names.get(x.member_id)||'Unbekannt')+' · '+x.start_date+'–'+x.end_date;
+ const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date());
+ const recordRow=x=>'<article class="native-operational-item"><button type="button" data-native-edit="'+e(x.id)+'">'+
+  '<strong>'+e(title(x))+'</strong><small>'+e(panel==='tasks'?
+    (x.priority||'normal')+' · '+(names.get(x.assignee_id)||'Noch ohne zuständigen R4/R5')+
+    (x.due_date?' · Frist '+x.due_date:''):
+    'Vertretung: '+(names.get(x.substitute_id)||'offen'))+'</small></button>'+
+  (panel==='tasks'?'<button type="button" class="native-task-check" data-native-task-toggle="'+e(x.id)+'" '+
+    'aria-label="'+(x.status==='done'?'Aufgabe wieder öffnen':'Aufgabe als erledigt abhaken')+'">'+
+    (x.status==='done'?'↻ Wieder öffnen':'✓ Erledigt')+'</button>':'')+'</article>';
+ let markup='';
+ if(panel==='tasks'){
+  const open=entries.filter(x=>x.status!=='done').sort((a,b)=>(a.due_date||'9999').localeCompare(b.due_date||'9999'));
+  const done=entries.filter(x=>x.status==='done');
+  markup=cards([['Offen',open.length],['Abgeschlossen',done.length]])+
+   '<section class="native-operation-group"><h3>Offene Aufgaben · '+open.length+'</h3>'+
+    (open.length?'<div class="native-list">'+open.map(recordRow).join('')+'</div>':'<p class="native-muted">Alle Aufgaben erledigt.</p>')+'</section>'+
+   '<details class="native-fold native-operation-group"><summary>Abgeschlossene Aufgaben · '+done.length+'</summary>'+
+    '<div class="native-fold-body native-list">'+(done.length?done.map(recordRow).join(''):'<p class="native-muted">Noch keine erledigten Aufgaben.</p>')+'</div></details>';
+ }else{
+  const current=entries.filter(x=>x.end_date>=today),past=entries.filter(x=>x.end_date<today);
+  markup=cards([['Geplant / aktiv',current.length],['Vergangen',past.length]])+
+   '<div class="native-operation-group"><h3>Aktuelle Abwesenheiten</h3>'+
+    (current.length?'<div class="native-list">'+current.map(recordRow).join('')+'</div>':'<p class="native-muted">Keine laufenden Abwesenheiten.</p>')+'</div>'+
+   '<details class="native-fold"><summary>Vergangene Abwesenheiten · '+past.length+'</summary>'+
+    '<div class="native-fold-body native-list">'+past.map(recordRow).join('')+'</div></details>';
+ }
+ target.querySelector('#native-records').innerHTML=markup;
+}
+function editRecord(target,kind,id){
+ const d=cache.ops,record=d[kind].find(x=>x.id===id)||{},select=(name)=>{
+  const ranks=kind==='tasks'?['R4','R5']:(name==='substitute_id'||name==='lead_id')?['R3','R4','R5']:null;
+  return options(ranks?d.members.filter(m=>ranks.includes(m.rank)):d.members,record[name]||'');
+ };
+ const fields={
+  tasks:'<label>Aufgabe<input name="title" minlength="3" maxlength="160" required></label><label>Zuständig<select name="assignee_id">'+select('assignee_id')+'</select></label><label>Ersatz<select name="substitute_id">'+select('substitute_id')+'</select></label><label>Frist<input type="date" name="due_date"></label><label>Priorität<select name="priority"><option>normal</option><option>high</option><option>urgent</option><option>low</option></select></label><label>Status<select name="status"><option value="open">Offen</option><option value="in_progress">In Arbeit</option><option value="blocked">Blockiert</option><option value="done">Erledigt</option></select></label><label>Notiz<textarea name="description" maxlength="1000"></textarea></label>',
+  absences:'<label>Abwesend<select name="member_id" required>'+select('member_id')+'</select></label><label>Ersatz<select name="substitute_id">'+select('substitute_id')+'</select></label><label>Beginn<input name="start_date" type="date" required></label><label>Ende<input name="end_date" type="date" required></label><label>Notiz<input name="note" maxlength="300"></label>',
+  events:'<label>Event<select name="event_type"><option value="marshall_guard">Marshall Guard / Allianzübung</option><option value="zombie_siege">Zombie Siege</option><option value="desert_storm">Desert Storm</option></select></label><label>Datum<input name="event_date" type="date" required></label><label>Schwierigkeit / Level<input name="level" type="number" min="1" max="999" placeholder="Nur bestätigen, wenn bekannt"></label><label data-event-waves>Erreichte Wellen<input name="waves" type="number" min="0" max="999" placeholder="Tatsächlich erreichte Welle"></label><label>Verantwortlich<select name="lead_id">'+select('lead_id')+'</select></label><label>Ersatz<select name="substitute_id">'+select('substitute_id')+'</select></label><label>Teilnehmer (Anzahl)<input name="attendance" type="number" min="0" max="100" placeholder="Falls belegt"></label><label>Ergebnis<select name="outcome"><option value="scheduled">Geplant</option><option value="completed">Abgeschlossen</option><option value="failed">Nicht geschafft</option><option value="cancelled">Abgesagt</option></select></label><label>Notizen<input name="notes" maxlength="500" placeholder="Optional: Kampfbericht / Schwierigkeiten"></label><p class="native-form-help" data-event-guidance></p>'
+ };
+ const host=target.querySelector('#native-form');host.innerHTML='<form class="native-form" id="native-record-save" data-kind="'+kind+'" data-id="'+e(record.id||'')+'">'+fields[kind]+'<button type="submit">Speichern</button>'+
+  (record.id?'<button type="button" class="native-danger-action" data-native-record-delete="'+e(record.id)+'" data-kind="'+kind+'">Eintrag löschen</button>':'')+
+  '<button type="button" data-native-form-reload hidden>Aktuellen Stand laden</button><p id="native-form-message" role="status"></p></form>';
+ const form=host.firstElementChild;
+ for(const [key,value] of Object.entries(record)){if(form.elements.namedItem(key))form.elements.namedItem(key).value=value??''}
+ if(kind==='events'&&!record.event_date)form.elements.namedItem('event_date').value=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date());
+ if(kind==='events')updateEventForm(form);
+ form.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+async function saveForm(mount,form){
+ const kind=form.dataset.kind;const body={};for(const [k,v] of new FormData(form))body[k]=v===''?(kind==='train'&&['note','driver_name'].includes(k)?'':null):['level','waves','attendance'].includes(k)?Number(v):v;
+ if(form.dataset.id)body.id=form.dataset.id;
+ const action=kind==='train'?'train-assignments':'operations/'+kind;
+ if(kind==='train'){
+  const item=cache.trains.history.find(x=>x.date===body.date);
+  if(form.dataset.repairDate){
+   const member=(cache.trains.members||[]).find(x=>x.id===body.member_id);
+   const reason=form.querySelector('[data-native-repair-reason]')?.value.trim()||'';
+   const note=[item?.note,reason].filter(Boolean).join(' | ');
+   if(body.date!==form.dataset.repairDate||item?.status!=='completed'||item.linked!==false||item.member_id||
+    !Number.isSafeInteger(item.revision)||item.revision<0||
+    body.status!=='completed'||!member||['former','archived'].includes(member.status)||
+    ['former','archived'].includes(member.lifecycle)||!['R2','R3','R4','R5'].includes(member.rank)||
+    reason.length<8||note.length>300){
+    form.querySelector('#native-form-message').textContent='Bitte aktives Mitglied, Datum und Prüfnotiz für diese historische Fahrt bestätigen.';
+    return;
+   }
+   body.note=note;
+   if(!window.confirm('Historische Fahrt vom '+body.date+' nach Originalbeleg dem ausgewählten Mitglied zuordnen?'))return;
+  }
+  body.expected_revision=item?.revision||0;
+ }
+ const submit=form.querySelector('[type=submit]');submit.disabled=true;
+ try{
+  await request('/api/'+action,{method:'POST',body});
+  // Keep the officer on the same person's record after saving their absence.
+  const profileId=kind==='absences'?form.dataset.profileId:null;
+  if(profileId){
+   cache.ops=await request('/api/operations');
+   await view(mount);
+   await showPerson(mount.querySelector('#native-admin-content'),profileId);
+  }else await view(mount);
+ }catch(err){
+  const conflict=err.status===409;
+  form.querySelector('#native-form-message').textContent=conflict?
+   'Dieser Eintrag wurde inzwischen geändert. Deine Eingaben bleiben erhalten. Bitte vor erneutem Speichern neu laden.':
+   'Nicht gespeichert: '+err.message;
+  if(conflict){form.dataset.conflict='1';form.querySelector('[data-native-form-reload]').hidden=false}
+  else submit.disabled=false;
+ }
+}
+// Read-only comparison: a person missing from a list is NOT a departure.
+export function membershipWatchSummary(data){
+ const list=Array.isArray(data?.candidates)?data.candidates:[];
+ return {count:list.length,both:list.filter(x=>x.priority==='cross_source').length,
+  profile:list.filter(x=>x.missing_profile).length,vs:list.filter(x=>x.missing_vs).length};
+}
+function renderMembershipWatch(target){
+ const data=cache.watch||{},host=target.querySelector('#native-watch-list');if(!host)return;
+ const count=membershipWatchSummary(data),list=data.candidates||[];
+ const policy=cache.archiveEligibility;
+ const autoArchiveHint=policy?'<p class="native-evidence-note"><strong>Automatisches Archiv nach zwei Wochen:</strong> '+
+  (policy.ready?'W39/W40/W41-Regel aktiv: '+(policy.candidates?.length||0)+' bestätigte Kandidaten; Wochensnapshots final und Profilaufnahme vollständig.':
+    'Sicherheitsprüfung wartet: '+e(policy.reason||'Weitere finalisierte Vergleiche notwendig')+'.')+
+  ' Der nächtliche Staging-Abgleich archiviert nur nach zwei aufeinanderfolgenden fehlenden VS-Wochen und zusätzlichem Fehlen im vollständigen neuesten Mitglieder-Screenshot. R4/R5 werden niemals automatisch archiviert.</p>':'';
+ const snapshotInfo=(data.profile?.current?.captured_at?'Stärke '+data.profile.current.captured_at.slice(0,10):'Stärke ohne Vergleich')+
+  ' · '+(data.vs?.current?.week?'VS '+data.vs.current.week:'VS ohne Vergleich');
+ host.innerHTML='<p class="native-muted">'+e(snapshotInfo)+' · Quellen sind unterschiedlich vollständig</p>'+autoArchiveHint+
+  cards([['Prüfkandidaten',count.count],['In beiden Listen fehlend',count.both],
+   ['Im Stärke-Snapshot fehlend',count.profile],['In VS-Liste fehlend',count.vs]])+
+  '<p class="native-evidence-note"><strong>Kein automatischer Austritt:</strong> Fehlt ein Spieler auf einem Screenshot, bleibt er aktiv. Bei fehlenden Daten ist keine Blacklist zulässig. Status und Blacklist werden ausschließlich manuell in der Spielerakte geändert.</p>'+
+  (data.state==='insufficient_history'?
+   '<p class="native-muted">Für einen verlässlichen Vergleich benötigen wir mindestens zwei vollständige Profil-Aufnahmen oder zwei abgeschlossene VS-Wochen.</p>':
+   list.length?'<div class="native-list native-watch-candidates">'+list.map(m=>
+    '<article class="native-watch-item"><div><span class="native-status">'+e(m.priority==='cross_source'?'Zwei Quellen':'Prüfen')+'</span>'+
+    '<h3>'+e(m.name)+' <small>'+e(m.rank)+'</small></h3>'+
+    '<p>'+e(m.missing_profile?'Neue Stärke-Aufnahme: nicht enthalten':'Stärke-Aufnahme: keine neue Abweichung')+'</p>'+
+    '<p>'+e(m.missing_vs?'Neue VS-Aufnahme: nicht enthalten':'VS-Aufnahme: keine neue Abweichung')+'</p>'+
+    '<small>Zuletzt gesehen: '+e(m.last_seen||'Unbekannt')+(m.blacklisted?' · Bereits manuell gesperrt':'')+'</small></div>'+
+    '<button type="button" data-native-watch-person="'+e(m.id)+'">Spielerakte prüfen</button></article>'
+   ).join('')+'</div>':
+   '<p class="native-muted">In den aktuell vergleichbaren Aufnahmen sind keine fehlenden Spieler aufgefallen. Das ist kein vollständiger Anwesenheitsnachweis.</p>');
+}
+const diplomacyLabels={
+ stance:{ally:'Verbündet',nap:'Nichtangriff',neutral:'Neutral',hostile:'Konflikt',unknown:'Ungeklärt'},
+ war_support:{assist:'Wir helfen',none:'Keine Kriegshilfe',oppose:'Gegenseite',unknown:'Ungeklärt'},
+ attack_policy:{no_attack:'Nicht angreifen',defend_only:'Nur verteidigen',open:'Keine Absprache',unknown:'Ungeklärt'},
+ verification:{confirmed:'Bestätigt',unconfirmed:'Unbestätigt',outdated:'Veraltet'}
+};
+const choices=(values,selected)=>Object.entries(values).map(([key,label])=>
+ '<option value="'+e(key)+'" '+(key===selected?'selected':'')+'>'+e(label)+'</option>').join('');
+function renderDiplomacy(target,term=''){
+ const host=target.querySelector('#native-diplomacy-list');if(!host)return;
+ const all=cache.diplomacy?.relations||[];
+ const list=all.filter(x=>(x.tag+' '+x.name+' '+x.server).toLowerCase().includes(term.toLowerCase()));
+ host.innerHTML='<p class="native-muted">'+list.length+' von '+all.length+' Allianzen. Alle Vereinbarungen beruhen auf manuellen Offiziersnotizen.</p>'+
+  (list.length?'<div class="native-diplomacy-cards">'+list.map(x=>
+    '<button type="button" class="native-diplomacy-card" data-native-diplomacy-edit="'+e(x.id)+'">'+
+    '<span class="native-diplomacy-tag">'+e(x.tag)+'</span><span class="native-diplomacy-details"><strong>'+e(x.name)+'</strong>'+
+    '<small>Server '+e(x.server)+' · '+e(diplomacyLabels.stance[x.stance]||'Ungeklärt')+
+     (x.active?'':' · Historisch')+'</small>'+
+    '<span>'+e(diplomacyLabels.war_support[x.war_support]||'Ungeklärt')+
+     ' · '+e(diplomacyLabels.attack_policy[x.attack_policy]||'Ungeklärt')+'</span>'+
+    '<small>'+e(diplomacyLabels.verification[x.verification]||'Unbestätigt')+
+     ' · zuletzt '+e(formatOfficerTime(x.updated_at))+'</small></span>'+
+    '<span class="native-diplomacy-chevron" aria-hidden="true">›</span></button>'
+   ).join('')+'</div>':
+   '<p class="native-muted">Noch keine Allianz eingetragen oder keine Suchtreffer.</p>');
+}
+function editDiplomacy(target,id=''){
+ const record=(cache.diplomacy?.relations||[]).find(x=>x.id===id)||{};
+ const host=target.querySelector('#native-diplomacy-form');if(!host)return;
+ host.innerHTML='<form id="native-diplomacy-save" class="native-form native-diplomacy-form" data-id="'+e(record.id||'')+
+  '" data-revision="'+e(record.revision||'')+'">'+
+  '<div class="native-form-heading"><h3>'+(id?'Allianzvereinbarung bearbeiten':'Allianz notieren')+'</h3>'+
+  '<button type="button" data-native-diplomacy-cancel aria-label="Editor schließen">Schließen</button></div>'+
+  '<p class="native-form-help">Internes Offiziersbuch. Eine Notiz begründet keine automatische Ingame-Unterstützung oder Angriffssperre.</p>'+
+  '<label>Server<input type="number" name="server" inputmode="numeric" min="1" max="99999" required value="'+e(record.server??2261)+'" '+(id?'readonly':'')+'></label>'+
+  '<label>Allianz-Tag<input name="tag" maxlength="12" minlength="2" pattern="[A-Za-z0-9]{2,12}" autocapitalize="characters" required value="'+e(record.tag||'')+'" '+(id?'readonly':'')+'></label>'+
+  '<label>Allianzname<input name="name" maxlength="120" minlength="2" required value="'+e(record.name||'')+'"></label>'+
+  '<label>Verhältnis<select name="stance">'+choices(diplomacyLabels.stance,record.stance||'unknown')+'</select></label>'+
+  '<label>Unterstützung im Krieg<select name="war_support">'+choices(diplomacyLabels.war_support,record.war_support||'unknown')+'</select></label>'+
+  '<label>Angriffsregel<select name="attack_policy">'+choices(diplomacyLabels.attack_policy,record.attack_policy||'unknown')+'</select></label>'+
+  '<label>Informationsstand<select name="verification">'+choices(diplomacyLabels.verification,record.verification||'unconfirmed')+'</select></label>'+
+  '<label class="native-check"><input type="checkbox" name="active" '+(record.active===0?'':'checked')+'>Aktuelle Beziehung (sonst historisch)</label>'+
+  '<label class="native-diplomacy-wide">Interne Notiz<textarea name="notes" maxlength="1200" rows="3" placeholder="Wer hat was zugesagt? Was gilt bei Krieg / Schild / Stadtbesetzung?">'+e(record.notes||'')+'</textarea></label>'+
+  '<label class="native-diplomacy-wide">Warum ändern wir die Vereinbarung?<textarea name="reason" rows="2" required minlength="8" maxlength="500" placeholder="Pflichtangabe für das Änderungsprotokoll"></textarea></label>'+
+  '<button type="submit" class="native-game-primary">Vereinbarung protokolliert speichern</button>'+
+  '<button type="button" data-native-diplomacy-reload hidden>Aktuellen Stand laden</button>'+
+  '<p id="native-diplomacy-message" role="status"></p></form>';
+ host.scrollIntoView({behavior:'smooth',block:'nearest'});
+ const focus=host.querySelector(id?'[name=stance]':'[name=tag]');focus?.focus({preventScroll:true});
+}
+
+/** Unified former-members list. Private train-only records keep their original
+ * name and rides, without receiving member IDs or synthetic player fields. */
+export function mergeFormerMemberRows(members=[],historical=[]){
+ return [
+  ...members.map(value=>({kind:'member',value})),
+  ...historical.map(value=>({kind:'train',value}))
+ ].sort((a,b)=>String(a.value.name||'').localeCompare(String(b.value.name||''),'de',{sensitivity:'base'})||
+  (a.kind==='member'?-1:1));
+}
+/** Read-only archive entries supplied by the PRIVATE worker, not guesses from unlinked names. */
+export function historicalFormerRegistryEntries(entries=[],registered=[]){
+ const normalized=s=>String(s||'').normalize('NFKC').replace(/[\u200B-\u200D\u2060\uFEFF]/gu,'').trim().toLocaleLowerCase('en-US');
+ const existing=new Set(registered.map(x=>normalized(x.name)));
+ if(!Array.isArray(entries))return [];
+ return entries.filter(x=>x?.source==='historical_train'&&typeof x.name==='string'&&
+  Number.isSafeInteger(x.ride_count)&&x.ride_count>0&&Array.isArray(x.dates)&&
+  !existing.has(normalized(x.name)))
+  .map(x=>({name:x.name,ride_count:x.ride_count,dates:[...new Set(x.dates.filter(d=>/^20\d{2}-\d{2}-\d{2}$/.test(d)))].sort().reverse(),source:'historical_train'}))
+  .sort((a,b)=>a.name.localeCompare(b.name,'de'));
+}
+ function renderRegistry(target,query){
+ const historical=historicalFormerRegistryEntries(cache.archivedTrains?.archivedFormerTrainDrivers||[],cache.registry.members);
+ const lang=officerLanguage(target.ownerDocument);
+ const trans=key=>e(translateOfficerText(key,lang));
+ const queryText=String(query||'').toLocaleLowerCase('de-DE');
+ const visibleHistorical=['former','all'].includes(registryFilter)?
+  historical.filter(x=>x.name.toLocaleLowerCase('de-DE').includes(queryText)):[];
+ const list=cache.registry.members.filter(x=>(registryFilter==='blacklist'?Boolean(x.blacklisted):
+  registryFilter==='all'||x.lifecycle===registryFilter)&&
+  (x.name+' '+x.rank+' '+x.lifecycle+' '+(x.blacklisted?'blacklist':'')).toLowerCase().includes(queryText));
+ // One shared list ordered by member name: regular profiles and historical train
+ // sources are peers in the archive view, never split into subsections.
+ const combined=mergeFormerMemberRows(list,visibleHistorical);
+ const rows=combined.slice(0,pageLimit).map(entry=>entry.kind==='member'?
+  '<button type="button" data-registry-edit="'+e(entry.value.id)+'"><strong>'+e(entry.value.name)+' · '+e(entry.value.rank)+'</strong>'+
+   '<small>'+e(entry.value.lifecycle)+(entry.value.blacklisted?' · BLACKLIST':'')+' · zuletzt '+e(entry.value.last_seen||'?')+'</small></button>':
+  '<div class="native-archive-row native-registry-archive-row"><strong>'+e(entry.value.name)+'</strong>'+
+   '<small>'+trans('Zugfahrt')+' · '+entry.value.ride_count+'×'+
+   (entry.value.dates.length?' · '+e(entry.value.dates.join(', ')):'')+'</small></div>'
+ ).join('');
+ target.querySelector('#registry-list').innerHTML=
+  '<p class="native-muted">'+(visibleHistorical.length?(combined.length+' '+trans('Ergebnisse')):
+   (list.length+' Ergebnisse. Archiv und Blacklist werden nur manuell geändert.'))+'</p>'+
+  '<div class="native-list">'+rows+'</div>'+
+  (combined.length>pageLimit?'<button type="button" data-native-more="registry">Weitere Spieler</button>':'');
+}
+function createMemberForm(target){
+ const host=target.querySelector('#registry-form');if(!host)return;
+ const ranks=canManageSite()?['R1','R2','R3','R4','R5']:['R1','R2','R3'];
+ host.innerHTML='<form id="native-member-create-save" class="native-form"><h3>Mitglied manuell anlegen</h3>'+
+  '<p class="native-muted">Nur die bestätigte Identität wird angelegt. Keine Power-, Kills-, Spenden- oder VS-Werte werden erfunden.</p>'+
+  '<label>Ingame-Spielername<input name="name" maxlength="80" minlength="2" required autocomplete="off"></label>'+
+  '<label>Rang<select name="rank">'+ranks.map(r=>'<option>'+r+'</option>').join('')+'</select></label>'+
+  '<label>Warum manuell anlegen?<input name="reason" required minlength="8" maxlength="500" placeholder="Begründung für das Admin-Protokoll"></label>'+
+  '<button type="submit" class="native-game-primary">Mitglied protokolliert anlegen</button><p role="status" id="native-member-create-message"></p></form>';
+ host.querySelector('[name=name]').focus();
+}
+function accessForm(target,mode,accountId=''){
+ const host=target.querySelector('#native-access-form');if(!host)return;
+ if(['link','disable'].includes(mode)){
+  if(!canManageSite())return;
+  const account=(cache.access?.accounts||[]).find(a=>a.id===accountId&&a.enabled);
+  if(!account)return;
+  const linkedIds=new Set((cache.access?.accounts||[]).map(a=>a.member_id).filter(Boolean));
+  const eligible=(cache.registry?.members||[]).filter(m=>m.lifecycle==='active'&&!m.blacklisted&&m.rank===account.role&&!linkedIds.has(m.id));
+  host.innerHTML='<form id="native-access-save" class="native-form" data-mode="'+e(mode)+'" data-officer-id="'+e(account.id)+'"><h3>'+e(account.ingame_name)+' · '+e(account.role)+'</h3>'+
+   '<p class="native-muted">'+(mode==='link'?'R5 bestätigt persönlich, welcher aktive Spieler wirklich hinter diesem bestehenden Offizierskonto steht. Keine automatische Zuordnung nach Namen.':
+   'Zugang deaktivieren und alle laufenden Sitzungen beenden. Das Spielerprofil und seine historischen Werte bleiben erhalten.')+'</p>'+
+   (mode==='link'?'<label>Bestätigtes Mitglied auswählen<select name="member_id" required><option value="">Bitte wählen</option>'+eligible.map(m=>'<option value="'+e(m.id)+'">'+e(m.name)+' · '+e(m.rank)+'</option>').join('')+'</select></label>':'')+
+   '<label>Begründung für Audit-Protokoll<input name="reason" required minlength="8" maxlength="500" placeholder="Identität bestätigt / Zugang nicht mehr berechtigt"></label>'+
+   '<button type="submit" class="native-game-primary">'+(mode==='link'?'Zuordnung verbindlich speichern':'Zugang sicher deaktivieren')+'</button>'+
+   '<p id="native-access-message" role="status"></p></form>';
+  host.querySelector('[name=reason]')?.focus();return;
+ }
+ const reason='<label>Grund (Audit-Log)<input name="reason" required minlength="8" maxlength="500" placeholder="Warum wird der Zugang verändert?"></label>';
+ const accountChoices=(cache.access?.accounts||[]).filter(a=>a.enabled&&!a.is_site_owner&&a.ingame_name!==officer?.name);
+ const eligible=(cache.registry?.members||[]).filter(m=>m.lifecycle==='active'&&!m.blacklisted&&['R4','R5'].includes(m.rank)&&
+  !(cache.access?.accounts||[]).some(a=>a.member_id===m.id||a.ingame_name.toLocaleLowerCase()===m.name.toLocaleLowerCase()));
+ const self=mode==='self',issue=mode==='issue';
+ host.innerHTML='<form id="native-access-save" class="native-form" data-mode="'+e(mode)+'"><h3>'+
+  (self?'Eigenen Code ändern':issue?'Neuen Admin-Zugang erstellen':'Vergessenen Code zurücksetzen')+'</h3>'+
+  '<p class="native-muted">'+(self?'Der aktuelle Code muss bestätigt werden.':'Nur R5 darf Codes anderer Offiziere verwalten.')+
+  ' Der neue zufällige Zugangscode erscheint genau einmal; alle bisherigen Sitzungen des betroffenen Offiziers werden beendet.</p>'+
+  (self?'<label>Aktueller Zugangscode<input type="password" name="current_code" required autocomplete="off"></label>':
+  '<label>'+(issue?'R4/R5-Mitglied':'Offizier')+' auswählen<select name="'+(issue?'member_id':'officer_id')+'" required><option value="">Bitte auswählen</option>'+
+  (issue?eligible.map(m=>'<option value="'+e(m.id)+'">'+e(m.name)+' · '+e(m.rank)+'</option>'):
+   accountChoices.map(a=>'<option value="'+e(a.id)+'">'+e(a.ingame_name)+' · '+e(a.role)+'</option>')).join('')+'</select></label>')+
+  reason+'<button type="submit" class="native-game-primary">'+(self?'Neuen persönlichen Code erzeugen':issue?'Zugang erstellen':'Code zurücksetzen')+
+  '</button><p role="status" id="native-access-message"></p></form>';
+}
+function editRegistry(target,id){
+ const m=cache.registry.members.find(x=>x.id===id);if(!m)return;
+ const host=target.querySelector('#registry-form');
+ if(!canManageSite()&&['R4','R5'].includes(m.rank)){
+  host.innerHTML='<p class="native-evidence-note">Offiziersrang, Archiv und Blacklist dieses Mitglieds dürfen nur durch R5 geändert werden.</p>';
+  return;
+ }
+ const ranks=canManageSite()?['R1','R2','R3','R4','R5']:['R1','R2','R3'];
+ host.innerHTML='<form id="registry-save" class="native-form" data-id="'+e(id)+'" data-revision="'+e(m.revision)+'"><h3>'+e(m.name)+' verwalten</h3>'+
+  '<label>Verwalteter Rang<select name="rank" required>'+(!m.rank?'<option value="" selected disabled>Rang verifizieren</option>':'')+ranks.map(x=>'<option '+(m.rank===x?'selected':'')+'>'+x+'</option>').join('')+'</select></label>'+
+  '<label>Status<select name="lifecycle" required>'+(m.lifecycle==='unverified'?'<option value="" selected disabled>Identität / Status verifizieren</option>':'')+'<option value="active" '+(m.lifecycle==='active'?'selected':'')+'>Aktiv</option><option value="former" '+(m.lifecycle==='former'?'selected':'')+'>Ehemalig / Archiv</option></select></label>'+
+  '<div class="native-row"><button type="button" data-native-registry-quick="archive">Ins Archiv vormerken</button><button type="button" data-native-registry-quick="blacklist">Blacklist vormerken</button><button type="button" data-native-registry-quick="active">Aktiv vormerken</button></div>'+
+  '<label class="native-check"><input type="checkbox" name="blacklisted" '+(m.blacklisted?'checked':'')+'>Manuelle Blacklist</label>'+
+  '<label>Begründung<input name="reason" required minlength="8" maxlength="500" value="'+e(m.reason)+'" placeholder="Für jede Änderung erforderlich (mindestens 8 Zeichen)"></label>'+
+  '<button type="submit">Änderung protokolliert speichern</button><button type="button" data-registry-reload hidden>Aktuellen Stand laden (Eingaben verwerfen)</button><p id="native-form-message" role="status"></p></form>';
+ host.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+export function formatOfficerTime(raw){
+ const value=String(raw||'').trim().replace(' ','T');
+ if(!value)return 'Zeit unbekannt';
+ const utc=/(Z|[+-]\d{2}:?\d{2})$/i.test(value)?value:value+'Z';
+ const date=new Date(utc);
+ if(!Number.isFinite(date.getTime()))return 'Zeit unbekannt';
+ return new Intl.DateTimeFormat(officerLocale(),{timeZone:'Europe/Berlin',dateStyle:'medium',timeStyle:'short'}).format(date);
+}
+const auditLabels={
+ rank_override:'Rang',rank:'Rang',lifecycle:'Status',blacklisted:'Blacklist',
+ title:'Titel',description:'Beschreibung',status:'Status',priority:'Priorität',due_date:'Frist',
+ assignee_id:'Zuständig',substitute_id:'Vertretung',member_id:'Spieler-ID',
+ date:'Datum',ride_date:'Zugdatum',driver_name:'Zugfahrer',note:'Notiz',
+ event_type:'Event',event_date:'Eventdatum',level:'Level',waves:'Wellen',
+ lead_id:'Leitung',attendance:'Teilnehmer',outcome:'Ergebnis',reason:'Begründung',
+ revision:'Revision',updated_by:'Bearbeitet von',
+ vs_daily_minimum:'VS-Punkte pro Tag',donation_weekly_minimum:'Spenden pro Woche',
+ min_active_vs_days:'Aktive VS-Tage',low_vs_day_warning_count:'Warnung nach Tagen',
+ shield_reminder_saturday:'Samstag Schild-Erinnerung'
+};
+const safeAuditObject=value=>{
+ try{const item=typeof value==='string'?JSON.parse(value):value;return item&&typeof item==='object'&&!Array.isArray(item)?item:null}
+ catch{return null}
+};
+const auditValue=value=>value===null||value===undefined||value===''?'—':
+ typeof value==='boolean'?(value?'Ja':'Nein'):typeof value==='object'?'(Details)':String(value);
+export function auditChanges(entry){
+ const before=safeAuditObject(entry?.before_json),after=safeAuditObject(entry?.after_json);
+ if(!after)return [];
+ return Object.keys(auditLabels).filter(key=>Object.hasOwn(after,key)&&
+  (!before||JSON.stringify(before[key])!==JSON.stringify(after[key]))).map(key=>({
+  field:auditLabels[key],before:auditValue(before?.[key]),after:auditValue(after[key])
+ }));
+}
+const activityTypes=[
+ ['all','Alle','standard'],['members','Mitglieder','alliance'],['tasks','Aufgaben','tasks'],['policy','Allianzregeln','tasks'],
+ ['train','Zug','season'],['ocr','OCR & Daten','vs'],['access','Zugänge','hero'],
+ ['archive','Archiv','economy'],['events','Events','today'],['diplomacy','Diplomatie','alliance'],
+ ['other','Weitere','standard']
+];
+export function auditCategory(entry){
+ const kind=String(entry?.object_kind||'').toLowerCase(),action=String(entry?.action||'').toLowerCase();
+ if(/officer|site_owner|credential|code|session/.test(kind+' '+action))return 'access';
+ if(/alliance_requirements/.test(kind))return 'policy';
+ if(/lifecycle|blacklist|archiv|auto_archive|former/.test(action)||kind==='auto_archive')return 'archive';
+ if(kind==='member_registry'&&auditChanges(entry).some(d=>d.field==='Status'||d.field==='Blacklist'))return 'archive';
+ if(/ocr|profile_capture|review|correction|identity_resolution|vs_day/.test(kind))return 'ocr';
+ if(/train|dice|rotation/.test(kind+' '+action))return 'train';
+ if(/task/.test(kind))return 'tasks';
+ if(/absenc|event|siege|marshall|storm/.test(kind))return 'events';
+ if(/diplom/.test(kind))return 'diplomacy';
+ if(/member|alias|roster/.test(kind))return 'members';
+ return 'other';
+}
+const auditCategoryName=key=>activityTypes.find(([id])=>id===key)?.[1]||'Weitere';
+function activityDate(raw){
+ const source=String(raw||'').trim().replace(' ','T');
+ const iso=/(Z|[+-]\d{2}:?\d{2})$/i.test(source)?source:source+'Z';
+ const date=new Date(iso);
+ return Number.isFinite(date.getTime())?new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',day:'2-digit',month:'2-digit',year:'numeric'}).format(date):'Datum unbekannt';
+}
+function auditEntryCard(x){
+ const changes=auditChanges(x),type=auditCategory(x);
+ return '<details class="native-audit-entry native-audit-'+e(type)+'"><summary>'+
+  '<span class="native-audit-entry-icon">'+icon(activityTypes.find(([id])=>id===type)?.[2]||'standard','native-audit-svg')+'</span>'+
+  '<span class="native-audit-entry-summary"><strong>'+e(x.actor||'Unbekannter Officer')+'</strong>'+
+  '<span class="native-audit-action">'+e(x.action||'Änderung')+'</span>'+
+  '<small>'+e(x.object_kind||'Objekt')+' · '+e(x.object_id||'—')+'</small></span>'+
+  '<time>'+e(formatOfficerTime(x.at))+'</time><span class="native-audit-chevron" aria-hidden="true">⌄</span></summary>'+
+  '<div class="native-audit-body">'+
+  (changes.length?'<div class="native-audit-diff">'+changes.map(d=>'<div><b>'+e(d.field)+'</b><span>'+e(d.before)+' → '+e(d.after)+'</span></div>').join('')+'</div>':
+   '<p class="native-muted">Für diese Änderung sind keine vergleichbaren Felder verfügbar.</p>')+
+  '<small class="native-audit-object">Objekt-ID: '+e(x.object_id||'—')+'</small></div></details>';
+}
+function renderActivity(target,term=''){
+ if(!target?.querySelector('#activity-list'))return;
+ const all=Array.isArray(cache.activity)?cache.activity:[],query=String(term||'').trim().toLocaleLowerCase('de-DE');
+ const counts=Object.fromEntries(activityTypes.map(([key])=>[key,key==='all'?all.length:all.filter(x=>auditCategory(x)===key).length]));
+ const active=(activityTypes.some(([key])=>key===activityCategory)?activityCategory:'all');
+ const eligible=all.filter(x=>(active==='all'||auditCategory(x)===active)&&
+  (!query||[x.actor,x.action,x.object_kind,x.object_id,...auditChanges(x).flatMap(c=>[c.field,c.before,c.after])]
+   .some(y=>String(y||'').toLocaleLowerCase('de-DE').includes(query))));
+ const host=target.querySelector('#activity-filters');
+ if(host){
+  // Reuse the input while typing so iOS keyboard, caret and search focus survive.
+  const previousInput=host.querySelector('#activity-search'),focused=previousInput===target.ownerDocument?.activeElement;
+  const selection=focused?previousInput.selectionStart:null;
+  host.innerHTML='<div class="native-audit-types" role="group" aria-label="Protokoll nach Art filtern">'+
+   activityTypes.filter(([key])=>key==='all'||counts[key]>0).map(([key,label,art])=>
+    '<button type="button" data-audit-category="'+e(key)+'" aria-pressed="'+(active===key)+'">'+
+    icon(art,'native-audit-svg')+'<span>'+e(label)+'</span><small>'+counts[key]+'</small></button>').join('')+'</div>'+
+   '<div class="native-audit-tools"><label>Gruppieren nach <select id="activity-group-by">'+
+    [['type','Art'],['date','Datum'],['actor','Officer']].map(([key,label])=>
+     '<option value="'+key+'" '+(activityGroupBy===key?'selected':'')+'>'+label+'</option>').join('')+
+    '</select></label><label class="native-audit-search">Durchsuchen<input id="activity-search" type="search" autocomplete="off" value="'+e(term)+'" placeholder="Officer, Aktion oder Spieler"></label></div>';
+  if(focused){const input=host.querySelector('#activity-search');input.focus();if(selection!==null)input.setSelectionRange(selection,selection)}
+ }
+ const groups=new Map();
+ for(const entry of eligible){
+  const group=activityGroupBy==='date'?activityDate(entry.at):activityGroupBy==='actor'?
+   String(entry.actor||'Unbekannter Officer'):auditCategory(entry);
+  if(!groups.has(group))groups.set(group,[]);
+  groups.get(group).push(entry);
+ }
+ const preview=activityGroupBy==='type'&&active==='all'&&!query;
+ let shown=0;
+ const sections=[...groups].map(([key,items],i)=>{
+  const slice=items.slice(0,preview?5:Math.max(0,activityLimit-shown));shown+=slice.length;
+  if(!slice.length)return '';
+  const type=activityGroupBy==='type'?key:'other';
+  const heading=activityGroupBy==='type'?auditCategoryName(key):key;
+  return '<details class="native-audit-group native-audit-group-'+e(type)+'" '+(i<3?'open':'')+'>'+
+   '<summary>'+icon(activityTypes.find(([id])=>id===type)?.[2]||'standard','native-audit-svg')+
+   '<strong>'+e(heading)+'</strong><small>'+items.length+' Einträge</small><span class="native-audit-chevron" aria-hidden="true">⌄</span></summary>'+
+   '<div class="native-audit-items">'+slice.map(auditEntryCard).join('')+
+   (preview&&items.length>slice.length?'<button type="button" class="native-audit-open-type" data-audit-category="'+e(key)+'">Alle '+items.length+' Einträge dieser Art ansehen ›</button>':'')+
+   '</div></details>';
+ }).join('');
+ target.querySelector('#activity-list').innerHTML='<p class="native-audit-count" role="status">'+
+  eligible.length+' passende Einträge'+(all.length>=500?' · Neueste 500 geladen':'')+
+  ' · Uhrzeiten Berlin · keine Zugangscodes</p>'+
+  (sections||'<p class="native-evidence-note">Keine passenden Änderungen gefunden. Anderen Filter oder Suchbegriff wählen.</p>')+
+  (!preview&&eligible.length>shown?'<button type="button" class="native-audit-load" data-native-more="activity">Weitere 30 Einträge laden</button>':'');
+}
+// Evidence never receives a public URL. A protected Blob URL exists only for the
+// current officer's in-memory session and is revoked on navigation/logout.
+const reviewBlobUrls=new Map();
+const selectedProfileCaptures=new Map();
+function clearReviewImages(){
+ for(const url of reviewBlobUrls.values())try{URL.revokeObjectURL(url)}catch{}
+ reviewBlobUrls.clear();
+ selectedProfileCaptures.clear();
+}
+export function reviewMatchesMember(member,term){
+ const query=String(term||'').trim().toLocaleLowerCase('de-DE');
+ return !query||(String(member.name||'')+' '+String(member.rank||'')).toLocaleLowerCase('de-DE').includes(query);
+}
+export function reviewNumericValue(raw){
+ const text=String(raw??'').trim().replace(/[\s.,]/g,'');
+ if(!/^\d{1,15}$/.test(text))return null;
+ const value=Number(text);
+ return Number.isSafeInteger(value)&&value<=1e14?value:null;
+}
+function reviewMemberOptions(card,term){
+ const root=card.querySelector('.native-review-people');
+ if(!root)return;
+ const members=(cache.reviewMembers||[]).filter(m=>reviewMatchesMember(m,term)).slice(0,12);
+ root.innerHTML=members.length?members.map(m=>
+  '<button type="button" data-native-review-pick="'+e(m.id)+'" aria-label="'+e(m.name)+' auswählen">'+
+  '<strong>'+e(m.name)+'</strong><span>'+e(m.rank||'Rang unbekannt')+'</span></button>').join(''):
+  '<p class="native-muted">Keine passenden Spieler. Versuche einen anderen Namen.</p>';
+}
+async function loadReviewImage(card){
+ const id=card.dataset.reviewId,preview=card.querySelector('.native-review-image');
+ if(!id||!preview||!card.isConnected)return;
+ const found=(cache.reviews||[]).find(x=>x.id===id);
+ if(!found?.evidence_sha){preview.textContent='Noch kein privat zugeordneter Beleg. Bitte Screenshot auswählen.';return}
+ if(reviewBlobUrls.has(id)){preview.querySelector('img').src=reviewBlobUrls.get(id);return}
+ preview.textContent='Geschütztes Belegbild wird geladen …';
+ try{
+  const response=await fetch(apiBase+'/api/reviews/'+encodeURIComponent(id)+'/evidence',{
+   headers:{Authorization:'Bearer '+sessionToken},mode:'cors',credentials:'omit',cache:'no-store'});
+  if(!response.ok)throw Error('Bild nicht verfügbar ('+response.status+')');
+  const blob=await response.blob();
+  if(!['image/png','image/jpeg','image/webp'].includes(blob.type)||blob.size<50||blob.size>950000)throw Error('Ungültige Originalbilddaten');
+  if(await evidenceHash(blob)!==found.evidence_sha)throw Error('Bild-Prüfsumme stimmt nicht überein');
+  if(!card.isConnected)return;
+  const imageURL=URL.createObjectURL(blob);
+  reviewBlobUrls.set(id,imageURL);
+  preview.innerHTML='<button type="button" data-native-review-expand aria-label="Originalbild ansehen"><img alt="Privater Screenshot für diesen Prüfauftrag" loading="lazy" draggable="false"></button>';
+  preview.querySelector('img').src=imageURL;
+  const approve=card.querySelector('[data-native-review-resolve="approve"]');
+  if(approve&&cache.reviewWritesEnabled===true&&['profile','vs_day','identity'].includes(found.kind)&&!found.context?.warning)approve.disabled=false;
+ }catch(err){
+  if(card.isConnected){preview.textContent='Beleg konnte nicht geladen werden: '+err.message;
+   const approve=card.querySelector('[data-native-review-resolve="approve"]');if(approve)approve.disabled=true}
+ }
+}
+async function normalizeReviewImage(file){
+ if(!file||!['image/png','image/jpeg','image/webp'].includes(file.type))throw Error('PNG, JPG oder WebP auswählen');
+ if(file.size<50||file.size>950000)throw Error('Originalbild muss 50 Byte bis 950 KB groß sein. Nicht verkleinern oder zuschneiden.');
+ return file;
+}
+async function evidenceHash(blob){
+ const digest=await crypto.subtle.digest('SHA-256',await blob.arrayBuffer());
+ return Array.from(new Uint8Array(digest),v=>v.toString(16).padStart(2,'0')).join('');
+}
+function renderReviews(target,term=''){
+ clearReviewImages();
+ const lang=officerLanguage(target.ownerDocument),label=key=>e(translateOfficerText(key,lang));
+ const writesEnabled=cache.reviewWritesEnabled===true;
+ const batch=target.querySelector('#review-batch-native')?.value||'';
+ const kind=target.querySelector('#review-kind-native')?.value||'';
+ const imageStatus=target.querySelector('#review-image-native')?.value||'all';
+ const list=(cache.reviews||[]).filter(x=>(!batch||x.source_batch===batch)&&(!kind||x.kind===kind)&&
+  (imageStatus==='all'||(imageStatus==='with')===Boolean(x.evidence_sha))&&
+  [x.source_name,x.category,x.metric,x.note,x.source_batch].some(y=>String(y||'').toLowerCase().includes(String(term).toLowerCase())))
+  .sort((a,b)=>Number(Boolean(b.evidence_sha))-Number(Boolean(a.evidence_sha)));
+ const names={vs_uncertain:'VS-Tageswert',inferred:'Wert nicht sicher',unmatched_name:'Spieler zuordnen',
+  historical_identity:'Namenszuordnung',missing:'Fehlender Wert',ocr_alert:'Bild erkennen'};
+ const card=x=>{
+  const identity=x.kind==='identity',numeric=x.kind==='profile'||x.kind==='vs_day';
+  const linked=Boolean(x.evidence_sha);
+  return '<details class="native-review-card" data-evidence="'+(linked?'with':'without')+'" data-review-id="'+e(x.id)+'" data-review-kind="'+e(x.kind||'')+'">'+
+   '<summary><span class="native-review-summary"><strong>'+e(x.source_name||'Unbekannt')+'</strong>'+
+    '<small>'+e(names[x.category]||x.category)+' · '+e(x.metric||'')+
+    (x.context?.date?' · '+e(x.context.date):'')+'</small></span>'+
+    '<span class="native-review-evidence-status">'+(linked?'Bild hinterlegt':'Bild fehlt')+'</span></summary>'+
+   '<div class="native-review-body"><p class="native-muted">'+e(x.note||'')+'</p>'+
+    '<p class="native-review-source">'+label('Quelle')+': <span data-native-no-translate>'+e(x.source_batch||translateOfficerText('unbekannt',lang))+'</span>'+
+    (x.context?.date?' · '+label('Datum')+': <span data-native-no-translate>'+e(x.context.date)+'</span>':'')+
+    ' · OCR: <span data-native-no-translate>'+e(x.source_value??translateOfficerText('unbekannt',lang))+'</span>'+
+    (linked?' · SHA-256: <span data-native-no-translate>'+e(x.evidence_sha)+'</span>':'')+'</p>'+
+    (x.context?.warning?'<p class="native-evidence-note">'+e(x.context.warning)+'</p>':'')+
+    '<div class="native-review-columns"><div class="native-review-picture">'+
+     '<div class="native-review-image" role="status" aria-live="polite">Bild öffnen, um Beleg zu laden.</div>'+
+     (linked?'<small>Privat hinterlegt · überprüfe die Anzeige vor dem Speichern.</small>'+
+      '<details class="native-evidence-replace"><summary>Falschen oder abgeschnittenen Screenshot ersetzen</summary>'+
+      '<label>Neuen Original-Screenshot auswählen<input type="file" data-native-review-replace-file accept="image/png,image/jpeg,image/webp"></label>'+
+      '<button type="button" data-native-review-replace '+(writesEnabled?'':'disabled')+'>Bild nach Prüfung ersetzen</button></details>':
+      '<label>Screenshot diesem Auftrag zuordnen<input type="file" data-native-review-file accept="image/png,image/jpeg,image/webp"></label>'+
+      '<button type="button" data-native-review-upload '+(writesEnabled?'':'disabled')+'>Beleg sicher hochladen</button>')+
+     (x.kind==='profile'&&(cache.profileCaptures?.[x.metric]||[]).length?
+      '<div class="native-private-capture-gallery"><p class="native-muted">Originalaufnahmen '+e(x.metric)+': '+cache.profileCaptures[x.metric].length+' private Bilder. Bild manuell prüfen, bevor du es zuordnest.</p>'+
+      '<label>Aufnahme wählen<select data-native-capture-choice>'+cache.profileCaptures[x.metric].map(cap=>
+        '<option value="'+e(cap.id)+'">'+e(cap.capture_day)+' · Aufnahme '+e(cap.capture_index)+'</option>').join('')+'</select></label>'+
+      '<button type="button" data-native-capture-preview>Originalbild ansehen</button>'+
+      '<button type="button" data-native-capture-attach disabled>'+(linked?'Geprüftes Bild als neuen Beleg verwenden':'Geprüftes Bild diesem Fall zuordnen')+'</button></div>':'' )+
+    '</div><div class="native-review-entry">'+
+     '<small>OCR erkannt: '+e(x.source_value??'unbekannt')+'</small>'+
+     (identity?'<label>Spieler suchen<input type="search" data-native-review-search autocomplete="off" placeholder="Name eingeben"></label>'+
+      '<input type="hidden" data-native-review-member><div class="native-review-people"></div>'+
+      '<p class="native-review-selection" role="status">Noch kein Spieler ausgewählt.</p>':
+      numeric?'<label>Richtigen Wert eingeben<input inputmode="numeric" type="text" autocomplete="off" data-native-review-value maxlength="18" placeholder="Zahl vom Screenshot ablesen"></label>'+
+      (x.kind==='vs_day'?'<button type="button" data-native-mark-zero>Sichtbare 0 im Screenshot übernehmen</button>':''):
+      '<p class="native-evidence-note">Dieser Falltyp benötigt eine gesonderte fachliche Prüfung.</p>')+
+     '<label>Prüfnotiz<input type="text" data-native-review-reason maxlength="500" placeholder="Was wurde am Bild bestätigt?"></label>'+
+     '<div class="native-review-controls">'+
+      '<button type="button" class="native-game-primary" data-native-review-resolve="approve" disabled>Korrektur speichern</button>'+
+      '<button type="button" data-native-review-resolve="dismiss" '+(writesEnabled?'':'disabled')+'>Ohne Korrektur schließen</button></div>'+
+     '<p class="native-review-message" role="status" aria-live="polite"></p></div></div></div></details>';
+ };
+ const host=target.querySelector('#review-list-native');if(!host)return;
+ host.innerHTML='<p class="native-muted">'+list.length+' von '+(cache.reviews||[]).length+
+  ' offenen Prüffällen · '+list.filter(x=>x.evidence_sha).length+' bereits mit Beleg</p>'+
+  '<div class="native-review-cards">'+list.slice(0,historyLimit).map(card).join('')+'</div>'+
+  (list.length>historyLimit?'<button data-native-more="reviews">Weitere Fälle</button>':'');
+ host.querySelectorAll('.native-review-card').forEach(card=>{
+  card.addEventListener('toggle',()=>{
+   if(card.open){
+    loadReviewImage(card);
+    if(card.dataset.reviewKind==='identity')reviewMemberOptions(card,'');
+   }
+  });
+ });
+}
+const profileCaptureUrl=(metric,id)=>'/api/profile-captures/'+encodeURIComponent(metric)+'/'+encodeURIComponent(id.slice(metric.length+1))+'/image';
+async function previewProfileCapture(card){
+ const id=card.dataset.reviewId,record=(cache.reviews||[]).find(r=>r.id===id);
+ const selection=card.querySelector('[data-native-capture-choice]')?.value;
+ const candidate=(cache.profileCaptures?.[record?.metric]||[]).find(row=>row.id===selection);
+ const message=card.querySelector('.native-review-message');
+ const button=card.querySelector('[data-native-capture-preview]'),attach=card.querySelector('[data-native-capture-attach]');
+ if(!candidate||record.kind!=='profile'){message.textContent='Aufnahme fehlt. Bitte neu auswählen.';return}
+ button.disabled=true;attach.disabled=true;
+ selectedProfileCaptures.delete(id);
+ message.textContent='Geschützte Originalaufnahme wird geladen .';
+ try{
+  const response=await fetch(apiBase+profileCaptureUrl(record.metric,candidate.id),{
+   headers:{Authorization:'Bearer '+sessionToken},mode:'cors',credentials:'omit',cache:'no-store'});
+  if(!response.ok)throw Error('Privates Bild nicht abrufbar (HTTP '+response.status+')');
+  const blob=await response.blob();
+  if(blob.type!=='image/png'||blob.size<50||blob.size>950000)throw Error('Ungültige Bilddaten');
+  const hash=await evidenceHash(blob);
+  if(hash!==candidate.sha256)throw Error('Bild-Prüfsumme stimmt nicht überein');
+  if(card.querySelector('[data-native-capture-choice]')?.value!==candidate.id)return;
+  const old=reviewBlobUrls.get('candidate-'+id);if(old)URL.revokeObjectURL(old);
+  const url=URL.createObjectURL(blob);reviewBlobUrls.set('candidate-'+id,url);
+  const frame=card.querySelector('.native-review-image');
+  frame.innerHTML='<button type="button" data-native-review-expand aria-label="Originalbild ansehen"><img alt="Geschützter vollständiger Original-Screenshot zur manuellen Prüfung"></button>';
+  frame.querySelector('img').src=url;
+  selectedProfileCaptures.set(id,{id:candidate.id,sha256:hash,blob});
+  attach.disabled=false;
+  message.textContent='Bitte Spielerzeile und Wert im vollständigen Originalbild vergleichen. Erst danach zuordnen.';
+ }catch(error){message.textContent='Originalbild nicht verfügbar: '+error.message}
+ finally{button.disabled=false}
+}
+async function attachProfileCapture(card){
+ const id=card.dataset.reviewId,record=(cache.reviews||[]).find(r=>r.id===id);
+ const selection=selectedProfileCaptures.get(id);
+ const message=card.querySelector('.native-review-message'),btn=card.querySelector('[data-native-capture-attach]');
+ if(cache.reviewWritesEnabled!==true||!selection||!record||record.kind!=='profile')return;
+ const replacing=Boolean(record.evidence_sha);
+ if(card.querySelector('[data-native-capture-choice]')?.value!==selection.id){
+  message.textContent='Andere Aufnahme gewählt. Bitte diese zuerst öffnen und kontrollieren.';return;
+ }
+ if(!window.confirm('Ist die Spielerzeile mit dem richtigen Wert vollständig sichtbar und gehört dieses Originalbild wirklich zu diesem Prüffall?'))return;
+ btn.disabled=true;message.textContent='Bestätigte Originalaufnahme wird privat zugeordnet .';
+ try{
+  const reason=card.querySelector('[data-native-review-reason]')?.value.trim()||'';
+  if(replacing&&reason.length<8)throw Error('Begründung für Bildtausch erforderlich');
+  const response=await fetch(apiBase+'/api/reviews/'+encodeURIComponent(id)+'/evidence',{
+   method:replacing?'PATCH':'PUT',headers:{Authorization:'Bearer '+sessionToken,'Content-Type':'image/png',
+    ...(replacing?{'If-Match':record.evidence_sha,'X-Evidence-Reason':encodeURIComponent(reason)}:{})},
+   body:selection.blob,mode:'cors',credentials:'omit',cache:'no-store'});
+  const result=await response.json();
+  if(!response.ok||result.sha256!==selection.sha256)throw Error(result.error||'Abweichender Hash beim Verknüpfen');
+  record.evidence_sha=result.sha256;
+  card.dataset.evidence='with';
+  card.querySelector('.native-review-evidence-status').textContent='Bild hinterlegt';
+  const panel=card.querySelector('.native-review-picture');
+  panel.querySelector('[data-native-review-file]')?.closest('label')?.remove();
+  panel.querySelector('[data-native-review-upload]')?.remove();
+  panel.querySelector('.native-private-capture-gallery')?.remove();
+  selectedProfileCaptures.delete(id);
+  const old=reviewBlobUrls.get('candidate-'+id);if(old){URL.revokeObjectURL(old);reviewBlobUrls.delete('candidate-'+id)}
+  const previousUrl=reviewBlobUrls.get(id);if(previousUrl){URL.revokeObjectURL(previousUrl);reviewBlobUrls.delete(id)}
+  message.textContent=(replacing?'Bisheriges Bild ersetzt und protokolliert.':'Beleg privat zugeordnet.')+' Wert separat prüfen und speichern; keine automatische Freigabe.';
+  await loadReviewImage(card);
+ }catch(error){message.textContent='Nicht zugeordnet: '+error.message;btn.disabled=false}
+}
+async function replaceReviewScreenshot(card){
+ if(cache.reviewWritesEnabled!==true)return;
+ const id=card.dataset.reviewId,record=(cache.reviews||[]).find(x=>x.id===id);
+ const file=card.querySelector('[data-native-review-replace-file]')?.files?.[0];
+ const reason=card.querySelector('[data-native-review-reason]')?.value.trim()||'';
+ const message=card.querySelector('.native-review-message'),button=card.querySelector('[data-native-review-replace]');
+ if(!file||!record?.evidence_sha){message.textContent='Bitte Ersatzbild auswählen.';return}
+ if(reason.length<8){message.textContent='Bitte den Grund für den Bildtausch eintragen.';return}
+ if(!window.confirm('Dieses Bild ersetzt den bisherigen Beleg. Hast du Name, vollständig sichtbare Zeile und Wert geprüft?'))return;
+ button.disabled=true;message.textContent='Geprüften Ersatzbeleg sicher hinterlegen .';
+ try{
+  const payload=await normalizeReviewImage(file);
+  const hash=await evidenceHash(payload);
+  const response=await fetch(apiBase+'/api/reviews/'+encodeURIComponent(id)+'/evidence',{
+   method:'PATCH',
+   headers:{Authorization:'Bearer '+sessionToken,'Content-Type':payload.type,
+    'If-Match':record.evidence_sha,'X-Evidence-Reason':encodeURIComponent(reason)},
+   body:payload,mode:'cors',credentials:'omit',cache:'no-store'});
+  const result=await response.json();
+  if(!response.ok||!result.ok||result.sha256!==hash)throw Error(result.error||'Ersetzen fehlgeschlagen oder Bild-Prüfsumme abweichend');
+  record.evidence_sha=result.sha256;
+  const url=reviewBlobUrls.get(id);if(url){URL.revokeObjectURL(url);reviewBlobUrls.delete(id)}
+  const candidate=reviewBlobUrls.get('candidate-'+id);if(candidate){URL.revokeObjectURL(candidate);reviewBlobUrls.delete('candidate-'+id)}
+  selectedProfileCaptures.delete(id);
+  card.querySelector('.native-review-evidence-status').textContent='Bild ersetzt';
+  card.querySelector('[data-native-review-replace-file]').value='';
+  message.textContent='Ersatzbild privat gespeichert und im Admin-Log protokolliert. Der Prüffall bleibt offen.';
+  await loadReviewImage(card);
+ }catch(error){message.textContent='Bild nicht ersetzt: '+error.message}
+ finally{button.disabled=false}
+}
+async function attachReviewScreenshot(card){
+ if(cache.reviewWritesEnabled!==true)return;
+ const id=card.dataset.reviewId,file=card.querySelector('[data-native-review-file]')?.files?.[0];
+ const message=card.querySelector('.native-review-message');
+ if(!file){message.textContent='Bitte zuerst den passenden Screenshot auswählen.';return}
+ const upload=card.querySelector('[data-native-review-upload]');upload.disabled=true;
+ message.textContent='Bild wird privat gesichert …';
+ try{
+  const payload=await normalizeReviewImage(file);
+  const hash=await evidenceHash(payload);
+  const res=await fetch(apiBase+'/api/reviews/'+encodeURIComponent(id)+'/evidence',{
+   method:'PUT',headers:{Authorization:'Bearer '+sessionToken,'Content-Type':payload.type},
+   body:payload,mode:'cors',credentials:'omit',cache:'no-store'});
+  const body=await res.json();
+  if(!res.ok||body.sha256!==hash)throw Error(body.error||'Upload fehlgeschlagen oder Bild-Prüfsumme abweichend');
+  const record=(cache.reviews||[]).find(x=>x.id===id);
+  if(record)record.evidence_sha=body.sha256;
+  card.dataset.evidence='with';
+  card.querySelector('.native-review-evidence-status').textContent='Bild hinterlegt';
+  const panel=card.querySelector('.native-review-picture');
+  panel.querySelector('label')?.remove();upload.remove();
+  message.textContent='Bild geschützt hinterlegt. Bitte ansehen, korrigieren und speichern.';
+  await loadReviewImage(card);
+ }catch(error){message.textContent='Nicht hochgeladen: '+error.message;upload.disabled=false}
+}
+async function completeReview(card,action){
+ if(cache.reviewWritesEnabled!==true)return;
+ const item=(cache.reviews||[]).find(x=>x.id===card.dataset.reviewId);
+ if(!item)return;
+ const message=card.querySelector('.native-review-message'),reason=card.querySelector('[data-native-review-reason]')?.value.trim();
+ if(!reason||reason.length<8){message.textContent='Bitte kurz begründen, was geprüft wurde.';return}
+ const body={action,reason};
+ if(action==='approve'){
+  if(!item.evidence_sha){message.textContent='Ohne Bildbeleg keine Freigabe.';return}
+  if(!reviewBlobUrls.has(item.id)){message.textContent='Originalbild zuerst laden und Prüfsumme kontrollieren.';return}
+  body.evidence_sha=item.evidence_sha;
+  if(item.kind==='identity'){
+   const chosen=card.querySelector('[data-native-review-member]')?.value;
+   if(!chosen){message.textContent='Bitte einen Spieler aus der Suche auswählen.';return}
+   body.member_id=chosen;
+  }else if(['profile','vs_day'].includes(item.kind)){
+   const value=reviewNumericValue(card.querySelector('[data-native-review-value]')?.value);
+   if(value===null){message.textContent='Bitte einen gültigen, bestätigten Wert eintragen.';return}
+   body.corrected_value=value;
+  }else{message.textContent='Dieser Falltyp kann nicht direkt freigegeben werden.';return}
+ }
+ if(!window.confirm(action==='approve'?'Wert nach Bildprüfung verbindlich speichern?':'Prüfauftrag mit Begründung schließen?'))return;
+ const buttons=[...card.querySelectorAll('button')];
+ const disabledBefore=buttons.map(button=>button.disabled);
+ buttons.forEach(button=>button.disabled=true);
+ message.textContent='Wird gespeichert und protokolliert …';
+ try{
+  await request('/api/reviews/'+encodeURIComponent(item.id)+'/resolve',{method:'POST',body});
+  cache.reviews=cache.reviews.filter(x=>x.id!==item.id);
+  const target=card.closest('#native-admin-content');
+  renderReviews(target,target.querySelector('#review-search-native')?.value||'');
+  const status=target.querySelector('#native-review-finished');
+  if(status)status.textContent='Prüfauftrag erledigt und aus der offenen Liste entfernt.';
+  const next=target.querySelector('.native-review-card');
+  if(next){
+   next.open=true;
+   next.querySelector('summary')?.focus();
+  }else if(status){
+   status.tabIndex=-1;
+   status.focus();
+  }
+ }catch(error){
+  message.textContent='Nicht gespeichert: '+error.message;
+  buttons.forEach((button,index)=>{button.disabled=disabledBefore[index]});
+ }
+}
+
+export async function renderNativeAdmin(mount){
+ if(!sessionToken){
+  mount.innerHTML='<section class="native-admin native-login"><div><span class="admin-eyebrow">RZSN / R4–R5</span><h1>Command Center</h1><p>Melde dich mit deinem Offizierscode an. Alle privaten Daten bleiben bei Cloudflare.</p><form id="native-officer-login"><label>Offizierscode<input type="password" name="code" autocomplete="off" required placeholder="RZSN-…"></label><button type="submit">Anmelden</button><p id="native-login-status" role="status"></p></form></div></section>';
+  localizeOfficerTree(mount);
+  return;
+ }
+ await view(mount);
+ localizeOfficerTree(mount);
+}
+export function initNativeAdmin(mount){
+ if(mount.dataset.nativeReady)return;
+ mount.dataset.nativeReady='1';
+ // One observer translates late API renderers, forms and validation messages.
+ // We observe child additions only: translating text nodes cannot recursively trigger itself.
+ const Observer=mount.ownerDocument.defaultView?.MutationObserver;
+ if(Observer){
+  const localizer=new Observer(()=>localizeOfficerTree(mount));
+  localizer.observe(mount,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['placeholder','title','aria-label']});
+ }
+ mount.addEventListener('toggle',event=>{
+  if(event.target.matches?.('.native-train-history')&&mount.contains(event.target))trainHistoryExpanded=event.target.open;
+ },true);
+ mount.lang=officerLanguage(mount.ownerDocument);
+ mount.dir=mount.lang==='ar'?'rtl':'ltr';
+ mount.addEventListener('click',async event=>{
+  const vsControl=event.target.closest?.('[data-native-vs-day],[data-native-vs-category],[data-native-vs-weekly],[data-native-vs-more-group]');
+  if(vsControl&&cache.vsView){
+   const target=mount.querySelector('#native-admin-content'),state=cache.vsView;
+   const openGroups=[...target.querySelectorAll('[data-native-vs-group][open]')].map(node=>node.dataset.nativeVsGroup);
+   if(vsControl.hasAttribute('data-native-vs-more-group')){
+    const kind=vsControl.dataset.nativeVsMoreGroup;state.limits[kind]=(state.limits[kind]||10)+10;state.openGroups=openGroups;
+    renderVsResults(target);
+    (target.querySelector('[data-native-vs-more-group="'+kind+'"]')||target.querySelector('[data-native-vs-group="'+kind+'"] > summary'))?.focus({preventScroll:true});return;
+   }
+   state.limits={};
+   if(vsControl.hasAttribute('data-native-vs-category')){state.category=vsControl.dataset.nativeVsCategory;state.openGroups=state.category==='all'?['low']:[state.category];renderVsResults(target,'[data-native-vs-category="'+state.category+'"]');return;}
+   state.day=vsControl.hasAttribute('data-native-vs-day')?Number(vsControl.dataset.nativeVsDay):-1;state.category='all';state.query='';state.openGroups=state.day>=0?['low']:[];
+   target.querySelector('#native-vs-search').value='';renderVsResults(target,'#native-vs-results-title');target.querySelector('#native-vs-results-title')?.scrollIntoView?.({block:'nearest'});return;
+  }
+  const donationControl=event.target.closest?.('[data-native-donation-category],[data-native-donation-weekly],[data-native-donation-more-group]');
+  if(donationControl&&cache.donationView){
+   const target=mount.querySelector('#native-admin-content'),state=cache.donationView;
+   const openGroups=[...target.querySelectorAll('[data-native-donation-group][open]')].map(node=>node.dataset.nativeDonationGroup);
+   if(donationControl.hasAttribute('data-native-donation-more-group')){
+    const kind=donationControl.dataset.nativeDonationMoreGroup;state.limits[kind]=(state.limits[kind]||10)+10;state.openGroups=openGroups;
+    renderDonations(target);
+    (target.querySelector('[data-native-donation-more-group="'+kind+'"]')||target.querySelector('[data-native-donation-group="'+kind+'"] > summary'))?.focus({preventScroll:true});return;
+   }
+   state.limits={};state.query='';
+   if(donationControl.hasAttribute('data-native-donation-weekly'))state.category='all';
+   else state.category=donationControl.dataset.nativeDonationCategory||'all';
+   state.openGroups=state.category==='all'?['below']:state.category==='verified'?['below','met']:[state.category];
+   renderDonations(target,null,'#native-donation-results-title');
+   target.querySelector('#native-donation-results-title')?.scrollIntoView?.({block:'nearest'});return;
+  }
+
+  if(event.target.closest?.('.native-train-history > summary')){
+   trainHistoryExpanded=!event.target.closest('.native-train-history').open;
+   return;
+  }
+  const aliasAction=event.target.closest?.('[data-native-alias-open],[data-native-alias-cancel]');
+  if(aliasAction){
+   const details=aliasAction.closest('.native-member-aliases'),form=details?.querySelector('[data-native-alias-form]');
+   if(!form)return;
+   if(aliasAction.hasAttribute('data-native-alias-cancel')){
+    form.reset();form.hidden=true;details.querySelector('[data-native-alias-open]').hidden=false;
+    details.querySelector('[data-native-alias-status]').textContent='';
+    details.querySelector('[data-native-alias-open]').focus();
+   }else{
+    form.hidden=false;aliasAction.hidden=true;form.elements.namedItem('alias').focus();
+   }
+   return;
+  }
+  const proof=event.target.closest?.('[data-native-stat-evidence],[data-native-stat-close],[data-native-stat-prev],[data-native-stat-next],[data-native-stat-link],[data-native-stat-browse]');
+  if(proof){
+   const area=mount.querySelector('#native-admin-content');
+   if(proof.dataset.nativeStatEvidence)await statViewer.open(area,proof.dataset.nativeStatEvidence);
+   else if(proof.hasAttribute('data-native-stat-close'))statViewer.close(area);
+   else if(proof.hasAttribute('data-native-stat-browse'))await statViewer.step(0);
+   else if(proof.hasAttribute('data-native-stat-prev'))await statViewer.step(-1);
+   else if(proof.hasAttribute('data-native-stat-next'))await statViewer.step(1);
+   else if(proof.hasAttribute('data-native-stat-link'))await statViewer.link();
+   return;
+  }
+  const expand=event.target.closest?.('[data-native-review-expand]');
+  if(expand){
+   const url=expand.querySelector('img')?.getAttribute('src')||'';
+   if(url.startsWith('blob:'))window.open(url,'_blank','noopener,noreferrer');
+   return;
+  }
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-dice-delete],[data-native-train-choice],[data-native-history-reset],[data-native-access-mode],[data-native-access-copy],[data-native-access-signout],[data-native-member-create],[data-native-registry-quick],[data-native-access-link],[data-native-access-disable],[data-audit-category],[data-native-vs-image],[data-native-vs-image-close],[data-native-requirements-reload]');
+  if(!button)return;
+  if(button.hasAttribute('data-native-history-reset')){
+   trainHistoryFilters={member:'',date:''};historyLimit=20;
+   const fold=button.closest('.native-train-history');
+   fold.querySelector('#native-train-history-member').value='';fold.querySelector('#native-train-history-date').value='';
+   updateTrainHistoryResults(mount.querySelector('#native-admin-content'));return;
+  }
+  if(button.hasAttribute('data-officer-logout')){
+   try{await request('/api/native-logout',{method:'POST',body:{}})}catch{}clearOfficer();await renderNativeAdmin(mount);return;
+  }
+  if(button.hasAttribute('data-native-requirements-reload')){
+   cache.requirements=await request('/api/alliance-requirements');renderRequirements(mount.querySelector('#native-admin-content'));return
+  }
+  if(button.dataset.officerTab){panel=button.dataset.officerTab;pageLimit=20;historyLimit=20;activityLimit=30;await view(mount);
+   if(panel==='more')mount.querySelector('.native-hub-section h3')?.focus();
+   return}
+  if(button.dataset.nativeAction){
+   const action=button.dataset.nativeAction;
+   panel=({ 'train-today':'train','event-planning':'events','member-find':'members','review-open':'reviews','tasks-open':'tasks','absences-open':'absences','vs-open':'vs','donations-open':'donations'})[action]||'overview';
+   pageLimit=20;historyLimit=20;await view(mount);
+   const destination=mount.querySelector('#native-admin-content');
+   if(action==='train-today'&&cache.trains?.today&&Array.isArray(cache.trains.history))editTrain(destination,cache.trains.today);
+   if(action==='event-planning'&&cache.ops?.events)editRecord(destination,'events','');
+   if(action==='member-find')destination.querySelector('#native-member-search')?.focus();
+   return;
+  }
+  if(button.hasAttribute('data-native-refresh')){await view(mount);return}
+  if(button.dataset.nativeTaskToggle){
+   const row=(cache.ops?.tasks||[]).find(x=>x.id===button.dataset.nativeTaskToggle);
+   if(!row)return;
+   button.disabled=true;
+   try{await request('/api/operations/tasks',{method:'POST',body:{id:row.id,title:row.title,status:row.status==='done'?'open':'done'}});
+    cache.ops=await request('/api/operations');renderRecords(mount.querySelector('#native-admin-content'))}
+   catch(err){button.disabled=false;window.alert('Aufgabe nicht aktualisiert: '+err.message)}
+   return;
+  }
+  if(button.dataset.nativeRecordDelete){
+   const kind=button.dataset.kind,id=button.dataset.nativeRecordDelete;
+   const row=(cache.ops?.[kind]||[]).find(x=>x.id===id);
+   if(!row)return;
+   const reason=window.prompt('Diesen Eintrag wirklich löschen? Bitte Grund für das Admin-Protokoll eintragen (mindestens 8 Zeichen).');
+   if(reason===null)return;
+   if(reason.trim().length<8){window.alert('Bitte einen aussagekräftigen Löschgrund eingeben.');return}
+   button.disabled=true;
+   try{await request('/api/operations/'+kind+'/delete',{method:'POST',body:{id,reason}});
+    cache.ops=await request('/api/operations');await view(mount)}
+   catch(err){button.disabled=false;window.alert('Nicht gelöscht: '+err.message)}
+   return;
+  }
+  if(button.hasAttribute('data-native-rotation-reload')){
+   if(!window.confirm('Aktuelle Rotation laden und ungespeicherte Einstellungen verwerfen?'))return;
+   try{cache.rotation=await request('/api/train-rotation');renderTrainRotation(mount.querySelector('#native-admin-content'))}
+   catch(err){const text=mount.querySelector('#native-rotation-message');if(text)text.textContent=err.message}
+   return;
+  }
+  if(button.hasAttribute('data-native-form-reload')){
+   if(window.confirm('Aktuellen Stand laden und ungespeicherte Eingaben verwerfen?'))await view(mount);
+   return;
+  }
+  const target=mount.querySelector('#native-admin-content');if(!target)return;
+  if(button.hasAttribute('data-native-vs-image-close')){
+   const modal=target.querySelector('#native-vs-evidence-viewer');modal?.remove();
+   for(const [key,url] of reviewBlobUrls)if(key.startsWith('vs:')){URL.revokeObjectURL(url);reviewBlobUrls.delete(key)}
+   return;
+  }
+  if(button.dataset.nativeVsImage){await openVsScreenshot(target,button.dataset.nativeVsImage);return}
+  if(button.dataset.nativeRegistryFilter){
+   registryFilter=button.dataset.nativeRegistryFilter;
+   target.querySelectorAll('[data-native-registry-filter]').forEach(item=>
+    item.setAttribute('aria-pressed',String(item.dataset.nativeRegistryFilter===registryFilter)));
+   pageLimit=20;renderRegistry(target,target.querySelector('#registry-search')?.value||'');
+   return;
+  }
+  if(button.hasAttribute('data-registry-reload')){
+   if(!window.confirm('Aktuellen Stand laden und eigene Eingaben verwerfen?'))return;
+   const form=button.closest('form');button.disabled=true;
+   try{
+    const latest=await request('/api/member-registry');
+    if(!latest.members.some(m=>m.id===form.dataset.id))throw Error('Mitglied nicht mehr vorhanden. Eingaben bleiben erhalten.');
+    cache.registry=latest;renderRegistry(target,target.querySelector('#registry-search')?.value||'');
+    editRegistry(target,form.dataset.id);
+   }catch(err){form.querySelector('#native-form-message').textContent=err.message;button.disabled=false}
+   return;
+  }
+  if(button.dataset.nativeWatchPerson){
+   const id=button.dataset.nativeWatchPerson;
+   panel='members';await view(mount);
+   const memberTarget=mount.querySelector('#native-admin-content');
+   if(memberTarget?.querySelector('#native-person'))await showPerson(memberTarget,id);
+   return;
+  }
+  if(button.hasAttribute('data-native-diplomacy-new')){editDiplomacy(target);return}
+  if(button.dataset.nativeDiplomacyEdit){editDiplomacy(target,button.dataset.nativeDiplomacyEdit);return}
+  if(button.hasAttribute('data-native-diplomacy-cancel')){
+   const editor=target.querySelector('#native-diplomacy-form');if(editor)editor.innerHTML='';
+   return;
+  }
+  if(button.hasAttribute('data-native-diplomacy-reload')){
+   if(!window.confirm('Aktuellen Stand laden und ungespeicherte Diplomatie-Notizen verwerfen?'))return;
+   try{cache.diplomacy=await request('/api/diplomacy');renderDiplomacy(target);
+    const editor=target.querySelector('#native-diplomacy-form');if(editor)editor.innerHTML='';
+   }catch(err){
+    const message=target.querySelector('#native-diplomacy-message');
+    if(message)message.textContent='Aktualisierung fehlgeschlagen: '+err.message;
+   }
+   return;
+  }
+  if(button.hasAttribute('data-native-member-create')){createMemberForm(target);return}
+  if(button.dataset.nativeRegistryQuick){
+   const form=button.closest('#registry-save');if(!form)return;
+   const status=form.elements.namedItem('lifecycle'),blacklist=form.elements.namedItem('blacklisted');
+   if(button.dataset.nativeRegistryQuick==='archive')status.value='former';
+   if(button.dataset.nativeRegistryQuick==='blacklist')blacklist.checked=true;
+   if(button.dataset.nativeRegistryQuick==='active'){status.value='active';blacklist.checked=false}
+   form.elements.namedItem('reason').focus();return;
+  }
+  if(button.dataset.nativeAccessMode){accessForm(target,button.dataset.nativeAccessMode);return}
+  if(button.dataset.nativeAccessLink){accessForm(target,'link',button.dataset.nativeAccessLink);return}
+  if(button.dataset.nativeAccessDisable){accessForm(target,'disable',button.dataset.nativeAccessDisable);return}
+  if(button.hasAttribute('data-native-access-signout')){clearOfficer();await renderNativeAdmin(mount);return}
+  if(button.hasAttribute('data-native-access-copy')){
+   const output=target.querySelector('#native-credential-output');if(!output)return;
+   output.select();
+   try{if(window.navigator.clipboard?.writeText)await window.navigator.clipboard.writeText(output.value)}catch{}
+   return;
+  }
+  if(button.dataset.registryEdit){editRegistry(target,button.dataset.registryEdit);return}
+  if(button.dataset.nativeMember){
+   if(panel!=='members'){
+    const id=button.dataset.nativeMember;panel='members';await view(mount);
+    await showPerson(mount.querySelector('#native-admin-content'),id);
+   }else await showPerson(target,button.dataset.nativeMember);
+   return;
+  }
+  if(button.hasAttribute('data-native-member-close')){
+   const node=target.querySelector('#native-person');if(node)node.innerHTML='';
+   const roster=target.querySelector('.native-member-folds');if(roster)roster.hidden=false;
+   const header=target.querySelector('.native-row');if(header)header.hidden=false;
+   target.querySelector('#native-member-search')?.focus();return;
+  }
+  if(button.dataset.nativeAddAbsence){editProfileAbsence(target,button.dataset.nativeAddAbsence);return}
+  if(button.dataset.nativeManage){
+   const holder=target.querySelector('#registry-form');
+   if(!holder)return;
+   try{
+    cache.registry=await request('/api/member-registry');
+    editRegistry(target,button.dataset.nativeManage);
+   }catch(err){holder.textContent='Mitgliederverwaltung nicht verfügbar: '+err.message}
+   return;
+  }
+  if(button.dataset.nativeMemberLog){
+   const holder=target.querySelector('#native-person-log');
+   if(!holder)return;
+   holder.textContent='Änderungen werden geladen …';
+   try{
+    const history=await request('/api/activity?limit=100&member_id='+encodeURIComponent(button.dataset.nativeMemberLog));
+    holder.innerHTML='<h4 class="native-section-heading">Änderungsprotokoll</h4>'+
+     (history.length?'<div class="native-activity-brief">'+history.map(item=>
+      '<p><b>'+e(item.actor)+'</b> · '+e(item.action)+' · '+e(formatOfficerTime(item.at))+'</p>').join('')+'</div>':'<p class="native-muted">Noch keine protokollierten Änderungen zu dieser Spieler-ID.</p>');
+   }catch(err){holder.textContent='Protokoll nicht verfügbar: '+err.message}
+   return;
+  }
+  if(button.dataset.nativeMore==='members'){pageLimit+=20;renderMembers(target,target.querySelector('#native-member-search')?.value||'');return}
+  if(button.dataset.nativeMore==='train'){historyLimit+=20;updateTrainHistoryResults(target);return}
+  if(button.dataset.nativeMore==='registry'){pageLimit+=20;renderRegistry(target,target.querySelector('#registry-search')?.value||'');return}
+  if(button.dataset.nativeMore==='reviews'){historyLimit+=20;renderReviews(target,target.querySelector('#review-search-native')?.value||'');return}
+  if(button.dataset.nativeReviewPick){
+   const card=button.closest('.native-review-card');
+   if(!card)return;
+   const member=(cache.reviewMembers||[]).find(x=>x.id===button.dataset.nativeReviewPick);
+   if(!member)return;
+   card.querySelector('[data-native-review-member]').value=member.id;
+   card.querySelector('.native-review-selection').textContent='Ausgewählt: '+member.name+' · '+(member.rank||'?');
+   card.querySelectorAll('[data-native-review-pick]').forEach(x=>x.setAttribute('aria-pressed',String(x===button)));
+   return;
+  }
+  if(button.hasAttribute('data-native-mark-zero')){
+   const card=button.closest('.native-review-card');
+   const field=card?.querySelector('[data-native-review-value]');
+   if(field){field.value='0';field.focus();
+    card.querySelector('.native-review-message').textContent='0 vorgemerkt. Bitte Originalbild prüfen und Korrektur ausdrücklich speichern.'}
+   return;
+  }
+  if(button.hasAttribute('data-native-capture-preview')){
+   const card=button.closest('.native-review-card');if(card)await previewProfileCapture(card);return;
+  }
+  if(button.hasAttribute('data-native-capture-attach')){
+   const card=button.closest('.native-review-card');if(card)await attachProfileCapture(card);return;
+  }
+  if(button.hasAttribute('data-native-review-replace')){
+   const card=button.closest('.native-review-card');if(card)await replaceReviewScreenshot(card);return;
+  }
+  if(button.hasAttribute('data-native-review-upload')){
+   const card=button.closest('.native-review-card');
+   if(card)await attachReviewScreenshot(card);
+   return;
+  }
+  if(button.dataset.nativeReviewResolve){
+   const card=button.closest('.native-review-card');
+   if(card)await completeReview(card,button.dataset.nativeReviewResolve);
+   return;
+  }
+  if(button.dataset.auditCategory){activityCategory=button.dataset.auditCategory;activityLimit=30;renderActivity(target,target.querySelector('#activity-search')?.value||'');return}
+  if(button.dataset.nativeMore==='activity'){activityLimit+=30;renderActivity(target,target.querySelector('#activity-search')?.value||'');return}
+  if(button.dataset.nativeCopyTrain){
+   const date=button.dataset.nativeCopyTrain;
+   const slot=(cache.trains?.calendar||[]).find(row=>row.date===date);
+   const member=(cache.trains?.members||[]).find(m=>m.id===slot?.entry?.member_id);
+   if(!member||slot?.entry?.status!=='planned')return;
+   // Use only an explicitly linked eligible driver, not an inferred name.
+   const message='RZSN train '+date+' ('+(slot.type||'Train')+'): '+member.name+
+    ' is our conductor today. Please join with 3 tickets. All aboard!';
+   try{
+    if(!window.navigator?.clipboard?.writeText)throw Error('Clipboard unavailable');
+    await window.navigator.clipboard.writeText(message);
+    button.textContent='Zugtext kopiert';
+   }catch{
+    const holder=target.querySelector('#native-train-form');
+    if(holder){holder.innerHTML='<label class="native-copy-fallback">Text für den Allianzchat<textarea rows="3" readonly>'+e(message)+'</textarea></label>';holder.querySelector('textarea')?.focus()}
+   }
+   return;
+  }
+  if(button.dataset.nativeEventQuick){
+   editRecord(target,'events','');
+   const form=target.querySelector('#native-record-save');
+   if(form){form.elements.namedItem('event_type').value=button.dataset.nativeEventQuick;updateEventForm(form)}
+   return;
+  }
+  if(button.dataset.nativeDiceDelete){
+   const reason=window.prompt('Dice-Game-Eintrag löschen? Bitte Grund für das Admin-Protokoll nennen.');
+   if(reason===null)return;
+   if(reason.trim().length<8){window.alert('Bitte mindestens 8 Zeichen Begründung.');return}
+   button.disabled=true;
+   try{await request('/api/train-dice/delete',{method:'POST',body:{date:button.dataset.nativeDiceDelete,
+     expected_revision:Number(button.dataset.revision),reason}});
+    cache.dice=await request('/api/train-dice');renderTrain(target)}
+   catch(err){window.alert('Dice Game nicht gelöscht: '+err.message);button.disabled=false}
+   return;
+  }
+  if(button.dataset.nativeDiceDate){editDice(target,button.dataset.nativeDiceDate);return}
+  if(button.dataset.nativeTrainChoice){
+   const date=button.dataset.date,id=button.dataset.nativeTrainChoice;
+   const row=(cache.trains?.calendar||[]).find(x=>x.date===date);
+   if(row?.suggestions?.some(m=>m.id===id))editTrain(target,date,false,id);
+   return;
+  }
+  if(button.dataset.nativeTrain){editTrain(target,button.dataset.nativeTrain);return}
+  if(button.dataset.nativeNew==='train'){editTrain(target,cache.trains?.today||new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date()),true);return}
+  if(button.dataset.nativeNew||button.dataset.nativeEdit){editRecord(target,panel,button.dataset.nativeEdit||'');return}
+ });
+ mount.addEventListener('input',event=>{
+  if(event.target.id==='native-train-history-member'||event.target.id==='native-train-history-date'){
+   trainHistoryFilters[event.target.id==='native-train-history-member'?'member':'date']=event.target.value;
+   historyLimit=20;updateTrainHistoryResults(mount.querySelector('#native-admin-content'));return;
+  }
+  if(event.target.id==='native-member-search'){pageLimit=20;renderMembers(mount.querySelector('#native-admin-content'),event.target.value)}
+  if(event.target.id==='registry-search'){pageLimit=20;renderRegistry(mount.querySelector('#native-admin-content'),event.target.value)}
+  if(event.target.id==='native-diplomacy-search')renderDiplomacy(mount.querySelector('#native-admin-content'),event.target.value);
+  if(event.target.id==='activity-search'){activityLimit=30;renderActivity(mount.querySelector('#native-admin-content'),event.target.value)}
+  if(event.target.id==='native-vs-search')filterVsMembers(mount.querySelector('#native-admin-content'));
+  if(event.target.id==='native-donation-search')renderDonations(mount.querySelector('#native-admin-content'),event.target.value);
+  if(event.target.id==='review-search-native'){historyLimit=20;renderReviews(mount.querySelector('#native-admin-content'),event.target.value)}
+  if(event.target.matches('[data-native-review-search]')){
+   const card=event.target.closest('.native-review-card');
+   if(card)reviewMemberOptions(card,event.target.value);
+  }
+ });
+ mount.addEventListener('change',event=>{
+  if(event.target.id==='native-train-history-date'){
+   trainHistoryFilters.date=event.target.value;historyLimit=20;updateTrainHistoryResults(mount.querySelector('#native-admin-content'));return;
+  }
+  if(event.target.matches('[data-native-capture-choice]')){
+   const card=event.target.closest('.native-review-card');
+   if(card){selectedProfileCaptures.delete(card.dataset.reviewId);const attach=card.querySelector('[data-native-capture-attach]');if(attach)attach.disabled=true;
+    const message=card.querySelector('.native-review-message');if(message)message.textContent='Andere Aufnahme gewählt; bitte zuerst öffnen und kontrollieren.'}
+  }
+ if(event.target.id==='activity-group-by'){activityGroupBy=event.target.value;activityLimit=30;renderActivity(mount.querySelector('#native-admin-content'),mount.querySelector('#activity-search')?.value||'')}
+  if(event.target.id==='native-vs-sort'&&cache.vsView){
+   const target=mount.querySelector('#native-admin-content');cache.vsView.sort=event.target.value;cache.vsView.limits={};
+   cache.vsView.openGroups=[...target.querySelectorAll('[data-native-vs-group][open]')].map(node=>node.dataset.nativeVsGroup);renderVsResults(target,'#native-vs-sort');return;
+  }
+  if(event.target.id==='native-donation-sort'&&cache.donationView){
+   const target=mount.querySelector('#native-admin-content');cache.donationView.sort=event.target.value;cache.donationView.limits={};
+   cache.donationView.openGroups=[...target.querySelectorAll('[data-native-donation-group][open]')].map(node=>node.dataset.nativeDonationGroup);
+   renderDonations(target,null,'#native-donation-sort');return;
+  }
+  if(event.target.id==='native-member-filter'){
+   memberFilter=['all','active','former'].includes(event.target.value)?event.target.value:'all';
+   const target=mount.querySelector('#native-admin-content');renderMembers(target,target.querySelector('#native-member-search')?.value||'');return;
+  }
+  if(event.target.id==='native-train-history-date'){
+   trainHistoryFilters.date=event.target.value;historyLimit=20;updateTrainHistoryResults(mount.querySelector('#native-admin-content'));return;
+  }
+  if(event.target.matches('[data-native-capture-choice]')){
+   const card=event.target.closest('.native-review-card');
+   if(card){selectedProfileCaptures.delete(card.dataset.reviewId);const attach=card.querySelector('[data-native-capture-attach]');if(attach)attach.disabled=true;
+    const message=card.querySelector('.native-review-message');if(message)message.textContent='Andere Aufnahme gewählt; bitte zuerst öffnen und kontrollieren.'}
+  }
+ if(event.target.id==='activity-group-by'){activityGroupBy=event.target.value;activityLimit=30;renderActivity(mount.querySelector('#native-admin-content'),mount.querySelector('#activity-search')?.value||'')}
+ if(event.target.name==='event_type'&&event.target.closest('#native-record-save'))updateEventForm(event.target.form);if(event.target.id==='native-vs-week')renderVs(mount.querySelector('#native-admin-content'));if(event.target.id==='native-donation-week')renderDonations(mount.querySelector('#native-admin-content'));if(['review-image-native','review-batch-native','review-kind-native'].includes(event.target.id)){historyLimit=20;const target=mount.querySelector('#native-admin-content');renderReviews(target,target.querySelector('#review-search-native')?.value||'')}});
+ mount.addEventListener('submit',async event=>{
+  const form=event.target;event.preventDefault();
+  if(form.matches('[data-native-alias-form]')){
+   const details=form.closest('.native-member-aliases');
+   const status=details.querySelector('[data-native-alias-status]');
+   if(!['R4','R5'].includes(officer?.role)){status.textContent='Nur R4/R5 dürfen Namen bestätigen.';return}
+   const alias=form.elements.namedItem('alias').value,reason=form.elements.namedItem('reason').value;
+   if(!alias.trim()||reason.trim().length<8||!form.elements.namedItem('ack').checked||!form.checkValidity()){
+    status.textContent='Bitte genaue Schreibweise, eine Begründung mit mindestens 8 Zeichen und die Bestätigung eingeben.';
+    return;
+   }
+   const submit=form.querySelector('[type=submit]');submit.disabled=true;
+   status.textContent='Name wird bestätigt …';
+   let saved=false;
+   try{
+    await request('/api/member/'+encodeURIComponent(details.dataset.nativeAliasMember)+'/aliases',{method:'POST',body:{alias,reason}});
+    saved=true;
+    details.dataset.nativeAliasRequest=String(Number(details.dataset.nativeAliasRequest||0)+1);
+    const result=await request('/api/member/'+encodeURIComponent(details.dataset.nativeAliasMember)+'/aliases');
+    if(!details.isConnected)return;
+    renderMemberAliases(details,result.aliases,'Spielername bestätigt.');
+    form.reset();form.hidden=true;details.querySelector('[data-native-alias-open]').hidden=false;
+    details.querySelector('[data-native-alias-open]').focus();
+   }catch(error){
+    if(details.isConnected)status.textContent=saved?'Name bestätigt, aber Liste konnte nicht aktualisiert werden. Bitte Profil neu öffnen.':
+     error.status===409?'Name gehört bereits zu einem anderen Mitglied. Bitte Zuordnung prüfen.':
+     error.status===403?'Keine Berechtigung für diese Bestätigung.':error.status===401?'Sitzung abgelaufen. Bitte erneut anmelden.':
+     error.status===400?'Name oder Begründung ungültig. Bitte Angaben prüfen.':'Bestätigung fehlgeschlagen. Bitte erneut versuchen.';
+   }finally{if(details.isConnected)submit.disabled=false}
+   return;
+  }
+  if(form.id==='native-officer-login'){
+   const button=form.querySelector('[type=submit]');button.disabled=true;
+   form.querySelector('#native-login-status').textContent='Anmeldung wird geprüft …';
+   try{
+    const login=await request('/api/native-login',{method:'POST',body:{code:form.elements.namedItem('code').value}});
+    sessionGeneration++;sessionToken=login.token;officer=login;form.elements.namedItem('code').value='';await view(mount);
+   }catch(err){form.querySelector('#native-login-status').textContent=err.message;button.disabled=false}
+   return;
+  }
+  if(form.id==='native-dice-save'){
+   const payload={date:form.elements.namedItem('date').value,
+    winner_id:form.elements.namedItem('winner_id').value,
+    roll_value:form.elements.namedItem('roll_value').value?Number(form.elements.namedItem('roll_value').value):null,
+    note:form.elements.namedItem('note').value,expected_revision:Number(form.dataset.revision)};
+   const submit=form.querySelector('[type=submit]'),status=form.querySelector('#native-dice-message');
+   submit.disabled=true;status.textContent='Dice Game wird gespeichert …';
+   try{await request('/api/train-dice',{method:'POST',body:payload});
+    cache.dice=await request('/api/train-dice');renderTrain(mount.querySelector('#native-admin-content'));
+    const info=mount.querySelector('#native-train-form');if(info)info.textContent='Gewinner gespeichert und im Admin-Log protokolliert.';
+   }catch(err){submit.disabled=false;status.textContent='Nicht gespeichert: '+err.message}
+   return;
+  }
+  if(form.id==='native-train-rotation-save'){
+   const types=trainWeekdays.map((_,i)=>form.elements.namedItem('type'+i).value);
+   const coordinators=trainWeekdays.map((_,i)=>form.elements.namedItem('coord'+i).value||null);
+   const body={types,coordinators,auto_suggest:form.elements.namedItem('auto_suggest').checked,
+    reason:form.elements.namedItem('reason').value,revision:Number(form.dataset.revision)};
+   const button=form.querySelector('[type=submit]'),message=form.querySelector('#native-rotation-message');
+   button.disabled=true;message.textContent='Rotation wird gespeichert …';
+   try{
+    await request('/api/train-rotation',{method:'POST',body});
+    const [rotation,trains]=await Promise.all([request('/api/train-rotation'),request('/api/train-manager')]);
+    cache.rotation=rotation;cache.trains=trains;renderTrain(mount.querySelector('#native-admin-content'));
+    const details=mount.querySelector('.native-train-rotation');if(details)details.open=true;
+    const result=mount.querySelector('#native-rotation-message');if(result)result.textContent='Neue Rotation und Zuständigkeiten gespeichert.';
+   }catch(err){
+    message.textContent=err.status===409?'Eine andere Person hat die Rotation geändert. Deine Eingaben bleiben erhalten.':'Nicht gespeichert: '+err.message;
+    if(err.status===409){form.dataset.conflict='1';form.querySelector('[data-native-rotation-reload]').hidden=false}
+    else button.disabled=false;
+   }
+   return;
+  }
+  if(form.id==='native-diplomacy-save'){
+   if(form.dataset.conflict==='1'||form.querySelector('[type=submit]').disabled)return;
+   const value=key=>form.elements.namedItem(key)?.value;
+   const payload={
+    server:Number(value('server')),tag:value('tag'),name:value('name'),
+    stance:value('stance'),war_support:value('war_support'),
+    attack_policy:value('attack_policy'),verification:value('verification'),
+    notes:value('notes'),active:form.elements.namedItem('active').checked,
+    reason:value('reason')
+   };
+   if(form.dataset.id){payload.id=form.dataset.id;payload.revision=Number(form.dataset.revision)}
+   const button=form.querySelector('[type=submit]');button.disabled=true;
+   const message=form.querySelector('#native-diplomacy-message');message.textContent='Wird gespeichert …';
+   try{
+    await request('/api/diplomacy',{method:'POST',body:payload});
+    cache.diplomacy=await request('/api/diplomacy');
+    const target=mount.querySelector('#native-admin-content');
+    renderDiplomacy(target,target.querySelector('#native-diplomacy-search')?.value||'');
+    target.querySelector('#native-diplomacy-form').innerHTML='<p role="status" class="native-confirmed">Vereinbarung protokolliert gespeichert.</p>';
+   }catch(err){
+    if(err.status===409){
+     form.dataset.conflict='1';
+     form.querySelector('[data-native-diplomacy-reload]').hidden=false;
+     message.textContent='Ein anderer Officer hat diesen Eintrag verändert. Deine Eingaben bleiben erhalten. Lade den aktuellen Stand ausdrücklich neu.';
+    }else{
+     button.disabled=false;message.textContent='Nicht gespeichert: '+err.message;
+    }
+   }
+   return;
+  }
+  if(form.id==='native-requirements-save'){
+   const values={revision:Number(form.dataset.revision),
+    vs_daily_minimum:Number(form.elements.namedItem('vs_daily_minimum').value),
+    donation_weekly_minimum:Number(form.elements.namedItem('donation_weekly_minimum').value),
+    min_active_vs_days:Number(form.elements.namedItem('min_active_vs_days').value),
+    low_vs_day_warning_count:Number(form.elements.namedItem('low_vs_day_warning_count').value),
+    shield_reminder_saturday:form.elements.namedItem('shield_reminder_saturday').checked,
+    reason:form.elements.namedItem('reason').value};
+   const message=form.querySelector('#native-requirements-message'),button=form.querySelector('[type=submit]');
+   if(!form.reportValidity())return;
+   button.disabled=true;message.textContent='Speichere Regeln mit Admin-Protokoll …';
+   try{
+    cache.requirements=await request('/api/alliance-requirements',{method:'POST',body:values});
+    renderRequirements(mount.querySelector('#native-admin-content'));
+    mount.querySelector('#native-requirements-message').textContent='Allianzregeln gespeichert und protokolliert. VS und Spenden verwenden die neuen Grenzwerte.';
+   }catch(error){
+    message.textContent=error.status===409?'Einstellungen wurden zwischenzeitlich geändert. Bitte neu laden, damit du niemandes Änderungen überschreibst.':'Nicht gespeichert: '+error.message;
+    button.disabled=error.status===409;
+   }
+   return;
+  }
+  if(form.id==='native-vs-evidence-upload'){
+   await submitVsScreenshot(form,mount.querySelector('#native-admin-content'));return;
+  }
+  if(form.id==='native-member-create-save'){
+   const button=form.querySelector('[type=submit]'),message=form.querySelector('#native-member-create-message');
+   button.disabled=true;
+   try{
+    await request('/api/member-registry/create',{method:'POST',body:{name:form.elements.namedItem('name').value,rank:form.elements.namedItem('rank').value,reason:form.elements.namedItem('reason').value}});
+    registryFilter='active';await view(mount);
+   }catch(error){message.textContent='Nicht angelegt: '+error.message;button.disabled=false}
+   return;
+  }
+  if(form.id==='native-access-save'){
+   const mode=form.dataset.mode;
+   const body={reason:form.elements.namedItem('reason').value};
+   if(mode==='self'){
+    body.action='change_self';body.current_code=form.elements.namedItem('current_code').value;
+   }else if(mode==='issue')body.member_id=form.elements.namedItem('member_id').value;
+   else if(mode==='link'||mode==='disable'){
+    body.officer_id=form.dataset.officerId;
+    if(mode==='link')body.member_id=form.elements.namedItem('member_id').value;
+   }else{body.action='reset_other';body.officer_id=form.elements.namedItem('officer_id').value}
+   if(mode==='disable'&&!window.confirm('Offizierszugang wirklich deaktivieren und alle bisherigen Sitzungen beenden?'))return;
+   const button=form.querySelector('[type=submit]'),message=form.querySelector('#native-access-message');
+   button.disabled=true;
+   try{
+    const endpoint=mode==='issue'?'/api/officer-access/issue':
+     mode==='link'?'/api/officer-access/link':mode==='disable'?'/api/officer-access/disable':'/api/officer-access/rotate';
+    const result=await request(endpoint,{method:'POST',body});
+    if(mode==='link'||mode==='disable'){
+     await view(mount);
+     const message=mount.querySelector('#native-access-result');
+     if(message)message.textContent=mode==='link'?'Offizierskonto mit dem bestätigten Mitglied verknüpft.':'Offizierszugang deaktiviert und Sitzungen beendet.';
+     return;
+    }
+    form.remove();
+    const host=mount.querySelector('#native-access-result');
+    host.innerHTML='<section class="native-access-secret" role="status"><h3>Neuer Code für '+e(result.ingame_name)+'</h3>'+
+      '<p>Nur jetzt sichtbar. Sicher an den betroffenen Offizier übermitteln. Alter Code und alte Sitzungen sind'+(mode==='issue'?' nicht vorhanden.':' gesperrt.')+'</p>'+
+      '<label>Einmaliger Zugangscode<input id="native-credential-output" type="text" readonly autocomplete="off" spellcheck="false" value="'+e(result.code)+'"></label>'+
+      '<button type="button" data-native-access-copy>Code markieren / kopieren</button>'+
+      (mode==='self'?'<button type="button" data-native-access-signout>Mit neuem Code anmelden</button>':'')+'</section>';
+   }catch(error){message.textContent='Nicht gespeichert: '+error.message;button.disabled=false}
+   return;
+  }
+  if(form.id==='registry-save'){
+   if(form.dataset.conflict==='1'||form.querySelector('[type=submit]').disabled)return;
+   const payload={member_id:form.dataset.id,revision:form.dataset.revision,rank:form.elements.namedItem('rank').value,lifecycle:form.elements.namedItem('lifecycle').value,blacklisted:form.elements.namedItem('blacklisted').checked,reason:form.elements.namedItem('reason').value};
+   if(!window.confirm('Mitgliedsänderung mit Audit-Log speichern?'))return;
+   const button=form.querySelector('[type=submit]');button.disabled=true;
+   try{await request('/api/member-registry',{method:'POST',body:payload});await view(mount)}
+   catch(err){
+    form.querySelector('#native-form-message').textContent=err.status===409?'Der Mitgliedsstand wurde geändert. Deine Eingaben bleiben erhalten. Lade den aktuellen Stand vor einer neuen Änderung.':err.message;
+    if(err.status===409){form.dataset.conflict='1';form.querySelector('[data-registry-reload]').hidden=false}
+    else button.disabled=false;
+   }return;
+  }
+  if(form.id==='native-train-save'){form.dataset.kind='train';await saveForm(mount,form)}
+  if(form.id==='native-record-save')await saveForm(mount,form);
+ });
+}
