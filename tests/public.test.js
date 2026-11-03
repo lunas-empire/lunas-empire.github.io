@@ -28,7 +28,7 @@ test('all public assets, including i18n, are served; private paths are not',asyn
     assert.ok(adminShell.includes('id="unlock-form"'),'admin route serves only the password shell');
     assert.ok(!adminShell.includes('Operation KABUM'),'admin content is not present in the password shell');
     assert.ok(adminTheme.includes('.admin-runtime-bar') && adminTheme.includes('.card'),'decrypted admin wiki has a robust dashboard fallback theme');
-    assert.ok(adminApp.includes('wiki-theme.css') && adminApp.includes('Command Center'),'admin unlock injects the dashboard shell and fallback stylesheet');
+    assert.ok(adminApp.includes('wiki-theme.css') && adminApp.includes('Commander Center'),'admin unlock injects the dashboard shell and fallback stylesheet');
     const manifest=await (await fetch(url+'/admin/data/manifest.json')).json();
     assert.equal(manifest.kdf.iterations,600000,'encrypted package uses the required PBKDF2 work factor');
     assert.equal(Object.keys(manifest.files.images).length,29,'all admin images are encrypted');

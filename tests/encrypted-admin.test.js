@@ -28,3 +28,62 @@ test('encrypted admin package interoperates with browser crypto and rejects a wr
     await rm(temporary,{recursive:true,force:true});
   }
 });
+
+// Exercise the real shell controller without private data or Worker requests.
+import { JSDOM } from 'jsdom';
+const shellHtml=await readFile(new URL('../admin/index.html',import.meta.url),'utf8');
+const shellApp=(await readFile(new URL('../admin/app.js',import.meta.url),'utf8')).replace(/^import .*;\r?\n/,'');
+function shellAt(url) {
+  const dom=new JSDOM(shellHtml,{url,runScripts:'outside-only'});
+  dom.window.eval(shellApp);
+  return dom;
+}
+test('single staging frame, constrained CSP/sandbox, deep links and keyboard tabs',async()=>{
+  const dom=shellAt('https://lunas-empire.github.io/admin/#review');
+  try {
+    const {document}=dom.window;
+    const frame=document.querySelector('iframe');
+    assert.equal(document.querySelectorAll('iframe').length,1);
+    assert.equal(frame.src,'https://rzsn-command-center-staging.cynthiawong2837128.workers.dev/?embed=1#review');
+    assert.equal(frame.getAttribute('referrerpolicy'),'no-referrer');
+    assert.equal(frame.getAttribute('sandbox'),'allow-scripts allow-forms allow-same-origin allow-downloads');
+    const csp=document.querySelector('[http-equiv="Content-Security-Policy"]').content;
+    assert.match(csp,/script-src 'self';/);
+    assert.match(csp,/frame-src https:\/\/rzsn-command-center-staging\.cynthiawong2837128\.workers\.dev$/);
+    const review=document.querySelector('#tab-review');
+    assert.equal(review.getAttribute('aria-selected'),'true');
+    review.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));
+    await new Promise(resolve=>setTimeout(resolve,10));
+    assert.equal(document.activeElement.id,'tab-wissen');
+    assert.equal(document.querySelector('#wiki-panel').hidden,false);
+    assert.equal(document.querySelector('#worker-panel').hidden,true);
+    assert.equal(dom.window.location.pathname,'/admin/');
+    document.querySelector('#tab-overview').click();
+    await new Promise(resolve=>setTimeout(resolve,10));
+    assert.equal(frame.src,'https://rzsn-command-center-staging.cynthiawong2837128.workers.dev/?embed=1');
+  } finally {dom.window.close();}
+});
+test('wiki deep link is lazy; production and unknown hosts retain encrypted entry',()=>{
+  for (const host of ['lunas-empire.github.io','localhost','127.0.0.1']) {
+    const dom=shellAt(`https://${host}/admin/#wissen`);
+    assert.equal(dom.window.document.querySelector('#wiki-panel').hidden,false);
+    assert.equal(dom.window.document.querySelector('iframe').hasAttribute('src'),false);
+    dom.window.close();
+  }
+  for (const host of ['rzsn-home.github.io','example.org','lunas-empire.github.io.example.org']) {
+    const dom=shellAt(`https://${host}/admin/#review`);
+    const doc=dom.window.document;
+    assert.equal(doc.querySelector('#commander-shell').hidden,true);
+    assert.equal(doc.querySelector('iframe').hasAttribute('src'),false);
+    assert.equal(doc.querySelector('#wiki-panel').hidden,false);
+    assert.equal(doc.querySelector('#login-title').textContent,'R4/R5 Admin');
+    dom.window.close();
+  }
+});
+test('wiki runtime preserves decryption and provides same-route return links',()=>{
+  assert.match(shellApp,/deriveAdminKey\(password,manifest\)/);
+  assert.match(shellApp,/decryptAdminBytes\(encryptedWiki,manifest.files.wiki,key\)/);
+  assert.match(shellApp,/href="\/admin\/#overview"/);
+  assert.match(shellApp,/href="\/admin\/#review"/);
+  assert.match(shellApp,/document\.open\(\);\s*document\.write\(html\);\s*document\.close\(\)/);
+});

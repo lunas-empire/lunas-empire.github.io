@@ -5,6 +5,60 @@ const passwordInput=document.querySelector('#admin-password');
 const submitButton=document.querySelector('#unlock-button');
 const status=document.querySelector('#unlock-status');
 
+// The private Worker remains the single source of the officer UI and same-origin writes.
+const embeddedHost=location.hostname==='lunas-empire.github.io' || ['localhost','127.0.0.1','[::1]'].includes(location.hostname);
+const workerUrl='https://rzsn-command-center-staging.cynthiawong2837128.workers.dev/?embed=1';
+const shell=document.querySelector('#commander-shell');
+const wikiPanel=document.querySelector('#wiki-panel');
+const workerPanel=document.querySelector('#worker-panel');
+const frame=document.querySelector('#commander-frame');
+const tabs=[...document.querySelectorAll('[data-view]')];
+
+if (embeddedHost) {
+  shell.hidden=false;
+  document.body.classList.add('embedded-admin');
+  document.title='Commander Center - Luna';
+  wikiPanel.setAttribute('role','tabpanel');
+  wikiPanel.setAttribute('aria-labelledby','tab-wissen');
+  shell.append(wikiPanel);
+  document.querySelector('#login-title').textContent='Wissen & Guides';
+  document.querySelector('.intro').textContent='Verschlüsseltes Wiki mit dem bestehenden Wiki-Passwort öffnen.';
+  document.querySelector('.intro.en').textContent='Open the encrypted wiki with the existing wiki password.';
+  document.querySelector('label[for="admin-password"]').textContent='Wiki-Passwort / Wiki password';
+  submitButton.textContent='Wiki öffnen';
+  function showView(force=false) {
+    const view=['review','wissen'].includes(location.hash.slice(1))?location.hash.slice(1):'overview';
+    for (const tab of tabs) {
+      const selected=tab.dataset.view===view;
+      tab.setAttribute('aria-selected',String(selected));
+      tab.tabIndex=selected?0:-1;
+    }
+    wikiPanel.hidden=view!=='wissen';
+    workerPanel.hidden=view==='wissen';
+    workerPanel.setAttribute('aria-labelledby',`tab-${view==='review'?'review':'overview'}`);
+    if (view!=='wissen') {
+      const destination=workerUrl+(view==='review'?'#review':'');
+      if (force || frame.getAttribute('src')!==destination) frame.src=destination;
+    }
+  }
+  for (const tab of tabs) {
+    tab.addEventListener('click',()=>{location.hash=tab.dataset.view;showView(true);});
+    tab.addEventListener('keydown',event=>{
+      let index=tabs.indexOf(tab);
+      if (event.key==='ArrowRight') index=(index+1)%tabs.length;
+      else if (event.key==='ArrowLeft') index=(index+tabs.length-1)%tabs.length;
+      else if (event.key==='Home') index=0;
+      else if (event.key==='End') index=tabs.length-1;
+      else return;
+      event.preventDefault();
+      tabs[index].focus();
+      tabs[index].click();
+    });
+  }
+  addEventListener('hashchange',()=>showView());
+  showView();
+}
+
 async function fetchBytes(path) {
   const response=await fetch(path,{cache:'no-store'});
   if (!response.ok) throw new Error('Encrypted package is unavailable.');
@@ -29,13 +83,21 @@ async function unlock(password) {
   if (html.includes('src="images/')) throw new Error('Encrypted package is incomplete.');
   const policy="default-src 'none'; script-src 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src blob:; connect-src 'none'; base-uri 'none'; form-action 'none'";
   const environment=location.hostname==='lunas-empire.github.io'?'STAGING':'PRODUCTION';
-  const runtimeBar=`<div class="admin-runtime-bar"><div class="admin-runtime-brand">Command Center</div><div class="admin-runtime-actions"><span class="admin-runtime-env">${environment}</span><a class="admin-runtime-home" href="/">← Member Hub</a></div></div>`;
+  const returnLinks=embeddedHost?'<a class="admin-runtime-home" href="/admin/#overview">Commander Center</a><a class="admin-runtime-home" href="/admin/#review">Manuelle Reviews</a>':'';
+  const runtimeBar=`<div class="admin-runtime-bar"><div class="admin-runtime-brand">Commander Center</div><div class="admin-runtime-actions"><span class="admin-runtime-env">${environment}</span>${returnLinks}<a class="admin-runtime-home" href="/">← Member Hub</a></div></div>`;
   html=html.replace('<head>',`<head><meta http-equiv="Content-Security-Policy" content="${policy}">`);
   html=html.replace('</head>','<link rel="stylesheet" href="/admin/wiki-theme.css"></head>');
   html=html.replace('<body>',`<body>${runtimeBar}`);
   document.open();
   document.write(html);
   document.close();
+  for (const link of document.querySelectorAll('.admin-runtime-home[href^="/admin/#"]')) {
+    link.addEventListener('click',event=>{
+      event.preventDefault();
+      location.replace(link.href);
+      location.reload();
+    });
+  }
 }
 
 form.addEventListener('submit',async event=>{
