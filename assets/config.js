@@ -8,9 +8,9 @@ const productionHost='rzsn-home.github.io';
 export const BUILD_VERSION = globalThis.location?.hostname===productionHost ? BUILD_VERSION_BASE : `${BUILD_VERSION_BASE}-staging`;
 export const ALLIANCE_CONFIG = {
   vsDailyMinimum: 3600000,
-  // Commander Center has one entry on every host; /admin/ gates staging embedding.
+  // Luna uses the native Member Hub route; production keeps its archive entry.
   // RZSN production retains its existing encrypted admin wiki.
-  adminUrl: ['lunas-empire.github.io',productionHost,'localhost','127.0.0.1','[::1]'].includes(globalThis.location?.hostname) ? '/admin/' : '#admin',
+  adminUrl: globalThis.location?.hostname===productionHost ? '/admin/' : '#admin',
   commandCenterEmbedUrl: 'https://rzsn-staging-api-bridge.pages.dev/?embed=1',
 };
 export const LIVE_NOTICE = {

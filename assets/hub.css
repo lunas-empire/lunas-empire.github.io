@@ -936,9 +936,9 @@ input[type='checkbox'],input[type='radio']{accent-color:var(--color-game-orange)
  .native-admin .native-status-filter button{width:100%}
 }
 
-/* One-header officer shell: public nav yields to Command Center nav on Luna only. */
-html[data-officer-mode='true'] .main-nav{display:none!important}
-html[data-officer-mode='true'] body{padding-bottom:max(12px,env(safe-area-inset-bottom))}
+/* Native officer area shares the Member Hub header, navigation and document scroll. */
+html[data-officer-mode='true'] .main-nav{visibility:visible}
+html[data-officer-mode='true'] body{padding-bottom:var(--nav-height,calc(5rem + env(safe-area-inset-bottom)))}
 html[data-officer-mode='true'] main{padding-top:clamp(.5rem,2vw,.9rem)}
 html[data-officer-mode='true'] .first-visit-note{margin-bottom:0}
 .native-officer-strip{

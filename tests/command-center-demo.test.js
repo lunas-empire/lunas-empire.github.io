@@ -18,11 +18,11 @@ test('Lunas Empire admin entry is only a redirect; no private database or demo b
  assert.ok(!html.includes('officer_credentials'));
 });
 
-test('Lunas staging opens the protected Worker while RZSN production keeps the legacy wiki',async()=>{
+test('Lunas staging opens the native hub while RZSN production keeps the legacy wiki',async()=>{
  const config=await readFile(new URL('../assets/config.js',import.meta.url),'utf8');
  const homepage=await readFile(new URL('../index.html',import.meta.url),'utf8');
  assert.ok(config.includes(worker));
- assert.ok(config.includes("? '/admin/' : '#admin'"));
+ assert.ok(config.includes("globalThis.location?.hostname===productionHost ? '/admin/' : '#admin'"));
  assert.ok(homepage.includes('id="admin-link" href="#admin"'));
  assert.ok(config.includes('commandCenterEmbedUrl'));
  const hubApp=await readFile(new URL('../assets/app.js',import.meta.url),'utf8');

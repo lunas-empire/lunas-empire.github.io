@@ -498,6 +498,8 @@ function syncChrome() {
     if (a.hash === `#${currentView}`) a.setAttribute('aria-current','page');
     else a.removeAttribute('aria-current');
   });
+  document.querySelector('#admin-link').toggleAttribute('aria-current',currentView==='admin');
+  if(currentView==='admin')document.querySelector('#admin-link').setAttribute('aria-current','page');
   showStorageError();
 }
 function showStorageError() {
@@ -629,21 +631,27 @@ function applyGuideFilters() {
   updateGuideLibrary(main,{topic:guideTopicSelected,query:guideSearchQuery,locale:LOCALES[lang],resultText:guideNavText(lang,'count')});
 }
 function render({focus = false,preserve = false} = {}) {
-  const route=memberRoute(location.hash);
-  if (route.view==='admin' && ['lunas-empire.github.io','localhost','127.0.0.1','[::1]'].includes(location.hostname)) { location.replace('/admin/'); return; }
+  const nativeReview=location.hash==='#admin-review'&&location.hostname!=='rzsn-home.github.io';
+  const route=memberRoute(nativeReview?'#admin':location.hash);
   if (route.view === 'main') { main.focus(); return; }
   currentView = Object.hasOwn(views,route.view) ? route.view : 'today';
   document.documentElement.dataset.officerMode=String(currentView==='admin'&&location.hostname!=='rzsn-home.github.io');
   if(currentView==='guides' && route.guideId){guideTopicSelected=guideTopicOf(route.guideId);guideSearchQuery='';}
   else if(currentView==='guides'&&!preserve){guideTopicSelected='';guideSearchQuery='';}
   const open = preserve ? new Set([...main.querySelectorAll('details[open][data-disclosure]')].map(el=>el.dataset.disclosure)) : null;
-  main.innerHTML = views[currentView]();
+  const retainedMount=currentView==='admin' ? main.querySelector('#native-officer-root') : null;
+  if(!retainedMount) main.innerHTML = views[currentView]();
   if(currentView==='admin'&&location.hostname!=='rzsn-home.github.io'){
     import('./native-admin.js').then(async mod=>{
       const mount=main.querySelector('#native-officer-root');
       if(!mount)return;
+      mount.lang=lang;
+      mount.dir=lang==='ar'?'rtl':'ltr';
       mod.initNativeAdmin(mount);
-      await mod.renderNativeAdmin(mount);
+      if(nativeReview&&(!retainedMount||!preserve)){
+        await mod.openNativeReviews(mount);
+        if(!mod.hasOfficer())await mod.renderNativeAdmin(mount);
+      }else if(!retainedMount||preserve)await mod.renderNativeAdmin(mount);
     }).catch(error=>{
       const mount=main.querySelector('#native-officer-root');
       if(mount)mount.textContent='Adminansicht derzeit nicht verfügbar: '+error.message;

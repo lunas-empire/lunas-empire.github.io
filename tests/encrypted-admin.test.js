@@ -41,24 +41,24 @@ function shellAt(url) {
     initNativeAdmin(mount){dom.window.__nativeCalls.init++;mount.dataset.nativeReady='1';},
     async renderNativeAdmin(mount){dom.window.__nativeCalls.render++;mount.innerHTML='<form id="native-officer-login"><input type="password" name="code"></form>';}
   });
-  dom.window.eval(shellApp.replace("import('/assets/native-admin.js')","window.__loadNative()"));
+  dom.window.__redirects=[];
+  dom.window.eval(shellApp.replaceAll('location.replace(', 'window.__redirects.push(').replace("import('/assets/native-admin.js')","window.__loadNative()"));
   return dom;
 }
-test('native shell has no review or wiki navigation and preserves archival access',async()=>{
+test('Luna legacy links alias the root native view and wiki stays archival',async()=>{
  for(const hash of ['overview','review','wissen']){
   const dom=shellAt('https://lunas-empire.github.io/admin/#'+hash);
-  await new Promise(r=>setTimeout(r,10));
   const doc=dom.window.document;
   assert.equal(doc.querySelector('iframe'),null);
   assert.equal(doc.querySelector('[data-view]'),null);
-  assert.equal(doc.querySelector('#wiki-panel').hidden,hash!=='wissen');
-  assert.equal(doc.querySelector('#native-panel').hidden,hash==='wissen');
-  assert.equal(dom.window.__nativeCalls.init,hash==='wissen'?0:1);
+  assert.equal(dom.window.__nativeCalls.init,0);
+  assert.deepEqual([...dom.window.__redirects],hash==='wissen'?[]:[hash==='review'?'/#admin-review':'/#admin']);
   assert.match(doc.querySelector('[http-equiv="Content-Security-Policy"]').content,/frame-src 'none'/);
   const csp=doc.querySelector('[http-equiv="Content-Security-Policy"]').content;
   assert.match(csp,/script-src 'self';/);
   assert.match(csp,/connect-src 'self' https:\/\/rzsn-staging-api-bridge\.pages\.dev;/);
   assert.match(csp,/img-src 'self' blob:/);
+  if(hash==='wissen')assert.equal(doc.querySelector('#wiki-panel').hidden,false);
   dom.window.close();
  }
  for(const host of ['rzsn-home.github.io','example.org','lunas-empire.github.io.example.org']){
@@ -74,28 +74,17 @@ test('native shell has no review or wiki navigation and preserves archival acces
 test('wiki runtime preserves decryption and provides same-route return links',()=>{
   assert.match(shellApp,/deriveAdminKey\(password,manifest\)/);
   assert.match(shellApp,/decryptAdminBytes\(encryptedWiki,manifest.files.wiki,key\)/);
-  assert.match(shellApp,/href="\/admin\/#overview"/);
-  assert.match(shellApp,/href="\/admin\/#review"/);
+  assert.match(shellApp,/href="\/#admin"/);
+  assert.match(shellApp,/href="\/#admin-review"/);
   assert.match(shellApp,/document\.open\(\);\s*document\.write\(html\);\s*document\.close\(\)/);
 });
 
-test('hub menu and legacy admin hash resolve to the sole Commander Center route',async()=>{
-  const config=await readFile(new URL('../assets/config.js',import.meta.url),'utf8');
-  const app=await readFile(new URL('../assets/app.js',import.meta.url),'utf8');
-  assert.ok(config.includes("'lunas-empire.github.io',productionHost"));
-  assert.ok(config.includes("? '/admin/' : '#admin'"));
-  assert.ok(app.includes("if (route.view==='admin' && ['lunas-empire.github.io','localhost','127.0.0.1','[::1]'].includes(location.hostname)) { location.replace('/admin/'); return; }"));
-});
-
-test('native mount is retained across archival hash navigation',async()=>{
- const dom=shellAt('https://lunas-empire.github.io/admin/#overview');
- try{
-  await new Promise(r=>setTimeout(r,10));
-  const login=dom.window.document.querySelector('#native-officer-login');
-  login.querySelector('input').value='unsent';
-  for(const hash of ['wissen','overview']){dom.window.location.hash=hash;await new Promise(r=>setTimeout(r,10))}
-  assert.equal(dom.window.document.querySelector('#native-officer-login'),login);
-  assert.equal(login.querySelector('input').value,'unsent');
-  assert.deepEqual({...dom.window.__nativeCalls},{init:1,render:1});
- }finally{dom.window.close()}
+test('hub uses its native route while production retains the encrypted archive',async()=>{
+ const config=await readFile(new URL('../assets/config.js',import.meta.url),'utf8');
+ const app=await readFile(new URL('../assets/app.js',import.meta.url),'utf8');
+ assert.ok(config.includes("globalThis.location?.hostname===productionHost ? '/admin/' : '#admin'"));
+ assert.ok(!app.includes("location.replace('/admin/')"));
+ assert.match(app,/nativeReview\?'#admin':location.hash/);
+ assert.match(app,/if\(nativeReview&&\(!retainedMount\|\|!preserve\)\)\{\s*await mod.openNativeReviews\(mount\)/);
+ assert.match(app,/if\(!retainedMount\) main.innerHTML/);
 });
