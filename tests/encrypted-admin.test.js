@@ -35,7 +35,12 @@ const shellHtml=await readFile(new URL('../admin/index.html',import.meta.url),'u
 const shellApp=(await readFile(new URL('../admin/app.js',import.meta.url),'utf8')).replace(/^import .*;\r?\n/,'');
 function shellAt(url) {
   const dom=new JSDOM(shellHtml,{url,runScripts:'outside-only'});
-  dom.window.eval(shellApp);
+  dom.window.__nativeCalls={init:0,render:0};
+  dom.window.__loadNative=()=>Promise.resolve({
+    initNativeAdmin(mount){dom.window.__nativeCalls.init++;mount.dataset.nativeReady='1';},
+    async renderNativeAdmin(mount){dom.window.__nativeCalls.render++;mount.innerHTML='<form id="native-officer-login"><input type="password" name="code"></form>';}
+  });
+  dom.window.eval(shellApp.replace("import('/assets/native-admin.js')","window.__loadNative()"));
   return dom;
 }
 test('single staging frame, constrained CSP/sandbox, deep links and keyboard tabs',async()=>{
@@ -60,7 +65,10 @@ test('single staging frame, constrained CSP/sandbox, deep links and keyboard tab
     assert.equal(dom.window.location.pathname,'/admin/');
     document.querySelector('#tab-overview').click();
     await new Promise(resolve=>setTimeout(resolve,10));
-    assert.equal(frame.src,'https://rzsn-command-center-staging.cynthiawong2837128.workers.dev/?embed=1');
+    assert.equal(frame.src,'https://rzsn-command-center-staging.cynthiawong2837128.workers.dev/?embed=1#review');
+    assert.equal(document.querySelector('#native-panel').hidden,false);
+    assert.equal(document.querySelector('#worker-panel').hidden,true);
+    assert.equal(dom.window.__nativeCalls.init,1);
   } finally {dom.window.close();}
 });
 test('wiki deep link is lazy; production and unknown hosts retain encrypted entry',()=>{
@@ -86,4 +94,42 @@ test('wiki runtime preserves decryption and provides same-route return links',()
   assert.match(shellApp,/href="\/admin\/#overview"/);
   assert.match(shellApp,/href="\/admin\/#review"/);
   assert.match(shellApp,/document\.open\(\);\s*document\.write\(html\);\s*document\.close\(\)/);
+});
+
+test('hub menu and legacy admin hash resolve to the sole Commander Center route',async()=>{
+  const config=await readFile(new URL('../assets/config.js',import.meta.url),'utf8');
+  const app=await readFile(new URL('../assets/app.js',import.meta.url),'utf8');
+  assert.ok(config.includes("'lunas-empire.github.io',productionHost"));
+  assert.ok(config.includes("? '/admin/' : '#admin'"));
+  assert.ok(app.includes("if (route.view==='admin' && ['lunas-empire.github.io','localhost','127.0.0.1','[::1]'].includes(location.hostname)) { location.replace('/admin/'); return; }"));
+});
+
+test('native overview is initialized once and keeps its mount while reviews load once',async()=>{
+  const dom=shellAt('https://lunas-empire.github.io/admin/#overview');
+  const tick=()=>new Promise(resolve=>setTimeout(resolve,10));
+  try {
+    await tick();
+    const doc=dom.window.document,frame=doc.querySelector('iframe');
+    assert.equal(frame.hasAttribute('src'),false,'overview must not load Worker');
+    assert.deepEqual({...dom.window.__nativeCalls},{init:1,render:1});
+    const login=doc.querySelector('#native-officer-login');
+    login.querySelector('input').value='unsent-local-test';
+    let loads=0;
+    const observer=new dom.window.MutationObserver(records=>{loads+=records.filter(r=>r.attributeName==='src').length;});
+    observer.observe(frame,{attributes:true});
+    for (const id of ['review','wissen','overview','review','overview']) {
+      doc.querySelector('#tab-'+id).click();
+      await tick();
+    }
+    assert.equal(loads,1,'review iframe is retained, never navigated on tab return');
+    assert.equal(doc.querySelector('#native-officer-login'),login,'native mount is never replaced');
+    assert.equal(login.querySelector('input').value,'unsent-local-test');
+    assert.deepEqual({...dom.window.__nativeCalls},{init:1,render:1});
+    observer.disconnect();
+    assert.ok(shellHtml.indexOf('/assets/hub.css')<shellHtml.indexOf('href="styles.css"'));
+    assert.match(shellApp,/import\('\/assets\/native-admin\.js'\)/);
+    const csp=doc.querySelector('[http-equiv="Content-Security-Policy"]').content;
+    assert.match(csp,/connect-src 'self' https:\/\/rzsn-staging-api-bridge\.pages\.dev;/);
+    assert.match(csp,/img-src 'self' blob:/);
+  } finally {dom.window.close();}
 });

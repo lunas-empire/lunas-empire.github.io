@@ -630,6 +630,7 @@ function applyGuideFilters() {
 }
 function render({focus = false,preserve = false} = {}) {
   const route=memberRoute(location.hash);
+  if (route.view==='admin' && ['lunas-empire.github.io','localhost','127.0.0.1','[::1]'].includes(location.hostname)) { location.replace('/admin/'); return; }
   if (route.view === 'main') { main.focus(); return; }
   currentView = Object.hasOwn(views,route.view) ? route.view : 'today';
   document.documentElement.dataset.officerMode=String(currentView==='admin'&&location.hostname!=='rzsn-home.github.io');

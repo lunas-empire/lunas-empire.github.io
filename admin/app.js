@@ -5,17 +5,44 @@ const passwordInput=document.querySelector('#admin-password');
 const submitButton=document.querySelector('#unlock-button');
 const status=document.querySelector('#unlock-status');
 
-// The private Worker remains the single source of the officer UI and same-origin writes.
+// Reuse the native officer UI; only source-bound publication reviews use the Worker.
 const embeddedHost=location.hostname==='lunas-empire.github.io' || ['localhost','127.0.0.1','[::1]'].includes(location.hostname);
-const workerUrl='https://rzsn-command-center-staging.cynthiawong2837128.workers.dev/?embed=1';
+const workerUrl='https://rzsn-command-center-staging.cynthiawong2837128.workers.dev/?embed=1#review';
 const shell=document.querySelector('#commander-shell');
 const wikiPanel=document.querySelector('#wiki-panel');
 const workerPanel=document.querySelector('#worker-panel');
 const frame=document.querySelector('#commander-frame');
+const nativePanel=document.querySelector('#native-panel');
+const nativeMount=document.querySelector('#native-officer-root');
 const tabs=[...document.querySelectorAll('[data-view]')];
 
 if (embeddedHost) {
   shell.hidden=false;
+  try {
+    const language=localStorage.getItem('rzsn-language');
+    if (['de','en','uk','ja','fr','it','id','ar','ko','sv','pt','nl','th','km','fil'].includes(language)) document.documentElement.lang=language;
+  } catch { /* Storage is optional; native German remains available. */ }
+  let nativeReady;
+  function loadNative() {
+    if (!nativeReady) {
+      nativeReady=import('/assets/native-admin.js').then(async module=>{
+        module.initNativeAdmin(nativeMount);
+        await module.renderNativeAdmin(nativeMount);
+      }).catch(()=>{
+        nativeReady=null;
+        nativeMount.replaceChildren();
+        const message=document.createElement('p');
+        message.setAttribute('role','alert');
+        message.textContent='Commander Center nicht verfügbar. Bitte erneut versuchen.';
+        const retry=document.createElement('button');
+        retry.type='button';
+        retry.textContent='Erneut laden';
+        retry.addEventListener('click',loadNative);
+        nativeMount.append(message,retry);
+      });
+    }
+    return nativeReady;
+  }
   document.body.classList.add('embedded-admin');
   document.title='Commander Center - Luna';
   wikiPanel.setAttribute('role','tabpanel');
@@ -26,7 +53,7 @@ if (embeddedHost) {
   document.querySelector('.intro.en').textContent='Open the encrypted wiki with the existing wiki password.';
   document.querySelector('label[for="admin-password"]').textContent='Wiki-Passwort / Wiki password';
   submitButton.textContent='Wiki öffnen';
-  function showView(force=false) {
+  function showView() {
     const view=['review','wissen'].includes(location.hash.slice(1))?location.hash.slice(1):'overview';
     for (const tab of tabs) {
       const selected=tab.dataset.view===view;
@@ -34,15 +61,13 @@ if (embeddedHost) {
       tab.tabIndex=selected?0:-1;
     }
     wikiPanel.hidden=view!=='wissen';
-    workerPanel.hidden=view==='wissen';
-    workerPanel.setAttribute('aria-labelledby',`tab-${view==='review'?'review':'overview'}`);
-    if (view!=='wissen') {
-      const destination=workerUrl+(view==='review'?'#review':'');
-      if (force || frame.getAttribute('src')!==destination) frame.src=destination;
-    }
+    workerPanel.hidden=view!=='review';
+    nativePanel.hidden=view!=='overview';
+    if (view==='overview') void loadNative();
+    if (view==='review' && !frame.hasAttribute('src')) frame.src=workerUrl;
   }
   for (const tab of tabs) {
-    tab.addEventListener('click',()=>{location.hash=tab.dataset.view;showView(true);});
+    tab.addEventListener('click',()=>{location.hash=tab.dataset.view;showView();});
     tab.addEventListener('keydown',event=>{
       let index=tabs.indexOf(tab);
       if (event.key==='ArrowRight') index=(index+1)%tabs.length;

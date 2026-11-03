@@ -11,7 +11,8 @@ test('Lunas Empire admin entry is only a redirect; no private database or demo b
  assert.deepEqual(names,['index.html']);
  const html=await readFile(new URL('index.html',dir),'utf8');
  assert.ok(html.includes('http-equiv="refresh"'));
- assert.ok(html.includes(worker));
+ assert.ok(html.includes('0;url=/admin/'));
+ assert.ok(!html.includes(worker));
  assert.ok(html.includes('passwortgeschützten Adminbereich'));
  assert.ok(!html.includes('Demo Orion'));
  assert.ok(!html.includes('officer_credentials'));
@@ -21,7 +22,7 @@ test('Lunas staging opens the protected Worker while RZSN production keeps the l
  const config=await readFile(new URL('../assets/config.js',import.meta.url),'utf8');
  const homepage=await readFile(new URL('../index.html',import.meta.url),'utf8');
  assert.ok(config.includes(worker));
- assert.ok(config.includes("? '/admin/' :"));
+ assert.ok(config.includes("? '/admin/' : '#admin'"));
  assert.ok(homepage.includes('id="admin-link" href="#admin"'));
  assert.ok(config.includes('commandCenterEmbedUrl'));
  const hubApp=await readFile(new URL('../assets/app.js',import.meta.url),'utf8');
