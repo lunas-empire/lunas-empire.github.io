@@ -135,6 +135,11 @@ test('source decision is explicit, exact, source verified and accepts confirmed 
  const body=sourceDecisionBody(item,input,true,members);
  assert.equal(body.value,0);assert.equal(body.member_id,members[0].id);assert.equal(body.row_key,item.row_key);
  assert.equal(body.rank,2);assert.equal(body.rank_visually_confirmed,true);
+ assert.ok(!Object.hasOwn(body,'historical_presence_confirmed'),'no automatic historic presence');
+ const historicallyVerified=sourceDecisionBody(item,{...input,historical_presence_confirmed:true},true,members);
+ assert.equal(historicallyVerified.historical_presence_confirmed,true);
+ assert.throws(()=>sourceDecisionBody(item,{...input,historical_presence_confirmed:true},false,members),/Originalbild/);
+ assert.throws(()=>sourceDecisionBody(item,{...input,historical_presence_confirmed:true,confirmed:false},true,members),/best.tigen/);
  const known=sourceDecisionBody({...item,rank:42},{...input,rank:'',rank_visually_confirmed:false},true,members);assert.ok(!('rank' in known));
  for(const rank of ['',null,'R2','1.5','0','201'])assert.throws(()=>sourceDecisionBody(item,{...input,rank},true,members),/Rang/);
  for(const value of [null,'','10000000000000'])assert.throws(()=>sourceDecisionBody(item,{...input,value},true,members));assert.ok(!('create_member' in body));
@@ -185,13 +190,17 @@ for(const scenario of ['valid','partial-decision','wrong-batch','wrong-value','a
  await wait(()=>mount.querySelectorAll('[data-source-list] details').length===50);
  const card=mount.querySelector('[data-source-list] details'),form=card.querySelector('form');
  assert.equal(form.elements.member_id.value,'');assert.equal(form.elements.value.value,'');assert.equal(form.querySelector('button').disabled,true);
+ assert.equal(form.elements.historical_presence_confirmed.checked,false,'historical source proof never prechecked');
+ assert.match(form.elements.historical_presence_confirmed.closest('label').textContent,/Historische Anwesenheit/);
  card.querySelector('[data-source-image]').click();await wait(()=>card.querySelector('img'));
  const image=card.querySelector('img');Object.defineProperty(image,'naturalHeight',{value:100});image.dispatchEvent(new dom.window.Event('load'));
  assert.equal(card.querySelector('.native-source-marker').style.top,'10%');
- form.elements.member_id.value='exact-id';form.elements.value.value='0';form.elements.reason.value='Original visually checked';form.elements.rank.value='2';form.elements.rank_confirmed.checked=true;form.elements.confirmed.checked=true;
+ form.elements.member_id.value='exact-id';form.elements.value.value='0';form.elements.reason.value='Original visually checked';form.elements.rank.value='2';form.elements.rank_confirmed.checked=true;form.elements.confirmed.checked=true;if(scenario==='valid')form.elements.historical_presence_confirmed.checked=true;
  form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));await wait(()=>saved);
  assert.equal(calls.filter(c=>c.path.endsWith('/apply')).length,0);
  const posted=JSON.parse(calls.find(c=>c.path.endsWith('/decision')).opts.body);assert.equal(posted.value,0);assert.equal(posted.member_id,'exact-id');
+ if(scenario==='valid')assert.equal(posted.historical_presence_confirmed,true);
+ else assert.ok(!Object.hasOwn(posted,'historical_presence_confirmed'),'no implicit attestation');
  if(scenario==='partial-decision'){await wait(()=>form.querySelector('button').disabled);form.dispatchEvent(new dom.window.Event('submit',{cancelable:true}));await new Promise(r=>setTimeout(r,20));assert.equal(calls.filter(c=>c.path.endsWith('/decision')).length,1);assert.ok(!card.querySelector('[data-source-message]').textContent.includes('Entscheidung gespeichert'));return}
  await wait(()=>card.querySelector('[data-source-message]').textContent.includes('Entscheidung gespeichert'));
  mount.querySelector('[data-source-filters]').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));await wait(()=>mount.querySelector('[data-source-decisions] details'));
