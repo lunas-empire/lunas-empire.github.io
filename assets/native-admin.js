@@ -621,16 +621,18 @@ function initLwRoster(host,batch,live){
   form.addEventListener('change',event=>{if(event.target.name==='rank')form.elements.source_checked.checked=false});
   form.addEventListener('submit',async event=>{
    event.preventDefault();const button=form.querySelector('button');
+   if(button.disabled)return;
+   const expectedRank=form.elements.rank.value,sourceRank=source.source_rank??source.rank;
    if(!form.elements.source_checked.checked||form.elements.reason.value.trim().length<8){message.textContent='Neue Identität und bestätigten Rang mit Begründung prüfen.';return}
    button.disabled=true;
    try{
     const latest=await request(path);if(!current())return;
     if(!latest.manual_creation_enabled||latest.active_count!==98||latest.sha256!==preview.sha256)throw Error('Bestand geändert; manuelle Neuanlage erneut prüfen.');
-    const created=await request('/api/member-registry/create',{method:'POST',body:{name:source.source_name,rank:form.elements.rank.value,reason:form.elements.reason.value,source_rank:source.source_rank??source.rank,rank_confirmation_source:source.rank_mismatch?'verified_user_correction':'officer_checked_csv_rank',officer_reviewed:form.elements.source_checked.checked}});if(!current())return;
+    const created=await request('/api/member-registry/create',{method:'POST',body:{name:source.source_name,rank:expectedRank,reason:form.elements.reason.value,source_rank:sourceRank,rank_confirmation_source:expectedRank!==sourceRank?'verified_user_correction':'officer_checked_csv_rank',officer_reviewed:form.elements.source_checked.checked}});if(!current())return;
     const registry=await request('/api/member-registry');if(!current())return;
     const reread=await request('/api/lw-import/'+batch.id);if(!current())return;
     const member=registry.members.find(m=>m.id===created.member_id),row=reread.rows.find(r=>r.source_row===source.source_row);
-    if(!created.ok||!member||member.name!==source.source_name||member.lifecycle!=='active'||registry.counts.active!==99||registry.members.filter(m=>m.lifecycle==='active').length!==99||row?.member_id||row?.applied_at)throw Error('Neuanlage nicht vollständig rückbestätigt; neu laden, nicht erneut anlegen.');
+    if(!created.ok||!member||member.rank!==expectedRank||(created.rank!==undefined&&created.rank!==expectedRank)||member.name!==source.source_name||member.lifecycle!=='active'||registry.counts.active!==99||registry.members.filter(m=>m.lifecycle==='active').length!==99||row?.member_id||row?.applied_at)throw Error('Neuanlage nicht vollständig rückbestätigt; neu laden, nicht erneut anlegen.');
     cache.registry=registry;renderLwBatch(host,reread,live);
     host.querySelector('[data-lw-result]').textContent='99 aktive Mitglieder bestätigt. Neue member_id: '+created.member_id+'. Jetzt Quellzeile ausdrücklich dieser ID zuordnen und Werte separat freigeben. Keine Werte automatisch übernommen.';
    }catch(error){if(current()){message.textContent=error.message;message.append(' Bei möglichem HTTP-Erfolg zuerst Bestand neu laden.')}}

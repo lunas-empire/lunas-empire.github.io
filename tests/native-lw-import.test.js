@@ -104,14 +104,15 @@ test('profile escapes values and never invents comparisons from same-day report 
 });
 const wait=async fn=>{for(let i=0;i<120;i++){if(fn())return;await new Promise(r=>setTimeout(r,5))}assert.ok(fn(),'UI timeout')};
 
-for(const mode of ['success','bad-ack','bad-readback','schema-blocked','unauthenticated'])test('LW roster requires explicit source/IDs and manual creation stays separate: '+mode,async t=>{
+for(const mode of ['success','wrong-rank','wrong-post-rank','override-rank','selected-correction','selected-source','bad-ack','bad-readback','schema-blocked','unauthenticated'])test('LW roster requires explicit source/IDs and manual creation stays separate: '+mode,async t=>{
  const dom=new JSDOM('<main id="mount"></main>',{url:'https://lunas-empire.github.io/#admin'}),oldWindow=globalThis.window,oldFetch=globalThis.fetch;
  globalThis.window=dom.window;dom.window.HTMLElement.prototype.scrollIntoView=()=>{};
  t.after(()=>{clearOfficer();globalThis.window=oldWindow;globalThis.fetch=oldFetch;dom.window.close()});
  const activeIds=Array.from({length:98},(_,i)=>'synthetic-'+i),candidateIds=Array.from({length:7},(_,i)=>'absent-'+i);
  const source={Name:'彡Synthetic New',Rank:'R2',Power:'0'},batch={id:'lw-'+'a'.repeat(64),sha256:'a'.repeat(64),revision:1,report_date:'2026-11-03',rows:[{source_row:99,source_name:source.Name,source,errors:[],match_state:'unmatched',member_id:null,review_status:'open',applied_at:null,review_id:'synthetic-review'}]};
  const preview={batch_id:batch.id,sha256:batch.sha256,revision:1,membership_revision:'b'.repeat(64),report_date:batch.report_date,active_count:105,ready:mode!=='schema-blocked',blockers:mode==='schema-blocked'?['Schema erlaubt roster_confirmed_absence nicht']:[],candidates:candidateIds.map(id=>({id,name:'Synthetic '+id,rank:'R3'})),unmatched:[{source_row:99,source_name:source.Name,rank:'R1',source_rank:'R2',rank_mismatch:true,review_id:'synthetic-review'}]};
- let reconciled=false,created=false,posted=null,createBody=null,rosterReads=0;
+ if(mode==='selected-correction'){preview.unmatched[0].rank='R2';preview.unmatched[0].rank_mismatch=false}
+ let reconciled=false,created=false,posted=null,createBody=null,rosterReads=0,createCalls=0;
  globalThis.fetch=async(url,opts={})=>{
   const path=new URL(url).pathname;
   if(path==='/api/native-login')return Response.json({token:'synthetic-token',name:'Synthetic R4',role:'R4'});
@@ -126,8 +127,8 @@ for(const mode of ['success','bad-ack','bad-readback','schema-blocked','unauthen
    if(opts.method==='POST'){posted=JSON.parse(opts.body);reconciled=true;return Response.json({ok:mode!=='bad-ack',sha256:batch.sha256,active_count:98,active_ids:activeIds,member_ids:candidateIds})}
    rosterReads++;return Response.json(reconciled?{...preview,reconciled:true,active_count:98,manual_creation_enabled:true,candidates:[],active_ids:activeIds,member_ids:candidateIds}:preview);
   }
-  if(path==='/api/member-registry/create'){createBody=JSON.parse(opts.body);created=true;return Response.json({ok:true,member_id:'new-synthetic-id'})}
-  if(path==='/api/member-registry')return Response.json({counts:{active:created?99:mode==='bad-readback'?105:98},members:[...activeIds.map(id=>({id,lifecycle:'active'})),...candidateIds.map(id=>({id,lifecycle:'former'})),...(created?[{id:'new-synthetic-id',name:source.Name,rank:'R2',lifecycle:'active'}]:[])]});
+  if(path==='/api/member-registry/create'){createCalls++;createBody=JSON.parse(opts.body);created=true;return Response.json({ok:true,member_id:'new-synthetic-id',...(mode==='wrong-post-rank'?{rank:'R2'}:{})})}
+  if(path==='/api/member-registry')return Response.json({counts:{active:created?99:mode==='bad-readback'?105:98},members:[...activeIds.map(id=>({id,lifecycle:'active'})),...candidateIds.map(id=>({id,lifecycle:'former'})),...(created?[{id:'new-synthetic-id',name:source.Name,rank:mode==='wrong-rank'?'R2':createBody.rank,...(mode==='override-rank'?{imported_rank:'R2',rank_override:'R1'}:{}),lifecycle:'active'}]:[])]});
   throw Error('Unexpected request '+path);
  };
  const mount=dom.window.document.querySelector('#mount'),q=s=>mount.querySelector(s),submit=form=>form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
@@ -142,10 +143,13 @@ for(const mode of ['success','bad-ack','bad-readback','schema-blocked','unauthen
  submit(form);assert.equal(posted,null);form.querySelectorAll('[name=candidate]').forEach(x=>x.checked=true);form.elements.reason.value='Synthetic complete source reviewed';submit(form);assert.equal(posted,null);
  form.elements.source_checked.checked=true;submit(form);await wait(()=>posted);await wait(()=>!q('[data-lw-roster-result]').textContent.includes('Rücklesekontrolle …'));
  assert.deepEqual(posted.member_ids,candidateIds);assert.equal(posted.source_checked,true);assert.equal(posted.full_current_roster,true);assert.equal(posted.sha256,batch.sha256);assert.equal(posted.membership_revision,preview.membership_revision);
- if(mode!=='success'){assert.match(q('[data-lw-roster-result]').textContent,/unvollständig/);assert.equal(q('[data-lw-manual-create]'),null);return}
- const create=q('[data-lw-manual-create]');assert.ok(create);assert.equal(create.elements.player_name.value,source.Name);assert.equal(create.elements.rank.value,'R1');assert.equal(createBody,null);
- submit(create);assert.equal(createBody,null);create.elements.reason.value='Synthetic new identity source reviewed';create.elements.source_checked.checked=true;submit(create);
- await wait(()=>q('[data-lw-result]').textContent.includes('99 aktive'));assert.equal(createBody.name,source.Name);assert.equal(createBody.rank,'R1');assert.equal(createBody.source_rank,'R2');assert.equal(createBody.rank_confirmation_source,'verified_user_correction');assert.equal(createBody.officer_reviewed,true);assert.deepEqual(Object.keys(createBody).sort(),['name','officer_reviewed','rank','rank_confirmation_source','reason','source_rank']);assert.equal(batch.rows[0].member_id,null);assert.equal(batch.rows[0].applied_at,null);assert.match(q('[data-lw-result]').textContent,/new-synthetic-id.*separat freigeben/);
+ if(['bad-ack','bad-readback'].includes(mode)){assert.match(q('[data-lw-roster-result]').textContent,/unvollständig/);assert.equal(q('[data-lw-manual-create]'),null);return}
+ const create=q('[data-lw-manual-create]');assert.ok(create);assert.equal(create.elements.player_name.value,source.Name);assert.equal(create.elements.rank.value,mode==='selected-correction'?'R2':'R1');assert.equal(createBody,null);
+ submit(create);assert.equal(createBody,null);
+ if(mode==='selected-correction'||mode==='selected-source'){create.elements.source_checked.checked=true;create.elements.rank.value=mode==='selected-source'?'R2':'R1';create.elements.rank.dispatchEvent(new dom.window.Event('change',{bubbles:true}));assert.equal(create.elements.source_checked.checked,false)}
+ create.elements.reason.value='Synthetic new identity source reviewed';create.elements.source_checked.checked=true;submit(create);
+ if(mode==='wrong-rank'||mode==='wrong-post-rank'){await wait(()=>q('[data-lw-roster-result]').textContent.includes('nicht erneut anlegen'));assert.doesNotMatch(q('[data-lw-result]').textContent,/99 aktive/);assert.equal(create.querySelector('button').disabled,true);submit(create);assert.equal(createCalls,1);return}
+ await wait(()=>q('[data-lw-result]').textContent.includes('99 aktive'));assert.equal(createBody.name,source.Name);assert.equal(createBody.rank,mode==='selected-source'?'R2':'R1');assert.equal(createBody.source_rank,'R2');assert.equal(createBody.rank_confirmation_source,mode==='selected-source'?'officer_checked_csv_rank':'verified_user_correction');assert.equal(createBody.officer_reviewed,true);assert.deepEqual(Object.keys(createBody).sort(),['name','officer_reviewed','rank','rank_confirmation_source','reason','source_rank']);assert.equal(batch.rows[0].member_id,null);assert.equal(batch.rows[0].applied_at,null);assert.match(q('[data-lw-result]').textContent,/new-synthetic-id.*separat freigeben/);
 });
 test('native LW Import review uses existing resolve route, no screenshot fiction and explicit source acknowledgment',async t=>{
  const dom=new JSDOM('<main id="mount"></main>',{url:'https://lunas-empire.github.io/#admin'}),oldWindow=globalThis.window,oldFetch=globalThis.fetch;
