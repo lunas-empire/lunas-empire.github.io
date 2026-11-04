@@ -52,12 +52,13 @@ const primaryPanels=[
  ['members','Allianz','alliance'],['train','Einsätze','hero']
 ];
 const secondaryPanels=[
+ ['lwImport','LW Import'],
  ['registry','Ränge & Archiv'],['watch','Mitglieder-Abgleich'],['diplomacy','Diplomatie'],
  ['reviews','OCR-Prüffälle'],['tasks','Admin-Aufgaben'],['absences','Abwesenheiten'],['events','Allianz-Events'],
  ['activity','Änderungsprotokoll'],['access','Zugangscodes'],['requirements','Einstellungen']
 ];
 const parentPanel=key=>({
- overview:'overview',vs:'vs',duelLeague:'vs',donations:'vs',members:'members',train:'train',more:'more',
+ overview:'overview',vs:'vs',duelLeague:'vs',donations:'vs',members:'members',lwImport:'members',train:'train',more:'more',
  registry:'more',watch:'more',diplomacy:'more',reviews:'more',tasks:'more',
  absences:'more',events:'more',activity:'more',access:'more',requirements:'more'
 }[key]||'overview');
@@ -78,7 +79,7 @@ const moreSections=[
 ];
 const sectionPanels={
  vs:[['vs','VS-Duell'],['duelLeague','Duell & Liga'],['donations','Allianzspenden']],
- members:[['members','Mitglieder'],['diplomacy','Diplomatie']],
+ members:[['members','Mitglieder'],['diplomacy','Diplomatie'],['lwImport','LW Import']],
  train:[['train','Züge'],['events','Allianz-Events']]
 };
 const contextTools={
@@ -248,6 +249,8 @@ async function view(mount){
     const newButton=target.querySelector('[data-native-diplomacy-new]');if(newButton)newButton.disabled=true;
     target.querySelector('#native-diplomacy-list').innerHTML='<p class="native-evidence-note" role="status">Das private Diplomatiebuch ist vorbereitet, aber auf Cloudflare-Staging noch nicht aktiviert. Es wurden keine Bündnisse oder Zusagen gespeichert.</p>';
    }
+  }else if(panel==='lwImport'){
+   await initLwImport(target);
   }else if(panel==='activity'){
    cache.activity=await request('/api/activity?limit=500');
    target.innerHTML='<div class="native-audit-head"><div><span class="native-kicker">ALLIANZ · VERWALTUNG</span><h2>Admin-Protokoll</h2><p>Nachvollziehbare Änderungen durch Offiziere</p></div>'+icon('tasks','native-audit-title-icon')+'</div>'+
@@ -255,7 +258,7 @@ async function view(mount){
   }else if(panel==='reviews'){
    const [cases,members,session]=await Promise.all([
     request('/api/reviews?status=open'),
-    request('/api/identity-options').catch(()=>[]),
+    request('/api/identity-options?include_former=1').catch(()=>[]),
     request('/api/session').catch(()=>({reviewWritesEnabled:false}))
    ]);
    cache.reviewWritesEnabled=session?.reviewWritesEnabled===true;
@@ -272,10 +275,11 @@ async function view(mount){
     (!cache.reviewWritesEnabled?'<p class="native-evidence-note" role="status">Private Bild- und Korrekturfunktionen werden erst nach dem Cloudflare-Backend-Update freigeschaltet. Die bestehenden Prüffälle bleiben offen.</p>':'')+
     '<details class="native-fold native-review-filter-fold"><summary>Filter</summary><div class="native-fold-body native-row"><label>Bildstatus <select id="review-image-native"><option value="all">Alle Fälle ('+cache.reviews.length+')</option><option value="with">Mit Bild ('+withEvidence+')</option><option value="without">Ohne Bild ('+withoutEvidence+')</option></select></label>'+
      '<label>Quelle <select id="review-batch-native"><option value="">Alle Wochen und Profile</option>'+batches.map(b=>'<option value="'+e(b)+'">'+e(b)+'</option>').join('')+'</select></label>'+
-    '<label>Prüftyp <select id="review-kind-native"><option value="">Alle</option><option value="vs_day">VS-Tageswert</option><option value="identity">Identität</option><option value="profile">Profilwert</option></select></label></div></details>'+
+     '<label>Prüftyp <select id="review-kind-native"><option value="">Alle</option><option value="lw_import">LW Import</option><option value="vs_day">VS-Tageswert</option><option value="identity">Identität</option><option value="profile">Profilwert</option></select></label></div></details>'+
     '<p id="native-review-finished" role="status" aria-live="polite"></p><div id="review-list-native"></div>';renderReviews(target,'');
    const sources=mount.ownerDocument.createElement('section');sources.id='native-source-reviews';target.append(sources);
    initSourceReviews(sources);
+   const pending=mount.ownerDocument.createElement('section');target.prepend(pending);void initPendingReviews(pending);
   }else if(panel==='members'){
     const [list,trains]=await Promise.all([request('/api/members'),request('/api/train-manager').catch(()=>null)]);
     cache.members=list;cache.archivedTrains=trains;
@@ -415,6 +419,142 @@ async function loadMemberAliases(details,id){
   if(details.isConnected&&details.dataset.nativeAliasRequest===requestId)details.querySelector('[data-native-alias-status]').textContent='Frühere Spielernamen konnten nicht geladen werden. Bitte Profil neu öffnen.';
  }
 }
+const lwMetrics=[['power','Power'],['army_power','Army Power'],['total_troops','Total troops'],['drone','Drone'],['kills','Kills'],['hq','HQ']];
+const lwValue=value=>Number.isSafeInteger(value)?numberText(value):'nicht erfasst';
+const lwCardValue=value=>Number.isSafeInteger(value)?new Intl.NumberFormat('de-DE',{notation:'compact',maximumFractionDigits:2}).format(value):'nicht erfasst';
+/* Hallmark · pre-emit critique: P4 H4 E4 S5 R5 V4. Existing Luna tokens and profile hierarchy. */
+export function renderLwProfile(data,memberId,metric='power'){
+ const snapshots=(data?.snapshots||[]).filter(s=>s.member_id===memberId&&s.applied_at).slice().sort((a,b)=>a.report_date.localeCompare(b.report_date)||a.applied_at.localeCompare(b.applied_at));
+ const latest=snapshots.at(-1),prior=snapshots.at(-2);
+ if(!lwMetrics.some(([key])=>key===metric))metric='power';
+ const title=lwMetrics.find(([key])=>key===metric)[1];
+ const change=key=>{
+  const a=latest?.values?.[key],b=prior?.values?.[key];
+  if(!prior||latest.report_date===prior.report_date)return 'Noch kein Vergleich';
+  if(!Number.isSafeInteger(a)||!Number.isSafeInteger(b))return 'Vergleich nicht erfasst';
+  const delta=a-b;return (delta<0?'Rückgang · ':delta>0?'+':'')+numberText(delta)+' · seit '+prior.report_date;
+ };
+ let html='<section class="native-lw-profile" aria-label="LW Import"><h4 class="native-section-heading">LW Import</h4><p class="native-muted" data-native-no-translate>member_id: '+e(memberId)+'</p>';
+ if(!data?.available)return html+'<p role="status">LW Import: Verlauf derzeit nicht verfügbar.</p></section>';
+ if(!latest)return html+'<p>Noch kein LW Import-Snapshot. Noch kein Vergleich.</p></section>';
+ html+='<p>Snapshot · <time>'+e(latest.report_date)+'</time> · Berichtsdatum, kein belegtes Messzeitende</p><div class="native-lw-kpis">'+lwMetrics.map(([key,label])=>'<button type="button" class="native-profile-metric-card" data-lw-kpi="'+key+'" aria-pressed="'+(metric===key)+'"><small>'+label+'</small><strong title="'+lwValue(latest.values[key])+'">'+lwCardValue(latest.values[key])+'</strong><span>'+e(change(key))+'</span></button>').join('')+'</div>';
+ const points=snapshots.slice(-20),known=points.map(p=>p.values[metric]).filter(Number.isSafeInteger);
+ const min=known.length?Math.min(...known):0,max=known.length?Math.max(...known):0;
+ const x=i=>points.length>1?20+i*560/(points.length-1):300,y=v=>max===min?80:140-(v-min)*120/(max-min);
+ let paths=[],segment=[];
+ points.forEach((p,i)=>{const value=p.values[metric];if(Number.isSafeInteger(value))segment.push(x(i)+','+y(value));else if(segment.length){paths.push(segment);segment=[]}});if(segment.length)paths.push(segment);
+ html+='<div class="native-lw-chart"><h5>'+title+' · Verlauf</h5><p>'+(points.length<2?'Noch kein Vergleich':prior?.report_date===latest.report_date?'Berichte am selben Datum · kein zeitliches Delta':'Eigene Skala · '+lwValue(min)+' bis '+lwValue(max))+'</p>'+
+  '<svg viewBox="0 0 600 165" role="img" aria-label="'+title+' · Werte in der Liste unter dem Diagramm">'+paths.filter(p=>p.length>1).map(p=>'<polyline points="'+p.join(' ')+'"/>').join('')+points.map((p,i)=>Number.isSafeInteger(p.values[metric])?'<circle cx="'+x(i)+'" cy="'+y(p.values[metric])+'" r="4"><title>'+e(p.report_date+' · '+title+': '+lwValue(p.values[metric])+' · LW Import')+'</title></circle>':'').join('')+'</svg><ol class="native-lw-points">'+points.map(p=>'<li><time>'+e(p.report_date)+'</time> · '+lwValue(p.values[metric])+' · LW Import</li>').join('')+'</ol></div>';
+ html+='<details class="native-fold"><summary>VIP, Profession & Koordinaten</summary><div class="native-fold-body">VIP: '+lwValue(latest.values.vip)+' · Profession: '+e(latest.values.Profession??'nicht erfasst')+' · Coords: '+e(latest.values.Coords??'nicht erfasst')+'</div></details>';
+ html+='<details class="native-fold"><summary>Teams T1–T4</summary><div class="native-fold-body native-lw-teams">'+[1,2,3,4].map(n=>'<section><h5>T'+n+'</h5><p>Power: '+lwValue(latest.values['t'+n+'_power'])+'</p><p>Type: '+e(latest.values['T'+n+' type']??'nicht erfasst')+'</p><p>Heroes: '+e(latest.values['T'+n+' heroes']??'nicht erfasst')+'</p></section>').join('')+'</div></details>';
+ return html+'<details class="native-fold"><summary>Snapshots & Belege · '+snapshots.length+'</summary><div class="native-fold-body">'+snapshots.slice().reverse().map(p=>'<p data-native-no-translate>LW Import · '+e(p.report_date)+' · member_id '+e(p.member_id)+'<br>Batch '+e(p.batch_id)+' · Quellzeile '+e(p.source_row)+'<br>SHA256 '+e(p.sha256)+'<br>Übernommen: '+e(p.applied_at)+' · Review: '+e(p.resolved_at??'Batchfreigabe')+'</p>').join('')+'</div></details></section>';
+}
+
+async function initLwImport(target){
+ target.innerHTML='<section class="native-lw-import"><h2>LW Import</h2><p>CSV-Snapshot prüfen und bestehende member_id zuordnen. Keine Bestands-, Rang- oder Abwesenheitsänderungen.</p>'+
+  '<form data-lw-upload class="native-row"><label>Berichtsdatum<input type="date" name="report_date" required></label><label class="native-lw-file">CSV auswählen<input type="file" name="csv" accept=".csv,text/csv" required></label><button>Vorschau prüfen</button></form>'+
+  '<p data-lw-status role="status" aria-live="polite"></p><div data-lw-batches></div><div data-lw-batch></div></section>';
+ const generation=sessionGeneration,live=()=>target.isConnected&&panel==='lwImport'&&generation===sessionGeneration;
+ const status=target.querySelector('[data-lw-status]'),form=target.querySelector('[data-lw-upload]');
+ const show=batch=>{if(!live())return;renderLwBatch(target.querySelector('[data-lw-batch]'),batch,live)};
+ form.addEventListener('submit',async event=>{
+  event.preventDefault();const file=form.elements.csv.files?.[0];if(!file)return;
+  if(file.size>262144){status.textContent='LW Import: Dateigrenze 256 KiB';return}
+  const date=form.elements.report_date.value,button=form.querySelector('button');button.disabled=true;status.textContent='LW Import wird serverseitig geprüft …';
+  try{
+   const bytes=await file.arrayBuffer();form.elements.csv.value=''; // Do not retain or share the original filename.
+   const batch=await binaryRequest('/api/lw-import?report_date='+encodeURIComponent(date),{method:'POST',body:bytes,headers:{'Content-Type':'text/csv'}});
+   if(!live())return;show(batch);status.textContent=batch.reused?'Vorhandener LW Import-Batch geladen.':'LW Import privat hinterlegt; noch keine Werte übernommen.';
+  }catch(error){if(live())status.textContent=error.message}finally{if(live())button.disabled=false}
+ });
+ try{
+  const result=await request('/api/lw-import');if(!live())return;
+  const host=target.querySelector('[data-lw-batches]');
+  host.innerHTML='<details class="native-fold"><summary>LW Import · Bisherige Batches</summary><div class="native-fold-body">'+result.batches.map(b=>'<button type="button" data-lw-batch-id="'+e(b.id)+'">LW Import · '+e(b.report_date)+' · '+b.row_count+' Zeilen</button>').join('')+'</div></details>';
+  host.addEventListener('click',async event=>{const button=event.target.closest('[data-lw-batch-id]');if(!button)return;button.disabled=true;try{show(await request('/api/lw-import/'+button.dataset.lwBatchId))}catch(error){if(live())status.textContent=error.message}finally{button.disabled=false}});
+ }catch(error){if(live())status.textContent='LW Import: '+error.message}
+}
+function renderLwBatch(host,batch,live){
+ const eligible=batch.rows.filter(r=>r.match_state==='matched'&&!r.applied_at);
+ host.innerHTML='<h3>LW Import · '+e(batch.report_date)+'</h3><p data-native-no-translate>Batch '+e(batch.id)+'<br>SHA256 '+e(batch.sha256)+'</p>'+
+  '<p>'+batch.counts.matched+' zugeordnet · '+batch.counts.ambiguous+' mehrdeutig · '+batch.counts.unmatched+' ohne Zuordnung · '+batch.counts.blocked+' gesperrt · '+batch.counts.applied+' übernommen · '+batch.counts.pending+' ausstehend</p>'+
+  '<button type="button" data-officer-tab="reviews">Im nativen Review prüfen</button>'+
+  '<button type="button" data-lw-original>LW Import · Original-CSV</button>'+
+  '<div class="native-lw-rows">'+batch.rows.map(r=>'<details class="native-fold"><summary>Zeile '+r.source_row+' · <span data-native-no-translate>'+e(r.source_name)+'</span> · '+e(r.applied_at?'übernommen':r.match_state)+'</summary><div class="native-fold-body"><p data-native-no-translate>member_id: '+e(r.member_id??'ungeklärt')+'</p><p>'+e(r.errors.join(' · '))+'</p>'+lwSourceFields(r.source)+'</div></details>').join('')+'</div>'+
+  '<form data-lw-apply><p>Nur die ausdrücklich ausgewählten, zugeordneten Zeilen übernehmen. Offene Zuordnungen bleiben im Review.</p><div class="native-lw-selection">'+eligible.map(r=>'<label><input type="checkbox" name="row" value="'+r.source_row+'"> Zeile '+r.source_row+' · '+e(r.source_name)+'</label>').join('')+'</div>'+
+  '<label>Prüfbegründung<input name="reason" required minlength="8" maxlength="500"></label><label><input type="checkbox" name="reviewed" required> Ausgewählte Quellzeilen und member_id geprüft</label><button '+(!eligible.length?'disabled':'')+'>Geprüfte Zeilen übernehmen</button></form><p data-lw-result role="status" aria-live="polite"></p>';
+ host.querySelector('[data-lw-original]').addEventListener('click',async event=>{
+  const button=event.currentTarget,message=host.querySelector('[data-lw-result]');button.disabled=true;
+  try{
+   const response=await binaryRequest('/api/lw-import/'+batch.id+'/original',{raw:true,headers:{Accept:'text/csv'}}),bytes=await response.arrayBuffer();
+   const sha=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(n=>n.toString(16).padStart(2,'0')).join('');
+   if(!live())return;if(sha!==batch.sha256)throw Error('LW Import: Original-Prüfsumme stimmt nicht überein');
+   const blobUrl=URL.createObjectURL(new Blob([bytes],{type:'text/csv;charset=utf-8'})),anchor=host.ownerDocument.createElement('a');
+   anchor.href=blobUrl;anchor.download='LW Import.csv';anchor.click();setTimeout(()=>URL.revokeObjectURL(blobUrl),1000);
+   message.textContent='LW Import: Original-Prüfsumme bestätigt.';
+  }catch(error){if(live())message.textContent=error.message}finally{if(live())button.disabled=false}
+ });
+ host.querySelector('[data-lw-apply]').addEventListener('submit',async event=>{
+  event.preventDefault();const form=event.target,rows=[...form.querySelectorAll('[name=row]:checked')].map(x=>Number(x.value)),message=host.querySelector('[data-lw-result]');
+  if(!rows.length){message.textContent='Quellzeilen auswählen.';return}
+  const body={rows,sha256:batch.sha256,revision:batch.revision,reason:form.elements.reason.value,reviewed:form.elements.reviewed.checked};
+  const button=form.querySelector('button');button.disabled=true;message.textContent='LW Import: Freigabe und Rücklesekontrolle …';
+  try{
+   const receipt=await request('/api/lw-import/'+batch.id+'/apply',{method:'POST',body});
+   const reread=await request('/api/lw-import/'+batch.id);if(!live())return;
+   if(!receipt.ok||receipt.sha256!==batch.sha256||reread.sha256!==batch.sha256||rows.some(n=>{const expected=batch.rows.find(r=>r.source_row===n),actual=reread.rows.find(r=>r.source_row===n);return !actual?.applied_at||actual.member_id!==expected.member_id}))throw Error('LW Import: Quittung oder Rücklesekontrolle unvollständig. Neu laden.');
+   renderLwBatch(host,reread,live);host.querySelector('[data-lw-result]').textContent='LW Import: '+receipt.applied_rows+' Zeilen bestätigt und erneut gelesen.';
+  }catch(error){if(live()){message.textContent=error.message;button.disabled=false}}
+ });
+}
+async function initPendingReviews(host){
+ const generation=sessionGeneration,live=()=>host.isConnected&&panel==='reviews'&&generation===sessionGeneration;
+ const en=officerLanguage(host.ownerDocument)==='en',t=(de,english)=>en?english:de;
+ host.innerHTML='<details class="native-fold"><summary>'+t('Offene Quellbeobachtungen','Pending source observations')+'</summary><div class="native-fold-body"><p>'+t('Unbekannte Werte und Identitäten bleiben offen, auch wenn kein OCR-Prüffall besteht.','Unknown values and identities remain pending even when no OCR case exists.')+'</p><p data-pending-status role="status" aria-live="polite">'+t('Wird geladen …','Loading …')+'</p><div data-pending-queues></div><button type="button" data-pending-reload>'+t('Neu laden','Reload')+'</button></div></details>';
+ const status=host.querySelector('[data-pending-status]'),list=host.querySelector('[data-pending-queues]');
+ const load=async()=>{
+  try{
+   const result=await request('/api/reviews/pending');if(!live())return;
+   const titles={donations:t('Spenden unbekannt','Unknown donations'),vs_days:t('VS-Tageswerte unklar','Uncertain VS days'),identities:t('Identitäten ungeklärt','Unresolved identities'),lw_import:'LW Import'};
+   list.replaceChildren();
+   for(const [key,queue] of Object.entries(result.queues||{})){
+    const section=host.ownerDocument.createElement('details');section.className='native-fold';
+    section.innerHTML='<summary>'+e(titles[key]||key)+' · '+(queue.available?e(queue.count):t('nicht verfügbar','unavailable'))+'</summary><div class="native-fold-body"></div>';
+    const body=section.querySelector('div');
+    if(!queue.available)body.textContent=t('Quelle nicht verfügbar. Kein bestätigter Nullbestand.','Source unavailable. No confirmed zero count.');
+    for(const item of queue.items||[]){
+     const button=host.ownerDocument.createElement('button');button.type='button';button.setAttribute('data-native-no-translate','');button.textContent=(item.source_name||'Unbekannt')+' · '+(item.week||'historisch')+' · '+(item.metric||'Identität');button.disabled=!cache.reviewWritesEnabled;
+     button.addEventListener('click',async()=>{button.disabled=true;try{
+      await request('/api/reviews/open',{method:'POST',body:{...item,queue:key}});
+      if(!live())return;cache.reviews=await request('/api/reviews?status=open');if(!live())return;
+      const target=host.closest('#native-admin-content');renderReviews(target,target.querySelector('#review-search-native')?.value||'');status.textContent=t('Prüffall geöffnet. Identität oder Wert im nativen Review prüfen.','Case opened. Check the identity or value in the native review.');
+     }catch(error){if(live()){status.textContent=error.message;button.disabled=false}}});body.append(button);
+    }
+    list.append(section);
+   }
+   status.textContent=t('Quellen einzeln gelesen. Zähler können sich überschneiden.','Sources read separately. Counts can overlap.');
+  }catch(error){if(live())status.textContent=t('Quellbeobachtungen nicht verfügbar: ','Source observations unavailable: ')+error.message}
+ };
+ host.querySelector('[data-pending-reload]').addEventListener('click',()=>void load());await load();
+}
+function lwSourceFields(source){
+ return '<dl class="native-lw-source" data-native-no-translate>'+Object.entries(source||{}).map(([key,value])=>'<div><dt>'+e(key)+'</dt><dd>'+e(value===''?'nicht erfasst':value)+'</dd></div>').join('')+'</dl>';
+}
+function lwReviewCard(item,writes){
+ const c=item.context||{};
+ return '<details class="native-review-card native-lw-review" data-review-id="'+e(item.id)+'" data-review-kind="lw_import"><summary><strong data-native-no-translate>'+e(item.source_name)+'</strong> · LW Import · Zeile '+e(c.source_row)+' · '+e(c.match_state)+'</summary><div class="native-review-body"><p data-native-no-translate>LW Import · '+e(c.date)+'<br>Batch '+e(c.batch_id)+'<br>SHA256 '+e(c.sha256)+'</p>'+lwSourceFields(c.source)+'<p>'+e((c.errors||[]).join(' · '))+'</p>'+
+  '<form data-lw-review-form><label>Bestehende member_id<select name="member_id" required><option value="">Zuordnung wählen</option>'+(cache.reviewMembers||[]).map(m=>'<option value="'+e(m.id)+'" '+(m.id===c.member_id?'selected':'')+'>'+e(m.name)+' · '+e(m.id)+'</option>').join('')+'</select></label><label>Prüfbegründung<input name="reason" required minlength="8" maxlength="500"></label><label><input name="checked" type="checkbox" required> CSV-Quellzeile und Identität geprüft</label><button '+(!writes||c.match_state==='blocked'?'disabled':'')+'>Zuordnung bestätigen</button></form><p class="native-review-message" role="status" aria-live="polite"></p></div></details>';
+}
+async function saveLwReview(event){
+ event.preventDefault();const form=event.target,card=form.closest('[data-review-id]'),item=cache.reviews.find(r=>r.id===card.dataset.reviewId),message=card.querySelector('.native-review-message');
+ const button=form.querySelector('button'),generation=sessionGeneration;button.disabled=true;message.textContent='LW Import: Zuordnung wird geprüft …';
+ try{
+  const result=await request('/api/reviews/'+encodeURIComponent(item.id)+'/resolve',{method:'POST',body:{action:'approve',member_id:form.elements.member_id.value,reason:form.elements.reason.value,source_checked:form.elements.checked.checked,sha256:item.context.sha256}});
+  if(generation!==sessionGeneration||!card.isConnected)return;
+  if(result.ok!==true||result.review_id!==item.id||result.applied!==false)throw Error('LW Import: Zuordnung nicht bestätigt');
+  cache.reviews=cache.reviews.filter(r=>r.id!==item.id);card.replaceChildren();message.textContent='LW Import: Identität bestätigt. Werte im LW Import separat freigeben.';card.append(message);
+ }catch(error){if(generation===sessionGeneration&&card.isConnected){message.textContent=error.message;button.disabled=false}}
+}
 async function showPerson(target,id){
  const node=target.querySelector('#native-person');if(!node)return;
  node.innerHTML='<p role="status" class="native-muted">Spielerakte wird geladen …</p>';
@@ -505,6 +645,7 @@ async function showPerson(target,id){
   (member.source_difference?'<p class="native-evidence-note">Abweichender Import: '+e(member.imported_rank||'Rang unbekannt')+' · '+e(member.source_status||'Status ungeklärt')+'. Der bestätigte Verwaltungsstand hat Vorrang.</p>':'')+
   (member.registry_updated_by?'<p class="native-muted">Letzte Rang-/Statusänderung: '+e(member.registry_updated_by)+' · '+e(formatOfficerTime(member.registry_updated_at))+'</p>':'')+
   '<h4 class="native-section-heading">Werte & Entwicklung</h4>'+metricHtml+
+  '<div data-lw-profile>'+renderLwProfile(p.lw_import,id)+'</div>'+
   '<details class="native-fold"><summary>VS-Erfolge & Wochen · '+weeks.length+'</summary>'+
    '<div class="native-fold-body">'+weekSummary+'</div></details>'+
   '<h4 class="native-section-heading">Züge & Dice Game</h4>'+historyCards+
@@ -522,6 +663,11 @@ async function showPerson(target,id){
     '<button type="button" data-native-member-log="'+e(id)+'">Änderungen anzeigen</button></div>'+
     '<div id="native-person-log"></div><div id="registry-form"></div></div></details></section>';
  node.scrollIntoView({behavior:'smooth',block:'nearest'});
+ node.querySelector('[data-lw-profile]')?.addEventListener('click',event=>{
+  const button=event.target.closest('[data-lw-kpi]');if(!button)return;
+  const host=node.querySelector('[data-lw-profile]');host.innerHTML=renderLwProfile(p.lw_import,id,button.dataset.lwKpi);
+  host.querySelector('[data-lw-kpi="'+button.dataset.lwKpi+'"]')?.focus({preventScroll:true});
+ });
  await loadMemberAliases(node.querySelector('.native-member-aliases'),id);
 }
 function showVsEvidenceUpload(area,key,message,source=null){
@@ -1742,6 +1888,7 @@ function renderReviews(target,term=''){
  const names={vs_uncertain:'VS-Tageswert',inferred:'Wert nicht sicher',unmatched_name:'Spieler zuordnen',
   historical_identity:'Namenszuordnung',missing:'Fehlender Wert',ocr_alert:'Bild erkennen'};
  const card=x=>{
+  if(x.kind==='lw_import')return lwReviewCard(x,writesEnabled);
   const identity=x.kind==='identity',numeric=x.kind==='profile'||x.kind==='vs_day';
   const linked=Boolean(x.evidence_sha);
   return '<details class="native-review-card" data-evidence="'+(linked?'with':'without')+'" data-review-id="'+e(x.id)+'" data-review-kind="'+e(x.kind||'')+'">'+
@@ -1789,6 +1936,9 @@ function renderReviews(target,term=''){
   '<div class="native-review-cards">'+list.slice(0,historyLimit).map(card).join('')+'</div>'+
   (list.length>historyLimit?'<button data-native-more="reviews">Weitere Fälle</button>':'');
  host.querySelectorAll('.native-review-card').forEach(card=>{
+  if(card.dataset.reviewKind==='lw_import'){
+   card.querySelector('[data-lw-review-form]')?.addEventListener('submit',saveLwReview);return;
+  }
   card.addEventListener('toggle',()=>{
    if(card.open){
     loadReviewImage(card);

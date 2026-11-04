@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026.11.01-no-vs-trends');
+@import url('./tokens.css?v=2026.11.04-lw-import');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -2018,3 +2018,34 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 .native-source-image img { display: block; width: 100%; height: auto; }
 .native-source-marker { position: absolute; inset-inline: 0; border-block-start: 3px solid var(--color-accent); pointer-events: none; }
 .native-source-card :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+/* Hallmark · LW Import · existing Luna tokens; compact profile and review components. */
+.native-admin .native-lw-profile,.native-admin .native-lw-import,.native-admin .native-lw-review{min-width:0;overflow-wrap:anywhere}
+.native-admin .native-lw-kpis{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-sm);margin-block:var(--space-md)}
+.native-admin .native-lw-kpis button{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:var(--space-xs);min-width:0;white-space:normal;color:var(--color-ink);background:var(--color-panel);border:1px solid var(--color-rule-soft);border-radius:var(--radius-md);padding:var(--space-md)}
+.native-admin .native-lw-kpis button strong{font-size:clamp(1rem,4vw,1.3rem);white-space:nowrap}
+.native-admin .native-lw-kpis button span{font-size:.8rem;color:var(--color-muted)}
+.native-admin .native-lw-kpis button[aria-pressed=true]{border-color:var(--color-accent)}
+.native-admin .native-lw-kpis button:hover{background:var(--color-raised)}
+.native-admin .native-lw-profile button:focus-visible,.native-admin .native-lw-import :is(button,input,select):focus-visible,.native-admin .native-lw-review :is(button,input,select):focus-visible{outline:2px solid var(--color-focus);outline-offset:3px}
+.native-admin .native-lw-kpis button:active{transform:translateY(1px)}
+.native-admin .native-lw-chart{border:1px solid var(--color-rule-soft);border-radius:var(--radius-md);padding:var(--space-md)}
+.native-admin .native-lw-chart svg{width:100%;height:auto;display:block;color:var(--color-action)}
+.native-admin .native-lw-chart polyline{fill:none;stroke:currentColor;stroke-width:2;vector-effect:non-scaling-stroke}
+.native-admin .native-lw-chart circle{fill:currentColor}
+.native-admin .native-lw-chart h5{font-size:1rem;margin:0;font-style:normal}
+.native-admin .native-lw-points{display:flex;flex-wrap:wrap;gap:var(--space-sm) var(--space-lg);padding-inline-start:var(--space-lg);font-size:.8rem;color:var(--color-muted)}
+.native-admin .native-lw-teams{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-md)}
+.native-admin .native-lw-teams h5{margin:0;font-size:1rem}
+.native-admin .native-lw-source{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-xs)}
+.native-admin .native-lw-source div{min-width:0;border-bottom:1px solid var(--color-rule-soft);padding-block:var(--space-xs)}
+.native-admin .native-lw-source dt{font-size:.8rem;color:var(--color-muted)}
+.native-admin .native-lw-source dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.native-admin .native-lw-review select,.native-admin .native-lw-review input,.native-admin .native-lw-import input{max-width:100%;min-width:0;box-sizing:border-box}
+.native-admin .native-lw-review label{min-width:0}
+.native-admin .native-lw-review form,.native-admin [data-lw-apply]{display:grid;gap:var(--space-md)}
+.native-admin .native-lw-selection{display:grid;gap:var(--space-xs)}
+.native-admin .native-lw-rows{margin-block:var(--space-md)}
+.native-admin .native-lw-import button,.native-admin .native-lw-review button{min-height:44px;white-space:normal}
+.native-admin .native-lw-import button:disabled,.native-admin .native-lw-review button:disabled{opacity:.55;cursor:default}
+@media(min-width:375px){.native-admin .native-lw-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:768px){.native-admin .native-lw-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.native-admin .native-lw-teams,.native-admin .native-lw-source{grid-template-columns:repeat(2,minmax(0,1fr))}}
