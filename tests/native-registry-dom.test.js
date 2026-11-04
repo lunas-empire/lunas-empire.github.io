@@ -17,6 +17,7 @@ test('Registry preserves conflicting edits, reloads explicitly, and submits the 
  const win=dom.window,originalWindow=globalThis.window,originalFetch=globalThis.fetch;
  globalThis.window=win;win.confirm=()=>true;win.HTMLElement.prototype.scrollIntoView=()=>{};
  t.after(()=>{clearOfficer();globalThis.window=originalWindow;globalThis.fetch=originalFetch;dom.window.close()});
+ let emptyLw=false,importReads=0;
  let revision='a'.repeat(64),rank='R2',lifecycle='active',failReload=false,posts=[];
  const profile=()=>({id:'synthetic-member',name:'Synthetic Member',rank,status:'active',imported_rank:'R1',source_status:'former',state_source:'registry',source_difference:1,registry_updated_at:'2026-10-13T00:00:00Z',registry_updated_by:'<Synthetic Officer>'});
  globalThis.fetch=async(url,options)=>{
@@ -26,7 +27,8 @@ test('Registry preserves conflicting edits, reloads explicitly, and submits the 
   if(path==='/api/operations')return Response.json({tasks:[]});
   if(path==='/api/train-manager')return Response.json({counts:{missing_recent:0}});
   if(path==='/api/members')return Response.json([profile()]);
-  if(path==='/api/member/synthetic-member')return Response.json({member:profile(),stats:[],weeks:[],lw_import:{available:true,snapshots:Array.from({length:6},(_,i)=>({member_id:'synthetic-member',report_date:'2026-11-0'+(i+1),applied_at:'2026-11-07',values:{power:100+i,kills:0}}))}});
+  if(path==='/api/lw-import'){importReads++;return Response.json({batches:[]})}
+  if(path==='/api/member/synthetic-member')return Response.json({member:profile(),stats:[],weeks:[],lw_import:{available:true,snapshots:emptyLw?[]:Array.from({length:6},(_,i)=>({member_id:'synthetic-member',report_date:'2026-11-0'+(i+1),applied_at:'2026-11-07',values:{power:100+i,kills:0}}))}});
   assert.equal(path,'/api/member-registry');
   if(options.method==='POST'){
    const payload=JSON.parse(options.body);posts.push(payload);
@@ -67,10 +69,15 @@ test('Registry preserves conflicting edits, reloads explicitly, and submits the 
  await until(()=>posts.length===2&&!q('#registry-save'));
  assert.equal(posts[1].revision,'b'.repeat(64));assert.equal(rank,'R3');
  q('[data-officer-tab=members]').click();await until(()=>q('[data-native-member]'));
+ assert.match(mount.textContent,/Spieler \u00f6ffnen \u2192 LW Import/);
  q('[data-native-member]').click();await until(()=>q('#native-person').textContent.includes('Abweichender Import'));
  assert.match(q('#native-person').textContent,/R1/);
  assert.match(q('#native-person').textContent,/<Synthetic Officer>/);
  assert.equal(q('#native-person synthetic'),null);
+ assert.equal(q('.native-member-aliases').nextElementSibling,q('[data-lw-profile]'));
+ assert.equal(q('[data-lw-profile]').nextElementSibling.className,'native-evidence-note');
+ assert.equal(q('[data-lw-profile] h4').textContent,'LW Import');
+ assert.equal(q('[data-lw-profile]').querySelector('[data-officer-tab=lwImport]'),null);
  assert.equal(q('[data-lw-profile]').querySelectorAll('.native-lw-points li').length,5);
  q('[data-lw-profile] details').open=true;
  let range=q('[data-lw-range]');range.value='4';range.dispatchEvent(new win.Event('change',{bubbles:true}));
@@ -84,6 +91,13 @@ test('Registry preserves conflicting edits, reloads explicitly, and submits the 
  assert.equal(q('[data-lw-profile]').querySelectorAll('polyline').length,0);
  assert.equal(win.document.activeElement,q('[data-lw-range]'));
 
+ emptyLw=true;q('[data-native-member-close]').click();q('[data-native-member]').click();
+ await until(()=>q('[data-lw-profile] button[data-officer-tab=lwImport]'));
+ assert.equal(q('.native-member-aliases').nextElementSibling,q('[data-lw-profile]'));
+ assert.equal(q('[data-lw-profile]').querySelectorAll('[data-lw-kpi],svg').length,0);
+ assert.doesNotMatch(q('[data-lw-profile]').textContent,/98|100|\u00fcbernommene Updates/);
+ q('[data-lw-profile] button[data-officer-tab=lwImport]').click();
+ await until(()=>importReads===1);await until(()=>!q('#native-person'));
  await openMore(mount);
  lifecycle='unverified';rank=null;q('[data-officer-tab=registry]').click();
  await until(()=>q('[data-registry-edit]'));q('[data-registry-edit]').click();

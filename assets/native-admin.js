@@ -286,7 +286,7 @@ async function view(mount){
     cache.membersArchive=await formerArchiveFromTrain(trains,list);
     cache.membersArchiveAvailable=Boolean(trains);
    target.innerHTML='<div class="native-row"><h2>Allianzmitglieder</h2><input id="native-member-search" type="search" placeholder="Spieler suchen" autocomplete="off"></div>'+
-    '<p class="native-muted">Nach Rang sortiert. Spieler antippen: Profil, Messwerte, Wochenverlauf, Erfolge und Zug-Historie.</p><div id="native-member-list"></div>';
+    '<p class="native-muted">Nach Rang sortiert. Spieler antippen: Profil, Messwerte, Wochenverlauf, Erfolge und Zug-Historie.</p><p class="native-muted">'+(officerLanguage(target.ownerDocument)==='de'?'Spieler öffnen → LW Import.':'Open player → LW Import.')+'</p><div id="native-member-list"></div>';
    renderMembers(target,'');
   }else if(panel==='vs'){
    const [data,summary]=await Promise.all([request('/api/vs-intelligence'),request('/api/overview')]);
@@ -438,7 +438,7 @@ export function renderLwProfile(data,memberId,metric='power',range='5'){
  };
  let html='<section class="native-lw-profile" aria-label="LW Import"><h4 class="native-section-heading">LW Import</h4><p class="native-muted" data-native-no-translate>member_id: '+e(memberId)+'</p>';
  if(!data?.available)return html+'<p role="status">LW Import: Verlauf derzeit nicht verfügbar.</p></section>';
- if(!latest)return html+'<p>Keine übernommenen LW Import-Snapshots. Noch kein Vergleich.</p></section>';
+ if(!latest)return html+'<p>Noch keine LW-Werte freigegeben. Gespeicherte CSV-Werte erscheinen erst nach geprüfter Übernahme im LW Import.</p><button type="button" data-officer-tab="lwImport">LW Import öffnen</button><p class="native-muted">Noch kein Vergleich.</p></section>';
  html+='<p>'+snapshots.length+' \u00fcbernommene Updates</p><p>Snapshot · <time>'+e(latest.report_date)+'</time> · Berichtsdatum, kein belegtes Messzeitende</p><div class="native-lw-kpis">'+lwMetrics.map(([key,label])=>'<button type="button" class="native-profile-metric-card" data-lw-kpi="'+key+'" aria-pressed="'+(metric===key)+'"><small>'+label+'</small><strong title="'+lwValue(latest.values[key])+'">'+lwCardValue(latest.values[key])+'</strong><span>'+e(change(key))+'</span><small>Vorwert: '+lwValue(prior?.values?.[key])+(prior?' / '+e(prior.report_date):'')+'</small><small>Stand: '+e(latest.report_date)+'</small></button>').join('')+'</div>';
  const reports=[...new Map(snapshots.map(p=>[p.report_date,p])).values()];
  const points=range==='all'?reports:reports.slice(-Number(range)),known=points.map(p=>p.values[metric]).filter(Number.isSafeInteger);
@@ -672,11 +672,11 @@ async function showPerson(target,id){
     '<label class="native-alias-ack"><input name="ack" type="checkbox" required> Ich habe die historische Schreibweise anhand einer Quelle geprüft.</label>'+
     '<div class="native-alias-actions"><button type="submit">Namen bestätigen</button><button type="button" data-native-alias-cancel>Abbrechen</button></div></form>':'')+
    '</div></details>'+
+  '<div data-lw-profile>'+renderLwProfile(p.lw_import,id)+'</div>'+
   (active.length?'<p class="native-absence-warning">Aktuell als abwesend eingetragen. Zugvorschläge berücksichtigen diesen Zeitraum.</p>':'')+
   (member.source_difference?'<p class="native-evidence-note">Abweichender Import: '+e(member.imported_rank||'Rang unbekannt')+' · '+e(member.source_status||'Status ungeklärt')+'. Der bestätigte Verwaltungsstand hat Vorrang.</p>':'')+
   (member.registry_updated_by?'<p class="native-muted">Letzte Rang-/Statusänderung: '+e(member.registry_updated_by)+' · '+e(formatOfficerTime(member.registry_updated_at))+'</p>':'')+
   '<h4 class="native-section-heading">Werte & Entwicklung</h4>'+metricHtml+
-  '<div data-lw-profile>'+renderLwProfile(p.lw_import,id)+'</div>'+
   '<details class="native-fold"><summary>VS-Erfolge & Wochen · '+weeks.length+'</summary>'+
    '<div class="native-fold-body">'+weekSummary+'</div></details>'+
   '<h4 class="native-section-heading">Züge & Dice Game</h4>'+historyCards+

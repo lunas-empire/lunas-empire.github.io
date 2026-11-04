@@ -18,8 +18,12 @@ test('applied history only, report windows, previous values and relative changes
   assert.doesNotMatch(d.body.textContent,/999999|2026-11-07/);
  }
  const empty=renderLwProfile({available:true,snapshots:[{...snapshot('2026-11-07'),applied_at:null}]},'synthetic-id');
- assert.match(empty,/Keine übernommenen LW Import-Snapshots/);
+ assert.match(empty,/Noch keine LW-Werte freigegeben/);
  assert.equal(doc(empty).querySelectorAll('[data-lw-kpi]').length,0);
+ const button=doc(empty).querySelector('button[data-officer-tab="lwImport"]');
+ assert.equal(button.type,'button');assert.equal(button.textContent,'LW Import \u00f6ffnen');
+ assert.match(empty,/Gespeicherte CSV-Werte erscheinen erst nach gepr\u00fcfter \u00dcbernahme im LW Import/);
+ assert.doesNotMatch(empty,/98|999999|2026-11-07/);
 });
 
 test('zero denominator is n/a, missing prior has no delta, source fields are escaped',()=>{
@@ -34,6 +38,7 @@ test('zero denominator is n/a, missing prior has no delta, source fields are esc
 });
 test('six profile KPIs preserve zero/null, first snapshot has no trend and private identity anchor is visible',()=>{
  const d=doc(renderLwProfile({available:true,snapshots:[snapshot('2026-11-03',{army_power:null})]},'synthetic-id'));
+ assert.equal(d.querySelector('[data-officer-tab=lwImport]'),null);
  assert.equal(d.querySelectorAll('[data-lw-kpi]').length,6);assert.match(d.body.textContent,/member_id: synthetic-id/);
  assert.match(d.querySelector('[data-lw-kpi=army_power]').textContent,/nicht erfasst/);
  assert.match(d.querySelector('[data-lw-kpi=kills]').textContent,/0/);
@@ -47,7 +52,7 @@ test('negative delta is neutral; NULL splits SVG paths; scales belong to selecte
  assert.equal(d.querySelectorAll('polyline').length,2);assert.equal(d.querySelectorAll('circle').length,4);
  assert.match(d.querySelector('[data-lw-kpi=army_power]').textContent,/Rückgang · -10/);
  assert.match(d.querySelector('.native-lw-chart').textContent,/Army Power/);assert.doesNotMatch(d.body.textContent,/other-id/);
- assert.match(renderLwProfile({available:true,snapshots:[]},'synthetic-id'),/Keine \u00fcbernommenen LW Import-Snapshots/);
+ assert.match(renderLwProfile({available:true,snapshots:[]},'synthetic-id'),/Noch keine LW-Werte freigegeben/);
  assert.match(renderLwProfile(null,'synthetic-id'),/derzeit nicht verfügbar/);
 });
 test('profile escapes values and never invents comparisons from same-day report dates',()=>{
