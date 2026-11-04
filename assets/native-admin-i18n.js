@@ -170,6 +170,22 @@ for(const [source,row] of Object.entries(ALIAS_TEXT)){
  if(row.length!==ALIAS_LANGUAGES.length)throw new Error('Incomplete alias translation: '+source);
  ALIAS_LANGUAGES.forEach((lang,index)=>{TRANSLATION_ROWS[lang][source]=row[index]});
 }
+// Reviewed English fallback for the manual lifecycle controls; private names are never translated.
+const MANUAL_LIFECYCLE_TERMS={
+ 'Austritt bestätigen':'Confirm departure',
+ 'Manuell bestätigter Austritt / Rückkehr':'Manually verified departure / return',
+ 'Austrittsart':'Departure type',
+ 'Bitte auswählen':'Please select',
+ 'Selbst verlassen':'Left voluntarily',
+ 'Entfernt':'Removed',
+ 'Gekickt':'Kicked',
+ 'Geprüfte Quelle':'Checked source',
+ 'Allianzprotokoll / Datum / genauer Beleg':'Alliance log / date / exact evidence',
+ 'Quelle persönlich geprüft':'I personally checked the source',
+ 'Austritt oder Rückkehr dieser Person ausdrücklich bestätigen':'Explicitly confirm this person’s departure or return',
+ 'Nullwerte und fehlende VS-Werte sind kein Austrittsbeleg. Die bestehende Mitglieder-ID und Historie bleiben erhalten.':'Zero values and missing VS results do not prove departure. The existing member ID and history are retained.'
+};
+for(const rows of Object.values(TRANSLATION_ROWS))for(const [source,text] of Object.entries(MANUAL_LIFECYCLE_TERMS))rows[source]??=text;
 export const OFFICER_TEXT=TRANSLATION_ROWS;
 export const OFFICER_LANGUAGES=Object.freeze(['de','en','uk','ja','fr','it','id','ar','ko','sv','pt','nl','th','km','fil']);
 export function officerLanguage(documentRef=globalThis.document){

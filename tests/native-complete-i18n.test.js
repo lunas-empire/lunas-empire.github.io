@@ -30,13 +30,13 @@ test('Real member reconciliation UI is entirely English for archive rules and wa
  await wait(()=>mount.querySelector('.native-hub-tile[data-officer-tab=watch]'));
  mount.querySelector('[data-officer-tab=watch]').click();
  await wait(()=>mount.querySelector('#native-watch-list .native-evidence-note'));
- await wait(()=>mount.querySelector('#native-watch-list').textContent.includes('nightly staging check'));
+ await wait(()=>mount.querySelector('#native-watch-list').textContent.includes('verified complete current member roster'));
  const content=mount.querySelector('#native-admin-content').textContent;
  const german=['Quellen','Wochensnapshots','bestätigte Kandidaten','Spielerakte geändert','Austritt','vollständig','archiviert','Stärke-Snapshot','Prüfkandidaten','Sicherheitsprüfung'];
  for(const token of german)assert.ok(!content.includes(token),'German residue: '+token);
  assert.match(content,/Power .*2026-10-11/);
- assert.match(content,/The nightly staging check/);
- assert.match(content,/R4\/R5 are never archived automatically/);
+ assert.match(content,/Automatic changes require a verified complete current member roster/);
+ assert.match(content,/R4\/R5 may manually archive a witnessed departure/);
  assert.match(content,/No automatic removals/);
  assert.match(content,/Candidates for review/);
  assert.match(content,/Missing from power snapshot/);

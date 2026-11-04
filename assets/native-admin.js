@@ -474,15 +474,36 @@ async function initLwImport(target){
   host.addEventListener('click',async event=>{const button=event.target.closest('[data-lw-batch-id]');if(!button)return;button.disabled=true;try{show(await request('/api/lw-import/'+button.dataset.lwBatchId))}catch(error){if(live())status.textContent=error.message}finally{button.disabled=false}});
  }catch(error){if(live())status.textContent='LW Import: '+error.message}
 }
+export function renderLwGroups(batch){
+ const key=r=>r.applied_at?'applied':r.match_state==='blocked'?'blocked':r.match_state==='matched'?'matched':'unmatched';
+ return [['unmatched','Unmatched / Ungeklärt'],['matched','Matched / Zugeordnet'],['applied','Applied / Übernommen'],['blocked','Blocked / Gesperrt']].map(([group,title])=>{const rows=batch.rows.filter(r=>key(r)===group).sort((a,b)=>a.source_row-b.source_row);return '<details class="native-fold native-lw-group" data-lw-group="'+group+'"><summary>'+title+' <span data-lw-visible>'+rows.length+'</span></summary><div class="native-fold-body">'+(rows.length?rows.map(r=>'<details class="native-fold" data-lw-row="'+r.source_row+'" data-search="'+e((r.source_name+' '+(r.member_id??'')).normalize('NFC').toLocaleLowerCase())+'"><summary>Zeile '+r.source_row+' / <span data-native-no-translate>'+e(r.source_name)+'</span></summary><div class="native-fold-body"><p data-native-no-translate>member_id: '+e(r.member_id??'ungeklärt')+'</p><p>'+e(r.errors.join(' / '))+'</p>'+lwSourceFields(r.source)+(!r.applied_at&&r.match_state!=='blocked'&&r.review_status==='open'?'<div data-lw-identity></div>':'')+'</div></details>').join(''):'<p>Keine Zeilen in dieser Gruppe.</p>')+'</div></details>'}).join('');
+}
 function renderLwBatch(host,batch,live){
  const eligible=batch.rows.filter(r=>r.match_state==='matched'&&!r.applied_at);
+ const counts={matched:eligible.length,unmatched:batch.rows.filter(r=>!r.applied_at&&['unmatched','ambiguous'].includes(r.match_state)).length,blocked:batch.rows.filter(r=>!r.applied_at&&r.match_state==='blocked').length,applied:batch.rows.filter(r=>r.applied_at).length};
  host.innerHTML='<h3>LW Import · '+e(batch.report_date)+'</h3><p data-native-no-translate>Batch '+e(batch.id)+'<br>SHA256 '+e(batch.sha256)+'</p>'+
-  '<p>'+batch.counts.matched+' zugeordnet · '+batch.counts.ambiguous+' mehrdeutig · '+batch.counts.unmatched+' ohne Zuordnung · '+batch.counts.blocked+' gesperrt · '+batch.counts.applied+' übernommen · '+batch.counts.pending+' ausstehend</p>'+
+  '<p>'+counts.unmatched+' ungekl\u00e4rt / '+counts.matched+' zugeordnet / '+counts.applied+' \u00fcbernommen / '+counts.blocked+' gesperrt</p>'+
   '<button type="button" data-officer-tab="reviews">Im nativen Review prüfen</button>'+
   '<button type="button" data-lw-original>LW Import · Original-CSV</button>'+
-  '<div class="native-lw-rows">'+batch.rows.map(r=>'<details class="native-fold"><summary>Zeile '+r.source_row+' · <span data-native-no-translate>'+e(r.source_name)+'</span> · '+e(r.applied_at?'übernommen':r.match_state)+'</summary><div class="native-fold-body"><p data-native-no-translate>member_id: '+e(r.member_id??'ungeklärt')+'</p><p>'+e(r.errors.join(' · '))+'</p>'+lwSourceFields(r.source)+'</div></details>').join('')+'</div>'+
-  '<form data-lw-apply><p>Nur die ausdrücklich ausgewählten, zugeordneten Zeilen übernehmen. Offene Zuordnungen bleiben im Review.</p><div class="native-lw-selection">'+eligible.map(r=>'<label><input type="checkbox" name="row" value="'+r.source_row+'"> Zeile '+r.source_row+' · '+e(r.source_name)+'</label>').join('')+'</div>'+
-  '<label>Prüfbegründung<input name="reason" required minlength="8" maxlength="500"></label><label><input type="checkbox" name="reviewed" required> Ausgewählte Quellzeilen und member_id geprüft</label><button '+(!eligible.length?'disabled':'')+'>Geprüfte Zeilen übernehmen</button></form><p data-lw-result role="status" aria-live="polite"></p>';
+  '<label>Quellzeilen suchen<input type="search" data-lw-search placeholder="Name oder member_id"></label><label>Status filtern<select data-lw-filter><option value="">Alle Gruppen</option><option value="unmatched">Ungeklärt</option><option value="matched">Zugeordnet</option><option value="applied">Übernommen</option><option value="blocked">Gesperrt</option></select></label><p data-lw-empty hidden role="status">Keine Quellzeilen passen zur Suche.</p><div class="native-lw-rows">'+renderLwGroups(batch)+'</div>'+
+  '<details class="native-fold"><summary>Geprüfte Werte separat übernehmen</summary><form data-lw-apply><p>Nur die ausdrücklich ausgewählten, zugeordneten Zeilen übernehmen. Offene Zuordnungen bleiben im Review.</p><div class="native-lw-selection">'+eligible.map(r=>'<label><input type="checkbox" name="row" value="'+r.source_row+'"> Zeile '+r.source_row+' · '+e(r.source_name)+'</label>').join('')+'</div>'+
+  '<label>Prüfbegründung<input name="reason" required minlength="8" maxlength="500"></label><label><input type="checkbox" name="reviewed" required> Ausgewählte Quellzeilen und member_id geprüft</label><button '+(!eligible.length?'disabled':'')+'>Geprüfte Zeilen übernehmen</button></form></details><p data-lw-result role="status" aria-live="polite"></p>';
+ const filter=()=>{const term=host.querySelector('[data-lw-search]').value.normalize('NFC').toLocaleLowerCase(),state=host.querySelector('[data-lw-filter]').value;host.querySelectorAll('[data-lw-group]').forEach(group=>{let count=0;group.querySelectorAll('[data-lw-row]').forEach(row=>{row.hidden=!row.dataset.search.includes(term);if(!row.hidden)count++});group.hidden=Boolean(state&&state!==group.dataset.lwGroup)||!count;group.querySelector('[data-lw-visible]').textContent=count});host.querySelector('[data-lw-empty]').hidden=[...host.querySelectorAll('[data-lw-group]')].some(g=>!g.hidden)};
+ host.querySelector('[data-lw-search]').addEventListener('input',filter);host.querySelector('[data-lw-filter]').addEventListener('change',filter);
+ let optionsPromise;
+ host.querySelectorAll('[data-lw-row]').forEach(card=>card.addEventListener('toggle',async()=>{
+  const mount=card.querySelector('[data-lw-identity]');if(!card.open||!mount||mount.dataset.loaded)return;mount.dataset.loaded='1';mount.textContent='Mitglieder werden geladen ...';
+  try{const options=await(optionsPromise??=request('/api/lw-import/identity-options'));if(!live())return;
+   const row=batch.rows.find(r=>String(r.source_row)===card.dataset.lwRow);
+   mount.innerHTML='<form data-lw-inline-review><label>Bestehendes Mitglied suchen<input type="search" name="search" autocomplete="off" placeholder="Name, verifizierter Alias oder ID"></label><label>Identität auswählen<select name="member_id" required><option value="">Bitte bewusst auswählen</option>'+options.members.map(m=>'<option value="'+e(m.id)+'">'+e(m.name)+(m.status==='former'?' (Archiv)':'')+' / '+e(m.id)+(m.aliases.length?' / '+e(m.aliases.join(', ')):'')+'</option>').join('')+'</select></label><label>Prüfbegründung<input name="reason" required minlength="8" maxlength="500"></label><p data-native-no-translate>SHA256 '+e(batch.sha256)+'</p><label><input name="checked" type="checkbox" required> Originalzeile, SHA und gewählte Identität geprüft; Zuordnung ausdrücklich bestätigen</label><button>Zuordnung bestätigen</button></form><button type="button" disabled>Neues Mitglied anlegen</button><p>'+e(options.creation.reason)+'</p><p data-lw-identity-result role="status" aria-live="polite"></p>';
+   const form=mount.querySelector('form'),select=form.elements.member_id;
+   select.addEventListener('change',()=>{form.elements.checked.checked=false});
+   form.elements.search.addEventListener('input',()=>{select.value='';form.elements.checked.checked=false;const term=form.elements.search.value.normalize('NFC').toLocaleLowerCase();const matches=options.members.filter(m=>(m.name+' '+m.id+' '+m.aliases.join(' ')).normalize('NFC').toLocaleLowerCase().includes(term));select.innerHTML='<option value="">Bitte bewusst ausw\u00e4hlen</option>'+matches.map(m=>'<option value="'+e(m.id)+'">'+e(m.name)+(m.status==='former'?' (Archiv)':'')+' / '+e(m.id)+(m.aliases.length?' / '+e(m.aliases.join(', ')):'')+'</option>').join('')});
+   form.addEventListener('submit',async event=>{event.preventDefault();const button=form.querySelector('button'),message=mount.querySelector('[data-lw-identity-result]'),memberId=select.value;if(!memberId||!form.elements.checked.checked||form.elements.reason.value.trim().length<8){message.textContent='Identität, Quellprüfung und mindestens acht Zeichen Begründung erforderlich.';return}button.disabled=true;
+    try{const receipt=await request('/api/reviews/'+encodeURIComponent(row.review_id)+'/resolve',{method:'POST',body:{action:'approve',member_id:memberId,reason:form.elements.reason.value,source_checked:true,sha256:batch.sha256}});const reread=await request('/api/lw-import/'+batch.id);if(!live())return;const actual=reread.rows.find(r=>r.source_row===row.source_row);if(!receipt.ok||reread.sha256!==batch.sha256||actual?.member_id!==memberId||actual.match_state!=='matched'||actual.applied_at)throw Error('Zuordnung nicht eindeutig rückbestätigt. Batch neu laden.');renderLwBatch(host,reread,live);host.querySelector('[data-lw-result]').textContent='Zuordnung bestätigt und erneut gelesen. Keine Punkte übernommen.'}catch(error){if(live()){message.textContent=error.message;button.disabled=false}}
+   });
+  }catch(error){if(live()){mount.textContent=error.message;delete mount.dataset.loaded;optionsPromise=null}}
+ }));
  host.querySelector('[data-lw-original]').addEventListener('click',async event=>{
   const button=event.currentTarget,message=host.querySelector('[data-lw-result]');button.disabled=true;
   try{
@@ -1380,10 +1401,11 @@ function renderMembershipWatch(target){
  const data=cache.watch||{},host=target.querySelector('#native-watch-list');if(!host)return;
  const count=membershipWatchSummary(data),list=data.candidates||[];
  const policy=cache.archiveEligibility;
- const autoArchiveHint=policy?'<p class="native-evidence-note"><strong>Automatisches Archiv nach zwei Wochen:</strong> '+
-  (policy.ready?'W39/W40/W41-Regel aktiv: '+(policy.candidates?.length||0)+' bestätigte Kandidaten; Wochensnapshots final und Profilaufnahme vollständig.':
-    'Sicherheitsprüfung wartet: '+e(policy.reason||'Weitere finalisierte Vergleiche notwendig')+'.')+
-  ' Der nächtliche Staging-Abgleich archiviert nur nach zwei aufeinanderfolgenden fehlenden VS-Wochen und zusätzlichem Fehlen im vollständigen neuesten Mitglieder-Screenshot. R4/R5 werden niemals automatisch archiviert.</p>':'';
+ const de=officerLanguage(target.ownerDocument)==='de';
+ const autoArchiveHint='<p class="native-evidence-note"><strong>'+(de?'Mitgliederstatus nach gepr\u00fcftem Bestand:':'Membership based on a verified roster:')+'</strong> '+
+  (de?'Automatische \u00c4nderungen erfordern einen vollst\u00e4ndigen aktuellen Mitgliederbestand und best\u00e4tigte Identit\u00e4ten. Null VS, Kills oder Spenden beweisen keinen Austritt. R4/R5 k\u00f6nnen einen pers\u00f6nlich gepr\u00fcften Austritt mit Quelle, Grund und ausdr\u00fccklicher Best\u00e4tigung manuell archivieren.':
+   'Automatic changes require a verified complete current member roster and confirmed identities. Zero VS, kills or donations never prove departure. R4/R5 may manually archive a witnessed departure with a checked source, reason and explicit confirmation.')+
+  (policy?.ready?' '+(policy.candidates?.length||0)+(de?' best\u00e4tigte Bestandskandidaten.':' confirmed roster candidates.'):(de?' Automatischer Bestandsabgleich wartet auf vollst\u00e4ndige Nachweise.':' Automatic reconciliation awaits complete evidence.'))+'</p>';
  const snapshotInfo=(data.profile?.current?.captured_at?'Stärke '+data.profile.current.captured_at.slice(0,10):'Stärke ohne Vergleich')+
   ' · '+(data.vs?.current?.week?'VS '+data.vs.current.week:'VS ohne Vergleich');
  host.innerHTML='<p class="native-muted">'+e(snapshotInfo)+' · Quellen sind unterschiedlich vollständig</p>'+autoArchiveHint+
@@ -1398,7 +1420,9 @@ function renderMembershipWatch(target){
     '<p>'+e(m.missing_profile?'Neue Stärke-Aufnahme: nicht enthalten':'Stärke-Aufnahme: keine neue Abweichung')+'</p>'+
     '<p>'+e(m.missing_vs?'Neue VS-Aufnahme: nicht enthalten':'VS-Aufnahme: keine neue Abweichung')+'</p>'+
     '<small>Zuletzt gesehen: '+e(m.last_seen||'Unbekannt')+(m.blacklisted?' · Bereits manuell gesperrt':'')+'</small></div>'+
-    '<button type="button" data-native-watch-person="'+e(m.id)+'">Spielerakte prüfen</button></article>'
+    '<div class="native-row"><button type="button" data-native-watch-person="'+e(m.id)+'">Spielerakte prüfen</button>'+
+    (canManageSite()||!['R4','R5'].includes(m.rank)?'<button type="button" data-native-watch-archive="'+e(m.id)+'">Austritt erfassen</button>':'')+
+    '</div></article>'
    ).join('')+'</div>':
    '<p class="native-muted">In den aktuell vergleichbaren Aufnahmen sind keine fehlenden Spieler aufgefallen. Das ist kein vollständiger Anwesenheitsnachweis.</p>');
 }
@@ -1551,10 +1575,11 @@ function editRegistry(target,id){
   return;
  }
  const ranks=canManageSite()?['R1','R2','R3','R4','R5']:['R1','R2','R3'];
- host.innerHTML='<form id="registry-save" class="native-form" data-id="'+e(id)+'" data-revision="'+e(m.revision)+'"><h3>'+e(m.name)+' verwalten</h3>'+
+ host.innerHTML='<form id="registry-save" class="native-form" data-id="'+e(id)+'" data-revision="'+e(m.revision)+'" data-lifecycle="'+e(m.lifecycle)+'"><h3>'+e(m.name)+' verwalten</h3>'+
   '<label>Verwalteter Rang<select name="rank" required>'+(!m.rank?'<option value="" selected disabled>Rang verifizieren</option>':'')+ranks.map(x=>'<option '+(m.rank===x?'selected':'')+'>'+x+'</option>').join('')+'</select></label>'+
   '<label>Status<select name="lifecycle" required>'+(m.lifecycle==='unverified'?'<option value="" selected disabled>Identität / Status verifizieren</option>':'')+'<option value="active" '+(m.lifecycle==='active'?'selected':'')+'>Aktiv</option><option value="former" '+(m.lifecycle==='former'?'selected':'')+'>Ehemalig / Archiv</option></select></label>'+
-  '<div class="native-row"><button type="button" data-native-registry-quick="archive">Ins Archiv vormerken</button><button type="button" data-native-registry-quick="blacklist">Blacklist vormerken</button><button type="button" data-native-registry-quick="active">Aktiv vormerken</button></div>'+
+  '<div class="native-row"><button type="button" data-native-registry-quick="archive">Austritt best\u00e4tigen</button><button type="button" data-native-registry-quick="blacklist">Blacklist vormerken</button><button type="button" data-native-registry-quick="active">Aktiv vormerken</button></div>'+
+  '<fieldset><legend>Manuell best\u00e4tigter Austritt / R\u00fcckkehr</legend><label>Austrittsart<select name="departure_event"><option value="">Bitte ausw\u00e4hlen</option><option value="left">Selbst verlassen</option><option value="removed">Entfernt</option><option value="kicked">Gekickt</option></select></label><label>Gepr\u00fcfte Quelle<input name="departure_source" minlength="8" maxlength="500" placeholder="Allianzprotokoll / Datum / genauer Beleg"></label><label><input type="checkbox" name="source_checked"> Quelle pers\u00f6nlich gepr\u00fcft</label><label><input type="checkbox" name="departure_confirmed"> Austritt oder R\u00fcckkehr dieser Person ausdr\u00fccklich best\u00e4tigen</label><p>Nullwerte und fehlende VS-Werte sind kein Austrittsbeleg. Die bestehende Mitglieder-ID und Historie bleiben erhalten.</p></fieldset>'+
   '<label class="native-check"><input type="checkbox" name="blacklisted" '+(m.blacklisted?'checked':'')+'>Manuelle Blacklist</label>'+
   '<label>Begründung<input name="reason" required minlength="8" maxlength="500" value="'+e(m.reason)+'" placeholder="Für jede Änderung erforderlich (mindestens 8 Zeichen)"></label>'+
   '<button type="submit">Änderung protokolliert speichern</button><button type="button" data-registry-reload hidden>Aktuellen Stand laden (Eingaben verwerfen)</button><p id="native-form-message" role="status"></p></form>';
@@ -2207,7 +2232,7 @@ export function initNativeAdmin(mount){
    if(url.startsWith('blob:'))window.open(url,'_blank','noopener,noreferrer');
    return;
   }
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-dice-delete],[data-native-train-choice],[data-native-history-reset],[data-native-access-mode],[data-native-access-copy],[data-native-access-signout],[data-native-member-create],[data-native-registry-quick],[data-native-access-link],[data-native-access-disable],[data-audit-category],[data-native-vs-image],[data-native-vs-image-close],[data-native-requirements-reload]');
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-watch-archive],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-dice-delete],[data-native-train-choice],[data-native-history-reset],[data-native-access-mode],[data-native-access-copy],[data-native-access-signout],[data-native-member-create],[data-native-registry-quick],[data-native-access-link],[data-native-access-disable],[data-audit-category],[data-native-vs-image],[data-native-vs-image-close],[data-native-requirements-reload]');
   if(!button)return;
   if(button.hasAttribute('data-native-history-reset')){
    trainHistoryFilters={member:'',date:''};historyLimit=20;
@@ -2292,6 +2317,16 @@ export function initNativeAdmin(mount){
    }catch(err){form.querySelector('#native-form-message').textContent=err.message;button.disabled=false}
    return;
   }
+  if(button.dataset.nativeWatchArchive){
+   const id=button.dataset.nativeWatchArchive;panel='registry';registryFilter='all';await view(mount);
+   const registryTarget=mount.querySelector('#native-admin-content');
+   if(registryTarget?.querySelector('#registry-form')){
+    editRegistry(registryTarget,id);
+    const form=registryTarget.querySelector('#registry-save');
+    if(form){form.elements.namedItem('lifecycle').value='former';form.elements.namedItem('departure_event').focus()}
+   }
+   return;
+  }
   if(button.dataset.nativeWatchPerson){
    const id=button.dataset.nativeWatchPerson;
    panel='members';await view(mount);
@@ -2319,7 +2354,7 @@ export function initNativeAdmin(mount){
   if(button.dataset.nativeRegistryQuick){
    const form=button.closest('#registry-save');if(!form)return;
    const status=form.elements.namedItem('lifecycle'),blacklist=form.elements.namedItem('blacklisted');
-   if(button.dataset.nativeRegistryQuick==='archive')status.value='former';
+   if(button.dataset.nativeRegistryQuick==='archive'){status.value='former';form.elements.namedItem('departure_event').focus();return}
    if(button.dataset.nativeRegistryQuick==='blacklist')blacklist.checked=true;
    if(button.dataset.nativeRegistryQuick==='active'){status.value='active';blacklist.checked=false}
    form.elements.namedItem('reason').focus();return;
@@ -2680,11 +2715,30 @@ export function initNativeAdmin(mount){
   if(form.id==='registry-save'){
    if(form.dataset.conflict==='1'||form.querySelector('[type=submit]').disabled)return;
    const payload={member_id:form.dataset.id,revision:form.dataset.revision,rank:form.elements.namedItem('rank').value,lifecycle:form.elements.namedItem('lifecycle').value,blacklisted:form.elements.namedItem('blacklisted').checked,reason:form.elements.namedItem('reason').value};
-   if(!window.confirm('Mitgliedsänderung mit Audit-Log speichern?'))return;
+   const message=form.querySelector('#native-form-message');
+   if(payload.lifecycle!==form.dataset.lifecycle&&['active','former'].includes(form.dataset.lifecycle)){
+    Object.assign(payload,{transition:payload.lifecycle==='former'?'manual_confirmed_departure':'manual_verified_return',
+     source:form.elements.namedItem('departure_source').value.trim(),source_checked:form.elements.namedItem('source_checked').checked,
+     confirmed:form.elements.namedItem('departure_confirmed').checked,
+     ...(payload.lifecycle==='former'?{departure_event:form.elements.namedItem('departure_event').value}:{})});
+    if(payload.reason.trim().length<8||payload.source.length<8||!payload.source_checked||!payload.confirmed||payload.lifecycle==='former'&&!['left','removed','kicked'].includes(payload.departure_event)){
+     message.textContent='Nicht gespeichert: Quelle, Begründung, Austrittsart und ausdrückliche Bestätigung prüfen.';return;
+    }
+   }
+   if(!window.confirm('Mitgliedsänderung für '+(cache.registry?.members.find(m=>m.id===payload.member_id)?.name||payload.member_id)+' mit Audit-Log speichern?'))return;
    const button=form.querySelector('[type=submit]');button.disabled=true;
-   try{await request('/api/member-registry',{method:'POST',body:payload});await view(mount)}
+   message.textContent='Wird gespeichert und unabhängig geprüft …';
+   try{
+    await request('/api/member-registry',{method:'POST',body:payload});
+    if(payload.transition){
+     const [registry,members,watch]=await Promise.all([request('/api/member-registry'),request('/api/members'),request('/api/membership-watch')]);
+     verifyRegistryReadback(payload,registry,members);
+     cache.registry=registry;cache.members=members;cache.watch=watch;
+    }
+    await view(mount);
+   }
    catch(err){
-    form.querySelector('#native-form-message').textContent=err.status===409?'Der Mitgliedsstand wurde geändert. Deine Eingaben bleiben erhalten. Lade den aktuellen Stand vor einer neuen Änderung.':err.message;
+    form.querySelector('#native-form-message').textContent=err.status===409?'Nicht bestätigt (409): '+err.message+' Deine Eingaben bleiben erhalten. Lade den aktuellen Stand vor einer neuen Änderung.':'Nicht bestätigt'+(err.status?' ('+err.status+')':'')+': '+err.message;
     if(err.status===409){form.dataset.conflict='1';form.querySelector('[data-registry-reload]').hidden=false}
     else button.disabled=false;
    }return;
@@ -2692,4 +2746,12 @@ export function initNativeAdmin(mount){
   if(form.id==='native-train-save'){form.dataset.kind='train';await saveForm(mount,form)}
   if(form.id==='native-record-save')await saveForm(mount,form);
  });
+}
+
+/** Both authenticated projections must agree before a lifecycle change is shown as saved. */
+export function verifyRegistryReadback(payload,registry,members){
+ const member=registry?.members?.find(m=>m.id===payload.member_id);
+ const active=Array.isArray(members)&&members.some(m=>m.id===payload.member_id);
+ if(!member||member.lifecycle!==payload.lifecycle||!Array.isArray(members)||active!==(payload.lifecycle==='active'))
+  throw Error('Statusänderung noch nicht unabhängig bestätigt. Mitgliederbestand neu laden; nicht erneut blind speichern.');
 }

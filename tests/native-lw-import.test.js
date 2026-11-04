@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {JSDOM} from 'jsdom';
-import {renderLwProfile,initNativeAdmin,renderNativeAdmin,clearOfficer} from '../assets/native-admin.js';
+import {renderLwGroups,renderLwProfile,initNativeAdmin,renderNativeAdmin,clearOfficer} from '../assets/native-admin.js';
 const snapshot=(date,values={})=>({member_id:'synthetic-id',report_date:date,applied_at:date+'T12:00:00Z',batch_id:'lw-'+date,sha256:'a'.repeat(64),source_row:1,values:{power:100,army_power:50,total_troops:10,drone:1,kills:0,hq:30,...values}});
 const doc=html=>new JSDOM(html).window.document;
 test('six profile KPIs preserve zero/null, first snapshot has no trend and private identity anchor is visible',()=>{
@@ -55,4 +55,47 @@ test('native LW Import review uses existing resolve route, no screenshot fiction
  form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));await wait(()=>saved!==null);await wait(()=>card.textContent.includes('separat freigeben'));
  assert.equal(saved.member_id,'synthetic-id');assert.equal(saved.source_checked,true);assert.equal(saved.sha256,context.sha256);
  assert.equal(dom.window.localStorage.length,0);assert.equal(dom.window.sessionStorage.length,0);
+});
+
+test('LW groups separate applied from matched, unresolved first, all compact and escaped',()=>{
+ const base={source:{Name:'Synthetic'},errors:[],review_status:'open'};
+ const rows=[{...base,source_row:4,source_name:'Blocked',match_state:'blocked'},{...base,source_row:3,source_name:'Applied',match_state:'matched',applied_at:'today'},{...base,source_row:2,source_name:'Matched',match_state:'matched'},{...base,source_row:1,source_name:'<img src=x>',match_state:'unmatched'}];
+ const d=doc(renderLwGroups({rows}));assert.deepEqual([...d.querySelectorAll('[data-lw-group]')].map(x=>x.dataset.lwGroup),['unmatched','matched','applied','blocked']);
+ assert.equal(d.querySelectorAll('details[open],img').length,0);assert.equal(d.querySelector('[data-lw-group=matched] [data-lw-visible]').textContent,'1');assert.equal(d.querySelectorAll('[data-lw-identity]').length,2);
+ assert.match(d.querySelector('[data-lw-group=blocked]').textContent,/Blocked/);
+});
+
+test('inline import picker searches archived aliases, requires confirmation and rereads without applying',async t=>{
+ const dom=new JSDOM('<main id="mount"></main>',{url:'https://lunas-empire.github.io/#admin'}),oldWindow=globalThis.window,oldFetch=globalThis.fetch;
+ globalThis.window=dom.window;dom.window.HTMLElement.prototype.scrollIntoView=()=>{};
+ t.after(()=>{clearOfficer();globalThis.window=oldWindow;globalThis.fetch=oldFetch;dom.window.close()});
+ const row={source_row:1,source_name:'Synthetic Unmatched',member_id:null,match_state:'unmatched',review_id:'synthetic-review',review_status:'open',errors:[],source:{Name:'Synthetic Unmatched',Power:'0'}};
+ const batch={id:'lw-'+'a'.repeat(64),sha256:'a'.repeat(64),report_date:'2026-11-03',revision:0,rows:[row],counts:{}};let saved=null,reads=0;
+ globalThis.fetch=async(url,opts={})=>{
+  const path=new URL(url).pathname;
+  if(path==='/api/native-login')return Response.json({token:'synthetic-token',name:'Synthetic R4',role:'R4'});
+  if(path==='/api/overview')return Response.json({active:1,reviews:1});
+  if(path==='/api/session')return Response.json({reviewWritesEnabled:true});
+  if(path==='/api/operations')return Response.json({tasks:[]});
+  if(path==='/api/train-manager')return Response.json({counts:{}});
+  if(path==='/api/lw-import')return Response.json({batches:[batch]});
+  if(path==='/api/lw-import/'+batch.id){reads++;return Response.json(batch)}
+  if(path==='/api/lw-import/identity-options')return Response.json({members:[{id:'archived-id',name:'Synthetic Archived',status:'former',aliases:['Verified Alias']},{id:'other-id',name:'Other',status:'active',aliases:[]}],creation:{enabled:false,reason:'Vollbestand und R4/R5-Freigabe fehlen; maximal 100 aktive Mitglieder.'}});
+  if(path==='/api/reviews/synthetic-review/resolve'){saved=JSON.parse(opts.body);row.member_id=saved.member_id;row.match_state='matched';row.review_status='approved';return Response.json({ok:true,applied:false})}
+  throw Error('Unexpected request '+path);
+ };
+ const mount=dom.window.document.querySelector('#mount'),q=s=>mount.querySelector(s);
+ initNativeAdmin(mount);await renderNativeAdmin(mount);q('[name=code]').value='synthetic';q('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
+ await wait(()=>q('[data-officer-tab=members]'));q('[data-officer-tab=members]').click();await wait(()=>q('[data-officer-tab=lwImport]'));q('[data-officer-tab=lwImport]').click();
+ await wait(()=>q('[data-lw-batch-id]'));q('[data-lw-batch-id]').click();await wait(()=>q('[data-lw-group]'));
+ assert.equal(q('[data-lw-group]').open,false);assert.equal(q('[data-lw-apply]').closest('details').open,false);
+ q('[data-lw-search]').value='absent';q('[data-lw-search]').dispatchEvent(new dom.window.Event('input'));assert.equal(q('[data-lw-empty]').hidden,false);
+ q('[data-lw-search]').value='';q('[data-lw-search]').dispatchEvent(new dom.window.Event('input'));
+ q('[data-lw-group=unmatched]').open=true;q('[data-lw-row]').open=true;await wait(()=>q('[data-lw-inline-review]'));
+ const form=q('[data-lw-inline-review]'),select=form.elements.member_id;assert.match(select.textContent,/Archiv/);assert.match(select.textContent,/Verified Alias/);
+ assert.ok([...mount.querySelectorAll('button')].find(b=>b.textContent==='Neues Mitglied anlegen').disabled);
+ form.elements.search.value='Verified Alias';form.elements.search.dispatchEvent(new dom.window.Event('input'));assert.equal(select.options.length,2);assert.equal(select.options[1].value,'archived-id');assert.equal(select.value,'');
+ form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));assert.equal(saved,null);
+ select.value='archived-id';form.elements.reason.value='Original source checked';form.elements.checked.checked=true;form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
+ await wait(()=>q('[data-lw-result]').textContent.includes('Keine Punkte'));assert.equal(reads,2);assert.equal(saved.source_checked,true);assert.equal(saved.sha256,batch.sha256);assert.equal(saved.member_id,'archived-id');assert.equal(q('[data-lw-group=matched] [data-lw-visible]').textContent,'1');assert.equal(q('[data-lw-group=applied] [data-lw-visible]').textContent,'0');
 });
