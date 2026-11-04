@@ -28,7 +28,7 @@ test('Registry preserves conflicting edits, reloads explicitly, and submits the 
   if(path==='/api/train-manager')return Response.json({counts:{missing_recent:0}});
   if(path==='/api/members')return Response.json([profile()]);
   if(path==='/api/lw-import'){importReads++;return Response.json({batches:[]})}
-  if(path==='/api/member/synthetic-member')return Response.json({member:profile(),stats:[],weeks:[],lw_import:{available:true,snapshots:emptyLw?[]:Array.from({length:6},(_,i)=>({member_id:'synthetic-member',report_date:'2026-11-0'+(i+1),applied_at:'2026-11-07',values:{power:100+i,kills:0}}))}});
+  if(path==='/api/member/synthetic-member')return Response.json({member:profile(),stats:['power','kills','donations_weekly'].flatMap(metric=>['2026-10-11','2026-10-18','2026-10-25','2026-11-01'].map((date,i)=>({snapshot_id:'synthetic-w'+i,captured_at:date+'T18:00:00Z',metric,value:80+i,quality:'observed'}))),weeks:[],lw_import:{available:true,snapshots:emptyLw?[]:Array.from({length:6},(_,i)=>({member_id:'synthetic-member',report_date:'2026-11-0'+(i+1),applied_at:'2026-11-07',values:{power:100+i,kills:0}}))}});
   assert.equal(path,'/api/member-registry');
   if(options.method==='POST'){
    const payload=JSON.parse(options.body);posts.push(payload);
@@ -94,8 +94,15 @@ test('Registry preserves conflicting edits, reloads explicitly, and submits the 
  emptyLw=true;q('[data-native-member-close]').click();q('[data-native-member]').click();
  await until(()=>q('[data-lw-profile] button[data-officer-tab=lwImport]'));
  assert.equal(q('.native-member-aliases').nextElementSibling,q('[data-lw-profile]'));
- assert.equal(q('[data-lw-profile]').querySelectorAll('[data-lw-kpi],svg').length,0);
- assert.doesNotMatch(q('[data-lw-profile]').textContent,/98|100|\u00fcbernommene Updates/);
+ assert.equal(q('[data-lw-profile]').querySelectorAll('[data-lw-kpi]').length,6);
+ assert.equal(q('[data-lw-profile]').querySelectorAll('circle').length,4);
+ assert.equal(q('.native-profile-metrics').querySelectorAll('details.native-profile-metric-card').length,1);
+ assert.match(q('.native-profile-metrics').textContent,/Spenden/);
+ assert.doesNotMatch(q('.native-profile-metrics').textContent,/Kills/);
+ q('[data-lw-kpi=kills]').click();
+ assert.equal(q('[data-lw-profile]').querySelectorAll('circle').length,4);
+ assert.ok(q('[data-native-stat-evidence="synthetic-w0|synthetic-member|kills"]'));
+ assert.doesNotMatch(q('[data-lw-profile]').textContent,/98|100/);
  q('[data-lw-profile] button[data-officer-tab=lwImport]').click();
  await until(()=>importReads===1);await until(()=>!q('#native-person'));
  await openMore(mount);

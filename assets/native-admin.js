@@ -422,32 +422,73 @@ async function loadMemberAliases(details,id){
 const lwMetrics=[['power','Power'],['army_power','Army Power'],['total_troops','Total troops'],['drone','Drone'],['kills','Kills'],['hq','HQ']];
 const lwValue=value=>Number.isSafeInteger(value)?numberText(value):'nicht erfasst';
 const lwCardValue=value=>Number.isSafeInteger(value)?new Intl.NumberFormat('de-DE',{notation:'compact',maximumFractionDigits:2}).format(value):'nicht erfasst';
+// Sunday rows are scoped by /api/member/:id; reject explicit foreign IDs as well.
+// Calendar dates stay date-only: an LW report has no measured time of day.
+export function buildUnifiedMetricTimeline(data,memberId,metric,sundayStats=[]){
+ const candidates=[];
+ for(const row of Array.isArray(sundayStats)?sundayStats:[]){
+  if(!['power','kills'].includes(metric)||row.metric!==metric||(row.member_id!=null&&row.member_id!==memberId))continue;
+  if(!['observed','corrected'].includes(row.quality)||!Number.isSafeInteger(row.value)||row.value<0)continue;
+  candidates.push({...row,report_date:String(row.captured_at||'').slice(0,10),source:'Sonntagsprofil',priority:row.quality==='corrected'?3:2});
+ }
+ for(const row of data?.snapshots||[]){
+  if(row.member_id!==memberId||!row.applied_at)continue;
+  const value=row.values?.[metric];
+  candidates.push({...row,value:Number.isSafeInteger(value)&&value>=0?value:null,source:'LW Import',quality:'applied',priority:1});
+ }
+ const dates=new Map();
+ for(const row of candidates){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(row.report_date))continue;
+  if(!dates.has(row.report_date))dates.set(row.report_date,[]);
+  dates.get(row.report_date).push(row);
+ }
+ return [...dates].sort(([a],[b])=>a.localeCompare(b)).map(([date,sources])=>{
+  // Valid corrected Sunday > observed Sunday > applied LW. Never average cumulative values.
+  sources.sort((a,b)=>Number(Number.isSafeInteger(b.value))-Number(Number.isSafeInteger(a.value))||b.priority-a.priority||String(b.captured_at||b.applied_at).localeCompare(String(a.captured_at||a.applied_at)));
+  const chosen=sources[0];
+  return {...chosen,report_date:date,values:{[metric]:chosen.value},sources,discrepancy:new Set(sources.filter(s=>Number.isSafeInteger(s.value)).map(s=>s.value)).size>1};
+ });
+}
+function unifiedPointEvidence(point,memberId,metric){
+ const sourceText=s=>s.source+' · '+(metricQuality[s.quality]||'Übernommen')+' · '+(s.captured_at||s.report_date);
+ return '<small>'+e(sourceText(point))+'</small>'+(point.discrepancy?'<strong role="note">Abweichende Quellenwerte · Quellenpriorität angewendet</strong>':'')+
+  '<details><summary>Messwerte &amp; Belege · '+point.sources.length+'</summary>'+point.sources.map(s=>'<p>'+e(sourceText(s))+' · '+(s.source==='Sonntagsprofil'?statValueButton(s.value,s.snapshot_id,memberId,metric):lwValue(s.value))+(s.source==='LW Import'?'<br>'+e('Batch '+s.batch_id+' · Quellzeile '+s.source_row+' · SHA256 '+s.sha256+' · Übernommen: '+s.applied_at):'')+'</p>').join('')+'</details>';
+}
 /* Hallmark · pre-emit critique: P4 H4 E4 S5 R5 V4. Existing Luna tokens and profile hierarchy. */
-export function renderLwProfile(data,memberId,metric='power',range='5'){
+export function renderLwProfile(data,memberId,metric='power',range='5',sundayStats=[]){
  const snapshots=(data?.snapshots||[]).filter(s=>s.member_id===memberId&&s.applied_at).slice().sort((a,b)=>a.report_date.localeCompare(b.report_date)||a.applied_at.localeCompare(b.applied_at));
- const latest=snapshots.at(-1),prior=snapshots.at(-2),first=snapshots[0];
+ const timelines=Object.fromEntries(lwMetrics.map(([key])=>[key,buildUnifiedMetricTimeline(data,memberId,key,sundayStats)]));
+ const latest=snapshots.at(-1);
+ const selected=timelines[metric]||timelines.power;
+ const prior=selected.at(-2),first=selected[0];
  if(!['1','4','5','all'].includes(String(range)))range='5';
  if(!lwMetrics.some(([key])=>key===metric))metric='power';
  const title=lwMetrics.find(([key])=>key===metric)[1];
- const change=(key,base=prior)=>{
-  const a=latest?.values?.[key],b=base?.values?.[key];
-  if(!base||base===latest||latest.report_date===base.report_date)return 'Noch kein Vergleich';
+ const change=(key,base=timelines[key].at(-2))=>{
+  const current=timelines[key].at(-1);
+  const a=current?.values?.[key],b=base?.values?.[key];
+  if(!base||base===current||current.report_date===base.report_date)return 'Noch kein Vergleich';
   if(!Number.isSafeInteger(a)||!Number.isSafeInteger(b))return 'Vergleich nicht erfasst';
   const delta=a-b,percent=b===0?'n/a (Basis 0)':(delta>0?'+':'')+new Intl.NumberFormat('de-DE',{maximumFractionDigits:2}).format(delta/b*100)+' %';
   return (delta<0?'Rückgang · ':delta>0?'+':'')+numberText(delta)+' / '+percent+' seit '+base.report_date;
  };
  let html='<section class="native-lw-profile" aria-label="LW Import"><h4 class="native-section-heading">LW Import</h4><p class="native-muted" data-native-no-translate>member_id: '+e(memberId)+'</p>';
- if(!data?.available)return html+'<p role="status">LW Import: Verlauf derzeit nicht verfügbar.</p></section>';
- if(!latest)return html+'<p>Noch keine LW-Werte freigegeben. Gespeicherte CSV-Werte erscheinen erst nach geprüfter Übernahme im LW Import.</p><button type="button" data-officer-tab="lwImport">LW Import öffnen</button><p class="native-muted">Noch kein Vergleich.</p></section>';
- html+='<p>'+snapshots.length+' \u00fcbernommene Updates</p><p>Snapshot · <time>'+e(latest.report_date)+'</time> · Berichtsdatum, kein belegtes Messzeitende</p><div class="native-lw-kpis">'+lwMetrics.map(([key,label])=>'<button type="button" class="native-profile-metric-card" data-lw-kpi="'+key+'" aria-pressed="'+(metric===key)+'"><small>'+label+'</small><strong title="'+lwValue(latest.values[key])+'">'+lwCardValue(latest.values[key])+'</strong><span>'+e(change(key))+'</span><small>Vorwert: '+lwValue(prior?.values?.[key])+(prior?' / '+e(prior.report_date):'')+'</small><small>Stand: '+e(latest.report_date)+'</small></button>').join('')+'</div>';
- const reports=[...new Map(snapshots.map(p=>[p.report_date,p])).values()];
+ if(!data?.available&&!timelines.power.length&&!timelines.kills.length)return html+'<p role="status">LW Import: Verlauf derzeit nicht verfügbar. Keine bestätigten Profilwerte vorhanden.</p><button type="button" data-officer-tab="lwImport">LW Import öffnen</button></section>';
+ if(!latest&&!timelines.power.length&&!timelines.kills.length)return html+'<p>Noch keine LW-Werte freigegeben. Gespeicherte CSV-Werte erscheinen erst nach geprüfter Übernahme im LW Import.</p><button type="button" data-officer-tab="lwImport">LW Import öffnen</button><p class="native-muted">Noch kein Vergleich.</p></section>';
+ if(!latest)html+='<p>Noch keine LW-Werte freigegeben. LW-exklusive Werte sind nicht erfasst.</p><button type="button" data-officer-tab="lwImport">LW Import \u00f6ffnen</button>';
+ html+='<p>'+snapshots.length+' \u00fcbernommene Updates \u00b7 Sonntagsprofil &amp; LW Import</p><p>Berichtsdatum, kein belegtes Messzeitende f\u00fcr LW Import; Sonntagsprofil mit Aufnahmezeit.</p><div class="native-lw-kpis">'+lwMetrics.map(([key,label])=>{
+  const current=timelines[key].at(-1),previous=timelines[key].at(-2);
+  return '<button type="button" class="native-profile-metric-card" data-lw-kpi="'+key+'" aria-pressed="'+(metric===key)+'"><small>'+label+'</small><strong title="'+lwValue(current?.value)+'">'+lwCardValue(current?.value)+'</strong><span>'+e(change(key))+'</span><small>Vorwert: '+lwValue(previous?.value)+(previous?' / '+e(previous.report_date):'')+'</small><small>Stand: '+e(current?.report_date||'nicht erfasst')+' \u00b7 '+e(current?current.source+' \u00b7 '+(metricQuality[current.quality]||'\u00dcbernommen'):'LW Import erforderlich')+'</small></button>';
+ }).join('')+'</div>';
+ const reports=timelines[metric];
  const points=range==='all'?reports:reports.slice(-Number(range)),known=points.map(p=>p.values[metric]).filter(Number.isSafeInteger);
  const min=known.length?Math.min(...known):null,max=known.length?Math.max(...known):null;
  const x=i=>points.length>1?20+i*560/(points.length-1):300,y=v=>max===min?80:140-(v-min)*120/(max-min);
  let paths=[],segment=[];
  points.forEach((p,i)=>{const value=p.values[metric];if(Number.isSafeInteger(value))segment.push(x(i)+','+y(value));else if(segment.length){paths.push(segment);segment=[]}});if(segment.length)paths.push(segment);
- html+='<div class="native-lw-chart"><div class="native-lw-toolbar"><label>Zeitpunkte <select data-lw-range>'+[['1','1'],['4','4'],['5','5'],['all','Alle']].map(([value,label])=>'<option value="'+value+'" '+(String(range)===value?'selected':'')+'>'+label+'</option>').join('')+'</select></label></div><p>Seit dem ersten Bericht: '+e(change(metric,first))+'</p><h5>'+title+' · Verlauf</h5><p>'+(!known.length?'Messwerte nicht erfasst':points.length<2?'Noch kein Vergleich':prior?.report_date===latest.report_date?'Berichte am selben Datum · kein zeitliches Delta':'Eigene Skala · '+lwValue(min)+' bis '+lwValue(max))+'</p>'+
-  '<svg viewBox="0 0 600 190" role="img" aria-label="'+title+' · Werte in der Liste unter dem Diagramm">'+(known.length?'<text x="20" y="12">'+lwValue(max)+'</text><text x="20" y="180">'+lwValue(min)+'</text>':'')+paths.filter(p=>p.length>1).map(p=>'<polyline points="'+p.join(' ')+'"/>').join('')+points.map((p,i)=>Number.isSafeInteger(p.values[metric])?'<circle cx="'+x(i)+'" cy="'+y(p.values[metric])+'" r="4"><title>'+e(p.report_date+' · '+title+': '+lwValue(p.values[metric])+' · LW Import')+'</title></circle>':'').join('')+'</svg><ol class="native-lw-points">'+points.map(p=>'<li><time>'+e(p.report_date)+'</time> / '+title+': '+lwValue(p.values[metric])+' · LW Import</li>').join('')+'</ol></div>';
+ html+='<div class="native-lw-chart"><div class="native-lw-toolbar"><label>Zeitpunkte <select data-lw-range>'+[['1','1'],['4','4'],['5','5'],['all','Alle']].map(([value,label])=>'<option value="'+value+'" '+(String(range)===value?'selected':'')+'>'+label+'</option>').join('')+'</select></label></div><p>Seit dem ersten Bericht: '+e(change(metric,first))+'</p><h5>'+title+' · Verlauf</h5><p>'+(!known.length?'Messwerte nicht erfasst':points.length<2?'Noch kein Vergleich':prior?.report_date===selected.at(-1)?.report_date?'Berichte am selben Datum · kein zeitliches Delta':'Eigene Skala · '+lwValue(min)+' bis '+lwValue(max))+'</p>'+
+  '<svg viewBox="0 0 600 190" role="img" aria-label="'+title+' · Werte in der Liste unter dem Diagramm">'+(known.length?'<text x="20" y="12">'+lwValue(max)+'</text><text x="20" y="180">'+lwValue(min)+'</text>':'')+paths.filter(p=>p.length>1).map(p=>'<polyline points="'+p.join(' ')+'"/>').join('')+points.map((p,i)=>Number.isSafeInteger(p.values[metric])?'<circle cx="'+x(i)+'" cy="'+y(p.values[metric])+'" r="4"><title>'+e(p.report_date+' · '+title+': '+lwValue(p.values[metric])+' \u00b7 '+p.source)+'</title></circle>':'').join('')+'</svg><ol class="native-lw-points">'+points.map(p=>'<li><time>'+e(p.report_date)+'</time> / '+title+': '+lwValue(p.values[metric])+' '+unifiedPointEvidence(p,memberId,metric)+'</li>').join('')+'</ol></div>';
+ if(!latest)return html+'</section>';
  html+='<details class="native-fold"><summary>Profil &amp; Allianz</summary><div class="native-fold-body">HQ: '+lwValue(latest.values.hq)+' / VIP: '+lwValue(latest.values.vip)+' · Profession: '+e(latest.values.Profession??'nicht erfasst')+' · Coords: '+e(latest.values.Coords??'nicht erfasst')+'<br>Schild: '+e(latest.values.Shield??'nicht erfasst')+' / Abwesenheit (Quelle): '+e(latest.values['Left / away']??'nicht erfasst')+'</div></details>';
  html+='<details class="native-fold"><summary>Teams T1–T4</summary><div class="native-fold-body native-lw-teams">'+[1,2,3,4].map(n=>'<section><h5>T'+n+'</h5><p>Power: '+lwValue(latest.values['t'+n+'_power'])+'</p><p>Type: '+e(latest.values['T'+n+' type']??'nicht erfasst')+'</p><p>Heroes: '+e(latest.values['T'+n+' heroes']??'nicht erfasst')+'</p></section>').join('')+'</div></details>';
  return html+'<details class="native-fold"><summary>Originalquelle · '+snapshots.length+'</summary><div class="native-fold-body">'+snapshots.slice().reverse().map(p=>'<p data-native-no-translate>LW Import · '+e(p.report_date)+' · member_id '+e(p.member_id)+'<br>Batch '+e(p.batch_id)+' · Quellzeile '+e(p.source_row)+'<br>SHA256 '+e(p.sha256)+'<br>Übernommen: '+e(p.applied_at)+' · Review: '+e(p.resolved_at??'nicht erfasst')+'<br>Reviewer: '+e(p.reviewer??p.reviewed_by??p.resolved_by??p.applied_by??'nicht erfasst')+'</p>').join('')+'</div></details></section>';
@@ -596,7 +637,7 @@ async function showPerson(target,id){
    '<button type="button" data-native-member="'+e(id)+'">Erneut versuchen</button>';
   return;
  }
- const member=p.member||{},metrics=profileMetricChanges(p.stats||[]);
+ const member=p.member||{},metrics=profileMetricChanges(p.stats||[]).filter(m=>!['power','kills'].includes(m.metric));
  const weeks=(p.weeks||[]).slice().sort((a,b)=>String(b.week).localeCompare(String(a.week)));
  // The roster is still in the DOM so search state and expanded ranks survive Back.
  const roster=target.querySelector('.native-member-folds');if(roster)roster.hidden=true;
@@ -672,7 +713,7 @@ async function showPerson(target,id){
     '<label class="native-alias-ack"><input name="ack" type="checkbox" required> Ich habe die historische Schreibweise anhand einer Quelle geprüft.</label>'+
     '<div class="native-alias-actions"><button type="submit">Namen bestätigen</button><button type="button" data-native-alias-cancel>Abbrechen</button></div></form>':'')+
    '</div></details>'+
-  '<div data-lw-profile>'+renderLwProfile(p.lw_import,id)+'</div>'+
+  '<div data-lw-profile>'+renderLwProfile(p.lw_import,id,'power','5',p.stats||[])+'</div>'+
   (active.length?'<p class="native-absence-warning">Aktuell als abwesend eingetragen. Zugvorschläge berücksichtigen diesen Zeitraum.</p>':'')+
   (member.source_difference?'<p class="native-evidence-note">Abweichender Import: '+e(member.imported_rank||'Rang unbekannt')+' · '+e(member.source_status||'Status ungeklärt')+'. Der bestätigte Verwaltungsstand hat Vorrang.</p>':'')+
   (member.registry_updated_by?'<p class="native-muted">Letzte Rang-/Statusänderung: '+e(member.registry_updated_by)+' · '+e(formatOfficerTime(member.registry_updated_at))+'</p>':'')+
@@ -697,7 +738,7 @@ async function showPerson(target,id){
  const lwHost=node.querySelector('[data-lw-profile]');
  const updateLw=(metric,range,focus)=>{
   const opened=[...lwHost.querySelectorAll('details')].map(fold=>fold.open);
-  lwHost.innerHTML=renderLwProfile(p.lw_import,id,metric,range);
+  lwHost.innerHTML=renderLwProfile(p.lw_import,id,metric,range,p.stats||[]);
   lwHost.querySelectorAll('details').forEach((fold,i)=>{fold.open=opened[i]||false});
   lwHost.querySelector(focus)?.focus({preventScroll:true});
  };

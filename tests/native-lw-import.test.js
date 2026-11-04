@@ -1,9 +1,52 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {JSDOM} from 'jsdom';
-import {renderLwGroups,renderLwProfile,initNativeAdmin,renderNativeAdmin,clearOfficer} from '../assets/native-admin.js';
+import {buildUnifiedMetricTimeline,renderLwGroups,renderLwProfile,initNativeAdmin,renderNativeAdmin,clearOfficer} from '../assets/native-admin.js';
 const snapshot=(date,values={})=>({member_id:'synthetic-id',report_date:date,applied_at:date+'T12:00:00Z',batch_id:'lw-'+date,sha256:'a'.repeat(64),source_row:1,values:{power:100,army_power:50,total_troops:10,drone:1,kills:0,hq:30,...values}});
 const doc=html=>new JSDOM(html).window.document;
+
+const sundays=()=>['2026-10-11','2026-10-18','2026-10-25','2026-11-01'].flatMap((date,i)=>['power','kills','donations_weekly'].map(metric=>({snapshot_id:'synthetic-w'+(41+i),week:'2026-W'+(41+i),captured_at:date+'T18:30:00Z',metric,value:100+i*10,quality:'observed'})));
+test('Sunday W41-W44 and applied November report form five canonical Power and Kills points',()=>{
+ const data={available:true,snapshots:[snapshot('2026-11-03',{power:150,kills:150})]};
+ for(const metric of ['power','kills']){
+  const timeline=buildUnifiedMetricTimeline(data,'synthetic-id',metric,sundays());
+  assert.deepEqual(timeline.map(p=>p.value),[100,110,120,130,150]);
+  const d=doc(renderLwProfile(data,'synthetic-id',metric,'all',sundays()));
+  assert.equal(d.querySelectorAll('circle').length,5);
+  assert.equal(d.querySelectorAll('.native-lw-points li').length,5);
+  assert.match(d.querySelector('[data-lw-kpi='+metric+']').textContent,/Vorwert: 130/);
+  assert.match(d.querySelector('.native-lw-chart').textContent,/50 % seit 2026-10-11/);
+  assert.ok(d.querySelector('[data-native-stat-evidence="synthetic-w41|synthetic-id|'+metric+'"]'));
+  assert.match(d.querySelector('.native-lw-points').textContent,/Sonntagsprofil.*Abgelesen/);
+  assert.doesNotMatch(d.querySelector('.native-lw-points').textContent,/donations_weekly/);
+ }
+});
+test('same calendar date keeps conflicting originals and one priority-selected point',()=>{
+ const stats=[...sundays(),{...sundays()[9],value:140,quality:'corrected'}];
+ const data={available:true,snapshots:[snapshot('2026-11-01',{power:999})]};
+ const last=buildUnifiedMetricTimeline(data,'synthetic-id','power',stats).at(-1);
+ assert.equal(last.value,140);assert.equal(last.sources.length,3);assert.equal(last.discrepancy,true);
+ const d=doc(renderLwProfile(data,'synthetic-id','power','all',stats));
+ assert.equal(d.querySelectorAll('circle').length,4);
+ assert.match(d.body.textContent,/Abweichende Quellenwerte/);
+ assert.match(d.querySelector('.native-lw-points').textContent,/999/);
+ assert.match(d.querySelector('.native-lw-points').textContent,/SHA256/);
+ assert.ok(d.querySelector('[data-native-stat-evidence="synthetic-w44|synthetic-id|power"]'));
+});
+test('poor quality and NULL never replace applied measurements or become zero; Sunday-only stays usable',()=>{
+ const stats=sundays().map(s=>s.captured_at.startsWith('2026-11-01')?{...s,value:null,quality:'corrected'}:s);
+ stats.push({...sundays()[9],quality:'inferred',value:999},{...sundays()[9],member_id:'other-id',value:888});
+ const data={available:true,snapshots:[snapshot('2026-11-01',{power:155}),snapshot('2026-11-03',{power:null})]};
+ const timeline=buildUnifiedMetricTimeline(data,'synthetic-id','power',stats);
+ assert.deepEqual(timeline.map(p=>p.value),[100,110,120,155,null]);
+ assert.equal(timeline.at(-2).source,'LW Import');
+ const d=doc(renderLwProfile(null,'synthetic-id','power','all',sundays()));
+ assert.equal(d.querySelectorAll('[data-lw-kpi]').length,6);
+ assert.equal(d.querySelectorAll('circle').length,4);
+ assert.match(d.querySelector('[data-lw-kpi=army_power]').textContent,/nicht erfasst/);
+ assert.ok(d.querySelector('[data-officer-tab=lwImport]'));
+ assert.doesNotMatch(d.querySelector('[data-lw-kpi=army_power]').textContent,/Vorwert: 0/);
+});
 
 test('applied history only, report windows, previous values and relative changes share one source',()=>{
  const snapshots=Array.from({length:6},(_,i)=>snapshot('2026-11-0'+(i+1),{power:100+i*10}));

@@ -93,9 +93,9 @@ test('VS priority is NOT OCR review count; VS player opens real dossier, history
  q('[data-native-member="'+id+'"]').click();
  await until(()=>q('.native-profile h3'));
  assert.equal(q('.native-profile h3').textContent,member.name);
- assert.match(q('.native-profile-metrics').textContent,/500.000 seit der vorherigen Aufnahme/);
- assert.match(q('.native-profile-metrics').textContent,/Seit 2026-10-07: \+500.000/);
- assert.match(q('.native-profile-metrics').textContent,/Erst eine bestätigte Aufnahme/);
+ assert.match(q('[data-lw-kpi=power]').textContent,/\+500.000.*seit 2026-10-07/);
+ assert.match(q('.native-lw-chart').textContent,/Seit dem ersten Bericht: \+500.000/);
+ assert.match(q('[data-lw-kpi=kills]').textContent,/Noch kein Vergleich/);
  assert.match(q('.native-profile-weeks').textContent,/6.200.000 zum 2026-W39/);
  assert.match(q('.native-profile-weeks').textContent,/Vorläufig/);
  assert.match(q('.native-profile-weeks').textContent,/Teilstand 5\.000\.000/);
