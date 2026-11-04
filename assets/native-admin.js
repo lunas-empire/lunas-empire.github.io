@@ -495,7 +495,7 @@ export function renderLwProfile(data,memberId,metric='power',range='5',sundaySta
 }
 
 async function initLwImport(target){
- target.innerHTML='<section class="native-lw-import"><h2>LW Import</h2><p>CSV-Snapshot prüfen und bestehende member_id zuordnen. Keine Bestands-, Rang- oder Abwesenheitsänderungen.</p>'+
+ target.innerHTML='<section class="native-lw-import"><h2>LW Import</h2><p>CSV-Snapshot prüfen und bestehende member_id zuordnen. Vollständigen aktuellen Mitgliederbestand separat bestätigen.</p>'+
   '<form data-lw-upload class="native-row"><label>Berichtsdatum<input type="date" name="report_date" required></label><label class="native-lw-file">CSV auswählen<input type="file" name="csv" accept=".csv,text/csv" required></label><button>Vorschau prüfen</button></form>'+
   '<p data-lw-status role="status" aria-live="polite"></p><div data-lw-batches></div><div data-lw-batch></div></section>';
  const generation=sessionGeneration,live=()=>target.isConnected&&panel==='lwImport'&&generation===sessionGeneration;
@@ -529,11 +529,13 @@ function renderLwBatch(host,batch,live){
   '<p>'+counts.unmatched+' ungekl\u00e4rt / '+counts.matched+' zugeordnet / '+counts.applied+' \u00fcbernommen / '+counts.blocked+' gesperrt</p>'+
   '<button type="button" data-officer-tab="reviews">Im nativen Review prüfen</button>'+
   '<button type="button" data-lw-original>LW Import · Original-CSV</button>'+
+  '<details class="native-fold" data-lw-roster><summary>Aktuellen Mitgliederbestand abgleichen</summary><div class="native-fold-body"><p>Nur ein vollständig geprüfter aktueller Mitgliederbestand belegt fehlende Mitglieder. Leistungswerte allein reichen nicht.</p><button type="button" data-lw-roster-load>Geschützte Bestandsvorschau laden</button><div data-lw-roster-preview></div><p data-lw-roster-result role="status" aria-live="polite"></p></div></details>'+
   '<label>Quellzeilen suchen<input type="search" data-lw-search placeholder="Name oder member_id"></label><label>Status filtern<select data-lw-filter><option value="">Alle Gruppen</option><option value="unmatched">Ungeklärt</option><option value="matched">Zugeordnet</option><option value="applied">Übernommen</option><option value="blocked">Gesperrt</option></select></label><p data-lw-empty hidden role="status">Keine Quellzeilen passen zur Suche.</p><div class="native-lw-rows">'+renderLwGroups(batch)+'</div>'+
   '<details class="native-fold"><summary>Geprüfte Werte separat übernehmen</summary><form data-lw-apply><p>Nur die ausdrücklich ausgewählten, zugeordneten Zeilen übernehmen. Offene Zuordnungen bleiben im Review.</p><button type="button" data-lw-select-all>Alle zugeordneten Zeilen auswählen</button><button type="button" data-lw-deselect-all>Auswahl aufheben</button><p data-lw-selected role="status" aria-live="polite">0 Zeilen ausgewählt</p><div class="native-lw-selection">'+eligible.map(r=>'<label><input type="checkbox" name="row" value="'+r.source_row+'"> Zeile '+r.source_row+' · '+e(r.source_name)+'</label>').join('')+'</div>'+
   '<label>R4/R5-Prüfbegründung für die Auswahl<input name="reason" required minlength="8" maxlength="500"></label><label><input type="checkbox" name="reviewed" required> Ausgewählte Quellzeilen und member_id geprüft</label><button '+(!eligible.length?'disabled':'')+'>Geprüfte Zeilen übernehmen</button></form></details><p data-lw-result role="status" aria-live="polite"></p>';
  const filter=()=>{const term=host.querySelector('[data-lw-search]').value.normalize('NFC').toLocaleLowerCase(),state=host.querySelector('[data-lw-filter]').value;host.querySelectorAll('[data-lw-group]').forEach(group=>{let count=0;group.querySelectorAll('[data-lw-row]').forEach(row=>{row.hidden=!row.dataset.search.includes(term);if(!row.hidden)count++});group.hidden=Boolean(state&&state!==group.dataset.lwGroup)||!count;group.querySelector('[data-lw-visible]').textContent=count});host.querySelector('[data-lw-empty]').hidden=[...host.querySelectorAll('[data-lw-group]')].some(g=>!g.hidden)};
  host.querySelector('[data-lw-search]').addEventListener('input',filter);host.querySelector('[data-lw-filter]').addEventListener('change',filter);
+ initLwRoster(host,batch,live);
  let optionsPromise;
  host.querySelectorAll('[data-lw-row]').forEach(card=>card.addEventListener('toggle',async()=>{
   const mount=card.querySelector('[data-lw-identity]');if(!card.open||!mount||mount.dataset.loaded)return;mount.dataset.loaded='1';mount.textContent='Mitglieder werden geladen ...';
@@ -577,6 +579,68 @@ function renderLwBatch(host,batch,live){
    if(!receipt.ok||receipt.sha256!==batch.sha256||reread.sha256!==batch.sha256||rows.some(n=>{const expected=batch.rows.find(r=>r.source_row===n),actual=reread.rows.find(r=>r.source_row===n);return !actual?.applied_at||actual.member_id!==expected.member_id}))throw Error('LW Import: Quittung oder Rücklesekontrolle unvollständig. Neu laden.');
    renderLwBatch(host,reread,live);host.querySelector('[data-lw-result]').textContent='LW Import: '+receipt.applied_rows+' Zeilen bestätigt und erneut gelesen.';
   }catch(error){if(live()){message.textContent=error.message;button.disabled=false}}
+ });
+}
+function initLwRoster(host,batch,live){
+ const load=host.querySelector('[data-lw-roster-load]'),mount=host.querySelector('[data-lw-roster-preview]'),message=host.querySelector('[data-lw-roster-result]');
+ const current=()=>live()&&load.isConnected;
+ const path='/api/lw-import/'+batch.id+'/roster-reconcile';
+ const checkRegistry=(registry,receipt)=>{
+  const active=registry.members.filter(m=>m.lifecycle==='active').map(m=>m.id).sort();
+  return registry.counts.active===98&&active.length===98&&JSON.stringify(active)===JSON.stringify([...receipt.active_ids].sort())&&receipt.member_ids.every(id=>registry.members.some(m=>m.id===id&&m.lifecycle==='former'));
+ };
+ const show=preview=>{
+  if(preview.batch_id!==batch.id||preview.sha256!==batch.sha256)throw Error('Bestandsquelle stimmt nicht mit dem geladenen Batch überein.');
+  mount.innerHTML='<p>Aktuell '+e(preview.active_count)+' aktive Mitglieder · Bericht '+e(preview.report_date)+'</p><p data-native-no-translate style="overflow-wrap:anywhere">SHA256 '+e(preview.sha256)+'</p>';
+  if(preview.reconciled){
+   message.textContent='Bestandsabgleich bestätigt und erneut gelesen: '+preview.active_count+' aktive Mitglieder.';
+   if(preview.manual_creation_enabled&&preview.active_count===98&&preview.unmatched?.length===1)showCreate(preview);
+   else mount.insertAdjacentHTML('beforeend','<p>'+e((preview.blockers||[]).join(' '))+'</p>');
+   return;
+  }
+  mount.insertAdjacentHTML('beforeend','<form data-lw-roster-confirm><fieldset><legend>Fehlende IDs einzeln prüfen</legend>'+preview.candidates.map(m=>'<label><input type="checkbox" name="candidate" value="'+e(m.id)+'"> <span data-native-no-translate>'+e(m.name)+' · '+e(m.id)+' · '+e(m.rank)+'</span></label>').join('')+'</fieldset><label><input type="checkbox" name="source_checked" required> FULL CURRENT ROSTER: Originalquelle, SHA und vollständigen aktuellen Mitgliederbestand geprüft</label><label>Prüfbegründung<input name="reason" required minlength="8" maxlength="500"></label><p>'+e((preview.blockers||[]).join(' '))+'</p><button '+(!preview.ready?'disabled':'')+'>Geprüfte fehlende Mitglieder archivieren</button></form>');
+  const form=mount.querySelector('form');
+  form.addEventListener('submit',async event=>{
+   event.preventDefault();const ids=[...form.querySelectorAll('[name=candidate]:checked')].map(x=>x.value),button=form.querySelector('button');
+   if(!preview.ready||ids.length!==7||!form.elements.source_checked.checked||form.elements.reason.value.trim().length<8){message.textContent='Sieben IDs, FULL CURRENT ROSTER und Prüfbegründung ausdrücklich bestätigen.';return}
+   button.disabled=true;message.textContent='Bestandsabgleich und Rücklesekontrolle …';
+   try{
+    const receipt=await request(path,{method:'POST',body:{sha256:preview.sha256,revision:preview.revision,membership_revision:preview.membership_revision,member_ids:ids,source_checked:true,full_current_roster:true,reason:form.elements.reason.value}});
+    if(!current())return;
+    const reread=await request(path);if(!current())return;
+    const registry=await request('/api/member-registry');if(!current())return;
+    if(!receipt.ok||receipt.sha256!==preview.sha256||receipt.active_count!==98||!reread.reconciled||!reread.manual_creation_enabled||!checkRegistry(registry,receipt))throw Error('Quittung oder Bestands-Rücklesekontrolle unvollständig; neu laden.');
+    cache.registry=registry;show(reread);
+   }catch(error){if(current()){message.textContent=error.message;button.disabled=false}}
+  });
+ };
+ const showCreate=preview=>{
+  const source=preview.unmatched[0];
+  mount.insertAdjacentHTML('beforeend','<form data-lw-manual-create><p>Offene Quellzeile '+e(source.source_row)+': neue Identität manuell prüfen. Keine historischen Messwerte oder automatische Zuordnung.</p><label>Exakter Quellname<input name="player_name" required maxlength="80" value="'+e(source.source_name)+'" readonly data-native-no-translate></label><label>Bestätigten Rang prüfen (CSV: '+e(source.source_rank??source.rank)+')<select name="rank" required>'+['R1','R2','R3','R4','R5'].map(rank=>'<option '+(rank===source.rank?'selected':'')+'>'+rank+'</option>').join('')+'</select></label><label>Prüfbegründung<input name="reason" required minlength="8" maxlength="500"></label><label><input name="source_checked" type="checkbox" required> Neue Identität, exakten Namen und bestätigten Rang geprüft; CSV-Quellrang darf abweichen; keine bestehende oder archivierte Person</label><button>Mitglied manuell anlegen</button></form>');
+  const form=mount.querySelector('[data-lw-manual-create]');
+  form.addEventListener('change',event=>{if(event.target.name==='rank')form.elements.source_checked.checked=false});
+  form.addEventListener('submit',async event=>{
+   event.preventDefault();const button=form.querySelector('button');
+   if(!form.elements.source_checked.checked||form.elements.reason.value.trim().length<8){message.textContent='Neue Identität und bestätigten Rang mit Begründung prüfen.';return}
+   button.disabled=true;
+   try{
+    const latest=await request(path);if(!current())return;
+    if(!latest.manual_creation_enabled||latest.active_count!==98||latest.sha256!==preview.sha256)throw Error('Bestand geändert; manuelle Neuanlage erneut prüfen.');
+    const created=await request('/api/member-registry/create',{method:'POST',body:{name:source.source_name,rank:form.elements.rank.value,reason:form.elements.reason.value,source_rank:source.source_rank??source.rank,rank_confirmation_source:source.rank_mismatch?'verified_user_correction':'officer_checked_csv_rank',officer_reviewed:form.elements.source_checked.checked}});if(!current())return;
+    const registry=await request('/api/member-registry');if(!current())return;
+    const reread=await request('/api/lw-import/'+batch.id);if(!current())return;
+    const member=registry.members.find(m=>m.id===created.member_id),row=reread.rows.find(r=>r.source_row===source.source_row);
+    if(!created.ok||!member||member.name!==source.source_name||member.lifecycle!=='active'||registry.counts.active!==99||registry.members.filter(m=>m.lifecycle==='active').length!==99||row?.member_id||row?.applied_at)throw Error('Neuanlage nicht vollständig rückbestätigt; neu laden, nicht erneut anlegen.');
+    cache.registry=registry;renderLwBatch(host,reread,live);
+    host.querySelector('[data-lw-result]').textContent='99 aktive Mitglieder bestätigt. Neue member_id: '+created.member_id+'. Jetzt Quellzeile ausdrücklich dieser ID zuordnen und Werte separat freigeben. Keine Werte automatisch übernommen.';
+   }catch(error){if(current()){message.textContent=error.message;message.append(' Bei möglichem HTTP-Erfolg zuerst Bestand neu laden.')}}
+  });
+ };
+ load.addEventListener('click',async()=>{
+  load.disabled=true;message.textContent='Geschützte Bestandsvorschau wird geladen …';
+  try{const preview=await request(path);if(!current())return;message.textContent='';show(preview)}
+  catch(error){if(current())message.textContent=error.message}
+  finally{if(current())load.disabled=false}
  });
 }
 async function initPendingReviews(host){
