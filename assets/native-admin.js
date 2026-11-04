@@ -476,7 +476,7 @@ async function initLwImport(target){
 }
 export function renderLwGroups(batch){
  const key=r=>r.applied_at?'applied':r.match_state==='blocked'?'blocked':r.match_state==='matched'?'matched':'unmatched';
- return [['unmatched','Unmatched / Ungeklärt'],['matched','Matched / Zugeordnet'],['applied','Applied / Übernommen'],['blocked','Blocked / Gesperrt']].map(([group,title])=>{const rows=batch.rows.filter(r=>key(r)===group).sort((a,b)=>a.source_row-b.source_row);return '<details class="native-fold native-lw-group" data-lw-group="'+group+'"><summary>'+title+' <span data-lw-visible>'+rows.length+'</span></summary><div class="native-fold-body">'+(rows.length?rows.map(r=>'<details class="native-fold" data-lw-row="'+r.source_row+'" data-search="'+e((r.source_name+' '+(r.member_id??'')).normalize('NFC').toLocaleLowerCase())+'"><summary>Zeile '+r.source_row+' / <span data-native-no-translate>'+e(r.source_name)+'</span></summary><div class="native-fold-body"><p data-native-no-translate>member_id: '+e(r.member_id??'ungeklärt')+'</p><p>'+e(r.errors.join(' / '))+'</p>'+lwSourceFields(r.source)+(!r.applied_at&&r.match_state!=='blocked'&&r.review_status==='open'?'<div data-lw-identity></div>':'')+'</div></details>').join(''):'<p>Keine Zeilen in dieser Gruppe.</p>')+'</div></details>'}).join('');
+ return [['unmatched','Unmatched / Ungeklärt'],['matched','Matched / Zugeordnet'],['applied','Applied / Übernommen'],['blocked','Blocked / Gesperrt']].map(([group,title])=>{const rows=batch.rows.filter(r=>key(r)===group).sort((a,b)=>a.source_row-b.source_row);return '<details class="native-fold native-lw-group" data-lw-group="'+group+'"><summary>'+title+' <span data-lw-visible>'+rows.length+'</span></summary><div class="native-fold-body">'+(rows.length?rows.map(r=>'<details class="native-fold" data-lw-row="'+r.source_row+'" data-search="'+e((r.source_name+' '+(r.member_id??'')).normalize('NFC').toLocaleLowerCase())+'"><summary>Zeile '+r.source_row+' / <span data-native-no-translate>'+e(r.source_name)+'</span></summary><div class="native-fold-body"><p data-native-no-translate>member_id: '+e(r.member_id??'ungeklärt')+'</p><p>'+e(r.errors.join(' / '))+'</p>'+lwSourceFields(r.source)+(!r.applied_at&&['unmatched','ambiguous'].includes(r.match_state)&&r.review_status==='open'?'<div data-lw-identity></div>':'')+'</div></details>').join(''):'<p>Keine Zeilen in dieser Gruppe.</p>')+'</div></details>'}).join('');
 }
 function renderLwBatch(host,batch,live){
  const eligible=batch.rows.filter(r=>r.match_state==='matched'&&!r.applied_at);
@@ -486,8 +486,8 @@ function renderLwBatch(host,batch,live){
   '<button type="button" data-officer-tab="reviews">Im nativen Review prüfen</button>'+
   '<button type="button" data-lw-original>LW Import · Original-CSV</button>'+
   '<label>Quellzeilen suchen<input type="search" data-lw-search placeholder="Name oder member_id"></label><label>Status filtern<select data-lw-filter><option value="">Alle Gruppen</option><option value="unmatched">Ungeklärt</option><option value="matched">Zugeordnet</option><option value="applied">Übernommen</option><option value="blocked">Gesperrt</option></select></label><p data-lw-empty hidden role="status">Keine Quellzeilen passen zur Suche.</p><div class="native-lw-rows">'+renderLwGroups(batch)+'</div>'+
-  '<details class="native-fold"><summary>Geprüfte Werte separat übernehmen</summary><form data-lw-apply><p>Nur die ausdrücklich ausgewählten, zugeordneten Zeilen übernehmen. Offene Zuordnungen bleiben im Review.</p><div class="native-lw-selection">'+eligible.map(r=>'<label><input type="checkbox" name="row" value="'+r.source_row+'"> Zeile '+r.source_row+' · '+e(r.source_name)+'</label>').join('')+'</div>'+
-  '<label>Prüfbegründung<input name="reason" required minlength="8" maxlength="500"></label><label><input type="checkbox" name="reviewed" required> Ausgewählte Quellzeilen und member_id geprüft</label><button '+(!eligible.length?'disabled':'')+'>Geprüfte Zeilen übernehmen</button></form></details><p data-lw-result role="status" aria-live="polite"></p>';
+  '<details class="native-fold"><summary>Geprüfte Werte separat übernehmen</summary><form data-lw-apply><p>Nur die ausdrücklich ausgewählten, zugeordneten Zeilen übernehmen. Offene Zuordnungen bleiben im Review.</p><button type="button" data-lw-select-all>Alle zugeordneten Zeilen auswählen</button><button type="button" data-lw-deselect-all>Auswahl aufheben</button><p data-lw-selected role="status" aria-live="polite">0 Zeilen ausgewählt</p><div class="native-lw-selection">'+eligible.map(r=>'<label><input type="checkbox" name="row" value="'+r.source_row+'"> Zeile '+r.source_row+' · '+e(r.source_name)+'</label>').join('')+'</div>'+
+  '<label>R4/R5-Prüfbegründung für die Auswahl<input name="reason" required minlength="8" maxlength="500"></label><label><input type="checkbox" name="reviewed" required> Ausgewählte Quellzeilen und member_id geprüft</label><button '+(!eligible.length?'disabled':'')+'>Geprüfte Zeilen übernehmen</button></form></details><p data-lw-result role="status" aria-live="polite"></p>';
  const filter=()=>{const term=host.querySelector('[data-lw-search]').value.normalize('NFC').toLocaleLowerCase(),state=host.querySelector('[data-lw-filter]').value;host.querySelectorAll('[data-lw-group]').forEach(group=>{let count=0;group.querySelectorAll('[data-lw-row]').forEach(row=>{row.hidden=!row.dataset.search.includes(term);if(!row.hidden)count++});group.hidden=Boolean(state&&state!==group.dataset.lwGroup)||!count;group.querySelector('[data-lw-visible]').textContent=count});host.querySelector('[data-lw-empty]').hidden=[...host.querySelectorAll('[data-lw-group]')].some(g=>!g.hidden)};
  host.querySelector('[data-lw-search]').addEventListener('input',filter);host.querySelector('[data-lw-filter]').addEventListener('change',filter);
  let optionsPromise;
@@ -515,11 +515,18 @@ function renderLwBatch(host,batch,live){
    message.textContent='LW Import: Original-Prüfsumme bestätigt.';
   }catch(error){if(live())message.textContent=error.message}finally{if(live())button.disabled=false}
  });
+ const applyForm=host.querySelector('[data-lw-apply]');
+ const selectionStatus=()=>{host.querySelector('[data-lw-selected]').textContent=applyForm.querySelectorAll('[name=row]:checked').length+' Zeilen ausgewählt'};
+ for(const [selector,checked] of [['[data-lw-select-all]',true],['[data-lw-deselect-all]',false]]){
+  host.querySelector(selector).addEventListener('click',()=>{applyForm.querySelectorAll('[name=row]').forEach(input=>{input.checked=checked});selectionStatus()});
+ }
+ applyForm.addEventListener('change',selectionStatus);
  host.querySelector('[data-lw-apply]').addEventListener('submit',async event=>{
   event.preventDefault();const form=event.target,rows=[...form.querySelectorAll('[name=row]:checked')].map(x=>Number(x.value)),message=host.querySelector('[data-lw-result]');
   if(!rows.length){message.textContent='Quellzeilen auswählen.';return}
   const body={rows,sha256:batch.sha256,revision:batch.revision,reason:form.elements.reason.value,reviewed:form.elements.reviewed.checked};
-  const button=form.querySelector('button');button.disabled=true;message.textContent='LW Import: Freigabe und Rücklesekontrolle …';
+  if(!form.elements.reviewed.checked||form.elements.reason.value.trim().length<8){message.textContent='Quellprüfung und mindestens acht Zeichen Begründung erforderlich.';return}
+  const button=form.querySelector('button:not([type=button])');button.disabled=true;message.textContent='LW Import: Freigabe und Rücklesekontrolle …';
   try{
    const receipt=await request('/api/lw-import/'+batch.id+'/apply',{method:'POST',body});
    const reread=await request('/api/lw-import/'+batch.id);if(!live())return;

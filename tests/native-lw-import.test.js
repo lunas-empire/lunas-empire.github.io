@@ -61,8 +61,10 @@ test('LW groups separate applied from matched, unresolved first, all compact and
  const base={source:{Name:'Synthetic'},errors:[],review_status:'open'};
  const rows=[{...base,source_row:4,source_name:'Blocked',match_state:'blocked'},{...base,source_row:3,source_name:'Applied',match_state:'matched',applied_at:'today'},{...base,source_row:2,source_name:'Matched',match_state:'matched'},{...base,source_row:1,source_name:'<img src=x>',match_state:'unmatched'}];
  const d=doc(renderLwGroups({rows}));assert.deepEqual([...d.querySelectorAll('[data-lw-group]')].map(x=>x.dataset.lwGroup),['unmatched','matched','applied','blocked']);
- assert.equal(d.querySelectorAll('details[open],img').length,0);assert.equal(d.querySelector('[data-lw-group=matched] [data-lw-visible]').textContent,'1');assert.equal(d.querySelectorAll('[data-lw-identity]').length,2);
+ assert.equal(d.querySelectorAll('details[open],img').length,0);assert.equal(d.querySelector('[data-lw-group=matched] [data-lw-visible]').textContent,'1');assert.equal(d.querySelectorAll('[data-lw-identity]').length,1);
  assert.match(d.querySelector('[data-lw-group=blocked]').textContent,/Blocked/);
+ assert.equal(d.querySelector('[data-lw-group=matched] [data-lw-identity]'),null);
+ assert.equal(doc(renderLwGroups({rows:[{...base,source_row:5,match_state:'ambiguous'}]})).querySelectorAll('[data-lw-identity]').length,1);
 });
 
 test('inline import picker searches archived aliases, requires confirmation and rereads without applying',async t=>{
@@ -98,4 +100,45 @@ test('inline import picker searches archived aliases, requires confirmation and 
  form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));assert.equal(saved,null);
  select.value='archived-id';form.elements.reason.value='Original source checked';form.elements.checked.checked=true;form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
  await wait(()=>q('[data-lw-result]').textContent.includes('Keine Punkte'));assert.equal(reads,2);assert.equal(saved.source_checked,true);assert.equal(saved.sha256,batch.sha256);assert.equal(saved.member_id,'archived-id');assert.equal(q('[data-lw-group=matched] [data-lw-visible]').textContent,'1');assert.equal(q('[data-lw-group=applied] [data-lw-visible]').textContent,'0');
+});
+
+for(const mode of ['success','bad-ack','bad-reread'])test('matched selection is explicit and verifies ACK plus reread: '+mode,async t=>{
+ const dom=new JSDOM('<main id="mount"></main>',{url:'https://lunas-empire.github.io/#admin'}),oldWindow=globalThis.window,oldFetch=globalThis.fetch;
+ globalThis.window=dom.window;dom.window.HTMLElement.prototype.scrollIntoView=()=>{};
+ t.after(()=>{clearOfficer();globalThis.window=oldWindow;globalThis.fetch=oldFetch;dom.window.close()});
+ const base={errors:[],source:{Name:'Synthetic'},review_status:'open'};
+ const batch={id:'lw-synthetic',sha256:'a'.repeat(64),revision:0,report_date:'2026-11-03',rows:[
+  {...base,source_row:1,source_name:'Synthetic A',member_id:'a',match_state:'matched'},
+  {...base,source_row:2,source_name:'Synthetic B',member_id:'b',match_state:'matched'},
+  {...base,source_row:3,source_name:'Synthetic unknown',match_state:'unmatched'},
+  {...base,source_row:4,source_name:'Synthetic blocked',match_state:'blocked'},
+  {...base,source_row:5,source_name:'Synthetic applied',member_id:'c',match_state:'matched',applied_at:'already'}]};
+ let saved=null,reads=0,writes=0;
+ globalThis.fetch=async(url,opts={})=>{
+  const path=new URL(url).pathname;
+  if(path==='/api/native-login')return Response.json({token:'synthetic-token',name:'Synthetic R4',role:'R4'});
+  if(path==='/api/overview')return Response.json({active:3,reviews:2});
+  if(path==='/api/session')return Response.json({reviewWritesEnabled:true});
+  if(path==='/api/operations')return Response.json({tasks:[]});
+  if(path==='/api/train-manager')return Response.json({counts:{}});
+  if(path==='/api/lw-import')return Response.json({batches:[batch]});
+  if(path==='/api/lw-import/'+batch.id){reads++;return Response.json(reads===1?batch:{...batch,rows:batch.rows.map(r=>[1,2].includes(r.source_row)?{...r,applied_at:'now',member_id:mode==='bad-reread'?'wrong':r.member_id}:r)})}
+  if(path==='/api/lw-import/'+batch.id+'/apply'){writes++;saved=JSON.parse(opts.body);return Response.json({ok:mode!=='bad-ack',sha256:batch.sha256,applied_rows:2})}
+  throw Error('Unexpected synthetic request '+path);
+ };
+ const mount=dom.window.document.querySelector('#mount'),q=s=>mount.querySelector(s);
+ initNativeAdmin(mount);await renderNativeAdmin(mount);q('[name=code]').value='synthetic';q('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
+ await wait(()=>q('[data-officer-tab=members]'));q('[data-officer-tab=members]').click();await wait(()=>q('[data-officer-tab=lwImport]'));q('[data-officer-tab=lwImport]').click();
+ await wait(()=>q('[data-lw-batch-id]'));q('[data-lw-batch-id]').click();await wait(()=>q('[data-lw-apply]'));
+ const form=q('[data-lw-apply]'),submit=()=>form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
+ assert.equal(form.closest('details').open,false);assert.equal(form.querySelectorAll('[name=row]:checked').length,0);
+ assert.equal(q('[data-lw-group=matched]').querySelector('[data-lw-identity]'),null);
+ q('[data-lw-select-all]').click();assert.deepEqual([...form.querySelectorAll('[name=row]:checked')].map(x=>x.value),['1','2']);assert.equal(writes,0);
+ q('[data-lw-deselect-all]').click();assert.equal(form.querySelectorAll('[name=row]:checked').length,0);
+ submit();assert.equal(writes,0);q('[data-lw-select-all]').click();submit();assert.equal(writes,0);
+ form.elements.reason.value='Synthetic R4 source review';submit();assert.equal(writes,0);
+ form.elements.reviewed.checked=true;submit();await wait(()=>reads===2);await wait(()=>!q('[data-lw-result]').textContent.includes('Freigabe und'));
+ assert.equal(writes,1);assert.deepEqual(saved.rows,[1,2]);assert.equal(saved.reviewed,true);assert.equal(saved.reason,'Synthetic R4 source review');assert.equal(saved.sha256,batch.sha256);assert.equal(saved.revision,0);
+ if(mode==='success'){assert.match(q('[data-lw-result]').textContent,/2 Zeilen best/);assert.equal(q('[data-lw-group=applied] [data-lw-visible]').textContent,'3')}
+ else {assert.match(q('[data-lw-result]').textContent,/unvollst/);assert.equal(q('[data-lw-group=applied] [data-lw-visible]').textContent,'1');assert.equal(form.querySelector('button:not([type=button])').disabled,false)}
 });
