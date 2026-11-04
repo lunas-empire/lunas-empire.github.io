@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026.11.04-lw-import-review-archive');
+@import url('./tokens.css?v=2026.11.04-lw-member-profile');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -2059,3 +2059,17 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 .native-admin [data-lw-inline-review] label{display:block;min-width:0}
 .native-admin [data-lw-inline-review] select,.native-admin [data-lw-inline-review] input:not([type=checkbox]){display:block;width:100%;min-width:0}
 .native-admin .native-lw-selection{max-height:20rem;overflow:auto}
+
+/* Hallmark: existing Luna member dossier; compact LW Import comparisons. */
+.native-admin .native-lw-profile{border-top:3px solid var(--color-accent);margin-block:var(--space-lg);padding-top:var(--space-md)}
+.native-admin .native-lw-toolbar{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:var(--space-sm)}
+.native-admin .native-lw-toolbar label{display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-xs);min-width:0}
+.native-admin .native-lw-toolbar select{min-height:44px;max-width:100%;color:var(--color-ink);background:var(--color-raised);border:1px solid var(--color-rule);border-radius:var(--radius-sm)}
+.native-admin .native-lw-profile :is(select,summary):focus-visible{outline:2px solid var(--color-focus);outline-offset:3px}
+.native-admin .native-lw-kpis button[aria-pressed=true]{box-shadow:inset 0 3px var(--color-accent)}
+.native-admin .native-lw-points{display:grid;grid-template-columns:minmax(0,1fr);list-style:none;padding:0}
+.native-admin .native-lw-points li{border-bottom:1px solid var(--color-rule-soft);padding-block:var(--space-xs)}
+.native-admin .native-lw-profile h5{min-width:0;overflow-wrap:break-word}
+@media(min-width:768px){.native-admin .native-lw-points{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.native-admin .native-lw-chart text{fill:var(--color-muted);font-size:12px}
+@media(max-width:31rem){.native-admin .native-lw-kpis{grid-template-columns:minmax(0,1fr)}}

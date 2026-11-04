@@ -4,6 +4,34 @@ import {JSDOM} from 'jsdom';
 import {renderLwGroups,renderLwProfile,initNativeAdmin,renderNativeAdmin,clearOfficer} from '../assets/native-admin.js';
 const snapshot=(date,values={})=>({member_id:'synthetic-id',report_date:date,applied_at:date+'T12:00:00Z',batch_id:'lw-'+date,sha256:'a'.repeat(64),source_row:1,values:{power:100,army_power:50,total_troops:10,drone:1,kills:0,hq:30,...values}});
 const doc=html=>new JSDOM(html).window.document;
+
+test('applied history only, report windows, previous values and relative changes share one source',()=>{
+ const snapshots=Array.from({length:6},(_,i)=>snapshot('2026-11-0'+(i+1),{power:100+i*10}));
+ snapshots.push({...snapshot('2026-11-07',{power:999999}),applied_at:null});
+ for(const [range,count] of [['1',1],['4',4],['5',5],['all',6]]){
+  const d=doc(renderLwProfile({available:true,snapshots},'synthetic-id','power',range));
+  assert.equal(d.querySelectorAll('.native-lw-points li').length,count);
+  assert.equal(d.querySelector('[data-lw-range]').value,range);
+  assert.match(d.querySelector('[data-lw-kpi=power]').textContent,/Vorwert: 140/);
+  assert.match(d.querySelector('[data-lw-kpi=power]').textContent,/7,14 %/);
+  assert.match(d.querySelector('.native-lw-chart').textContent,/50 % seit 2026-11-01/);
+  assert.doesNotMatch(d.body.textContent,/999999|2026-11-07/);
+ }
+ const empty=renderLwProfile({available:true,snapshots:[{...snapshot('2026-11-07'),applied_at:null}]},'synthetic-id');
+ assert.match(empty,/Keine übernommenen LW Import-Snapshots/);
+ assert.equal(doc(empty).querySelectorAll('[data-lw-kpi]').length,0);
+});
+
+test('zero denominator is n/a, missing prior has no delta, source fields are escaped',()=>{
+ const old=snapshot('2026-11-01',{power:0,total_troops:null});
+ const current={...snapshot('2026-11-02',{power:10,total_troops:0,Shield:'<img src=x>','Left / away':'Away S2261'}),reviewer:'<script>bad</script>'};
+ const d=doc(renderLwProfile({available:true,snapshots:[old,current]},'synthetic-id'));
+ assert.match(d.querySelector('[data-lw-kpi=power]').textContent,/n\/a \(Basis 0\)/);
+ assert.match(d.querySelector('[data-lw-kpi=total_troops]').textContent,/Vergleich nicht erfasst/);
+ assert.match(d.body.textContent,/Originalquelle|Reviewer: <script>bad<\/script>/);
+ assert.equal(d.querySelectorAll('img,script').length,0);
+ assert.doesNotMatch(d.body.textContent,/Infinity|NaN/);
+});
 test('six profile KPIs preserve zero/null, first snapshot has no trend and private identity anchor is visible',()=>{
  const d=doc(renderLwProfile({available:true,snapshots:[snapshot('2026-11-03',{army_power:null})]},'synthetic-id'));
  assert.equal(d.querySelectorAll('[data-lw-kpi]').length,6);assert.match(d.body.textContent,/member_id: synthetic-id/);
@@ -19,7 +47,7 @@ test('negative delta is neutral; NULL splits SVG paths; scales belong to selecte
  assert.equal(d.querySelectorAll('polyline').length,2);assert.equal(d.querySelectorAll('circle').length,4);
  assert.match(d.querySelector('[data-lw-kpi=army_power]').textContent,/Rückgang · -10/);
  assert.match(d.querySelector('.native-lw-chart').textContent,/Army Power/);assert.doesNotMatch(d.body.textContent,/other-id/);
- assert.match(renderLwProfile({available:true,snapshots:[]},'synthetic-id'),/Noch kein LW Import-Snapshot/);
+ assert.match(renderLwProfile({available:true,snapshots:[]},'synthetic-id'),/Keine \u00fcbernommenen LW Import-Snapshots/);
  assert.match(renderLwProfile(null,'synthetic-id'),/derzeit nicht verfügbar/);
 });
 test('profile escapes values and never invents comparisons from same-day report dates',()=>{

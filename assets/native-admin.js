@@ -423,31 +423,34 @@ const lwMetrics=[['power','Power'],['army_power','Army Power'],['total_troops','
 const lwValue=value=>Number.isSafeInteger(value)?numberText(value):'nicht erfasst';
 const lwCardValue=value=>Number.isSafeInteger(value)?new Intl.NumberFormat('de-DE',{notation:'compact',maximumFractionDigits:2}).format(value):'nicht erfasst';
 /* Hallmark · pre-emit critique: P4 H4 E4 S5 R5 V4. Existing Luna tokens and profile hierarchy. */
-export function renderLwProfile(data,memberId,metric='power'){
+export function renderLwProfile(data,memberId,metric='power',range='5'){
  const snapshots=(data?.snapshots||[]).filter(s=>s.member_id===memberId&&s.applied_at).slice().sort((a,b)=>a.report_date.localeCompare(b.report_date)||a.applied_at.localeCompare(b.applied_at));
- const latest=snapshots.at(-1),prior=snapshots.at(-2);
+ const latest=snapshots.at(-1),prior=snapshots.at(-2),first=snapshots[0];
+ if(!['1','4','5','all'].includes(String(range)))range='5';
  if(!lwMetrics.some(([key])=>key===metric))metric='power';
  const title=lwMetrics.find(([key])=>key===metric)[1];
- const change=key=>{
-  const a=latest?.values?.[key],b=prior?.values?.[key];
-  if(!prior||latest.report_date===prior.report_date)return 'Noch kein Vergleich';
+ const change=(key,base=prior)=>{
+  const a=latest?.values?.[key],b=base?.values?.[key];
+  if(!base||base===latest||latest.report_date===base.report_date)return 'Noch kein Vergleich';
   if(!Number.isSafeInteger(a)||!Number.isSafeInteger(b))return 'Vergleich nicht erfasst';
-  const delta=a-b;return (delta<0?'Rückgang · ':delta>0?'+':'')+numberText(delta)+' · seit '+prior.report_date;
+  const delta=a-b,percent=b===0?'n/a (Basis 0)':(delta>0?'+':'')+new Intl.NumberFormat('de-DE',{maximumFractionDigits:2}).format(delta/b*100)+' %';
+  return (delta<0?'Rückgang · ':delta>0?'+':'')+numberText(delta)+' / '+percent+' seit '+base.report_date;
  };
  let html='<section class="native-lw-profile" aria-label="LW Import"><h4 class="native-section-heading">LW Import</h4><p class="native-muted" data-native-no-translate>member_id: '+e(memberId)+'</p>';
  if(!data?.available)return html+'<p role="status">LW Import: Verlauf derzeit nicht verfügbar.</p></section>';
- if(!latest)return html+'<p>Noch kein LW Import-Snapshot. Noch kein Vergleich.</p></section>';
- html+='<p>Snapshot · <time>'+e(latest.report_date)+'</time> · Berichtsdatum, kein belegtes Messzeitende</p><div class="native-lw-kpis">'+lwMetrics.map(([key,label])=>'<button type="button" class="native-profile-metric-card" data-lw-kpi="'+key+'" aria-pressed="'+(metric===key)+'"><small>'+label+'</small><strong title="'+lwValue(latest.values[key])+'">'+lwCardValue(latest.values[key])+'</strong><span>'+e(change(key))+'</span></button>').join('')+'</div>';
- const points=snapshots.slice(-20),known=points.map(p=>p.values[metric]).filter(Number.isSafeInteger);
- const min=known.length?Math.min(...known):0,max=known.length?Math.max(...known):0;
+ if(!latest)return html+'<p>Keine übernommenen LW Import-Snapshots. Noch kein Vergleich.</p></section>';
+ html+='<p>'+snapshots.length+' \u00fcbernommene Updates</p><p>Snapshot · <time>'+e(latest.report_date)+'</time> · Berichtsdatum, kein belegtes Messzeitende</p><div class="native-lw-kpis">'+lwMetrics.map(([key,label])=>'<button type="button" class="native-profile-metric-card" data-lw-kpi="'+key+'" aria-pressed="'+(metric===key)+'"><small>'+label+'</small><strong title="'+lwValue(latest.values[key])+'">'+lwCardValue(latest.values[key])+'</strong><span>'+e(change(key))+'</span><small>Vorwert: '+lwValue(prior?.values?.[key])+(prior?' / '+e(prior.report_date):'')+'</small><small>Stand: '+e(latest.report_date)+'</small></button>').join('')+'</div>';
+ const reports=[...new Map(snapshots.map(p=>[p.report_date,p])).values()];
+ const points=range==='all'?reports:reports.slice(-Number(range)),known=points.map(p=>p.values[metric]).filter(Number.isSafeInteger);
+ const min=known.length?Math.min(...known):null,max=known.length?Math.max(...known):null;
  const x=i=>points.length>1?20+i*560/(points.length-1):300,y=v=>max===min?80:140-(v-min)*120/(max-min);
  let paths=[],segment=[];
  points.forEach((p,i)=>{const value=p.values[metric];if(Number.isSafeInteger(value))segment.push(x(i)+','+y(value));else if(segment.length){paths.push(segment);segment=[]}});if(segment.length)paths.push(segment);
- html+='<div class="native-lw-chart"><h5>'+title+' · Verlauf</h5><p>'+(points.length<2?'Noch kein Vergleich':prior?.report_date===latest.report_date?'Berichte am selben Datum · kein zeitliches Delta':'Eigene Skala · '+lwValue(min)+' bis '+lwValue(max))+'</p>'+
-  '<svg viewBox="0 0 600 165" role="img" aria-label="'+title+' · Werte in der Liste unter dem Diagramm">'+paths.filter(p=>p.length>1).map(p=>'<polyline points="'+p.join(' ')+'"/>').join('')+points.map((p,i)=>Number.isSafeInteger(p.values[metric])?'<circle cx="'+x(i)+'" cy="'+y(p.values[metric])+'" r="4"><title>'+e(p.report_date+' · '+title+': '+lwValue(p.values[metric])+' · LW Import')+'</title></circle>':'').join('')+'</svg><ol class="native-lw-points">'+points.map(p=>'<li><time>'+e(p.report_date)+'</time> · '+lwValue(p.values[metric])+' · LW Import</li>').join('')+'</ol></div>';
- html+='<details class="native-fold"><summary>VIP, Profession & Koordinaten</summary><div class="native-fold-body">VIP: '+lwValue(latest.values.vip)+' · Profession: '+e(latest.values.Profession??'nicht erfasst')+' · Coords: '+e(latest.values.Coords??'nicht erfasst')+'</div></details>';
+ html+='<div class="native-lw-chart"><div class="native-lw-toolbar"><label>Zeitpunkte <select data-lw-range>'+[['1','1'],['4','4'],['5','5'],['all','Alle']].map(([value,label])=>'<option value="'+value+'" '+(String(range)===value?'selected':'')+'>'+label+'</option>').join('')+'</select></label></div><p>Seit dem ersten Bericht: '+e(change(metric,first))+'</p><h5>'+title+' · Verlauf</h5><p>'+(!known.length?'Messwerte nicht erfasst':points.length<2?'Noch kein Vergleich':prior?.report_date===latest.report_date?'Berichte am selben Datum · kein zeitliches Delta':'Eigene Skala · '+lwValue(min)+' bis '+lwValue(max))+'</p>'+
+  '<svg viewBox="0 0 600 190" role="img" aria-label="'+title+' · Werte in der Liste unter dem Diagramm">'+(known.length?'<text x="20" y="12">'+lwValue(max)+'</text><text x="20" y="180">'+lwValue(min)+'</text>':'')+paths.filter(p=>p.length>1).map(p=>'<polyline points="'+p.join(' ')+'"/>').join('')+points.map((p,i)=>Number.isSafeInteger(p.values[metric])?'<circle cx="'+x(i)+'" cy="'+y(p.values[metric])+'" r="4"><title>'+e(p.report_date+' · '+title+': '+lwValue(p.values[metric])+' · LW Import')+'</title></circle>':'').join('')+'</svg><ol class="native-lw-points">'+points.map(p=>'<li><time>'+e(p.report_date)+'</time> / '+title+': '+lwValue(p.values[metric])+' · LW Import</li>').join('')+'</ol></div>';
+ html+='<details class="native-fold"><summary>Profil &amp; Allianz</summary><div class="native-fold-body">HQ: '+lwValue(latest.values.hq)+' / VIP: '+lwValue(latest.values.vip)+' · Profession: '+e(latest.values.Profession??'nicht erfasst')+' · Coords: '+e(latest.values.Coords??'nicht erfasst')+'<br>Schild: '+e(latest.values.Shield??'nicht erfasst')+' / Abwesenheit (Quelle): '+e(latest.values['Left / away']??'nicht erfasst')+'</div></details>';
  html+='<details class="native-fold"><summary>Teams T1–T4</summary><div class="native-fold-body native-lw-teams">'+[1,2,3,4].map(n=>'<section><h5>T'+n+'</h5><p>Power: '+lwValue(latest.values['t'+n+'_power'])+'</p><p>Type: '+e(latest.values['T'+n+' type']??'nicht erfasst')+'</p><p>Heroes: '+e(latest.values['T'+n+' heroes']??'nicht erfasst')+'</p></section>').join('')+'</div></details>';
- return html+'<details class="native-fold"><summary>Snapshots & Belege · '+snapshots.length+'</summary><div class="native-fold-body">'+snapshots.slice().reverse().map(p=>'<p data-native-no-translate>LW Import · '+e(p.report_date)+' · member_id '+e(p.member_id)+'<br>Batch '+e(p.batch_id)+' · Quellzeile '+e(p.source_row)+'<br>SHA256 '+e(p.sha256)+'<br>Übernommen: '+e(p.applied_at)+' · Review: '+e(p.resolved_at??'Batchfreigabe')+'</p>').join('')+'</div></details></section>';
+ return html+'<details class="native-fold"><summary>Originalquelle · '+snapshots.length+'</summary><div class="native-fold-body">'+snapshots.slice().reverse().map(p=>'<p data-native-no-translate>LW Import · '+e(p.report_date)+' · member_id '+e(p.member_id)+'<br>Batch '+e(p.batch_id)+' · Quellzeile '+e(p.source_row)+'<br>SHA256 '+e(p.sha256)+'<br>Übernommen: '+e(p.applied_at)+' · Review: '+e(p.resolved_at??'nicht erfasst')+'<br>Reviewer: '+e(p.reviewer??p.reviewed_by??p.resolved_by??p.applied_by??'nicht erfasst')+'</p>').join('')+'</div></details></section>';
 }
 
 async function initLwImport(target){
@@ -691,10 +694,20 @@ async function showPerson(target,id){
     '<button type="button" data-native-member-log="'+e(id)+'">Änderungen anzeigen</button></div>'+
     '<div id="native-person-log"></div><div id="registry-form"></div></div></details></section>';
  node.scrollIntoView({behavior:'smooth',block:'nearest'});
- node.querySelector('[data-lw-profile]')?.addEventListener('click',event=>{
+ const lwHost=node.querySelector('[data-lw-profile]');
+ const updateLw=(metric,range,focus)=>{
+  const opened=[...lwHost.querySelectorAll('details')].map(fold=>fold.open);
+  lwHost.innerHTML=renderLwProfile(p.lw_import,id,metric,range);
+  lwHost.querySelectorAll('details').forEach((fold,i)=>{fold.open=opened[i]||false});
+  lwHost.querySelector(focus)?.focus({preventScroll:true});
+ };
+ lwHost?.addEventListener('click',event=>{
   const button=event.target.closest('[data-lw-kpi]');if(!button)return;
-  const host=node.querySelector('[data-lw-profile]');host.innerHTML=renderLwProfile(p.lw_import,id,button.dataset.lwKpi);
-  host.querySelector('[data-lw-kpi="'+button.dataset.lwKpi+'"]')?.focus({preventScroll:true});
+  updateLw(button.dataset.lwKpi,lwHost.querySelector('[data-lw-range]')?.value||'5','[data-lw-kpi="'+button.dataset.lwKpi+'"]');
+ });
+ lwHost?.addEventListener('change',event=>{
+  if(!event.target.matches('[data-lw-range]'))return;
+  updateLw(lwHost.querySelector('[data-lw-kpi][aria-pressed=true]').dataset.lwKpi,event.target.value,'[data-lw-range]');
  });
  await loadMemberAliases(node.querySelector('.native-member-aliases'),id);
 }
