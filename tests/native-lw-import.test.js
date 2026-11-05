@@ -5,12 +5,12 @@ import {buildUnifiedMetricTimeline,renderLwGroups,renderLwProfile,initNativeAdmi
 const snapshot=(date,values={})=>({member_id:'synthetic-id',report_date:date,applied_at:date+'T12:00:00Z',batch_id:'lw-'+date,sha256:'a'.repeat(64),source_row:1,values:{power:100,army_power:50,total_troops:10,drone:1,kills:0,hq:30,...values}});
 const doc=html=>new JSDOM(html).window.document;
 
-test('newer source columns stay intact while the profile exposes only the five visible KPIs',()=>{
+test('newer source columns stay intact while the profile exposes only the six visible KPIs',()=>{
  const data={available:true,snapshots:[snapshot('2026-11-01',{army_power:null,hero_power:null,gorilla_power:0}),snapshot('2026-11-03',{army_power:0,hero_power:250,gorilla_power:null})]};
  const before=structuredClone(data);
  for(const metric of ['power','army_power','hero_power','gorilla_power']){
   const d=doc(renderLwProfile(data,'synthetic-id',metric));
-  assert.deepEqual([...d.querySelectorAll('[data-lw-kpi]')].map(card=>card.dataset.lwKpi),['power','total_troops','drone','kills','hq']);
+  assert.deepEqual([...d.querySelectorAll('[data-lw-kpi]')].map(card=>card.dataset.lwKpi),['power','drone','kills','hq','vs_results','donations_weekly']);
   assert.doesNotMatch(d.body.textContent,/Army Power|Hero Power|Gorilla Power/);
   assert.match(d.querySelector('.native-lw-chart h5').textContent,/Power/);
  }
@@ -18,7 +18,7 @@ test('newer source columns stay intact while the profile exposes only the five v
 });
 
 test('hidden power timelines retain null, zero and original snapshot evidence',()=>{
- for(const metric of ['army_power','hero_power','gorilla_power']){
+ for(const metric of ['army_power','hero_power','gorilla_power','total_troops']){
   const data={available:true,snapshots:[snapshot('2026-11-01',{[metric]:null}),snapshot('2026-11-02',{[metric]:0}),snapshot('2026-11-03',{[metric]:250})]};
   const before=structuredClone(data),timeline=buildUnifiedMetricTimeline(data,'synthetic-id',metric);
   assert.deepEqual(timeline.map(point=>point.value),[null,0,250]);
@@ -66,11 +66,11 @@ test('poor quality and NULL never replace applied measurements or become zero; S
  assert.deepEqual(timeline.map(p=>p.value),[100,110,120,155,null]);
  assert.equal(timeline.at(-2).source,'LW Import');
  const d=doc(renderLwProfile(null,'synthetic-id','power','all',sundays()));
- assert.equal(d.querySelectorAll('[data-lw-kpi]').length,5);
+ assert.equal(d.querySelectorAll('[data-lw-kpi]').length,6);
  assert.equal(d.querySelectorAll('circle').length,4);
- assert.match(d.querySelector('[data-lw-kpi=total_troops]').textContent,/nicht erfasst/);
+ assert.match(d.querySelector('[data-lw-kpi=drone]').textContent,/nicht erfasst/);
  assert.ok(d.querySelector('[data-officer-tab=lwImport]'));
- assert.doesNotMatch(d.querySelector('[data-lw-kpi=total_troops]').textContent,/Vorwert: 0/);
+ assert.doesNotMatch(d.querySelector('[data-lw-kpi=drone]').textContent,/Vorwert: 0/);
 });
 
 test('applied history only, report windows, previous values and relative changes share one source',()=>{
@@ -87,41 +87,41 @@ test('applied history only, report windows, previous values and relative changes
  }
  const empty=renderLwProfile({available:true,snapshots:[{...snapshot('2026-11-07'),applied_at:null}]},'synthetic-id');
  assert.match(empty,/Noch keine LW-Werte freigegeben/);
- assert.equal(doc(empty).querySelectorAll('[data-lw-kpi]').length,0);
+ assert.equal(doc(empty).querySelectorAll('[data-lw-kpi]').length,6);
  const button=doc(empty).querySelector('button[data-officer-tab="lwImport"]');
  assert.equal(button.type,'button');assert.equal(button.textContent,'LW Import \u00f6ffnen');
- assert.match(empty,/Gespeicherte CSV-Werte erscheinen erst nach gepr\u00fcfter \u00dcbernahme im LW Import/);
+
  assert.doesNotMatch(empty,/98|999999|2026-11-07/);
 });
 
 test('zero denominator is n/a, missing prior has no delta, source fields are escaped',()=>{
- const old=snapshot('2026-11-01',{power:0,total_troops:null});
- const current={...snapshot('2026-11-02',{power:10,total_troops:0,Shield:'<img src=x>','Left / away':'Away S2261'}),reviewer:'<script>bad</script>'};
+ const old=snapshot('2026-11-01',{power:0,drone:null});
+ const current={...snapshot('2026-11-02',{power:10,drone:0,Shield:'<img src=x>','Left / away':'Away S2261'}),reviewer:'<script>bad</script>'};
  const d=doc(renderLwProfile({available:true,snapshots:[old,current]},'synthetic-id'));
  assert.match(d.querySelector('[data-lw-kpi=power]').textContent,/n\/a \(Basis 0\)/);
- assert.match(d.querySelector('[data-lw-kpi=total_troops]').textContent,/Vergleich nicht erfasst/);
+ assert.match(d.querySelector('[data-lw-kpi=drone]').textContent,/Vergleich nicht erfasst/);
  assert.match(d.body.textContent,/Originalquelle|Reviewer: <script>bad<\/script>/);
  assert.equal(d.querySelectorAll('img,script').length,0);
  assert.doesNotMatch(d.body.textContent,/Infinity|NaN/);
 });
-test('five profile KPIs preserve zero/null, first snapshot has no trend and private identity anchor is visible',()=>{
- const d=doc(renderLwProfile({available:true,snapshots:[snapshot('2026-11-03',{total_troops:null})]},'synthetic-id'));
+test('six profile KPIs preserve zero/null, first snapshot has no trend and private identity anchor is visible',()=>{
+ const d=doc(renderLwProfile({available:true,snapshots:[snapshot('2026-11-03',{drone:null})]},'synthetic-id'));
  assert.equal(d.querySelector('[data-officer-tab=lwImport]'),null);
- assert.equal(d.querySelectorAll('[data-lw-kpi]').length,5);assert.match(d.body.textContent,/member_id: synthetic-id/);
- assert.match(d.querySelector('[data-lw-kpi=total_troops]').textContent,/nicht erfasst/);
+ assert.equal(d.querySelectorAll('[data-lw-kpi]').length,6);assert.match(d.body.textContent,/member_id: synthetic-id/);
+ assert.match(d.querySelector('[data-lw-kpi=drone]').textContent,/nicht erfasst/);
  assert.match(d.querySelector('[data-lw-kpi=kills]').textContent,/0/);
  assert.equal(d.querySelectorAll('polyline').length,0);assert.equal(d.querySelectorAll('circle').length,1);
  assert.match(d.body.textContent,/Noch kein Vergleich/);assert.match(d.body.textContent,/2026-11-03/);
  assert.match(d.body.textContent,/T4/);assert.match(d.body.textContent,/Berichtsdatum, kein belegtes Messzeitende/);
 });
 test('negative delta is neutral; NULL splits SVG paths; scales belong to selected KPI; wrong member excluded',()=>{
- const snapshots=[snapshot('2026-10-20',{total_troops:100}),snapshot('2026-10-21',{total_troops:90}),snapshot('2026-10-22',{total_troops:null}),snapshot('2026-10-23',{total_troops:80}),snapshot('2026-10-24',{total_troops:70}),{...snapshot('2026-10-25'),member_id:'other-id'}];
- const d=doc(renderLwProfile({available:true,snapshots},'synthetic-id','total_troops'));
+ const snapshots=[snapshot('2026-10-20',{drone:100}),snapshot('2026-10-21',{drone:90}),snapshot('2026-10-22',{drone:null}),snapshot('2026-10-23',{drone:80}),snapshot('2026-10-24',{drone:70}),{...snapshot('2026-10-25'),member_id:'other-id'}];
+ const d=doc(renderLwProfile({available:true,snapshots},'synthetic-id','drone'));
  assert.equal(d.querySelectorAll('polyline').length,2);assert.equal(d.querySelectorAll('circle').length,4);
- assert.match(d.querySelector('[data-lw-kpi=total_troops]').textContent,/Rückgang · -10/);
- assert.match(d.querySelector('.native-lw-chart').textContent,/Total troops/);assert.doesNotMatch(d.body.textContent,/other-id/);
+ assert.match(d.querySelector('[data-lw-kpi=drone]').textContent,/Rückgang · -10/);
+ assert.match(d.querySelector('.native-lw-chart').textContent,/Drone/);assert.doesNotMatch(d.body.textContent,/other-id/);
  assert.match(renderLwProfile({available:true,snapshots:[]},'synthetic-id'),/Noch keine LW-Werte freigegeben/);
- assert.match(renderLwProfile(null,'synthetic-id'),/derzeit nicht verfügbar/);
+ assert.match(renderLwProfile(null,'synthetic-id'),/Noch keine LW-Werte freigegeben/);
 });
 test('profile escapes values and never invents comparisons from same-day report dates',()=>{
  const html=renderLwProfile({available:true,snapshots:[snapshot('2026-11-03'),snapshot('2026-11-03',{Profession:'<img src=x onerror=1>'})]},'synthetic-id');

@@ -50,6 +50,7 @@ test('VS priority is NOT OCR review count; VS player opens real dossier, history
    ...Array.from({length:6},(_,weekday)=>({week:'2026-W39',weekday,quality:'observed',points:4000000})),
    {week:'2026-W41',weekday:0,quality:'observed',points:5000000}
   ],
+  events:[{recorded_at:'2026-10-01',event:'joined',previous:'none',current:'R2'}],
   rides:[],dice_wins:[],achievements:[]
  };
  const weeks=[{week:'2026-W41',priority:29,failedDays:50,unknownDays:10,perfect:4,
@@ -71,6 +72,10 @@ test('VS priority is NOT OCR review count; VS player opens real dossier, history
   }
   if(path==='/api/members')return Response.json([member]);
   if(path==='/api/member/'+id)return Response.json(sample);
+  if(path==='/api/activity'){
+   assert.equal(new URL(url).searchParams.get('member_id'),id);
+   return Response.json([{actor:'Synthetic Officer',action:'rank_update',at:'2026-10-02T12:00:00Z'}]);
+  }
   throw Error('Unexpected '+path);
  };
  const mount=dom.window.document.querySelector('#mount'),q=s=>mount.querySelector(s);
@@ -93,6 +98,11 @@ test('VS priority is NOT OCR review count; VS player opens real dossier, history
  q('[data-native-member="'+id+'"]').click();
  await until(()=>q('.native-profile h3'));
  assert.equal(q('.native-profile h3').textContent,member.name);
+ assert.match(q('[data-native-member-history]').textContent,/joined.*none.*R2/s);
+ assert.ok(!routes.includes('/api/activity'));
+ q('[data-native-member-history]').open=true;
+ await until(()=>q('#native-person-log').textContent.includes('Synthetic Officer'));
+ assert.ok(routes.includes('/api/activity'));
  assert.match(q('[data-lw-kpi=power]').textContent,/\+500.000.*seit 2026-10-07/);
  assert.match(q('.native-lw-chart').textContent,/Seit dem ersten Bericht: \+500.000/);
  assert.match(q('[data-lw-kpi=kills]').textContent,/Noch kein Vergleich/);

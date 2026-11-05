@@ -76,7 +76,7 @@ test('Registry preserves conflicting edits, reloads explicitly, and submits the 
  assert.equal(q('#native-person synthetic'),null);
  assert.equal(q('.native-member-aliases').nextElementSibling,q('[data-lw-profile]'));
  assert.equal(q('[data-lw-profile]').nextElementSibling.className,'native-evidence-note');
- assert.equal(q('[data-lw-profile] h4').textContent,'LW Import');
+ assert.equal(q('[data-lw-profile] h4').textContent,'Werte & Entwicklung');
  assert.equal(q('[data-lw-profile]').querySelector('[data-officer-tab=lwImport]'),null);
  assert.equal(q('[data-lw-profile]').querySelectorAll('.native-lw-points li').length,5);
  q('[data-lw-profile] details').open=true;
@@ -94,11 +94,11 @@ test('Registry preserves conflicting edits, reloads explicitly, and submits the 
  emptyLw=true;q('[data-native-member-close]').click();q('[data-native-member]').click();
  await until(()=>q('[data-lw-profile] button[data-officer-tab=lwImport]'));
  assert.equal(q('.native-member-aliases').nextElementSibling,q('[data-lw-profile]'));
- assert.equal(q('[data-lw-profile]').querySelectorAll('[data-lw-kpi]').length,5);
+ assert.equal(q('[data-lw-profile]').querySelectorAll('[data-lw-kpi]').length,6);
  assert.equal(q('[data-lw-profile]').querySelectorAll('circle').length,4);
- assert.equal(q('.native-profile-metrics').querySelectorAll('details.native-profile-metric-card').length,1);
- assert.match(q('.native-profile-metrics').textContent,/Spenden/);
- assert.doesNotMatch(q('.native-profile-metrics').textContent,/Kills/);
+ assert.equal(q('[data-lw-kpi=donations_weekly]')?.tagName,'BUTTON');
+ assert.equal(q('[data-lw-kpi=vs_results]')?.tagName,'BUTTON');
+ assert.equal(q('[data-lw-kpi=total_troops]'),null);
  q('[data-lw-kpi=kills]').click();
  assert.equal(q('[data-lw-profile]').querySelectorAll('circle').length,4);
  assert.ok(q('[data-native-stat-evidence="synthetic-w0|synthetic-member|kills"]'));
