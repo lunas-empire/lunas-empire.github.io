@@ -38,7 +38,7 @@ test('Player dossier opens every metric, VS weekday, 100k kills achievement, rid
  await until(()=>q('[data-native-member]'));q('[data-native-member]').click();
  await until(()=>q('.native-profile'));
  assert.equal(q('[data-lw-kpi=kills] strong').title,'300.000');
- assert.equal(mount.querySelectorAll('[data-lw-kpi]').length,6);
+ assert.equal(mount.querySelectorAll('[data-lw-kpi]').length,8);
  q('[data-lw-kpi=kills]').click();
  assert.equal(q('.native-lw-points').querySelectorAll('li').length,2);
  assert.match(mount.textContent,/100.000/);

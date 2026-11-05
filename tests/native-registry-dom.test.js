@@ -94,7 +94,7 @@ test('Registry preserves conflicting edits, reloads explicitly, and submits the 
  emptyLw=true;q('[data-native-member-close]').click();q('[data-native-member]').click();
  await until(()=>q('[data-lw-profile] button[data-officer-tab=lwImport]'));
  assert.equal(q('.native-member-aliases').nextElementSibling,q('[data-lw-profile]'));
- assert.equal(q('[data-lw-profile]').querySelectorAll('[data-lw-kpi]').length,6);
+ assert.equal(q('[data-lw-profile]').querySelectorAll('[data-lw-kpi]').length,8);
  assert.equal(q('[data-lw-profile]').querySelectorAll('circle').length,4);
  assert.equal(q('.native-profile-metrics').querySelectorAll('details.native-profile-metric-card').length,1);
  assert.match(q('.native-profile-metrics').textContent,/Spenden/);

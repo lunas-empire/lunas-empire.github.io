@@ -5,6 +5,48 @@ import {buildUnifiedMetricTimeline,renderLwGroups,renderLwProfile,initNativeAdmi
 const snapshot=(date,values={})=>({member_id:'synthetic-id',report_date:date,applied_at:date+'T12:00:00Z',batch_id:'lw-'+date,sha256:'a'.repeat(64),source_row:1,values:{power:100,army_power:50,total_troops:10,drone:1,kills:0,hq:30,...values}});
 const doc=html=>new JSDOM(html).window.document;
 
+test('Hero and Gorilla share report dates with distinct timelines, timestamps and evidence; Army and total Power stay intact',()=>{
+ const old=snapshot('2026-11-01',{power:1000,army_power:400});
+ const current=snapshot('2026-11-03',{power:1200,army_power:null,hero_power:250,gorilla_power:75});
+ const data={available:true,snapshots:[old,current]};
+ assert.deepEqual(buildUnifiedMetricTimeline(data,'synthetic-id','army_power').map(p=>p.value),[400,null]);
+ for(const [metric,label,value] of [['hero_power','Hero Power',250],['gorilla_power','Gorilla Power',75]]){
+  const timeline=buildUnifiedMetricTimeline(data,'synthetic-id',metric);
+  assert.deepEqual(timeline.map(p=>p.value),[null,value]);
+  assert.equal(timeline[1].report_date,current.report_date);
+  assert.equal(timeline[1].applied_at,current.applied_at);
+  const d=doc(renderLwProfile(data,'synthetic-id',metric));
+  const card=d.querySelector('[data-lw-kpi='+metric+']');
+  assert.equal(card.querySelector('small').textContent,label);
+  assert.equal(card.querySelector('strong').title,String(value));
+  assert.match(card.textContent,/Stand: 2026-11-03/);
+  assert.match(card.textContent,/Vergleich nicht erfasst/);
+  assert.equal(d.querySelector('[data-lw-kpi=power] strong').title,'1.200');
+  assert.equal(d.querySelector('[data-lw-kpi=army_power] strong').title,'nicht erfasst');
+  assert.match(d.querySelector('[data-lw-kpi=army_power]').textContent,/Vorwert: 400/);
+  assert.match(d.querySelector('.native-lw-chart h5').textContent,new RegExp(label));
+  assert.equal(d.querySelectorAll('circle').length,1);
+  const evidence=d.querySelector('.native-lw-points').textContent;
+  for(const text of [current.batch_id,current.sha256,current.applied_at,'Quellzeile 1'])assert.ok(evidence.includes(text));
+ }
+});
+
+test('Hero and Gorilla render valid zero separately from null with existing delta and chart rules',()=>{
+ for(const metric of ['hero_power','gorilla_power']){
+  const data={available:true,snapshots:[snapshot('2026-11-01',{[metric]:0}),snapshot('2026-11-02',{[metric]:10}),snapshot('2026-11-03',{[metric]:null})]};
+  assert.deepEqual(buildUnifiedMetricTimeline(data,'synthetic-id',metric).map(p=>p.value),[0,10,null]);
+  const zero=doc(renderLwProfile({...data,snapshots:data.snapshots.slice(0,1)},'synthetic-id',metric));
+  assert.equal(zero.querySelector('[data-lw-kpi='+metric+'] strong').textContent,'0');
+  const growth=doc(renderLwProfile({...data,snapshots:data.snapshots.slice(0,2)},'synthetic-id',metric));
+  assert.match(growth.querySelector('[data-lw-kpi='+metric+']').textContent,/n\/a \(Basis 0\)/);
+  const missing=doc(renderLwProfile(data,'synthetic-id',metric));
+  assert.equal(missing.querySelector('[data-lw-kpi='+metric+'] strong').textContent,'nicht erfasst');
+  assert.match(missing.querySelector('[data-lw-kpi='+metric+']').textContent,/Vergleich nicht erfasst/);
+  assert.equal(missing.querySelectorAll('circle').length,2);
+  assert.match(missing.querySelector('.native-lw-points li:last-child').textContent,/nicht erfasst/);
+ }
+});
+
 const sundays=()=>['2026-10-11','2026-10-18','2026-10-25','2026-11-01'].flatMap((date,i)=>['power','kills','donations_weekly'].map(metric=>({snapshot_id:'synthetic-w'+(41+i),week:'2026-W'+(41+i),captured_at:date+'T18:30:00Z',metric,value:100+i*10,quality:'observed'})));
 test('Sunday W41-W44 and applied November report form five canonical Power and Kills points',()=>{
  const data={available:true,snapshots:[snapshot('2026-11-03',{power:150,kills:150})]};
@@ -41,7 +83,7 @@ test('poor quality and NULL never replace applied measurements or become zero; S
  assert.deepEqual(timeline.map(p=>p.value),[100,110,120,155,null]);
  assert.equal(timeline.at(-2).source,'LW Import');
  const d=doc(renderLwProfile(null,'synthetic-id','power','all',sundays()));
- assert.equal(d.querySelectorAll('[data-lw-kpi]').length,6);
+ assert.equal(d.querySelectorAll('[data-lw-kpi]').length,8);
  assert.equal(d.querySelectorAll('circle').length,4);
  assert.match(d.querySelector('[data-lw-kpi=army_power]').textContent,/nicht erfasst/);
  assert.ok(d.querySelector('[data-officer-tab=lwImport]'));
@@ -79,10 +121,10 @@ test('zero denominator is n/a, missing prior has no delta, source fields are esc
  assert.equal(d.querySelectorAll('img,script').length,0);
  assert.doesNotMatch(d.body.textContent,/Infinity|NaN/);
 });
-test('six profile KPIs preserve zero/null, first snapshot has no trend and private identity anchor is visible',()=>{
+test('eight profile KPIs preserve zero/null, first snapshot has no trend and private identity anchor is visible',()=>{
  const d=doc(renderLwProfile({available:true,snapshots:[snapshot('2026-11-03',{army_power:null})]},'synthetic-id'));
  assert.equal(d.querySelector('[data-officer-tab=lwImport]'),null);
- assert.equal(d.querySelectorAll('[data-lw-kpi]').length,6);assert.match(d.body.textContent,/member_id: synthetic-id/);
+ assert.equal(d.querySelectorAll('[data-lw-kpi]').length,8);assert.match(d.body.textContent,/member_id: synthetic-id/);
  assert.match(d.querySelector('[data-lw-kpi=army_power]').textContent,/nicht erfasst/);
  assert.match(d.querySelector('[data-lw-kpi=kills]').textContent,/0/);
  assert.equal(d.querySelectorAll('polyline').length,0);assert.equal(d.querySelectorAll('circle').length,1);
