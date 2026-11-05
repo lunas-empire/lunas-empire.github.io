@@ -10,7 +10,8 @@ test('Single-shell officer navigation never hides ordinary RZSN pages',()=>{
  assert.equal(document.querySelectorAll('nav.main-nav').length,1);
  assert.equal(document.querySelectorAll('#admin-link[href="#admin"]').length,1);
  const app=read('assets/app.js'),css=read('assets/hub.css');
- assert.match(app,/dataset\.officerMode=String\(currentView==='admin'&&location\.hostname!=='rzsn-home\.github\.io'\)/);
+ assert.match(app,/dataset\.officerMode=String\(currentView==='admin'\)/);
+ assert.doesNotMatch(app,/location\.hostname!=='rzsn-home\.github\.io'/);
  assert.match(css,/html\[data-officer-mode='true'\] \.main-nav\{visibility:visible\}/);
  assert.doesNotMatch(css,/html\[data-officer-mode='false'\] \.main-nav\{display:none/);
  assert.match(css,/\.native-officer-strip\{/);
@@ -67,5 +68,37 @@ test('root admin retains the native session across reviews, language, theme and 
   mod ||= await import('../assets/native-admin.js');mod.clearOfficer();
   for(const [key,descriptor]of prior)if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key];
   dom.window.close();
+ }
+});
+
+
+test('RZSN-Home public admin menu opens the native R4/R5 login instead of a placeholder',async()=>{
+ const dom=new JSDOM(read('index.html'),{url:'https://rzsn-home.github.io/#today',pretendToBeVisual:true});
+ const win=dom.window,prior=new Map();
+ const expose=(key,value)=>{prior.set(key,Object.getOwnPropertyDescriptor(globalThis,key));Object.defineProperty(globalThis,key,{value,writable:true,configurable:true})};
+ win.matchMedia=()=>({matches:false});win.scrollTo=()=>{};win.HTMLElement.prototype.scrollIntoView=()=>{};
+ for(const key of ['window','document','navigator','location','HTMLImageElement'])expose(key,key==='window'?win:win[key]);
+ expose('requestAnimationFrame',fn=>win.requestAnimationFrame(fn));
+ expose('ResizeObserver',class{observe(){} disconnect(){}});
+ expose('IntersectionObserver',class{observe(){} disconnect(){}});
+ expose('setInterval',()=>0);
+ expose('fetch',async()=>{throw Error('Login must render without sending member requests')});
+ const until=async fn=>{for(let i=0;i<100;i++){if(fn())return;await new Promise(r=>setTimeout(r,10))}assert.ok(fn(),'RZSN-Home login did not render')};
+ try{
+  win.localStorage.setItem('rzsn-language',JSON.stringify('de'));
+  await import('../assets/app.js?rzsn-home-native-menu-login');
+  const admin=win.document.querySelector('#admin-link');
+  assert.equal(admin.getAttribute('href'),'#admin');
+  admin.click();
+  await until(()=>win.document.querySelector('#native-officer-login'));
+  assert.equal(win.location.hash,'#admin');
+  assert.equal(win.document.documentElement.dataset.officerMode,'true');
+  assert.equal(win.document.querySelector('#admin-link').getAttribute('aria-current'),'page');
+  assert.equal(win.document.querySelector('#native-officer-login input[type=password]').name,'code');
+  assert.equal(win.document.querySelector('iframe'),null);
+ }finally{
+  const mod=await import('../assets/native-admin.js');mod.clearOfficer();
+  for(const [key,descriptor] of prior)if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key];
+  win.close();
  }
 });

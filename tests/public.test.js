@@ -51,6 +51,7 @@ test('all public assets, including i18n, are served; private paths are not',asyn
     const trainGuideSource=await (await fetch(url+'/assets/train-guide.js')).text();
     const techGuideSource=await (await fetch(url+'/assets/tech-guide.js')).text();
     assert.ok(configSource.includes('https://rzsn-staging-api-bridge.pages.dev/?embed=1') && configSource.includes('https://rzsn-command-center.cynthiawong2837128.workers.dev') && configSource.includes("adminUrl: '#admin'"),'both sites use the native Commander Center with separate staging and production backends');
+    assert.ok(!appSource.includes('diceHome()') && !appSource.includes('diceDisclosure(lang,escape)') && !appSource.includes("from './dice-winners.js'"),'public home and guides do not expose Dice winners while native admin retains historic data');
     assert.ok(appSource.includes('trainGuideDisclosure') && trainGuideSource.includes('50,000 Train Rating'),'Alliance Train guide is shipped and rendered');
     assert.ok(trainGuideSource.includes('/assets/member/train-guide-ui.webp'),'Alliance Train guide includes the annotated screenshot');
     assert.ok(trainGuideSource.includes('Alliance & Events') && !trainGuideSource.includes('Alliance tools'),'Train guide lives under the clearer Alliance & Events section');
