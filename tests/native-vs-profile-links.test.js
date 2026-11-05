@@ -103,8 +103,8 @@ test('VS priority is NOT OCR review count; VS player opens real dossier, history
  q('[data-native-member-history]').open=true;
  await until(()=>q('#native-person-log').textContent.includes('Synthetic Officer'));
  assert.ok(routes.includes('/api/activity'));
- assert.match(q('[data-lw-kpi=power]').textContent,/\+500.000.*seit 2026-10-07/);
- assert.match(q('.native-lw-chart').textContent,/Seit dem ersten Bericht: \+500.000/);
+ assert.match(q('[data-lw-kpi=power]').textContent,/\+500.000.*2026-10-14/);
+ assert.match(q('.native-lw-total-change').textContent,/Gesamt seit 2026-10-07: \+500.000/);
  assert.match(q('[data-lw-kpi=kills]').textContent,/Noch kein Vergleich/);
  assert.match(q('.native-profile-weeks').textContent,/6.200.000 zum 2026-W39/);
  assert.match(q('.native-profile-weeks').textContent,/Vorläufig/);

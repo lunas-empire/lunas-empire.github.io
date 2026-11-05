@@ -37,7 +37,7 @@ test('donations choose one authoritative weekly value and retain originals; dail
  assert.equal(points[0].sources.length,2);
  assert.deepEqual(stats,before);
  const d=new JSDOM(renderLwProfile(null,id,'donations_weekly','all',stats)).window.document;
- assert.match(d.querySelector('[data-lw-kpi=donations_weekly]').textContent,/Vergleich nicht erfasst/);
+ assert.match(d.querySelector('[data-lw-kpi=donations_weekly]').textContent,/Noch kein Vergleich/);
 });
 
 test('membership history escapes original source fields without assigning an officer',()=>{

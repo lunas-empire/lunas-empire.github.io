@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {JSDOM} from 'jsdom';
-import {buildUnifiedMetricTimeline,renderLwGroups,renderLwProfile,initNativeAdmin,renderNativeAdmin,clearOfficer} from '../assets/native-admin.js';
+import {readFileSync} from 'node:fs';
+import {buildUnifiedMetricTimeline,renderLwGroups,renderLwProfile,latestActualMetricChange,renderMetricPointDetail,initNativeAdmin,renderNativeAdmin,clearOfficer} from '../assets/native-admin.js';
 const snapshot=(date,values={})=>({member_id:'synthetic-id',report_date:date,applied_at:date+'T12:00:00Z',batch_id:'lw-'+date,sha256:'a'.repeat(64),source_row:1,values:{power:100,army_power:50,total_troops:10,drone:1,kills:0,hq:30,...values}});
 const doc=html=>new JSDOM(html).window.document;
 
@@ -30,6 +31,42 @@ test('hidden power timelines retain null, zero and original snapshot evidence',(
  }
 });
 
+test('last actual change skips repeated identical imports but retains its original transition and zero baseline',()=>{
+ const rows=[snapshot('2026-11-01',{power:100}),snapshot('2026-11-02',{power:120}),snapshot('2026-11-03',{power:120}),snapshot('2026-11-04',{power:120})];
+ const data={available:true,snapshots:rows};
+ const timeline=buildUnifiedMetricTimeline(data,'synthetic-id','power');
+ const change=latestActualMetricChange(timeline,'power');
+ assert.equal(change.delta,20);
+ assert.equal(change.changeDate,'2026-11-02');
+ assert.equal(change.unchangedSince,'2026-11-02');
+ assert.match(change.text,/\+20 \/ \+20 %/);
+ const d=doc(renderLwProfile(data,'synthetic-id','power','all'));
+ assert.match(d.querySelector('[data-lw-kpi=power]').textContent,/\+20/);
+ assert.doesNotMatch(d.querySelector('[data-lw-kpi=power]').textContent,/0,0 %/);
+ assert.match(d.querySelector('.native-lw-recent-change').textContent,/\+20 \/ \+20 %/);
+ assert.match(d.querySelector('.native-lw-chart').textContent,/Seit 2026-11-02 unver.ndert/);
+ assert.equal(d.querySelectorAll('[data-lw-point]').length,4);
+ const buttons=[...d.querySelectorAll('[data-lw-point]')];
+ assert.ok(buttons.every(el=>el.getAttribute('role')==='button'&&el.getAttribute('tabindex')==='0'));
+ assert.equal(buttons[0].querySelector('rect').getAttribute('width'),'120');
+ assert.match(renderMetricPointDetail(timeline,'synthetic-id','power','2026-11-02'),/\+20 \/ \+20 %/);
+ assert.match(renderMetricPointDetail(timeline,'synthetic-id','power','2026-11-04'),/\+0 \/ 0 %|0 \/ 0 %/);
+ const never=latestActualMetricChange(buildUnifiedMetricTimeline({snapshots:rows.slice(1)},'synthetic-id','power'),'power');
+ assert.equal(never.delta,null);assert.match(never.text,/Bisher keine .nderung/);
+ const zero=latestActualMetricChange(buildUnifiedMetricTimeline({snapshots:[snapshot('2026-11-01',{power:0}),snapshot('2026-11-02',{power:10})]},'synthetic-id','power'),'power');
+ assert.equal(zero.delta,10);assert.match(zero.text,/Basis 0/);
+ const negative=latestActualMetricChange(buildUnifiedMetricTimeline({snapshots:[snapshot('2026-11-01',{power:120}),snapshot('2026-11-02',{power:110}),snapshot('2026-11-03',{power:110})]},'synthetic-id','power'),'power');
+ assert.equal(negative.delta,-10);assert.equal(negative.changeDate,'2026-11-02');
+});
+
+test('mobile grid keeps all six profile metrics in three compact rows',()=>{
+ const css=readFileSync(new URL('../assets/hub.css',import.meta.url),'utf8');
+ assert.match(css,/max-width:31rem\)\{\.native-admin \.native-lw-kpis\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+ assert.match(css,/native-lw-kpis button\{min-height:112px/);
+ const d=doc(renderLwProfile({snapshots:[snapshot('2026-11-05')]},'synthetic-id'));
+ assert.equal(d.querySelectorAll('.native-lw-kpis button').length,6);
+});
+
 const sundays=()=>['2026-10-11','2026-10-18','2026-10-25','2026-11-01'].flatMap((date,i)=>['power','kills','donations_weekly'].map(metric=>({snapshot_id:'synthetic-w'+(41+i),week:'2026-W'+(41+i),captured_at:date+'T18:30:00Z',metric,value:100+i*10,quality:'observed'})));
 test('Sunday W41-W44 and applied November report form five canonical Power and Kills points',()=>{
  const data={available:true,snapshots:[snapshot('2026-11-03',{power:150,kills:150})]};
@@ -39,10 +76,10 @@ test('Sunday W41-W44 and applied November report form five canonical Power and K
   const d=doc(renderLwProfile(data,'synthetic-id',metric,'all',sundays()));
   assert.equal(d.querySelectorAll('circle').length,5);
   assert.equal(d.querySelectorAll('.native-lw-points li').length,5);
-  assert.match(d.querySelector('[data-lw-kpi='+metric+']').textContent,/Vorwert: 130/);
-  assert.match(d.querySelector('.native-lw-chart').textContent,/50 % seit 2026-10-11/);
-  assert.ok(d.querySelector('[data-native-stat-evidence="synthetic-w41|synthetic-id|'+metric+'"]'));
-  assert.match(d.querySelector('.native-lw-points').textContent,/Sonntagsprofil.*Abgelesen/);
+  assert.match(d.querySelector('[data-lw-kpi='+metric+']').textContent,/\+20 \/ \+15,3846 %/);
+  assert.match(d.querySelector('.native-lw-chart').textContent,/Gesamt seit 2026-10-11.*50 %/);
+  assert.ok(d.querySelector('.native-lw-points [data-lw-point-list="2026-10-11"]'));
+  assert.match(d.querySelector('.native-lw-points').textContent,/2026-10-11/);
   assert.doesNotMatch(d.querySelector('.native-lw-points').textContent,/donations_weekly/);
  }
 });
@@ -54,8 +91,8 @@ test('same calendar date keeps conflicting originals and one priority-selected p
  const d=doc(renderLwProfile(data,'synthetic-id','power','all',stats));
  assert.equal(d.querySelectorAll('circle').length,4);
  assert.match(d.body.textContent,/Abweichende Quellenwerte/);
- assert.match(d.querySelector('.native-lw-points').textContent,/999/);
- assert.match(d.querySelector('.native-lw-points').textContent,/SHA256/);
+ assert.match(d.querySelector('[data-lw-point-detail]').textContent,/999/);
+ assert.match(d.querySelector('[data-lw-point-detail]').textContent,/SHA256/);
  assert.ok(d.querySelector('[data-native-stat-evidence="synthetic-w44|synthetic-id|power"]'));
 });
 test('poor quality and NULL never replace applied measurements or become zero; Sunday-only stays usable',()=>{
@@ -80,9 +117,9 @@ test('applied history only, report windows, previous values and relative changes
   const d=doc(renderLwProfile({available:true,snapshots},'synthetic-id','power',range));
   assert.equal(d.querySelectorAll('.native-lw-points li').length,count);
   assert.equal(d.querySelector('[data-lw-range]').value,range);
-  assert.match(d.querySelector('[data-lw-kpi=power]').textContent,/Vorwert: 140/);
-  assert.match(d.querySelector('[data-lw-kpi=power]').textContent,/7,14 %/);
-  assert.match(d.querySelector('.native-lw-chart').textContent,/50 % seit 2026-11-01/);
+  assert.match(d.querySelector('[data-lw-kpi=power]').textContent,/\+10 \/ \+7,1429 %/);
+  assert.match(d.querySelector('[data-lw-kpi=power]').textContent,/7,1429 %/);
+  assert.match(d.querySelector('.native-lw-chart').textContent,/Gesamt seit 2026-11-01.*50 %/);
   assert.doesNotMatch(d.body.textContent,/999999|2026-11-07/);
  }
  const empty=renderLwProfile({available:true,snapshots:[{...snapshot('2026-11-07'),applied_at:null}]},'synthetic-id');
@@ -98,8 +135,8 @@ test('zero denominator is n/a, missing prior has no delta, source fields are esc
  const old=snapshot('2026-11-01',{power:0,drone:null});
  const current={...snapshot('2026-11-02',{power:10,drone:0,Shield:'<img src=x>','Left / away':'Away S2261'}),reviewer:'<script>bad</script>'};
  const d=doc(renderLwProfile({available:true,snapshots:[old,current]},'synthetic-id'));
- assert.match(d.querySelector('[data-lw-kpi=power]').textContent,/n\/a \(Basis 0\)/);
- assert.match(d.querySelector('[data-lw-kpi=drone]').textContent,/Vergleich nicht erfasst/);
+ assert.match(d.querySelector('[data-lw-kpi=power]').textContent,/Prozent nicht berechenbar \(Basis 0\)/);
+ assert.match(d.querySelector('[data-lw-kpi=drone]').textContent,/Noch kein Vergleich/);
  assert.match(d.body.textContent,/Originalquelle|Reviewer: <script>bad<\/script>/);
  assert.equal(d.querySelectorAll('img,script').length,0);
  assert.doesNotMatch(d.body.textContent,/Infinity|NaN/);
@@ -112,13 +149,13 @@ test('six profile KPIs preserve zero/null, first snapshot has no trend and priva
  assert.match(d.querySelector('[data-lw-kpi=kills]').textContent,/0/);
  assert.equal(d.querySelectorAll('polyline').length,0);assert.equal(d.querySelectorAll('circle').length,1);
  assert.match(d.body.textContent,/Noch kein Vergleich/);assert.match(d.body.textContent,/2026-11-03/);
- assert.match(d.body.textContent,/T4/);assert.match(d.body.textContent,/Berichtsdatum, kein belegtes Messzeitende/);
+ assert.match(d.body.textContent,/T4/);assert.match(d.body.textContent,/Berichtsdatum \/ kategorische Zeitpunkte/);
 });
 test('negative delta is neutral; NULL splits SVG paths; scales belong to selected KPI; wrong member excluded',()=>{
  const snapshots=[snapshot('2026-10-20',{drone:100}),snapshot('2026-10-21',{drone:90}),snapshot('2026-10-22',{drone:null}),snapshot('2026-10-23',{drone:80}),snapshot('2026-10-24',{drone:70}),{...snapshot('2026-10-25'),member_id:'other-id'}];
  const d=doc(renderLwProfile({available:true,snapshots},'synthetic-id','drone'));
  assert.equal(d.querySelectorAll('polyline').length,2);assert.equal(d.querySelectorAll('circle').length,4);
- assert.match(d.querySelector('[data-lw-kpi=drone]').textContent,/Rückgang · -10/);
+ assert.match(d.querySelector('[data-lw-kpi=drone]').textContent,/-10 \/ -12,5 %/);
  assert.match(d.querySelector('.native-lw-chart').textContent,/Drone/);assert.doesNotMatch(d.body.textContent,/other-id/);
  assert.match(renderLwProfile({available:true,snapshots:[]},'synthetic-id'),/Noch keine LW-Werte freigegeben/);
  assert.match(renderLwProfile(null,'synthetic-id'),/Noch keine LW-Werte freigegeben/);

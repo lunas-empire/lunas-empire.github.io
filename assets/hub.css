@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026.11.05-rzsn-admin-login-dice-private');
+@import url('./tokens.css?v=2026.11.05-member-actual-delta-mobile');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -2072,4 +2072,27 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 .native-admin .native-lw-profile h5{min-width:0;overflow-wrap:break-word}
 @media(min-width:768px){.native-admin .native-lw-points{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .native-admin .native-lw-chart text{fill:var(--color-muted);font-size:12px}
-@media(max-width:31rem){.native-admin .native-lw-kpis{grid-template-columns:minmax(0,1fr)}}
+/* The six native member metrics stay visible together on narrow iPhones. */
+.native-admin .native-lw-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem}
+.native-admin .native-lw-kpis button{min-height:112px;padding:.6rem .65rem;gap:.2rem;justify-content:flex-start;overflow:hidden}
+.native-admin .native-lw-kpis button small:first-child{font-size:.73rem;font-weight:700;line-height:1.2}
+.native-admin .native-lw-kpis button strong{font-size:clamp(1.05rem,3.4vw,1.35rem);line-height:1.1;font-variant-numeric:tabular-nums;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.native-admin .native-lw-kpis button .native-lw-card-change{font-size:.73rem;font-weight:600;line-height:1.3;color:var(--color-ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.native-admin .native-lw-kpis button .native-lw-card-stable{font-size:.68rem;color:var(--color-muted)}
+.native-admin .native-lw-kpis button .native-lw-card-date{font-size:.66rem;color:var(--color-muted);margin-top:auto}
+.native-admin .native-lw-recent-change{margin:.65rem 0 .25rem}
+.native-admin .native-lw-stable-note,.native-admin .native-lw-total-change{font-size:.78rem;color:var(--color-muted);margin:.2rem 0}
+.native-admin .native-lw-point-detail{border:1px solid var(--color-rule-soft);border-radius:var(--radius-md);background:var(--color-panel);padding:.65rem .8rem;margin:.6rem 0}
+.native-admin .native-lw-selected-reading>div:first-child{display:flex;gap:.5rem;align-items:baseline;justify-content:space-between;flex-wrap:wrap}
+.native-admin .native-lw-selected-reading strong{font-variant-numeric:tabular-nums}
+.native-admin .native-lw-selected-reading span{font-size:.76rem;color:var(--color-muted)}
+.native-admin .native-lw-selected-reading p{font-size:.82rem;margin:.35rem 0}
+.native-admin .native-lw-selected-evidence{font-size:.76rem;display:flex;gap:.4rem;flex-wrap:wrap;align-items:center}
+.native-admin .native-lw-chart .native-lw-interactive-point{cursor:pointer}
+.native-admin .native-lw-chart .native-lw-interactive-point circle{fill:var(--color-action);stroke:var(--color-panel);stroke-width:2}
+.native-admin .native-lw-chart .native-lw-interactive-point.is-selected circle{fill:var(--color-accent);stroke:var(--color-ink);stroke-width:3}
+.native-admin .native-lw-chart .native-lw-interactive-point:focus-visible{outline:none}
+.native-admin .native-lw-chart .native-lw-interactive-point:focus-visible circle{stroke:var(--color-focus);stroke-width:5}
+.native-admin .native-lw-all-points summary{cursor:pointer;color:var(--color-action);font-weight:650;min-height:44px;display:flex;align-items:center}
+@media(max-width:31rem){.native-admin .native-lw-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:.4rem}.native-admin .native-lw-kpis button{padding:.55rem;min-height:108px}.native-admin .native-lw-kpis button .native-lw-card-date{display:none}}
+@media(min-width:768px){.native-admin .native-lw-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}

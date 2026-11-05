@@ -101,6 +101,7 @@ test('Registry preserves conflicting edits, reloads explicitly, and submits the 
  assert.equal(q('[data-lw-kpi=total_troops]'),null);
  q('[data-lw-kpi=kills]').click();
  assert.equal(q('[data-lw-profile]').querySelectorAll('circle').length,4);
+ q('.native-lw-all-points').open=true;q('.native-lw-points [data-lw-point-list]').click();
  assert.ok(q('[data-native-stat-evidence="synthetic-w0|synthetic-member|kills"]'));
  assert.doesNotMatch(q('[data-lw-profile]').textContent,/98|100/);
  q('[data-lw-profile] button[data-officer-tab=lwImport]').click();
