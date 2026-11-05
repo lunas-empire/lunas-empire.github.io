@@ -539,7 +539,8 @@ function renderLwBatch(host,batch,live){
  let optionsPromise;
  host.querySelectorAll('[data-lw-row]').forEach(card=>card.addEventListener('toggle',async()=>{
   const mount=card.querySelector('[data-lw-identity]');if(!card.open||!mount||mount.dataset.loaded)return;mount.dataset.loaded='1';mount.textContent='Mitglieder werden geladen ...';
-  try{const options=await(optionsPromise??=request('/api/lw-import/identity-options'));if(!live())return;
+  try{const members=await(optionsPromise??=request('/api/identity-options?include_former=1'));if(!live())return;
+   const options={members:(Array.isArray(members)?members:members.members||[]).map(m=>({...m,aliases:m.aliases||[]})),creation:{reason:'Neue Identitäten bleiben offen und müssen separat geprüft werden.'}};
    const row=batch.rows.find(r=>String(r.source_row)===card.dataset.lwRow);
    mount.innerHTML='<form data-lw-inline-review><label>Bestehendes Mitglied suchen<input type="search" name="search" autocomplete="off" placeholder="Name, verifizierter Alias oder ID"></label><label>Identität auswählen<select name="member_id" required><option value="">Bitte bewusst auswählen</option>'+options.members.map(m=>'<option value="'+e(m.id)+'">'+e(m.name)+(m.status==='former'?' (Archiv)':'')+' / '+e(m.id)+(m.aliases.length?' / '+e(m.aliases.join(', ')):'')+'</option>').join('')+'</select></label><label>Prüfbegründung<input name="reason" required minlength="8" maxlength="500"></label><p data-native-no-translate>SHA256 '+e(batch.sha256)+'</p><label><input name="checked" type="checkbox" required> Originalzeile, SHA und gewählte Identität geprüft; Zuordnung ausdrücklich bestätigen</label><button>Zuordnung bestätigen</button></form><button type="button" disabled>Neues Mitglied anlegen</button><p>'+e(options.creation.reason)+'</p><p data-lw-identity-result role="status" aria-live="polite"></p>';
    const form=mount.querySelector('form'),select=form.elements.member_id;
@@ -582,6 +583,7 @@ function renderLwBatch(host,batch,live){
  });
 }
 function initLwRoster(host,batch,live){
+ if(batch.roster_gate){initCurrentLwRoster(host,batch,live);return}
  const load=host.querySelector('[data-lw-roster-load]'),mount=host.querySelector('[data-lw-roster-preview]'),message=host.querySelector('[data-lw-roster-result]');
  const current=()=>live()&&load.isConnected;
  const path='/api/lw-import/'+batch.id+'/roster-reconcile';
@@ -645,10 +647,51 @@ function initLwRoster(host,batch,live){
   finally{if(current())load.disabled=false}
  });
 }
+// G2 supplies the census preview with the batch; never replay the historical seven-ID archive.
+function initCurrentLwRoster(host,batch,live){
+ const load=host.querySelector('[data-lw-roster-load]'),mount=host.querySelector('[data-lw-roster-preview]'),message=host.querySelector('[data-lw-roster-result]');
+ const path='/api/lw-import/'+batch.id;
+ const current=()=>live()&&load.isConnected;
+ load.addEventListener('click',async()=>{
+  load.disabled=true;message.textContent='Bestand und Quellrevision werden neu geladen …';
+  try{
+   const fresh=await request(path);if(!current())return;
+   if(fresh.id!==batch.id||fresh.sha256!==batch.sha256)throw Error('Bestandsquelle stimmt nicht überein.');
+   const r=fresh.reconciliation,gate=fresh.roster_gate,active=fresh.roster_state?.active_ids;
+   if(!r||!gate||!Array.isArray(active))throw Error('Bestandsvorschau nicht verfügbar.');
+   const ids=fresh.rows.map(row=>row.member_id);
+   const ready=gate.officer_attestation?.supported===true&&gate.officer_attestation.endpoint===path+'/reconcile'&&
+    fresh.rows.length===fresh.row_count&&ids.every(Boolean)&&new Set(ids).size===ids.length&&
+    ids.length===active.length&&ids.every(id=>active.includes(id))&&
+    !r.archived.length&&!r.reactivated.length&&!r.unmatched.length&&!r.blocked.length&&
+    !gate.blockers.some(b=>['superseded_source','ambiguous_identity','blocked_identity','unresolved_identity'].includes(b));
+   mount.innerHTML='<p>'+active.length+' aktive Mitglieder · '+fresh.row_count+' Quellzeilen · '+r.archived.length+' Archivierungen · '+r.reactivated.length+' Rückkehrer · '+r.unmatched.length+' ungeklärt</p>'+
+    '<p>Dieser Abgleich erfordert dieselben bestehenden IDs, ohne neue Konten, Archivierungen oder Rückkehrer. Namensänderungen werden ausdrücklich geprüft.</p>'+
+    '<ul data-native-no-translate>'+r.renamed.map(m=>'<li>'+e(m.member_id)+' · '+e(m.previous_name)+' → '+e(m.name)+'</li>').join('')+'</ul>'+
+    '<form data-lw-current-roster><label><input type="checkbox" name="checked" required> Vollständigen aktuellen Bestand, Original-SHA und alle Identitäten geprüft</label><label>Prüfbegründung<input name="reason" required minlength="8" maxlength="500"></label><button '+(!ready||fresh.reconciliation_receipt?'disabled':'')+'>Geprüften aktuellen Bestand bestätigen</button></form>';
+   message.textContent=fresh.reconciliation_receipt?'Bestandsabgleich bereits quittiert; keine erneute Übernahme.':ready?'Vorschau geladen. Noch keine Daten geändert.':'Zuerst alle Identitäten im nativen Review klären. Unerwartete Bestandsänderungen bleiben gesperrt.';
+   const form=mount.querySelector('form');
+   form.addEventListener('submit',async event=>{
+    event.preventDefault();if(!ready||!form.elements.checked.checked||form.elements.reason.value.trim().length<8)return;
+    const button=form.querySelector('button');if(button.disabled)return;button.disabled=true;
+    try{
+     const receipt=await request(path+'/reconcile',{method:'POST',body:{sha256:fresh.sha256,source_revision:fresh.revision,registry_revision:gate.registry_revision,member_count:fresh.row_count,full_roster_attested:true,new_members:[],reason:form.elements.reason.value}});
+     const reread=await request(path);if(!current())return;
+     const result=receipt.result,saved=reread.reconciliation_receipt;
+     if(!receipt.ok||result?.created!==0||result.archived!==0||result.reactivated!==0||!saved||saved.receipt_id!==receipt.receipt_id||reread.sha256!==fresh.sha256||reread.counts.applied!==fresh.row_count||
+      reread.rows.some(row=>!row.applied_at||!fresh.rows.some(old=>old.source_row===row.source_row&&old.member_id===row.member_id))||
+      JSON.stringify([...reread.roster_state.active_ids].sort())!==JSON.stringify([...active].sort()))throw Error('Quittung oder Bestands-Rücklesekontrolle unvollständig. Batch neu laden; nicht erneut senden.');
+     renderLwBatch(host,reread,live);host.querySelector('[data-lw-result]').textContent='Bestandsabgleich quittiert und erneut gelesen: '+fresh.row_count+' bestehende IDs, keine Archivierung oder Neuanlage.';
+    }catch(error){if(current())message.textContent=error.message+' Vor erneutem Senden Batch neu laden.'}
+   });
+  }catch(error){if(current())message.textContent=error.message}
+  finally{if(current())load.disabled=false}
+ });
+}
 async function initPendingReviews(host){
  const generation=sessionGeneration,live=()=>host.isConnected&&panel==='reviews'&&generation===sessionGeneration;
  const en=officerLanguage(host.ownerDocument)==='en',t=(de,english)=>en?english:de;
- host.innerHTML='<details class="native-fold"><summary>'+t('Offene Quellbeobachtungen','Pending source observations')+'</summary><div class="native-fold-body"><p>'+t('Unbekannte Werte und Identitäten bleiben offen, auch wenn kein OCR-Prüffall besteht.','Unknown values and identities remain pending even when no OCR case exists.')+'</p><p data-pending-status role="status" aria-live="polite">'+t('Wird geladen …','Loading …')+'</p><div data-pending-queues></div><button type="button" data-pending-reload>'+t('Neu laden','Reload')+'</button></div></details>';
+ host.innerHTML='<details class="native-fold" open><summary>'+t('Offene Quellbeobachtungen','Pending source observations')+'</summary><div class="native-fold-body"><p>'+t('Unbekannte Werte und Identitäten bleiben offen, auch wenn kein OCR-Prüffall besteht.','Unknown values and identities remain pending even when no OCR case exists.')+'</p><p data-pending-status role="status" aria-live="polite">'+t('Wird geladen …','Loading …')+'</p><div data-pending-queues></div><button type="button" data-pending-reload>'+t('Neu laden','Reload')+'</button></div></details>';
  const status=host.querySelector('[data-pending-status]'),list=host.querySelector('[data-pending-queues]');
  const load=async()=>{
   try{

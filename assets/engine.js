@@ -14,9 +14,9 @@ export function berlinParts(now) {
 }
 export function guideState(now = getGuideDate()) {
   const p = berlinParts(now);
-  let date = `${p.year}-${p.month}-${p.day}`;
-  // Civil-date arithmetic, not elapsed 24h subtraction: correct across DST changes.
-  if (+p.hour < GUIDE_CONFIG.serverResetHour) date = new Date(Date.parse(`${date}T12:00:00Z`) - DAY_MS).toISOString().slice(0,10);
+  // Server Time stays UTC-02:00 year-round; Berlin civil time changes at DST.
+  const serverNow = new Date(now.getTime() - GUIDE_CONFIG.serverResetUtcHour * 3600000);
+  const date = serverNow.toISOString().slice(0,10);
   const start = berlinParts(new Date(GUIDE_CONFIG.seasonStart));
   const seasonDate = `${start.year}-${start.month}-${start.day}`;
   const delta = Math.round(ordinal(date) - ordinal(seasonDate));
@@ -29,7 +29,7 @@ export function guideState(now = getGuideDate()) {
     seasonDay, week, phase: !seasonDay ? 'PRE_SEASON' : week > 8 ? 'POST_SEASON' : `SEASON_WEEK_${week}`,
     countdown: Math.max(0, new Date(GUIDE_CONFIG.seasonStart) - now),
     minute: +p.hour * 60 + +p.minute,
-    serverMinute: ((+p.hour * 60 + +p.minute) - GUIDE_CONFIG.serverResetHour * 60 + 1440) % 1440,
+    serverMinute: serverNow.getUTCHours() * 60 + serverNow.getUTCMinutes(),
   };
 }
 export function selectedDate(state, weekdayIndex) {
@@ -56,14 +56,8 @@ export function availableTask(task, state) {
   return true;
 }
 export function resetInstant(date) {
-  let candidate=Date.parse(`${date}T${String(GUIDE_CONFIG.serverResetHour).padStart(2,'0')}:00:00Z`);
-  // Resolve a Berlin civil time without relying on the machine's own timezone.
-  for (let pass=0;pass<2;pass++) {
-    const parts=berlinParts(new Date(candidate));
-    const actualDate=`${parts.year}-${parts.month}-${parts.day}`;
-    candidate+=(Math.round(ordinal(date)-ordinal(actualDate))*1440+GUIDE_CONFIG.serverResetHour*60-(+parts.hour*60 + +parts.minute))*60000;
-  }
-  return new Date(candidate);
+  // ST 00:00 is always 02:00 UTC, irrespective of Berlin's DST offset.
+  return new Date(Date.parse(`${date}T${String(GUIDE_CONFIG.serverResetUtcHour).padStart(2,'0')}:00:00Z`));
 }
 export function seasonEventInstant(day) {
   if (!Number.isInteger(day) || day<1) throw new RangeError('Season day must be a positive integer.');

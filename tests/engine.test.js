@@ -32,13 +32,24 @@ test('all eight weeks and post season are calculated',()=>{
   }
 });
 test('DST fall-back and spring-forward use civil reset, not elapsed hours',()=>{
-  assert.equal(state('2026-10-25T03:59:00+01:00').date,'2026-10-24');
-  assert.equal(state('2026-10-25T04:00:00+01:00').date,'2026-10-25');
+  assert.equal(state('2026-10-25T02:30:00+02:00').date,'2026-10-24');
+  assert.equal(state('2026-10-25T02:30:00+01:00').date,'2026-10-24');
+  assert.equal(state('2026-10-25T02:59:00+01:00').date,'2026-10-24');
+  assert.equal(state('2026-10-25T03:00:00+01:00').date,'2026-10-25');
   assert.equal(state('2027-03-28T03:59:00+02:00').date,'2027-03-27');
   assert.equal(state('2027-03-28T04:00:00+02:00').date,'2027-03-28');
   assert.equal(resetInstant('2026-10-24').toISOString(),'2026-10-24T02:00:00.000Z');
-  assert.equal(resetInstant('2026-10-25').toISOString(),'2026-10-25T03:00:00.000Z');
-  assert.equal(seasonEventInstant(39).toISOString(),'2026-10-29T03:00:00.000Z');
+  assert.equal(resetInstant('2026-10-25').toISOString(),'2026-10-25T02:00:00.000Z');
+  assert.equal(seasonEventInstant(39).toISOString(),'2026-10-29T02:00:00.000Z');
+});
+test('winter reset is 03:00 Berlin CET, summer reset is 04:00 CEST',()=>{
+  const winterBefore=state('2026-11-04T02:59:00+01:00'),winterAfter=state('2026-11-04T03:00:00+01:00');
+  assert.equal(winterBefore.date,'2026-11-03');assert.equal(winterBefore.serverMinute,1439);
+  assert.equal(winterAfter.date,'2026-11-04');assert.equal(winterAfter.serverMinute,0);
+  const summerBefore=state('2026-09-14T03:59:00+02:00'),summerAfter=state('2026-09-14T04:00:00+02:00');
+  assert.equal(summerBefore.date,'2026-09-13');assert.equal(summerBefore.serverMinute,1439);
+  assert.equal(summerAfter.date,'2026-09-14');assert.equal(summerAfter.serverMinute,0);
+  assert.equal(resetInstant('2027-03-28').toISOString(),'2027-03-28T02:00:00.000Z');
 });
 test('test override and countdown',()=>{
   globalThis.__GUIDE_TEST_DATE__='2026-09-21T03:59:00+02:00';

@@ -104,6 +104,76 @@ test('profile escapes values and never invents comparisons from same-day report 
 });
 const wait=async fn=>{for(let i=0;i<120;i++){if(fn())return;await new Promise(r=>setTimeout(r,5))}assert.ok(fn(),'UI timeout')};
 
+for(const mode of ['success','unresolved','archive','stale','bad-readback'])test('current G2 census uses batch preview and preserves existing IDs: '+mode,async t=>{
+ const dom=new JSDOM('<main id="mount"></main>',{url:'https://lunas-empire.github.io/#admin'}),oldWindow=globalThis.window,oldFetch=globalThis.fetch;
+ globalThis.window=dom.window;dom.window.HTMLElement.prototype.scrollIntoView=()=>{};
+ t.after(()=>{clearOfficer();globalThis.window=oldWindow;globalThis.fetch=oldFetch;dom.window.close()});
+ const row={source_row:1,source_name:'Synthetic current',member_id:'existing-id',match_state:'matched',review_status:'open',errors:[],source:{Name:'Synthetic current'}};
+ const batch={id:'lw-'+'a'.repeat(64),sha256:'a'.repeat(64),report_date:'2026-11-04',revision:4,row_count:1,rows:[row],counts:{applied:0},
+  roster_state:{active_ids:['existing-id']},roster_gate:{registry_revision:'b'.repeat(64),officer_attestation:{supported:true,endpoint:'/api/lw-import/lw-'+'a'.repeat(64)+'/reconcile'},blockers:mode==='stale'?['superseded_source']:['independent_roster_verification_missing']},
+  reconciliation:{archived:mode==='archive'?[{id:'absent-id'}]:[],reactivated:[],unmatched:mode==='unresolved'?[row]:[],blocked:[],renamed:[{member_id:'existing-id',previous_name:'Synthetic old',name:row.source_name}]}};
+ let posted=null,reads=0;
+ const result={created:0,archived:0,reactivated:0};
+ globalThis.fetch=async(url,opts={})=>{
+  const path=new URL(url).pathname;
+  if(path==='/api/native-login')return Response.json({token:'synthetic-token',name:'Synthetic R4',role:'R4'});
+  if(path==='/api/overview')return Response.json({active:1,reviews:0});
+  if(path==='/api/session')return Response.json({reviewWritesEnabled:true});
+  if(path==='/api/operations')return Response.json({tasks:[]});
+  if(path==='/api/train-manager')return Response.json({counts:{}});
+  if(path==='/api/lw-import')return Response.json({batches:[batch]});
+  if(path==='/api/lw-import/'+batch.id){reads++;return Response.json(posted?{...batch,rows:[{...row,member_id:mode==='bad-readback'?'wrong-id':row.member_id,applied_at:'now'}],counts:{applied:1},reconciliation_receipt:{receipt_id:'receipt',result}}:batch)}
+  if(path==='/api/lw-import/'+batch.id+'/reconcile'){posted=JSON.parse(opts.body);return Response.json({ok:true,receipt_id:'receipt',result})}
+  throw Error('Unexpected current G2 route '+path);
+ };
+ const mount=dom.window.document.querySelector('#mount'),q=s=>mount.querySelector(s),submit=form=>form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
+ initNativeAdmin(mount);await renderNativeAdmin(mount);q('[name=code]').value='synthetic';submit(q('form'));
+ await wait(()=>q('[data-officer-tab=members]'));q('[data-officer-tab=members]').click();await wait(()=>q('[data-officer-tab=lwImport]'));q('[data-officer-tab=lwImport]').click();
+ await wait(()=>q('[data-lw-batch-id]'));q('[data-lw-batch-id]').click();await wait(()=>q('[data-lw-roster-load]'));q('[data-lw-roster-load]').click();await wait(()=>q('[data-lw-current-roster]'));
+ const form=q('[data-lw-current-roster]');assert.match(q('[data-lw-roster-preview]').textContent,/Synthetic old.*Synthetic current/);
+ submit(form);assert.equal(posted,null);
+ form.elements.checked.checked=true;form.elements.reason.value='Synthetic complete census checked';
+ if(['unresolved','archive','stale'].includes(mode)){assert.equal(form.querySelector('button').disabled,true);submit(form);assert.equal(posted,null);return}
+ submit(form);await wait(()=>posted!==null);await wait(()=>mode==='bad-readback'?q('[data-lw-roster-result]').textContent.includes('unvollständig'):q('[data-lw-result]').textContent.includes('quittiert'));
+ assert.deepEqual(posted,{sha256:batch.sha256,source_revision:4,registry_revision:'b'.repeat(64),member_count:1,full_roster_attested:true,new_members:[],reason:'Synthetic complete census checked'});
+ assert.equal(reads,3);assert.equal(dom.window.localStorage.length,0);assert.equal(dom.window.sessionStorage.length,0);
+ if(mode==='bad-readback'){assert.equal(form.querySelector('button').disabled,true);assert.doesNotMatch(q('[data-lw-result]').textContent,/quittiert/)}
+});
+
+test('native CSV upload sends immutable raw bytes through existing R4 bearer session',async t=>{
+ const dom=new JSDOM('<main id="mount"></main>',{url:'https://lunas-empire.github.io/#admin'}),oldWindow=globalThis.window,oldFetch=globalThis.fetch;
+ globalThis.window=dom.window;dom.window.HTMLElement.prototype.scrollIntoView=()=>{};
+ t.after(()=>{clearOfficer();globalThis.window=oldWindow;globalThis.fetch=oldFetch;dom.window.close()});
+ const bytes=new TextEncoder().encode('\ufeffName,Power\r\nSynthetic,0\r\n').buffer;
+ let uploaded=false;
+ const batch={id:'lw-synthetic',sha256:'a'.repeat(64),report_date:'2026-11-04',revision:0,rows:[]};
+ globalThis.fetch=async(url,opts={})=>{
+  const path=new URL(url).pathname;
+  if(path==='/api/native-login')return Response.json({token:'synthetic-token',name:'Synthetic R4',role:'R4'});
+  if(path==='/api/overview')return Response.json({active:1,reviews:0});
+  if(path==='/api/session')return Response.json({reviewWritesEnabled:true});
+  if(path==='/api/operations')return Response.json({tasks:[]});
+  if(path==='/api/train-manager')return Response.json({counts:{}});
+  if(path==='/api/lw-import'&&opts.method==='POST'){
+   assert.equal(new URL(url).origin,'https://rzsn-staging-api-bridge.pages.dev');
+   assert.equal(new URL(url).search,'?report_date=2026-11-04');assert.equal(opts.body,bytes);
+   assert.equal(opts.headers.Authorization,'Bearer synthetic-token');assert.equal(opts.headers['Content-Type'],'text/csv');
+   assert.equal(opts.credentials,'omit');assert.equal(opts.mode,'cors');assert.equal(opts.cache,'no-store');
+   assert.doesNotMatch(JSON.stringify(opts.headers),/private-original/);uploaded=true;return Response.json(batch);
+  }
+  if(path==='/api/lw-import')return Response.json({batches:[]});
+  throw Error('Unexpected upload route '+path);
+ };
+ const mount=dom.window.document.querySelector('#mount'),q=s=>mount.querySelector(s),submit=form=>form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
+ initNativeAdmin(mount);await renderNativeAdmin(mount);q('[name=code]').value='synthetic';submit(q('form'));
+ await wait(()=>q('[data-officer-tab=members]'));q('[data-officer-tab=members]').click();await wait(()=>q('[data-officer-tab=lwImport]'));q('[data-officer-tab=lwImport]').click();await wait(()=>q('[data-lw-upload]'));
+ const form=q('[data-lw-upload]');form.elements.report_date.value='2026-11-04';
+ Object.defineProperty(form.elements.csv,'files',{value:[{name:'private-original.csv',size:bytes.byteLength,arrayBuffer:async()=>bytes}]});
+ submit(form);await wait(()=>uploaded);await wait(()=>q('[data-lw-status]').textContent.includes('privat hinterlegt'));
+ assert.equal(form.elements.csv.value,'');assert.equal(mount.querySelector('iframe'),null);
+ assert.equal(dom.window.localStorage.length,0);assert.equal(dom.window.sessionStorage.length,0);
+});
+
 for(const mode of ['success','wrong-rank','wrong-post-rank','override-rank','selected-correction','selected-source','bad-ack','bad-readback','schema-blocked','unauthenticated'])test('LW roster requires explicit source/IDs and manual creation stays separate: '+mode,async t=>{
  const dom=new JSDOM('<main id="mount"></main>',{url:'https://lunas-empire.github.io/#admin'}),oldWindow=globalThis.window,oldFetch=globalThis.fetch;
  globalThis.window=dom.window;dom.window.HTMLElement.prototype.scrollIntoView=()=>{};
@@ -164,6 +234,7 @@ test('native LW Import review uses existing resolve route, no screenshot fiction
   if(path==='/api/operations')return Response.json({tasks:[]});
   if(path==='/api/train-manager')return Response.json({counts:{}});
   if(path==='/api/reviews')return Response.json([{id:'lw-review',source_name:'Synthetic Unmatched',kind:'lw_import',source_batch:'LW Import',context}]);
+  if(path==='/api/reviews/pending')return Response.json({queues:{identities:{available:true,count:2,items:[{source_name:'Synthetic unknown A'},{source_name:'Synthetic unknown B'}]},donations:{available:false,count:null,items:[]}}});
   if(path==='/api/identity-options')return Response.json([{id:'synthetic-id',name:'Synthetic Existing'}]);
   if(path==='/api/profile-captures')return Response.json([]);
   if(path==='/api/reviews/lw-review/resolve'){saved=JSON.parse(opts.body);return Response.json({ok:true,review_id:'lw-review',applied:false})}
@@ -174,6 +245,11 @@ test('native LW Import review uses existing resolve route, no screenshot fiction
  initNativeAdmin(mount);await renderNativeAdmin(mount);q('[name=code]').value='synthetic';q('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
  await wait(()=>q('[data-officer-tab=more]'));q('[data-officer-tab=more]').click();await wait(()=>q('[data-officer-tab=reviews]'));q('[data-officer-tab=reviews]').click();
  await wait(()=>q('[data-lw-review-form]'));
+ await wait(()=>q('[data-pending-queues] button'));
+ assert.equal(q('[data-pending-status]').closest('details').open,true);
+ assert.equal(q('[data-pending-queues]').querySelectorAll('button').length,2);
+ assert.match(q('[data-pending-queues]').textContent,/Synthetic unknown A.*Synthetic unknown B/);
+ assert.match(q('[data-pending-queues]').textContent,/nicht verfügbar|unavailable/);
  const card=q('[data-review-kind=lw_import]');assert.equal(card.querySelectorAll('img,input[type=file]').length,0);assert.match(card.textContent,/nicht erfasst/);
  const form=q('[data-lw-review-form]');form.elements.member_id.value='synthetic-id';form.elements.reason.value='Synthetic source checked';form.elements.checked.checked=true;
  form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));await wait(()=>saved!==null);await wait(()=>card.textContent.includes('separat freigeben'));
@@ -191,7 +267,7 @@ test('LW groups separate applied from matched, unresolved first, all compact and
  assert.equal(doc(renderLwGroups({rows:[{...base,source_row:5,match_state:'ambiguous'}]})).querySelectorAll('[data-lw-identity]').length,1);
 });
 
-test('inline import picker searches archived aliases, requires confirmation and rereads without applying',async t=>{
+test('inline import picker uses current identity API, searches archived IDs and rereads without applying',async t=>{
  const dom=new JSDOM('<main id="mount"></main>',{url:'https://lunas-empire.github.io/#admin'}),oldWindow=globalThis.window,oldFetch=globalThis.fetch;
  globalThis.window=dom.window;dom.window.HTMLElement.prototype.scrollIntoView=()=>{};
  t.after(()=>{clearOfficer();globalThis.window=oldWindow;globalThis.fetch=oldFetch;dom.window.close()});
@@ -206,7 +282,7 @@ test('inline import picker searches archived aliases, requires confirmation and 
   if(path==='/api/train-manager')return Response.json({counts:{}});
   if(path==='/api/lw-import')return Response.json({batches:[batch]});
   if(path==='/api/lw-import/'+batch.id){reads++;return Response.json(batch)}
-  if(path==='/api/lw-import/identity-options')return Response.json({members:[{id:'archived-id',name:'Synthetic Archived',status:'former',aliases:['Verified Alias']},{id:'other-id',name:'Other',status:'active',aliases:[]}],creation:{enabled:false,reason:'Vollbestand und R4/R5-Freigabe fehlen; maximal 100 aktive Mitglieder.'}});
+  if(path==='/api/identity-options'){assert.equal(new URL(url).search,'?include_former=1');return Response.json([{id:'archived-id',name:'Synthetic Archived',status:'former'},{id:'other-id',name:'Other',status:'active'}])}
   if(path==='/api/reviews/synthetic-review/resolve'){saved=JSON.parse(opts.body);row.member_id=saved.member_id;row.match_state='matched';row.review_status='approved';return Response.json({ok:true,applied:false})}
   throw Error('Unexpected request '+path);
  };
@@ -218,9 +294,9 @@ test('inline import picker searches archived aliases, requires confirmation and 
  q('[data-lw-search]').value='absent';q('[data-lw-search]').dispatchEvent(new dom.window.Event('input'));assert.equal(q('[data-lw-empty]').hidden,false);
  q('[data-lw-search]').value='';q('[data-lw-search]').dispatchEvent(new dom.window.Event('input'));
  q('[data-lw-group=unmatched]').open=true;q('[data-lw-row]').open=true;await wait(()=>q('[data-lw-inline-review]'));
- const form=q('[data-lw-inline-review]'),select=form.elements.member_id;assert.match(select.textContent,/Archiv/);assert.match(select.textContent,/Verified Alias/);
+ const form=q('[data-lw-inline-review]'),select=form.elements.member_id;assert.match(select.textContent,/Archiv/);assert.match(select.textContent,/archived-id/);
  assert.ok([...mount.querySelectorAll('button')].find(b=>b.textContent==='Neues Mitglied anlegen').disabled);
- form.elements.search.value='Verified Alias';form.elements.search.dispatchEvent(new dom.window.Event('input'));assert.equal(select.options.length,2);assert.equal(select.options[1].value,'archived-id');assert.equal(select.value,'');
+ form.elements.search.value='archived-id';form.elements.search.dispatchEvent(new dom.window.Event('input'));assert.equal(select.options.length,2);assert.equal(select.options[1].value,'archived-id');assert.equal(select.value,'');
  form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));assert.equal(saved,null);
  select.value='archived-id';form.elements.reason.value='Original source checked';form.elements.checked.checked=true;form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
  await wait(()=>q('[data-lw-result]').textContent.includes('Keine Punkte'));assert.equal(reads,2);assert.equal(saved.source_checked,true);assert.equal(saved.sha256,batch.sha256);assert.equal(saved.member_id,'archived-id');assert.equal(q('[data-lw-group=matched] [data-lw-visible]').textContent,'1');assert.equal(q('[data-lw-group=applied] [data-lw-visible]').textContent,'0');
