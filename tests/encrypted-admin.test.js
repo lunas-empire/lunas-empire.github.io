@@ -79,10 +79,10 @@ test('wiki runtime preserves decryption and provides same-route return links',()
   assert.match(shellApp,/document\.open\(\);\s*document\.write\(html\);\s*document\.close\(\)/);
 });
 
-test('hub uses its native route while production retains the encrypted archive',async()=>{
+test('both hubs use the native route while the encrypted archive remains separate',async()=>{
  const config=await readFile(new URL('../assets/config.js',import.meta.url),'utf8');
  const app=await readFile(new URL('../assets/app.js',import.meta.url),'utf8');
- assert.ok(config.includes("globalThis.location?.hostname===productionHost ? '/admin/' : '#admin'"));
+ assert.ok(config.includes("adminUrl: '#admin'"));
  assert.ok(!app.includes("location.replace('/admin/')"));
  assert.match(app,/nativeReview\?'#admin':location.hash/);
  assert.match(app,/if\(nativeReview&&\(!retainedMount\|\|!preserve\)\)\{\s*await mod.openNativeReviews\(mount\)/);
