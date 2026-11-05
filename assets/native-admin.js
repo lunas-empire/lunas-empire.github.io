@@ -419,7 +419,7 @@ async function loadMemberAliases(details,id){
   if(details.isConnected&&details.dataset.nativeAliasRequest===requestId)details.querySelector('[data-native-alias-status]').textContent='Frühere Spielernamen konnten nicht geladen werden. Bitte Profil neu öffnen.';
  }
 }
-const lwMetrics=[['power','Power'],['army_power','Army Power'],['hero_power','Hero Power'],['gorilla_power','Gorilla Power'],['total_troops','Total troops'],['drone','Drone'],['kills','Kills'],['hq','HQ']];
+const lwMetrics=[['power','Power'],['total_troops','Total troops'],['drone','Drone'],['kills','Kills'],['hq','HQ']];
 const lwValue=value=>Number.isSafeInteger(value)?numberText(value):'nicht erfasst';
 const lwCardValue=value=>Number.isSafeInteger(value)?new Intl.NumberFormat('de-DE',{notation:'compact',maximumFractionDigits:2}).format(value):'nicht erfasst';
 // Sunday rows are scoped by /api/member/:id; reject explicit foreign IDs as well.
