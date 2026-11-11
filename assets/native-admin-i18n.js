@@ -187,6 +187,49 @@ const MANUAL_LIFECYCLE_TERMS={
 };
 for(const rows of Object.values(TRANSLATION_ROWS))for(const [source,text] of Object.entries(MANUAL_LIFECYCLE_TERMS))rows[source]??=text;
 export const OFFICER_TEXT=TRANSLATION_ROWS;
+// Authored VIP UI only; keep member names, IDs and backend errors out of translation.
+const TRAIN_VIP_TERMS={
+ 'VIP-Fahrgast':'VIP passenger',
+ 'VIP-Fahrgast wählen':'Choose VIP passenger',
+ 'VIP-Fahrgast speichern':'Save VIP passenger',
+ 'VIP-Fahrgast:':'VIP passenger:',
+ '2. Platz · VIP:':'2nd place · VIP:',
+ '2. Platz · VIP-Fahrgast':'2nd place · VIP passenger',
+ 'Dice Game · 1. Platz:':'Dice Game · 1st place:',
+ '1. Platz · Gewinner aus der Allianz':'1st place · Alliance winner',
+ 'VIP: vor Erfassungsbeginn (11.11.2026)':'VIP: before tracking began (2026-11-11)',
+ 'explizit unbesetzt':'explicitly unassigned',
+ 'unbekannt':'unknown',
+ 'VIP-Datum öffnen (auch ohne Fahrer / Dice)':'Open VIP date (also without driver / Dice)',
+ 'VIP-Fahrten · getrennt von Fahrer & 1. Platz':'VIP rides · separate from driver & 1st place',
+ 'Erfassung ab 11.11.2026':'Tracking since 2026-11-11',
+ 'Keine bestätigte VIP-Fahrt':'No confirmed VIP ride',
+ 'VIP-Verlauf unbekannt / nicht verfügbar.':'VIP history unknown / unavailable.',
+ 'Bitte auswählen · unbekannt':'Please select · unknown',
+ 'Unverändert lassen':'Leave unchanged',
+ 'Explizit unbesetzt (Auswahl löschen)':'Explicitly unassigned (clear selection)',
+ 'VIP-Fahrgäste aus allen aktiven Rängen (auch R1).':'VIP passengers from all active ranks (including R1).',
+ '1. Platz ist der Gewinner; 2. Platz fährt als VIP. Beide müssen verschieden sein. Fahrer und Rotation bleiben unabhängig.':'1st place is the winner; 2nd place rides as VIP. They must differ. Driver and rotation remain independent.',
+ 'VIP-Erfassung erst ab 11.11.2026; historische VIPs werden nicht ergänzt.':'VIP tracking starts on 2026-11-11; earlier VIPs are not backfilled.',
+ 'Dice Game & VIP speichern':'Save Dice Game & VIP',
+ 'Ziehung löschen (VIP bleibt erhalten)':'Delete draw (VIP is retained)',
+ 'Historischer VIP:':'Historical VIP:',
+ '(nicht mehr aktiv). Änderungen benötigen ein aktives Mitglied oder explizit unbesetzt.':'(no longer active). Changes require an active member or explicitly unassigned.',
+ 'Auswahl wird geladen …':'Loading selection …',
+ 'VIP-Antwort nicht verfügbar. Bitte neu laden.':'VIP response unavailable. Please reload.',
+ 'Auswahl erneut laden':'Reload selection',
+ 'Datum geändert. Auswahl für dieses Datum neu laden.':'Date changed. Reload the selection for this date.',
+ 'Bitte aktives Mitglied oder explizit unbesetzt auswählen.':'Choose an active member or explicitly unassigned.',
+ 'VIP muss aktuell aktiv sein.':'VIP must currently be active.',
+ 'Aktiven Gewinner auswählen.':'Choose an active winner.',
+ 'Gewinner und VIP müssen verschieden sein.':'Winner and VIP must differ.',
+ 'Datum oder Würfelwert ungültig.':'Invalid date or dice roll.',
+ 'Gespeichert: Auswahl erneut vom Backend gelesen.':'Saved: selection read back from the backend.',
+ 'Inzwischen geändert (409). Aktuellen Stand geladen; Auswahl prüfen und ausdrücklich erneut speichern.':'Changed meanwhile (409). Current state loaded; review and explicitly save again.',
+ 'Sitzung abgelaufen. Bitte erneut anmelden.':'Session expired. Please sign in again.',
+ 'Dice Game gelöscht. VIP-Auswahl bleibt erhalten.':'Dice Game deleted. VIP selection is retained.'
+};
+for(const rows of Object.values(TRANSLATION_ROWS))for(const [source,text] of Object.entries(TRAIN_VIP_TERMS))rows[source]??=text;
 export const OFFICER_LANGUAGES=Object.freeze(['de','en','uk','ja','fr','it','id','ar','ko','sv','pt','nl','th','km','fil']);
 export function officerLanguage(documentRef=globalThis.document){
  const current=String(documentRef?.documentElement?.lang||'de').toLowerCase();

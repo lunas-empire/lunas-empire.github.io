@@ -118,7 +118,7 @@ async function view(mount){
  clearSourceImages();
  clearReviewImages();
  duelLeagueController?.destroy();duelLeagueController=null;
- 
+
  const header='<div class="native-officer-strip" role="group" aria-label="Offiziersbereich">'+
   '<a class="native-return-link" href="#today">← Zur Website</a>'+
   '<div class="native-officer-controls"><span class="native-officer-badge">'+e(officer?.role||'Offizier')+' · '+e(officer?.name||'')+(officer?.siteOwner?' · Website-Eigentümerin':'')+
@@ -256,18 +256,21 @@ async function view(mount){
    target.innerHTML='<div class="native-audit-head"><div><span class="native-kicker">ALLIANZ · VERWALTUNG</span><h2>Admin-Protokoll</h2><p>Nachvollziehbare Änderungen durch Offiziere</p></div>'+icon('tasks','native-audit-title-icon')+'</div>'+
     '<div id="activity-filters"></div><div id="activity-list"></div>';renderActivity(target,'');
   }else if(panel==='reviews'){
+   const generation=sessionGeneration,live=()=>target.isConnected&&panel==='reviews'&&generation===sessionGeneration;
    const [cases,members,session]=await Promise.all([
     request('/api/reviews?status=open'),
     request('/api/identity-options?include_former=1').catch(()=>[]),
     request('/api/session').catch(()=>({reviewWritesEnabled:false}))
    ]);
-   cache.reviewWritesEnabled=session?.reviewWritesEnabled===true;
+   if(!live())return;
+   cache.reviewWritesEnabled=session?.reviewWritesEnabled===true&&['R4','R5'].includes(officer?.role);
    cache.reviews=cases;cache.reviewMembers=Array.isArray(members)?members:members.members||[];
    const profileMetrics=['power','kills','donations_weekly'];
-   cache.profileCaptures=Object.fromEntries(await Promise.all(profileMetrics.map(async metric=>{
+   const profileCaptures=Object.fromEntries(await Promise.all(profileMetrics.map(async metric=>{
     try {const rows=await request('/api/profile-captures?metric='+metric);return [metric,Array.isArray(rows)?rows:[]]}
     catch{return [metric,[]]}
    })));
+   if(!live())return;cache.profileCaptures=profileCaptures;
    const batches=[...new Set(cache.reviews.map(x=>x.source_batch).filter(Boolean))].sort();
    const withEvidence=cache.reviews.filter(x=>Boolean(x.evidence_sha)).length;
    const withoutEvidence=cache.reviews.length-withEvidence;
@@ -753,7 +756,22 @@ async function initPendingReviews(host){
  const en=officerLanguage(host.ownerDocument)==='en',t=(de,english)=>en?english:de;
  host.innerHTML='<details class="native-fold" open><summary>'+t('Offene Quellbeobachtungen','Pending source observations')+'</summary><div class="native-fold-body"><p>'+t('Unbekannte Werte und Identitäten bleiben offen, auch wenn kein OCR-Prüffall besteht.','Unknown values and identities remain pending even when no OCR case exists.')+'</p><p data-pending-status role="status" aria-live="polite">'+t('Wird geladen …','Loading …')+'</p><div data-pending-queues></div><button type="button" data-pending-reload>'+t('Neu laden','Reload')+'</button></div></details>';
  const status=host.querySelector('[data-pending-status]'),list=host.querySelector('[data-pending-queues]');
+ const reload=host.querySelector('[data-pending-reload]');let loading=false,opening=false;
+ const reveal=id=>{
+  const target=host.closest('#native-admin-content');
+  if(!cache.reviews.some(item=>item.id===id))throw Error(t('Prüffall nicht in der Antwort gefunden. Liste erneut laden.','Case missing from refreshed response. Retry loading the list.'));
+  target.querySelector('#review-search-native').value='';
+  for(const [selector,value] of [['#review-image-native','all'],['#review-kind-native',''],['#review-batch-native','']])target.querySelector(selector).value=value;
+  // Bring the returned case onto the first page without rendering the entire queue.
+  historyLimit=20;renderReviews(target,'',id);
+  const card=[...target.querySelectorAll('[data-review-id]')].find(node=>node.dataset.reviewId===id);
+  if(!card)throw Error(t('Prüffall konnte nicht angezeigt werden. Erneut versuchen.','Case could not be displayed. Retry.'));
+  host.querySelectorAll('details').forEach(fold=>{fold.open=false});
+  card.open=true;card.querySelector('summary').focus({preventScroll:true});card.scrollIntoView({behavior:'smooth',block:'start'});
+  return card;
+ };
  const load=async()=>{
+  if(!live()||loading||opening)return;loading=true;reload.disabled=true;
   try{
    const result=await request('/api/reviews/pending');if(!live())return;
    const titles={donations:t('Spenden unbekannt','Unknown donations'),vs_days:t('VS-Tageswerte unklar','Uncertain VS days'),identities:t('Identitäten ungeklärt','Unresolved identities'),lw_import:'LW Import'};
@@ -764,17 +782,50 @@ async function initPendingReviews(host){
     const body=section.querySelector('div');
     if(!queue.available)body.textContent=t('Quelle nicht verfügbar. Kein bestätigter Nullbestand.','Source unavailable. No confirmed zero count.');
     for(const item of queue.items||[]){
-     const button=host.ownerDocument.createElement('button');button.type='button';button.setAttribute('data-native-no-translate','');button.textContent=(item.source_name||'Unbekannt')+' · '+(item.week||'historisch')+' · '+(item.metric||'Identität');button.disabled=!cache.reviewWritesEnabled;
-     button.addEventListener('click',async()=>{button.disabled=true;try{
-      await request('/api/reviews/open',{method:'POST',body:{...item,queue:key}});
-      if(!live())return;cache.reviews=await request('/api/reviews?status=open');if(!live())return;
-      const target=host.closest('#native-admin-content');renderReviews(target,target.querySelector('#review-search-native')?.value||'');status.textContent=t('Prüffall geöffnet. Identität oder Wert im nativen Review prüfen.','Case opened. Check the identity or value in the native review.');
-     }catch(error){if(live()){status.textContent=error.message;button.disabled=false}}});body.append(button);
+     const card=host.ownerDocument.createElement('details');card.className='native-fold';card.setAttribute('data-pending-item','');
+     const writable=queue.available&&cache.reviewWritesEnabled&&['R4','R5'].includes(officer?.role)&&['donations','vs_days','identities'].includes(key);
+     const blockedReason=!['R4','R5'].includes(officer?.role)?t('Nur R4/R5 dürfen Prüffälle öffnen.','Only R4/R5 may open review cases.'):
+      !queue.available?t('Quelle ist derzeit nicht verfügbar.','Source is currently unavailable.'):
+      !['donations','vs_days','identities'].includes(key)?t('Diese Quelle wird über die Quellenfilter geprüft.','Review this source through the source filters.'):
+      t('Das Backend hat Review-Schreibzugriff für diese Sitzung nicht freigeschaltet.','The backend has not enabled review write access for this session.');
+     card.innerHTML='<summary data-pending-inspect data-native-no-translate>'+e((item.source_name||'Unbekannt')+' · '+(item.week||'historisch')+' · '+(item.metric||'Identität'))+'</summary><div class="native-fold-body">'+lwSourceFields(item)+
+      (!writable?'<p>'+blockedReason+' '+t('Quelldetails und bestehende Reviews bleiben einsehbar.','Source details and existing reviews remain accessible.')+'</p>':'')+
+      '<div class="native-row">'+(writable?'<button type="button" data-pending-open>'+t('Prüffall öffnen','Open review case')+'</button>':'')+
+      '<button type="button" data-pending-sources>'+t('Quellenfilter und Reviews ansehen','View source filters and reviews')+'</button></div><p data-pending-message role="status" aria-live="polite"></p></div>';
+     body.append(card);
+     card.querySelector('[data-pending-sources]').addEventListener('click',()=>{
+      const source=host.closest('#native-admin-content').querySelector('#native-source-reviews');
+      source.scrollIntoView({behavior:'smooth',block:'start'});source.querySelector('[data-source-filters] input').focus({preventScroll:true});
+     });
+     const button=card.querySelector('[data-pending-open]'),message=card.querySelector('[data-pending-message]');let reviewId=null,busy=false;
+     button?.addEventListener('click',async()=>{
+      if(!live()||busy||opening||loading||!cache.reviewWritesEnabled||!['R4','R5'].includes(officer?.role))return;
+      busy=true;opening=true;list.querySelectorAll('[data-pending-open]').forEach(control=>{control.disabled=true});reload.disabled=true;
+      message.textContent=t('Prüffall wird geöffnet …','Opening review case …');
+      try{
+       if(!reviewId){
+        const result=await request('/api/reviews/open',{method:'POST',body:{...item,queue:key}});if(!live())return;
+        if(result.ok!==true||typeof result.review_id!=='string'||!result.review_id)throw Error(t('API hat keinen Prüffall bestätigt. Erneut versuchen.','API did not confirm a case. Retry.'));
+        reviewId=result.review_id;
+       }
+       const cases=await request('/api/reviews?status=open');if(!live())return;
+       if(!Array.isArray(cases))throw Error(t('Ungültige Prüffall-Liste. Erneut laden.','Invalid review list. Retry loading.'));
+       cache.reviews=cases;const reviewCard=reveal(reviewId);
+       message.textContent=t('Prüffall geöffnet: ','Case opened: ')+reviewId+t('. Identität oder Wert prüfen; noch keine Korrektur bestätigt.','. Inspect the identity or value; no correction has been confirmed.');
+       reviewCard.querySelector('.native-review-message').textContent=message.textContent;
+       status.textContent=message.textContent;
+       button.textContent=t('Prüffall erneut anzeigen','Show review case again');
+      }catch(error){if(live()){
+       message.textContent=(reviewId?t('Prüffall geöffnet: ','Case opened: ')+reviewId+t('; Anzeige fehlgeschlagen: ','; display failed: '):t('Nicht geöffnet: ','Not opened: '))+error.message;
+       status.textContent=message.textContent;button.textContent=reviewId?t('Anzeige erneut laden','Retry loading case'):t('Erneut versuchen','Retry');
+      }}finally{busy=false;opening=false;if(live()){list.querySelectorAll('[data-pending-open]').forEach(control=>{control.disabled=false});reload.disabled=false}}
+     });
     }
     list.append(section);
    }
    status.textContent=t('Quellen einzeln gelesen. Zähler können sich überschneiden.','Sources read separately. Counts can overlap.');
   }catch(error){if(live())status.textContent=t('Quellbeobachtungen nicht verfügbar: ','Source observations unavailable: ')+error.message}
+  finally{loading=false;if(live())reload.disabled=false}
  };
  host.querySelector('[data-pending-reload]').addEventListener('click',()=>void load());await load();
 }
@@ -844,13 +895,16 @@ async function showPerson(target,id){
   '<p class="native-muted">Noch kein VS-Wochenverlauf vorhanden.</p>';
  const rides=(p.rides||[]).slice().sort((a,b)=>b.date.localeCompare(a.date));
  const dice=(p.dice_wins||[]).slice().sort((a,b)=>b.ride_date.localeCompare(a.ride_date));
+ const vipKnown=Array.isArray(p.vip_rides);
+ const vipRides=(vipKnown?p.vip_rides:[]).filter(x=>vipTrackingDate(x.ride_date)).slice().sort((a,b)=>b.ride_date.localeCompare(a.ride_date));
  const achievements=p.achievements||[];
  const line=(date,detail,sub)=>'<div><time>'+e(date)+'</time><b>'+e(detail)+'</b><small>'+e(sub||'')+'</small></div>';
+ const vipCard='<details class="native-profile-metric-card" data-native-profile-vip><summary><small>VIP-Fahrgast</small><strong>'+(vipKnown?vipRides.length:'—')+'</strong><span>VIP-Fahrten · getrennt von Fahrer & 1. Platz</span></summary><div class="native-profile-timeline">'+(vipRides.length?vipRides.map(x=>line(x.ride_date,'VIP-Fahrgast','Erfassung ab 11.11.2026')).join(''):vipKnown?'<p>Keine bestätigte VIP-Fahrt</p>':'<p>VIP-Verlauf unbekannt / nicht verfügbar.</p>')+'</div></details>';
  const historyCards='<div class="native-profile-metrics native-player-history-cards">'+
   '<details class="native-profile-metric-card"><summary><small>Zugfahrten</small><strong>'+rides.filter(x=>x.status==='completed').length+'</strong><span>Bestätigte Fahrten</span><em>Alle '+rides.length+' Einträge ansehen ›</em></summary>'+
    '<div class="native-profile-timeline">'+(rides.length?rides.map(x=>line(x.date,x.type||'Zug',x.status||'')).join(''):'<p>Keine zugeordneten Fahrten</p>')+'</div></details>'+
   '<details class="native-profile-metric-card"><summary><small>Dice Game</small><strong>'+dice.length+'</strong><span>Gewonnene Ziehungen</span><em>Gewinne anzeigen ›</em></summary>'+
-   '<div class="native-profile-timeline">'+(dice.length?dice.map(x=>line(x.ride_date,'Dice Game gewonnen',x.roll_value===null?'Wurf unbekannt':'Wurf: '+x.roll_value)).join(''):'<p>Noch kein bestätigter Gewinn</p>')+'</div></details></div>';
+   '<div class="native-profile-timeline">'+(dice.length?dice.map(x=>line(x.ride_date,'Dice Game gewonnen',x.roll_value===null?'Wurf unbekannt':'Wurf: '+x.roll_value)).join(''):'<p>Noch kein bestätigter Gewinn</p>')+'</div></details>'+vipCard+'</div>';
  const achievementHtml=achievements.length?'<details class="native-fold"><summary>Erfolge & Meilensteine · '+achievements.length+'</summary>'+
   '<div class="native-profile-timeline native-fold-body">'+achievements.map(a=>line(String(a.date).slice(0,10),a.title,
    a.delta!==null&&a.delta!==undefined?deltaLabel(a.delta):'Bestätigte VS-Leistung')).join('')+'</div></details>':
@@ -1305,7 +1359,7 @@ export function berlinTrainToday(now=new Date()){
  return new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
 }
 const normalizeTrainName=value=>String(value??'').normalize('NFKC').replace(/[\u200B-\u200D\u2060\uFEFF]/gu,'').toLocaleLowerCase('de-DE').trim();
-export function trainTimelineGroups({history=[],dice=[],today=berlinTrainToday(),limit=20,visibleCalendarDates=[],member='',date='',members=[]}={}){
+export function trainTimelineGroups({history=[],dice=[],vipPassengers=[],today=berlinTrainToday(),limit=20,visibleCalendarDates=[],member='',date='',members=[]}={}){
  if(!isIsoTrainDate(today))throw new RangeError('today must be a real ISO date');
  const calendar=new Set(visibleCalendarDates.filter(isIsoTrainDate));
  const rides=Array.isArray(history)?history:[];
@@ -1326,7 +1380,18 @@ export function trainTimelineGroups({history=[],dice=[],today=berlinTrainToday()
   if(date<=today)past.push(item);
   else if(!calendar.has(date))future.push(item);
  });
- const newest=(a,b)=>b.date.localeCompare(a.date)||(a.kind===b.kind?0:a.kind==='train'?-1:1)||a.index-b.index;
+ const vipDates=new Map();
+ for(const entry of [...rides.map(x=>({...x,ride_date:x.date})),...winners,...vipPassengers]){
+  const day=entry.ride_date;
+  if(vipTrackingDate(day))vipDates.set(day,{...vipDates.get(day),...entry});
+ }
+ for(const [date,entry] of vipDates){
+  const item={kind:'vip',date,entry,index:0};
+  if(date<=today)past.push(item);
+  else if(!calendar.has(date)&&!rides.some(x=>x.date===date)&&!winners.some(x=>x.ride_date===date))future.push(item);
+ }
+ const order={train:0,dice:1,vip:2};
+ const newest=(a,b)=>b.date.localeCompare(a.date)||order[a.kind]-order[b.kind]||a.index-b.index;
  past.sort(newest);future.sort(newest);
  unresolved.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))||a.index-b.index);
  const memberQuery=normalizeTrainName(member),memberNames=new Map((Array.isArray(members)?members:[]).filter(item=>item?.id&&item.name).map(item=>[item.id,item.name]));
@@ -1335,7 +1400,7 @@ export function trainTimelineGroups({history=[],dice=[],today=berlinTrainToday()
   if(!memberQuery)return true;
   const entry=item.entry,id=item.kind==='dice'?(entry.winner_id||entry.member_id):entry.member_id;
   const names=item.kind==='dice'?[entry.winner_name,memberNames.get(id)]:[entry.driver,entry.original_name,memberNames.get(id)];
-  return names.some(name=>normalizeTrainName(name).includes(memberQuery));
+  return [...names,id,entry.vip_name,entry.vip_member_id,memberNames.get(entry.vip_member_id)].some(name=>normalizeTrainName(name).includes(memberQuery));
  });
  const pageSize=Number.isInteger(limit)&&limit>=0?limit:20;
  return {past:filtered.slice(0,pageSize),pastCount:filtered.length,totalPastCount:past.length,hasMore:filtered.length>pageSize,future,unresolved};
@@ -1344,12 +1409,13 @@ function trainTimelineButton(item,lang){
  const english=lang==='en',trainWord=(de,en)=>english?en:de;
  const dateLabel=date=>isIsoTrainDate(date)?new Intl.DateTimeFormat(english?'en-GB':'de-DE',{timeZone:'Europe/Berlin',weekday:'long'}).format(new Date(date+'T12:00:00Z'))+' · '+date:String(date||translateOfficerText('Datum unbekannt',lang));
  const dice=item.kind==='dice',date=item.date,entry=item.entry;
- const kind=dice?'Dice Game':trainWord('Zugfahrt','Train ride');
- const state=dice?trainWord('Gewinner','Winner'):(entry.status==='completed'?trainWord('Gefahren','Completed'):entry.status==='cancelled'?trainWord('Abgesagt','Cancelled'):entry.status==='planned'?trainWord('Geplant','Planned'):trainWord('Offen','Unresolved'));
- const name=dice?entry.winner_name:entry.driver||trainWord('Noch kein Fahrer eingetragen','No driver registered yet');
- const action=dice?'data-native-dice-date':'data-native-train';
+ const vip=item.kind==='vip';
+ const kind=vip?vipText('VIP-Fahrgast'):dice?'Dice Game':trainWord('Zugfahrt','Train ride');
+ const state=vip?vipLabel(entry,date):dice?trainWord('Gewinner','Winner'):(entry.status==='completed'?trainWord('Gefahren','Completed'):entry.status==='cancelled'?trainWord('Abgesagt','Cancelled'):entry.status==='planned'?trainWord('Geplant','Planned'):trainWord('Offen','Unresolved'));
+ const name=vip?(entry.vip_name||vipLabel(entry,date)):dice?entry.winner_name:entry.driver||trainWord('Noch kein Fahrer eingetragen','No driver registered yet');
+ const action=vip?'data-native-vip-date':dice?'data-native-dice-date':'data-native-train';
  const label=trainWord('Bearbeiten','Edit')+' '+kind+' · '+dateLabel(date)+' · '+state+' · '+name;
- return '<button type="button" class="native-train-timeline-row" '+action+'="'+e(date)+'" aria-label="'+e(label)+'"><span class="native-train-timeline-date">'+e(dateLabel(date))+'</span><span class="native-train-timeline-type">'+e(kind)+' · '+e(state)+'</span><strong data-native-no-translate>'+e(name)+'</strong><span class="native-train-timeline-action" aria-hidden="true">'+trainWord('Bearbeiten','Edit')+' ›</span></button>';
+ return '<button type="button" class="native-train-timeline-row" '+action+'="'+e(date)+'" aria-label="'+e(label)+'"><span class="native-train-timeline-date">'+e(dateLabel(date))+'</span><span class="native-train-timeline-type">'+e(kind)+' · '+e(state)+'</span><strong data-native-no-translate>'+e(name)+(dice||!vip?' · '+e(vipLabel(entry,date,dice)):'')+'</strong><span class="native-train-timeline-action" aria-hidden="true">'+trainWord('Bearbeiten','Edit')+' ›</span></button>';
 }
 function updateTrainHistoryResults(target){
  const fold=target?.querySelector('.native-train-history');
@@ -1357,7 +1423,7 @@ function updateTrainHistoryResults(target){
  const d=cache.trains,today=isIsoTrainDate(d.today)?d.today:berlinTrainToday();
  const upcoming=(d.calendar||[]).filter(x=>isIsoTrainDate(x.date)&&x.date>=today&&x.entry?.status!=='cancelled').slice(0,7);
  const members=[d.members,cache.diceMembers,cache.members].flatMap(list=>Array.isArray(list)?list:[]);
- const timeline=trainTimelineGroups({history:d.history,dice:cache.dice,today,limit:historyLimit,visibleCalendarDates:upcoming.map(x=>x.date),...trainHistoryFilters,members});
+ const timeline=trainTimelineGroups({history:d.history,dice:cache.dice,vipPassengers:trainVipDates(d),today,limit:historyLimit,visibleCalendarDates:upcoming.map(x=>x.date),...trainHistoryFilters,members});
  fold.querySelector('[data-native-history-count]').textContent=String(timeline.pastCount);
  const status=fold.querySelector('[data-native-history-results]');
  status.textContent=timeline.pastCount+' '+translateOfficerText('Treffer',officerLanguage(target.ownerDocument))+' '+translateOfficerText('von',officerLanguage(target.ownerDocument))+' '+timeline.totalPastCount;
@@ -1368,14 +1434,16 @@ function updateTrainHistoryResults(target){
 }
 function renderTrain(target){
  const d=cache.trains,today=isIsoTrainDate(d.today)?d.today:berlinTrainToday(),unlinked=groupUnlinkedTrainRides(d.history),unlinkedCount=unlinked.reduce((n,x)=>n+x.count,0),assignVerb=translateOfficerText('Zuordnen',officerLanguage(target.ownerDocument)),upcoming=(d.calendar||[]).filter(x=>isIsoTrainDate(x.date)&&x.date>=today&&x.entry?.status!=='cancelled').slice(0,7);
- const timeline=trainTimelineGroups({history:d.history,dice:cache.dice,today,limit:historyLimit,visibleCalendarDates:upcoming.map(x=>x.date)});
+ const timeline=trainTimelineGroups({history:d.history,dice:cache.dice,vipPassengers:trainVipDates(d),today,limit:historyLimit,visibleCalendarDates:upcoming.map(x=>x.date)});
  const lang=officerLanguage(target.ownerDocument);
  const absent=(id,date)=>memberAbsentOn(id,date,d.absences||[]);
  const slot=x=>'<article class="native-train-item '+(x.date===d.today?'native-train-today':'')+'">'+
   '<div><span class="native-kicker">'+(x.date===d.today?'HEUTE':e(x.date))+' · '+e(x.type||'Zug')+'</span>'+
   '<strong>'+e(x.entry?.driver||'Noch kein Fahrer eingetragen')+'</strong>'+
+  '<small data-native-no-translate>'+e(vipLabel(x,x.date))+'</small>'+
+  '<small data-native-no-translate>'+e(vipText('Dice Game · 1. Platz:'))+' '+e((cache.dice||[]).find(d=>d.ride_date===x.date)?.winner_name||vipText('unbekannt'))+' · '+e(vipLabel(x,x.date,true))+'</small>'+
   '<small>'+e(x.entry?.status||'Offen')+(x.entry?.linked===false?' · Zuordnung nicht verifiziert':'')+(x.unavailable_driver?' · Achtung: Abwesenheit eingetragen':'')+'</small>'+ (x.suggestions?.length?'<small class="native-train-recommendation">Vorschlag: '+e(x.suggestions[0].name)+' · '+e(x.suggestions[0].rank)+'</small>':'')+'</div>'+
-  '<div class="native-train-actions"><button type="button" data-native-train="'+e(x.date)+'">'+(x.entry?'Bearbeiten':'Fahrer wählen')+'</button>'+
+  '<div class="native-train-actions">'+vipAction(x.date)+'<button type="button" data-native-train="'+e(x.date)+'">'+(x.entry?'Bearbeiten':'Fahrer wählen')+'</button>'+
   '<button type="button" data-native-dice-date="'+e(x.date)+'">🎲 '+e((cache.dice||[]).find(d=>d.ride_date===x.date)?.winner_name||'Dice Game')+'</button>'+
   (x.entry?.status==='planned'&&x.entry?.member_id&&(d.members||[]).some(m=>m.id===x.entry.member_id)?
    '<button type="button" data-native-copy-train="'+e(x.date)+'">Zugtext kopieren</button>':'')+'</div>'+
@@ -1388,7 +1456,8 @@ function renderTrain(target){
  target.querySelector('#native-train-body').innerHTML='<p class="native-muted">Fahrer ab R2 · historische Importe bleiben unverändert. Geplant, gefahren und noch nicht bestätigt sind unterschiedliche Zustände.</p>'+
   '<div class="native-train-highlights">'+cards([['Gefahren (Historie)',d.counts?.completed??'—'],['Geplant',d.counts?.planned??'—'],['Noch zuordnen',unlinkedCount]])+'</div>'+
   '<h3 class="native-section-heading">Heute & nächste Züge</h3><div class="native-list native-train-week">'+toShow+'</div>'+
-  '<div id="native-train-form"></div>'+
+  '<p data-native-train-status role="status" aria-live="polite"></p><div id="native-train-form"></div>'+
+  '<div class="native-form"><label>VIP-Datum öffnen (auch ohne Fahrer / Dice)<input type="date" data-native-vip-open min="2026-11-11" value="'+e(today)+'"></label></div>'+
   '<details class="native-fold native-train-history" '+(trainHistoryExpanded?'open':'')+'><summary><span>Vergangene Züge & Dice Game</span> · <b data-native-history-count>'+timeline.pastCount+'</b></summary>'+
   '<div class="native-fold-body"><p class="native-muted native-train-note">Dice-Gewinn ist keine bestätigte Zugfahrt – Fahrtenstatistik/Fairness zählen nur tatsächlich gefahrene Züge.</p>'+
   '<div class="native-train-history-filters"><label for="native-train-history-member">Mitglied suchen<input id="native-train-history-member" type="search" placeholder="Spielername …" autocomplete="off" value="'+e(trainHistoryFilters.member)+'"></label>'+
@@ -1414,9 +1483,10 @@ function editTrain(target,date,allowDateChange=false,preferredMemberId=null){
   (!memberAbsentOn(m.id,date,d.absences||[])||m.id===entry?.member_id));
  const optionsList=options(eligible,preferredMemberId||entry?.member_id);
  const editor=target.querySelector('#native-train-form');
- if(!editor)return;
+ if(!editor)return;editor.dataset.ticket=String(Number(editor.dataset.ticket||0)+1);
  editor.innerHTML='<form id="native-train-save" class="native-form native-fast-form" '+(repair?'data-repair-date="'+e(date)+'"':'')+'><h3>Zugfahrer · '+e(date)+'</h3>'+
   (repair?'<p class="native-evidence-note"><span data-native-no-translate>'+e(entry.original_name||entry.driver||'Nicht angegeben')+' · '+e(date)+'</span> · <span>Zuordnung offen</span>. <span>Nur sichere Identitäten zuordnen; Originalnamen bleiben erhalten.</span></p>':'')+
+  vipAction(date)+'<p data-native-no-translate>'+e(vipLabel(trainVipForDate(date),date))+'</p>'+
   '<p class="native-form-help">Fahrer ab R2. Wer an diesem Tag als abwesend eingetragen ist, wird nicht vorgeschlagen und kann nicht neu geplant werden.</p>'+
   '<label>Fahrer aus Allianz<select name="member_id" '+(repair?'required':'')+'>'+optionsList+'</select></label>'+
   (repair?'<input type="hidden" name="status" value="completed">':
@@ -1433,21 +1503,122 @@ function editTrain(target,date,allowDateChange=false,preferredMemberId=null){
   '<p id="native-form-message" role="status"></p></form>';
  editor.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
-function editDice(target,date){
- const current=(cache.dice||[]).find(x=>x.ride_date===date);
- const roster=(cache.diceMembers||[]).filter(m=>m.status==='active');
- const editor=target.querySelector('#native-train-form');if(!editor)return;
- editor.innerHTML='<form class="native-form native-fast-form" id="native-dice-save" data-revision="'+e(current?.revision||0)+'">'+
-  '<h3>🎲 Dice Game · '+e(date)+'</h3>'+
-  '<p class="native-form-help">Den tatsächlichen Gewinner eintragen. Fahrerauswahl und Zugrotation bleiben unabhängig.</p>'+
-  '<label>Datum<input type="date" name="date" value="'+e(date)+'" required></label>'+
-  '<label>Gewinner aus der Allianz<select name="winner_id" required>'+options(roster,current?.winner_id||'')+'</select></label>'+
-  '<label>Würfelwert (optional)<input type="number" name="roll_value" min="1" max="999" value="'+e(current?.roll_value??'')+'"></label>'+
-  '<label>Notiz (optional)<input name="note" maxlength="300" value="'+e(current?.note||'')+'"></label>'+
-  '<button type="submit" class="native-game-primary">Dice-Game-Gewinner speichern</button>'+
-  (current?'<button type="button" class="native-danger-action" data-native-dice-delete="'+e(date)+'" data-revision="'+e(current.revision)+'">Ziehung löschen</button>':'')+
-  '<p role="status" id="native-dice-message"></p></form>';
- editor.scrollIntoView({behavior:'smooth',block:'nearest'});
+const VIP_TRACKING_SINCE='2026-11-11';
+const vipTrackingDate=date=>isIsoTrainDate(date)&&date>=VIP_TRACKING_SINCE;
+const vipText=text=>translateOfficerText(text,officerLanguage(globalThis.window?.document));
+function trainVipDates(d){
+ return [...(d.calendar||[]).map(x=>({...x,ride_date:x.date})),...(d.vip_passengers||[])];
+}
+function trainVipForDate(date){
+ return (cache.trains?.vip_passengers||[]).find(x=>x.ride_date===date)||
+  (cache.trains?.calendar||[]).find(x=>x.date===date)||
+  (cache.trains?.history||[]).find(x=>x.date===date)||
+  (cache.dice||[]).find(x=>x.ride_date===date)||{};
+}
+function vipLabel(value,date,second=false){
+ if(!vipTrackingDate(date))return vipText('VIP: vor Erfassungsbeginn (11.11.2026)');
+ const label=vipText(second?'2. Platz · VIP:':'VIP-Fahrgast:')+' ';
+ return label+(value?.vip_status==='selected'&&value.vip_member_id?(value.vip_name||value.vip_member_id):
+  value?.vip_status==='unassigned'?vipText('explizit unbesetzt'):vipText('unbekannt'));
+}
+function vipAction(date){
+ return vipTrackingDate(date)?'<button type="button" data-native-vip-date="'+e(date)+'">VIP-Fahrgast wählen</button>':'';
+}
+function vipSelect(vip,{independent=false}={}){
+ const roster=(cache.diceMembers||[]).filter(m=>m.status==='active'&&!['former','archived'].includes(m.lifecycle));
+ const former=vip.vip_member_id&&!roster.some(m=>m.id===vip.vip_member_id);
+ return '<label>'+(independent?'VIP-Fahrgast':'2. Platz · VIP-Fahrgast')+'<select name="'+(independent?'member_id':'vip_member_id')+'" '+(independent?'required':'')+'>'+
+  '<option value="">'+(independent?'Bitte auswählen · unbekannt':'Unverändert lassen')+'</option>'+
+  '<option value="__none">Explizit unbesetzt (Auswahl löschen)</option>'+
+  roster.map(m=>'<option data-native-no-translate value="'+e(m.id)+'" '+(independent&&m.id===vip.vip_member_id?'selected':'')+'>'+e(m.name)+' · '+e(m.rank)+'</option>').join('')+'</select></label>'+
+  (former?'<p data-native-no-translate>'+e(vipText('Historischer VIP:'))+' '+e(vip.vip_name||vip.vip_member_id)+' '+e(vipText('(nicht mehr aktiv). Änderungen benötigen ein aktives Mitglied oder explizit unbesetzt.'))+'</p>':'');
+}
+async function loadTrainEditor(target,date,kind){
+ const editor=target.querySelector('#native-train-form');if(!editor||!isIsoTrainDate(date))return;
+ if(kind==='vip'&&!vipTrackingDate(date))return;
+ const generation=sessionGeneration,ticket=String(Number(editor.dataset.ticket||0)+1);editor.dataset.ticket=ticket;
+ const live=()=>editor.isConnected&&panel==='train'&&generation===sessionGeneration&&editor.dataset.ticket===ticket;
+ editor.innerHTML='<p role="status">Auswahl wird geladen …</p>';
+ try{
+  const vip=vipTrackingDate(date)?await request('/api/train-vip?date='+encodeURIComponent(date)):{};
+  if(!live())return;
+  if(vipTrackingDate(date)&&(!['unknown','selected','unassigned'].includes(vip.vip_status)||!Number.isSafeInteger(vip.vip_revision)))throw Error('VIP-Antwort nicht verfügbar. Bitte neu laden.');
+  const current=(cache.dice||[]).find(x=>x.ride_date===date);
+  const independent=kind==='vip';
+  editor.innerHTML='<form class="native-form native-fast-form" id="native-'+kind+'-save" data-date="'+e(date)+'" data-revision="'+e(independent?vip.vip_revision:current?.revision||0)+'" data-vip-revision="'+e(vip.vip_revision||0)+'" data-vip-member="'+e(vip.vip_member_id||'')+'">'+
+   '<h3>'+(independent?'VIP-Fahrgast':'🎲 Dice Game')+' · '+e(date)+'</h3>'+
+   '<p class="native-form-help">'+(independent?'VIP-Fahrgäste aus allen aktiven Rängen (auch R1).':'1. Platz ist der Gewinner; 2. Platz fährt als VIP. Beide müssen verschieden sein. Fahrer und Rotation bleiben unabhängig.')+'</p>'+
+   '<p data-native-no-translate>'+e(vipLabel(vip,date,!independent))+'</p>'+
+   '<label>Datum<input type="date" name="date" '+(independent?'min="2026-11-11"':'')+' value="'+e(date)+'" required></label>'+
+   (independent?'':'<label>1. Platz · Gewinner aus der Allianz<select name="winner_id" required>'+options((cache.diceMembers||[]).filter(m=>m.status==='active'),current?.winner_id||'')+'</select></label>')+
+   (vipTrackingDate(date)?vipSelect(vip,{independent}):'<p>VIP-Erfassung erst ab 11.11.2026; historische VIPs werden nicht ergänzt.</p>')+
+   (independent?'':'<label>Würfelwert (optional)<input type="number" name="roll_value" min="1" max="999" value="'+e(current?.roll_value??'')+'"></label>'+
+   '<label>Notiz (optional)<input name="note" maxlength="300" value="'+e(current?.note||'')+'"></label>')+
+   '<button type="submit" class="native-game-primary">'+(independent?'VIP-Fahrgast speichern':'Dice Game & VIP speichern')+'</button>'+
+   (!independent&&current?'<button type="button" class="native-danger-action" data-native-dice-delete="'+e(date)+'" data-revision="'+e(current.revision)+'">Ziehung löschen (VIP bleibt erhalten)</button>':'')+
+   '<p role="status" aria-live="polite" id="native-'+kind+'-message"></p></form>';
+  if(independent&&vip.vip_status==='unassigned')editor.querySelector('[name=member_id]').value='__none';
+  localizeOfficerTree(editor);
+  editor.scrollIntoView({behavior:'smooth',block:'nearest'});
+  editor.querySelector('h3').setAttribute('tabindex','-1');editor.querySelector('h3').focus({preventScroll:true});
+ }catch(error){
+  if(error.status===401&&!sessionToken&&editor.isConnected)editor.innerHTML='<p role="alert">Sitzung abgelaufen. Bitte erneut anmelden.</p>';
+  else if(live())editor.innerHTML='<p role="alert">'+e(error.message)+'</p><button type="button" data-native-'+(kind==='vip'?'vip':'dice')+'-date="'+e(date)+'">Auswahl erneut laden</button>';
+ }
+}
+function editDice(target,date){return loadTrainEditor(target,date,'dice')}
+function editVip(target,date){return loadTrainEditor(target,date,'vip')}
+async function refreshTrainResults(){
+ const generation=sessionGeneration;
+ const [trains,dice]=await Promise.all([request('/api/train-manager'),request('/api/train-dice')]);
+ if(generation!==sessionGeneration)throw Error('Sitzung geändert. Bitte erneut öffnen.');
+ cache.trains=trains;cache.dice=dice;
+}
+async function saveTrainResult(form,target){
+ const independent=form.id==='native-vip-save',kind=independent?'vip':'dice';
+ const status=form.querySelector('#native-'+kind+'-message'),submit=form.querySelector('[type=submit]');
+ if(submit.disabled)return;
+ const report=text=>{if(target.isConnected){const node=target.querySelector('[data-native-train-status]');if(node)node.textContent=vipText(text);if(status.isConnected)status.textContent=vipText(text)}};
+ if(!['R4','R5'].includes(officer?.role)){report('Nur R4/R5 dürfen speichern.');return}
+ const date=form.elements.namedItem('date').value;
+ if(date!==form.dataset.date){report('Datum geändert. Auswahl für dieses Datum neu laden.');return}
+ const choice=form.elements.namedItem(independent?'member_id':'vip_member_id')?.value||'';
+ const payload={date,expected_revision:Number(form.dataset.revision)};
+ if(independent&&!choice){report('Bitte aktives Mitglied oder explizit unbesetzt auswählen.');return}
+ const vip=choice==='__none'?null:choice;
+ if(choice&&vip!==null&&!(cache.diceMembers||[]).some(m=>m.id===vip&&m.status==='active'&&!['former','archived'].includes(m.lifecycle))){report('VIP muss aktuell aktiv sein.');return}
+ if(independent)payload.member_id=vip;
+ else{
+  payload.winner_id=form.elements.namedItem('winner_id').value;
+  payload.roll_value=form.elements.namedItem('roll_value').value?Number(form.elements.namedItem('roll_value').value):null;
+  payload.note=form.elements.namedItem('note').value;
+  if(!(cache.diceMembers||[]).some(m=>m.id===payload.winner_id&&m.status==='active')){report('Aktiven Gewinner auswählen.');return}
+  if((choice?vip:form.dataset.vipMember)===payload.winner_id){report('Gewinner und VIP müssen verschieden sein.');return}
+  if(choice){payload.vip_member_id=vip;payload.expected_vip_revision=Number(form.dataset.vipRevision)}
+ }
+ if(independent&&(cache.dice||[]).some(x=>x.ride_date===date&&x.winner_id===vip)){report('Gewinner und VIP müssen verschieden sein.');return}
+ if(!isIsoTrainDate(date)||choice&&!vipTrackingDate(date)||!independent&&payload.roll_value!==null&&(!Number.isInteger(payload.roll_value)||payload.roll_value<1||payload.roll_value>999)){report('Datum oder Würfelwert ungültig.');return}
+ const generation=sessionGeneration,live=()=>generation===sessionGeneration&&target.isConnected&&panel==='train';
+ const controls=[...form.querySelectorAll('input,select,button')];
+ controls.forEach(control=>{control.disabled=true});report('Wird gespeichert …');let saved=false;
+ try{
+  const receipt=await request('/api/train-'+kind,{method:'POST',body:payload});if(!live())return;
+  if(receipt.ok!==true)throw Error('Speichern nicht bestätigt.');saved=true;
+  await refreshTrainResults();if(!live())return;
+  const actualDice=(cache.dice||[]).find(x=>x.ride_date===date),actualVip=trainVipForDate(date);
+  if(!independent&&(!actualDice||actualDice.winner_id!==payload.winner_id||actualDice.revision<=payload.expected_revision)||
+   choice&&(actualVip.vip_member_id!==vip||actualVip.vip_revision<=(independent?payload.expected_revision:payload.expected_vip_revision)))
+   throw Error('Aktueller Stand weicht von der bestätigten Auswahl ab. Bitte prüfen.');
+  renderTrain(target);report('Gespeichert: Auswahl erneut vom Backend gelesen.');
+ }catch(error){
+  if(error.status===401&&!sessionToken&&target.isConnected){report('Sitzung abgelaufen. Bitte erneut anmelden.');return}
+  if(!live())return;
+  if(error.status===409){
+   try{await refreshTrainResults();if(!live())return;renderTrain(target);await loadTrainEditor(target,date,kind);if(!live())return;
+    report('Inzwischen geändert (409). Aktuellen Stand geladen; Auswahl prüfen und ausdrücklich erneut speichern.');
+   }catch(refreshError){if(live())report('Konflikt (409); Neuladen fehlgeschlagen: '+refreshError.message)}
+  }else{report(saved?'Speichern bestätigt; erneutes Lesen fehlgeschlagen: '+error.message+' Bitte Züge neu öffnen.':'Nicht gespeichert: '+error.message);if(!saved)controls.forEach(control=>{control.disabled=false})}
+ }
 }
 const allianceEventLabels={
  marshall_guard:'Marshall Guard · Allianzübung',
@@ -2140,7 +2311,7 @@ async function evidenceHash(blob){
  const digest=await crypto.subtle.digest('SHA-256',await blob.arrayBuffer());
  return Array.from(new Uint8Array(digest),v=>v.toString(16).padStart(2,'0')).join('');
 }
-function renderReviews(target,term=''){
+function renderReviews(target,term='',selectedId=''){
  clearReviewImages();
  const lang=officerLanguage(target.ownerDocument),label=key=>e(translateOfficerText(key,lang));
  const writesEnabled=cache.reviewWritesEnabled===true;
@@ -2150,7 +2321,7 @@ function renderReviews(target,term=''){
  const list=(cache.reviews||[]).filter(x=>(!batch||x.source_batch===batch)&&(!kind||x.kind===kind)&&
   (imageStatus==='all'||(imageStatus==='with')===Boolean(x.evidence_sha))&&
   [x.source_name,x.category,x.metric,x.note,x.source_batch].some(y=>String(y||'').toLowerCase().includes(String(term).toLowerCase())))
-  .sort((a,b)=>Number(Boolean(b.evidence_sha))-Number(Boolean(a.evidence_sha)));
+  .sort((a,b)=>Number(b.id===selectedId)-Number(a.id===selectedId)||Number(Boolean(b.evidence_sha))-Number(Boolean(a.evidence_sha)));
  const names={vs_uncertain:'VS-Tageswert',inferred:'Wert nicht sicher',unmatched_name:'Spieler zuordnen',
   historical_identity:'Namenszuordnung',missing:'Fehlender Wert',ocr_alert:'Bild erkennen'};
  const card=x=>{
@@ -2473,7 +2644,7 @@ export function initNativeAdmin(mount){
    if(url.startsWith('blob:'))window.open(url,'_blank','noopener,noreferrer');
    return;
   }
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-watch-archive],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-dice-delete],[data-native-train-choice],[data-native-history-reset],[data-native-access-mode],[data-native-access-copy],[data-native-access-signout],[data-native-member-create],[data-native-registry-quick],[data-native-access-link],[data-native-access-disable],[data-audit-category],[data-native-vs-image],[data-native-vs-image-close],[data-native-requirements-reload]');
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-watch-archive],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-vip-date],[data-native-dice-delete],[data-native-train-choice],[data-native-history-reset],[data-native-access-mode],[data-native-access-copy],[data-native-access-signout],[data-native-member-create],[data-native-registry-quick],[data-native-access-link],[data-native-access-disable],[data-audit-category],[data-native-vs-image],[data-native-vs-image-close],[data-native-requirements-reload]');
   if(!button)return;
   if(button.hasAttribute('data-native-history-reset')){
    trainHistoryFilters={member:'',date:''};historyLimit=20;
@@ -2709,14 +2880,25 @@ export function initNativeAdmin(mount){
   if(button.dataset.nativeDiceDelete){
    const reason=window.prompt('Dice-Game-Eintrag löschen? Bitte Grund für das Admin-Protokoll nennen.');
    if(reason===null)return;
-   if(reason.trim().length<8){window.alert('Bitte mindestens 8 Zeichen Begründung.');return}
-   button.disabled=true;
-   try{await request('/api/train-dice/delete',{method:'POST',body:{date:button.dataset.nativeDiceDelete,
-     expected_revision:Number(button.dataset.revision),reason}});
-    cache.dice=await request('/api/train-dice');renderTrain(target)}
-   catch(err){window.alert('Dice Game nicht gelöscht: '+err.message);button.disabled=false}
+   const generation=sessionGeneration,live=()=>generation===sessionGeneration&&target.isConnected&&panel==='train';
+   const report=text=>{const node=target.querySelector('[data-native-train-status]');if(node)node.textContent=text};
+   if(!['R4','R5'].includes(officer?.role)){report('Nur R4/R5 dürfen löschen.');return}
+   if(reason.trim().length<8||reason.length>500){report('Bitte 8–500 Zeichen Begründung.');return}
+   const form=button.closest('form'),controls=[...form.querySelectorAll('input,select,button')];
+   controls.forEach(control=>{control.disabled=true});let deleted=false;
+   try{const result=await request('/api/train-dice/delete',{method:'POST',body:{date:button.dataset.nativeDiceDelete,
+     expected_revision:Number(button.dataset.revision),reason}});if(!live())return;
+    if(result.ok!==true)throw Error('Löschung nicht bestätigt.');deleted=true;
+    await refreshTrainResults();if(!live())return;renderTrain(target);report('Dice Game gelöscht. VIP-Auswahl bleibt erhalten.');
+   }catch(err){if(!live())return;
+    if(err.status===409){
+     try{await refreshTrainResults();if(!live())return;renderTrain(target);await editDice(target,button.dataset.nativeDiceDelete);if(live())report('Inzwischen geändert (409). Aktuellen Stand vor dem Löschen prüfen.');}
+     catch(refreshError){if(live())report('Konflikt; Neuladen fehlgeschlagen: '+refreshError.message)}
+    }else{report((deleted?'Löschung bestätigt; Neuladen fehlgeschlagen: ':'Dice Game nicht gelöscht: ')+err.message);if(!deleted)controls.forEach(control=>{control.disabled=false})}
+   }
    return;
   }
+  if(button.dataset.nativeVipDate){await editVip(target,button.dataset.nativeVipDate);return}
   if(button.dataset.nativeDiceDate){editDice(target,button.dataset.nativeDiceDate);return}
   if(button.dataset.nativeTrainChoice){
    const date=button.dataset.date,id=button.dataset.nativeTrainChoice;
@@ -2745,7 +2927,7 @@ export function initNativeAdmin(mount){
    if(card)reviewMemberOptions(card,event.target.value);
   }
  });
- mount.addEventListener('change',event=>{
+ mount.addEventListener('change',async event=>{
   if(event.target.id==='native-train-history-date'){
    trainHistoryFilters.date=event.target.value;historyLimit=20;updateTrainHistoryResults(mount.querySelector('#native-admin-content'));return;
   }
@@ -2754,6 +2936,10 @@ export function initNativeAdmin(mount){
    if(card){selectedProfileCaptures.delete(card.dataset.reviewId);const attach=card.querySelector('[data-native-capture-attach]');if(attach)attach.disabled=true;
     const message=card.querySelector('.native-review-message');if(message)message.textContent='Andere Aufnahme gewählt; bitte zuerst öffnen und kontrollieren.'}
   }
+ if(event.target.matches('[data-native-vip-open]')){await editVip(mount.querySelector('#native-admin-content'),event.target.value);return}
+ if(event.target.name==='date'&&event.target.closest('#native-vip-save,#native-dice-save')){
+  await loadTrainEditor(mount.querySelector('#native-admin-content'),event.target.value,event.target.form.id==='native-vip-save'?'vip':'dice');return;
+ }
  if(event.target.id==='activity-group-by'){activityGroupBy=event.target.value;activityLimit=30;renderActivity(mount.querySelector('#native-admin-content'),mount.querySelector('#activity-search')?.value||'')}
   if(event.target.id==='native-vs-sort'&&cache.vsView){
    const target=mount.querySelector('#native-admin-content');cache.vsView.sort=event.target.value;cache.vsView.limits={};
@@ -2818,19 +3004,7 @@ export function initNativeAdmin(mount){
    }catch(err){form.querySelector('#native-login-status').textContent=err.message;button.disabled=false}
    return;
   }
-  if(form.id==='native-dice-save'){
-   const payload={date:form.elements.namedItem('date').value,
-    winner_id:form.elements.namedItem('winner_id').value,
-    roll_value:form.elements.namedItem('roll_value').value?Number(form.elements.namedItem('roll_value').value):null,
-    note:form.elements.namedItem('note').value,expected_revision:Number(form.dataset.revision)};
-   const submit=form.querySelector('[type=submit]'),status=form.querySelector('#native-dice-message');
-   submit.disabled=true;status.textContent='Dice Game wird gespeichert …';
-   try{await request('/api/train-dice',{method:'POST',body:payload});
-    cache.dice=await request('/api/train-dice');renderTrain(mount.querySelector('#native-admin-content'));
-    const info=mount.querySelector('#native-train-form');if(info)info.textContent='Gewinner gespeichert und im Admin-Log protokolliert.';
-   }catch(err){submit.disabled=false;status.textContent='Nicht gespeichert: '+err.message}
-   return;
-  }
+  if(['native-dice-save','native-vip-save'].includes(form.id)){await saveTrainResult(form,mount.querySelector('#native-admin-content'));return}
   if(form.id==='native-train-rotation-save'){
    const types=trainWeekdays.map((_,i)=>form.elements.namedItem('type'+i).value);
    const coordinators=trainWeekdays.map((_,i)=>form.elements.namedItem('coord'+i).value||null);
