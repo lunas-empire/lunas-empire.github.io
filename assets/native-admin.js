@@ -2251,6 +2251,7 @@ function renderSourceCard(list,item,members,saved,live){
  };
 }
 const reviewBlobUrls=new Map();
+const reviewCompletions=new WeakMap();
 const selectedProfileCaptures=new Map();
 function clearReviewImages(){
  for(const url of reviewBlobUrls.values())try{URL.revokeObjectURL(url)}catch{}
@@ -2506,10 +2507,14 @@ async function attachReviewScreenshot(card){
  }catch(error){message.textContent='Nicht hochgeladen: '+error.message;upload.disabled=false}
 }
 async function completeReview(card,action){
- if(cache.reviewWritesEnabled!==true)return;
+ if(cache.reviewWritesEnabled!==true||!['R4','R5'].includes(officer?.role))return;
+ const generation=sessionGeneration,live=()=>card.isConnected&&panel==='reviews'&&generation===sessionGeneration;
+ let completion=reviewCompletions.get(card);
+ if(!live()||completion?.busy)return;
  const item=(cache.reviews||[]).find(x=>x.id===card.dataset.reviewId);
  if(!item)return;
  const message=card.querySelector('.native-review-message'),reason=card.querySelector('[data-native-review-reason]')?.value.trim();
+ if(!completion){
  if(!reason||reason.length<8){message.textContent='Bitte kurz begründen, was geprüft wurde.';return}
  const body={action,reason};
  if(action==='approve'){
@@ -2527,17 +2532,38 @@ async function completeReview(card,action){
   }else{message.textContent='Dieser Falltyp kann nicht direkt freigegeben werden.';return}
  }
  if(!window.confirm(action==='approve'?'Wert nach Bildprüfung verbindlich speichern?':'Prüfauftrag mit Begründung schließen?'))return;
+ completion={body,status:action==='approve'?'approved':'dismissed',busy:false,sent:false};
+ reviewCompletions.set(card,completion);
+ }
+ completion.busy=true;
  const buttons=[...card.querySelectorAll('button')];
  const disabledBefore=buttons.map(button=>button.disabled);
  buttons.forEach(button=>button.disabled=true);
+ card.querySelectorAll('input').forEach(input=>{input.disabled=true});
  message.textContent='Wird gespeichert und protokolliert …';
+ let posting=false;
  try{
-  await request('/api/reviews/'+encodeURIComponent(item.id)+'/resolve',{method:'POST',body});
+  // After a submitted decision, retries only read. A lost response must never resubmit approval.
+  if(!completion.sent){
+   completion.sent=true;posting=true;
+   const receipt=await request('/api/reviews/'+encodeURIComponent(item.id)+'/resolve',{method:'POST',body:completion.body});
+   posting=false;
+   if(!live())return;
+   if(receipt?.ok!==true||receipt.review_id!==item.id||receipt.status!==completion.status||receipt.kind!==item.kind)
+    throw Error('Quittung fehlt oder passt nicht zum Prüffall. Speicherstatus erneut prüfen.');
+  }
+  const closed=await request('/api/reviews?status='+completion.status);if(!live())return;
+  const saved=Array.isArray(closed)?closed.find(row=>row.id===item.id):null;
+  const decision=saved?.resolution,body=completion.body;
+  if(saved?.status!==completion.status||decision?.action!==body.action||decision.reason!==body.reason||
+   (body.action==='approve'&&(saved.evidence_sha!==body.evidence_sha||decision.evidence_sha!==body.evidence_sha||
+    (item.kind==='identity'?decision.member_id!==body.member_id:decision.corrected_value!==body.corrected_value))))
+   throw Error('Rücklesekontrolle bestätigt die gespeicherte Entscheidung nicht. Speicherstatus erneut prüfen.');
   cache.reviews=cache.reviews.filter(x=>x.id!==item.id);
   const target=card.closest('#native-admin-content');
   renderReviews(target,target.querySelector('#review-search-native')?.value||'');
   const status=target.querySelector('#native-review-finished');
-  if(status)status.textContent='Prüfauftrag erledigt und aus der offenen Liste entfernt.';
+  if(status)status.textContent='Prüfauftrag '+item.id+' serverseitig quittiert und unabhängig gelesen ('+completion.status+').';
   const next=target.querySelector('.native-review-card');
   if(next){
    next.open=true;
@@ -2547,8 +2573,16 @@ async function completeReview(card,action){
    status.focus();
   }
  }catch(error){
-  message.textContent='Nicht gespeichert: '+error.message;
-  buttons.forEach((button,index)=>{button.disabled=disabledBefore[index]});
+  if(!live())return;
+  const rejected=posting&&error.status>=400&&error.status<500;
+  if(rejected){reviewCompletions.delete(card);card.querySelectorAll('input').forEach(input=>{input.disabled=false})}
+  message.textContent=(rejected?'Nicht gespeichert: ':'Speicherstatus noch nicht bestätigt: ')+error.message;
+  buttons.forEach((button,index)=>{
+   button.disabled=rejected?disabledBefore[index]:button.dataset.nativeReviewResolve!==completion.body.action;
+   if(!rejected&&button.dataset.nativeReviewResolve===completion.body.action)button.textContent='Speicherstatus erneut prüfen';
+  });
+ }finally{
+  completion.busy=false;
  }
 }
 
