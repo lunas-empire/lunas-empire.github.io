@@ -15,9 +15,11 @@ const apiBase=ALLIANCE_CONFIG.commandCenterEmbedUrl.replace('/?embed=1','');
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
 let sessionToken='',officer=null,panel='overview',cache={},pageLimit=20,historyLimit=20,activityLimit=30,registryFilter='all',activityCategory='all',activityGroupBy='type';
 let sessionGeneration=0;
+const registryCompletions=new Map();
+let registryLoadTicket=0;
 let duelLeagueController=null;
 let trainHistoryFilters={member:'',date:''},trainHistoryExpanded=false;
-export function clearOfficer(){clearSourceImages();sessionGeneration++;statViewer.close();clearReviewImages();duelLeagueController?.destroy();duelLeagueController=null;sessionToken='';officer=null;cache={};panel='overview';pageLimit=20;historyLimit=20;trainHistoryFilters={member:'',date:''};trainHistoryExpanded=false;activityLimit=30;registryFilter='all';activityCategory='all';activityGroupBy='type';}
+export function clearOfficer(){clearSourceImages();sessionGeneration++;registryCompletions.clear();registryLoadTicket++;statViewer.close();clearReviewImages();duelLeagueController?.destroy();duelLeagueController=null;sessionToken='';officer=null;cache={};panel='overview';pageLimit=20;historyLimit=20;trainHistoryFilters={member:'',date:''};trainHistoryExpanded=false;activityLimit=30;registryFilter='all';activityCategory='all';activityGroupBy='type';}
 export const hasOfficer=()=>Boolean(sessionToken);
 const canManageSite=()=>officer?.role==='R5'||(officer?.role==='R4'&&officer?.siteOwner===true);
 async function request(path,options={}){
@@ -114,7 +116,7 @@ function moreHub(){
 }
 function cards(items){return '<div class="native-cards">'+items.map(([name,value,sub])=>'<article><small>'+e(name)+'</small><strong>'+e(value)+'</strong><span>'+e(sub||'')+'</span></article>').join('')+'</div>'}
 function marker(status){return '<span class="native-status">'+e(status||'Unbekannt')+'</span>'}
-async function view(mount){
+async function view(mount,{registrySnapshot=null}={}){
  clearSourceImages();
  clearReviewImages();
  duelLeagueController?.destroy();duelLeagueController=null;
@@ -225,13 +227,20 @@ async function view(mount){
       (canManageSite()&&x.enabled?'<div class="native-row">'+(!x.member_id?'<button type="button" data-native-access-link="'+e(x.id)+'">Spieler zuordnen</button>':'')+
        (x.ingame_name!==officer.name&&!x.is_site_owner?'<button type="button" data-native-access-disable="'+e(x.id)+'">Zugang deaktivieren</button>':'')+'</div>':'')+'</div>').join('')+'</div></details>';
   }else if(panel==='registry'){
-    [cache.registry,cache.archivedTrains]=await Promise.all([request('/api/member-registry'),request('/api/train-manager').catch(()=>null)]);
+   if(registrySnapshot)cache.registry=registrySnapshot;
+   else{
+    const generation=sessionGeneration,ticket=++registryLoadTicket;
+    const [registry,archivedTrains]=await Promise.all([request('/api/member-registry'),request('/api/train-manager').catch(()=>null)]);
+    if(generation!==sessionGeneration||ticket!==registryLoadTicket||panel!=='registry'||!target.isConnected)return;
+    cache.registry=registry;cache.archivedTrains=archivedTrains;
     await formerArchiveFromTrain(cache.archivedTrains,cache.registry.members);
+    if(generation!==sessionGeneration||ticket!==registryLoadTicket||panel!=='registry'||!target.isConnected)return;
+   }
    const historicalArchive=historicalFormerRegistryEntries(cache.archivedTrains?.archivedFormerTrainDrivers||[],cache.registry.members);
    target.innerHTML='<div class="native-row"><h2>Mitgliederverwaltung</h2><button type="button" data-native-member-create>+ Mitglied anlegen</button><input id="registry-search" type="search" placeholder="Spieler suchen"></div>'+
     '<nav class="native-status-filter" aria-label="Mitgliederstatus">'+[['all','Alle'],['active','Aktiv'],['former','Archiv'],['blacklist','Blacklist']].map(([key,label])=>
     '<button type="button" data-native-registry-filter="'+key+'" aria-pressed="'+(registryFilter===key?'true':'false')+'">'+label+'</button>').join('')+'</nav>'+
-    cards([['Aktiv',cache.registry.counts.active],['Archiv',Number(cache.registry.counts.former||0)+historicalArchive.length],['Blacklist',cache.registry.counts.blacklisted]])+
+    '<div data-registry-counts>'+cards([['Aktiv',cache.registry.counts.active],['Archiv',Number(cache.registry.counts.former||0)+historicalArchive.length],['Blacklist',cache.registry.counts.blacklisted]])+'</div>'+
     '<div id="registry-list"></div><div id="registry-form"></div>';renderRegistry(target,'');
   }else if(panel==='watch'){
    target.innerHTML='<div class="native-row"><div><h2>Mitglieder-Abgleich</h2><p class="native-muted">VS- und Stärke-Aufnahmen vergleichen. Kein automatischer Austritt und keine automatische Blacklist.</p></div></div><div id="native-watch-list" role="region" aria-label="Mitglieder zum Prüfen"></div>';
@@ -286,7 +295,7 @@ async function view(mount){
   }else if(panel==='members'){
     const [list,trains]=await Promise.all([request('/api/members'),request('/api/train-manager').catch(()=>null)]);
     cache.members=list;cache.archivedTrains=trains;
-    cache.membersArchive=await formerArchiveFromTrain(trains,list);
+    cache.membersArchive=await formerArchiveFromTrain(trains,list);cache.archivedTrains=trains;
     cache.membersArchiveAvailable=Boolean(trains);
    target.innerHTML='<div class="native-row"><h2>Allianzmitglieder</h2><input id="native-member-search" type="search" placeholder="Spieler suchen" autocomplete="off"></div>'+
     '<p class="native-muted">Nach Rang sortiert. Spieler antippen: Profil, Messwerte, Wochenverlauf, Erfolge und Zug-Historie.</p><p class="native-muted">'+(officerLanguage(target.ownerDocument)==='de'?'Spieler öffnen → LW Import.':'Open player → LW Import.')+'</p><div id="native-member-list"></div>';
@@ -1990,12 +1999,116 @@ function editRegistry(target,id){
  host.innerHTML='<form id="registry-save" class="native-form" data-id="'+e(id)+'" data-revision="'+e(m.revision)+'" data-lifecycle="'+e(m.lifecycle)+'"><h3>'+e(m.name)+' verwalten</h3>'+
   '<label>Verwalteter Rang<select name="rank" required>'+(!m.rank?'<option value="" selected disabled>Rang verifizieren</option>':'')+ranks.map(x=>'<option '+(m.rank===x?'selected':'')+'>'+x+'</option>').join('')+'</select></label>'+
   '<label>Status<select name="lifecycle" required>'+(m.lifecycle==='unverified'?'<option value="" selected disabled>Identität / Status verifizieren</option>':'')+'<option value="active" '+(m.lifecycle==='active'?'selected':'')+'>Aktiv</option><option value="former" '+(m.lifecycle==='former'?'selected':'')+'>Ehemalig / Archiv</option></select></label>'+
-  '<div class="native-row"><button type="button" data-native-registry-quick="archive">Austritt best\u00e4tigen</button><button type="button" data-native-registry-quick="blacklist">Blacklist vormerken</button><button type="button" data-native-registry-quick="active">Aktiv vormerken</button></div>'+
+  '<div class="native-row"><button type="button" data-native-registry-quick="archive">Austritt erfassen / Archivierung vorbereiten</button><button type="button" data-native-registry-quick="blacklist">Blacklist vormerken</button><button type="button" data-native-registry-quick="active">Aktiv vormerken</button></div>'+
   '<fieldset><legend>Manuell best\u00e4tigter Austritt / R\u00fcckkehr</legend><label>Austrittsart<select name="departure_event"><option value="">Bitte ausw\u00e4hlen</option><option value="left">Selbst verlassen</option><option value="removed">Entfernt</option><option value="kicked">Gekickt</option></select></label><label>Gepr\u00fcfte Quelle<input name="departure_source" minlength="8" maxlength="500" placeholder="Allianzprotokoll / Datum / genauer Beleg"></label><label><input type="checkbox" name="source_checked"> Quelle pers\u00f6nlich gepr\u00fcft</label><label><input type="checkbox" name="departure_confirmed"> Austritt oder R\u00fcckkehr dieser Person ausdr\u00fccklich best\u00e4tigen</label><p>Nullwerte und fehlende VS-Werte sind kein Austrittsbeleg. Die bestehende Mitglieder-ID und Historie bleiben erhalten.</p></fieldset>'+
   '<label class="native-check"><input type="checkbox" name="blacklisted" '+(m.blacklisted?'checked':'')+'>Manuelle Blacklist</label>'+
   '<label>Begründung<input name="reason" required minlength="8" maxlength="500" value="'+e(m.reason)+'" placeholder="Für jede Änderung erforderlich (mindestens 8 Zeichen)"></label>'+
-  '<button type="submit">Änderung protokolliert speichern</button><button type="button" data-registry-reload hidden>Aktuellen Stand laden (Eingaben verwerfen)</button><p id="native-form-message" role="status"></p></form>';
+  '<button type="submit">Änderung protokolliert speichern</button><button type="button" data-registry-reload hidden>Aktuellen Stand laden (Eingaben verwerfen)</button><button type="button" data-registry-recheck hidden>Speicherstatus erneut prüfen (nur lesen)</button><p id="native-form-message" role="status"></p></form>';
+ if(registryCompletions.has(id))registryPendingForm(host.querySelector('form'),registryCompletions.get(id));
  host.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function registryPendingForm(form,completion){
+ form.querySelectorAll('input,select,button').forEach(control=>{control.disabled=true});
+ const retry=form.querySelector('[data-registry-recheck]');retry.hidden=false;retry.disabled=completion.busy;
+ form.querySelector('#native-form-message').textContent=completion.confirmed?
+  'Speichern serverseitig bestätigt; unabhängige Lesebestätigung steht aus. Bitte nur den Speicherstatus erneut prüfen.':
+  'Speicherstatus ungewiss. Bitte nur den Speicherstatus erneut prüfen; nicht erneut speichern.';
+}
+function prepareRegistryDeparture(form){
+ form.elements.namedItem('lifecycle').value='former';
+ form.querySelector('#native-form-message').textContent='Archivierung vorbereitet. Austrittsart, geprüfte Originalquelle und Grund angeben, beide Bestätigungen setzen und anschließend speichern.';
+ form.elements.namedItem('departure_event').focus();
+}
+async function saveRegistry(form,target,recheck=false){
+ const id=form.dataset.id,generation=sessionGeneration;
+ const live=()=>{
+  if(generation!==sessionGeneration)return false;
+  if(!form.isConnected){
+   const current=target.ownerDocument.querySelector('#registry-save');
+   if(current?.dataset.id===id){form=current;target=current.closest('#native-admin-content');message=current.querySelector('#native-form-message')}
+  }
+  return target?.isConnected&&form.isConnected;
+ };
+ let completion=registryCompletions.get(id);
+ let message=form.querySelector('#native-form-message');
+ if(completion&&!recheck)return;
+ if(completion?.busy||form.dataset.conflict==='1')return;
+ if(!['R4','R5'].includes(officer?.role)&&!canManageSite()){message.textContent='Nur R4/R5 oder die Website-Eigentümerin dürfen Mitglieder verwalten.';return}
+ if(!completion){
+  if(recheck||form.querySelector('[type=submit]').disabled)return;
+  const payload={member_id:id,revision:form.dataset.revision,rank:form.elements.namedItem('rank').value,lifecycle:form.elements.namedItem('lifecycle').value,blacklisted:form.elements.namedItem('blacklisted').checked,reason:form.elements.namedItem('reason').value.trim()};
+  if(payload.reason.length<8||!payload.rank||!['active','former'].includes(payload.lifecycle)){message.textContent='Nicht gespeichert: Rang, Status und mindestens 8 Zeichen Begründung prüfen.';return}
+  if(payload.lifecycle!==form.dataset.lifecycle&&['active','former'].includes(form.dataset.lifecycle)){
+   Object.assign(payload,{transition:payload.lifecycle==='former'?'manual_confirmed_departure':'manual_verified_return',
+    source:form.elements.namedItem('departure_source').value.trim(),source_checked:form.elements.namedItem('source_checked').checked,
+    confirmed:form.elements.namedItem('departure_confirmed').checked,
+    ...(payload.lifecycle==='former'?{departure_event:form.elements.namedItem('departure_event').value}:{})});
+   if(payload.source.length<8||!payload.source_checked||!payload.confirmed||payload.lifecycle==='former'&&!['left','removed','kicked'].includes(payload.departure_event)){
+    message.textContent='Nicht gespeichert: Quelle, Begründung, Austrittsart und ausdrückliche Bestätigung prüfen.';return;
+   }
+   if(payload.lifecycle==='active'&&Number(cache.registry?.counts?.active)>=100){message.textContent='Nicht gespeichert: Bereits 100 aktive Mitglieder. Rückkehr erst nach einem freien Platz möglich.';return}
+  }
+  if(!window.confirm('Mitgliedsänderung für '+(cache.registry?.members.find(m=>m.id===id)?.name||id)+' mit Audit-Log speichern?'))return;
+  completion={payload,busy:false,sent:false,confirmed:false};registryCompletions.set(id,completion);
+ }
+ completion.busy=true;registryPendingForm(form,completion);
+ let posting=false;
+ try{
+  if(!completion.sent){
+   completion.sent=true;posting=true;
+   const receipt=await request('/api/member-registry',{method:'POST',body:completion.payload});posting=false;
+   if(generation!==sessionGeneration)return;
+   completion.confirmed=receipt?.ok===true;
+   if(!completion.confirmed)throw Error('Serverquittung fehlt.');
+  }
+  // A fresh, light registry projection proves status, revision and roster counts.
+  // Neither the full profile list nor membership-watch is needed for completion.
+  const before=cache.registry?.members?.find(m=>m.id===id)?.revision;
+  const registry=await request('/api/member-registry');
+  if(generation!==sessionGeneration)return;
+  verifyRegistryReadback(completion.payload,registry);
+  if(cache.registry?.members?.find(m=>m.id===id)?.revision!==before)throw Error('Mitgliederstand wurde inzwischen neu geladen. Bitte erneut prüfen.');
+  registryLoadTicket++;cache.registry=registry;delete cache.members;delete cache.watch;
+  registryCompletions.delete(id);
+  if(!live())return;
+  if(!target.querySelector('#registry-list')){
+   const mount=target.closest('.native-admin').parentElement;
+   panel='registry';registryFilter=completion.payload.lifecycle;
+   await view(mount,{registrySnapshot:registry});
+   if(generation!==sessionGeneration||panel!=='registry')return;
+   target=mount.querySelector('#native-admin-content');
+  }
+  if(target.querySelector('#registry-list')){
+   if(completion.payload.transition)registryFilter=completion.payload.lifecycle;
+   pageLimit=20;
+   const search=target.querySelector('#registry-search'),row=registry.members.find(m=>m.id===id);
+   if(search&&!(row.name+' '+row.rank+' '+row.lifecycle+' '+(row.blacklisted?'blacklist':'')).toLowerCase().includes(search.value.toLowerCase()))search.value='';
+   target.querySelectorAll('[data-native-registry-filter]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.nativeRegistryFilter===registryFilter)));
+   const historical=historicalFormerRegistryEntries(cache.archivedTrains?.archivedFormerTrainDrivers||[],registry.members);
+   const counts=target.querySelector('[data-registry-counts]');
+   if(counts)counts.innerHTML=cards([['Aktiv',registry.counts.active],['Archiv',Number(registry.counts.former||0)+historical.length],['Blacklist',registry.counts.blacklisted]]);
+   renderRegistry(target,search?.value||'');
+   const index=[...target.querySelectorAll('[data-registry-edit]')].findIndex(button=>button.dataset.registryEdit===id);
+   if(index<0){pageLimit=registry.members.length+historical.length;renderRegistry(target,search?.value||'')}
+  }
+  const holder=target.querySelector('#registry-form')||form.parentElement;
+  holder.innerHTML='<p role="status">Gespeichert: Mitgliederstatus '+e(completion.payload.lifecycle)+' serverseitig unabhängig gelesen. Mitglieder-ID und Historie bleiben erhalten.</p>';
+  const entry=[...target.querySelectorAll('[data-registry-edit]')].find(button=>button.dataset.registryEdit===id);
+  if(entry){entry.focus();entry.scrollIntoView({block:'nearest'})}
+ }catch(error){
+  if(generation!==sessionGeneration)return;
+  const rejected=posting&&error.status>=400&&error.status<500;
+  if(rejected)registryCompletions.delete(id);
+  if(!live())return;
+  if(rejected){
+   form.querySelectorAll('input,select,button').forEach(control=>{control.disabled=false});
+   message.textContent=error.status===403?'Nicht gespeichert (403): R4 darf R1–R3 archivieren; R4/R5 nur durch R5 oder die Website-Eigentümerin. '+error.message:
+    error.status===409?'Nicht bestätigt (409): '+error.message+' Deine Eingaben bleiben erhalten. Lade den aktuellen Stand vor einer neuen Änderung.':'Nicht gespeichert: '+error.message;
+   if(error.status===409){form.dataset.conflict='1';form.querySelector('[type=submit]').disabled=true;form.querySelector('[data-registry-reload]').hidden=false}
+  }else{
+   completion.busy=false;registryPendingForm(form,completion);message.textContent+=' '+error.message;
+  }
+ }finally{completion.busy=false}
 }
 export function formatOfficerTime(raw){
  const value=String(raw||'').trim().replace(' ','T');
@@ -2678,7 +2791,7 @@ export function initNativeAdmin(mount){
    if(url.startsWith('blob:'))window.open(url,'_blank','noopener,noreferrer');
    return;
   }
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-watch-archive],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-vip-date],[data-native-dice-delete],[data-native-train-choice],[data-native-history-reset],[data-native-access-mode],[data-native-access-copy],[data-native-access-signout],[data-native-member-create],[data-native-registry-quick],[data-native-access-link],[data-native-access-disable],[data-audit-category],[data-native-vs-image],[data-native-vs-image-close],[data-native-requirements-reload]');
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-recheck],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-watch-archive],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-vip-date],[data-native-dice-delete],[data-native-train-choice],[data-native-history-reset],[data-native-access-mode],[data-native-access-copy],[data-native-access-signout],[data-native-member-create],[data-native-registry-quick],[data-native-access-link],[data-native-access-disable],[data-audit-category],[data-native-vs-image],[data-native-vs-image-close],[data-native-requirements-reload]');
   if(!button)return;
   if(button.hasAttribute('data-native-history-reset')){
    trainHistoryFilters={member:'',date:''};historyLimit=20;
@@ -2753,23 +2866,30 @@ export function initNativeAdmin(mount){
    return;
   }
   if(button.hasAttribute('data-registry-reload')){
+   if(registryCompletions.has(button.closest('form')?.dataset.id))return;
    if(!window.confirm('Aktuellen Stand laden und eigene Eingaben verwerfen?'))return;
-   const form=button.closest('form');button.disabled=true;
+   const form=button.closest('form'),generation=sessionGeneration,ticket=++registryLoadTicket;
+   const before=cache.registry?.members?.find(m=>m.id===form.dataset.id)?.revision;
+   const live=()=>generation===sessionGeneration&&ticket===registryLoadTicket&&form.isConnected&&target.isConnected;
+   button.disabled=true;
    try{
     const latest=await request('/api/member-registry');
+    if(!live()||registryCompletions.has(form.dataset.id))return;
+    if(cache.registry?.members?.find(m=>m.id===form.dataset.id)?.revision!==before)throw Error('Mitgliederstand inzwischen geändert. Bitte erneut laden.');
     if(!latest.members.some(m=>m.id===form.dataset.id))throw Error('Mitglied nicht mehr vorhanden. Eingaben bleiben erhalten.');
     cache.registry=latest;renderRegistry(target,target.querySelector('#registry-search')?.value||'');
     editRegistry(target,form.dataset.id);
-   }catch(err){form.querySelector('#native-form-message').textContent=err.message;button.disabled=false}
+   }catch(err){if(live()){form.querySelector('#native-form-message').textContent=err.message;button.disabled=false}}
    return;
   }
+  if(button.hasAttribute('data-registry-recheck')){await saveRegistry(button.closest('form'),target,true);return}
   if(button.dataset.nativeWatchArchive){
    const id=button.dataset.nativeWatchArchive;panel='registry';registryFilter='all';await view(mount);
    const registryTarget=mount.querySelector('#native-admin-content');
    if(registryTarget?.querySelector('#registry-form')){
     editRegistry(registryTarget,id);
     const form=registryTarget.querySelector('#registry-save');
-    if(form){form.elements.namedItem('lifecycle').value='former';form.elements.namedItem('departure_event').focus()}
+    if(form)prepareRegistryDeparture(form)
    }
    return;
   }
@@ -2800,7 +2920,7 @@ export function initNativeAdmin(mount){
   if(button.dataset.nativeRegistryQuick){
    const form=button.closest('#registry-save');if(!form)return;
    const status=form.elements.namedItem('lifecycle'),blacklist=form.elements.namedItem('blacklisted');
-   if(button.dataset.nativeRegistryQuick==='archive'){status.value='former';form.elements.namedItem('departure_event').focus();return}
+   if(button.dataset.nativeRegistryQuick==='archive'){prepareRegistryDeparture(form);return}
    if(button.dataset.nativeRegistryQuick==='blacklist')blacklist.checked=true;
    if(button.dataset.nativeRegistryQuick==='active'){status.value='active';blacklist.checked=false}
    form.elements.namedItem('reason').focus();return;
@@ -2833,10 +2953,13 @@ export function initNativeAdmin(mount){
   if(button.dataset.nativeManage){
    const holder=target.querySelector('#registry-form');
    if(!holder)return;
+   const generation=sessionGeneration,ticket=++registryLoadTicket;
+   const live=()=>generation===sessionGeneration&&ticket===registryLoadTicket&&target.isConnected&&holder.isConnected;
    try{
-    cache.registry=await request('/api/member-registry');
+    const registry=await request('/api/member-registry');if(!live())return;
+    cache.registry=registry;
     editRegistry(target,button.dataset.nativeManage);
-   }catch(err){holder.textContent='Mitgliederverwaltung nicht verfügbar: '+err.message}
+   }catch(err){if(live())holder.textContent='Mitgliederverwaltung nicht verfügbar: '+err.message}
    return;
   }
   if(button.dataset.nativeMemberLog){
@@ -3155,46 +3278,20 @@ export function initNativeAdmin(mount){
    }catch(error){message.textContent='Nicht gespeichert: '+error.message;button.disabled=false}
    return;
   }
-  if(form.id==='registry-save'){
-   if(form.dataset.conflict==='1'||form.querySelector('[type=submit]').disabled)return;
-   const payload={member_id:form.dataset.id,revision:form.dataset.revision,rank:form.elements.namedItem('rank').value,lifecycle:form.elements.namedItem('lifecycle').value,blacklisted:form.elements.namedItem('blacklisted').checked,reason:form.elements.namedItem('reason').value};
-   const message=form.querySelector('#native-form-message');
-   if(payload.lifecycle!==form.dataset.lifecycle&&['active','former'].includes(form.dataset.lifecycle)){
-    Object.assign(payload,{transition:payload.lifecycle==='former'?'manual_confirmed_departure':'manual_verified_return',
-     source:form.elements.namedItem('departure_source').value.trim(),source_checked:form.elements.namedItem('source_checked').checked,
-     confirmed:form.elements.namedItem('departure_confirmed').checked,
-     ...(payload.lifecycle==='former'?{departure_event:form.elements.namedItem('departure_event').value}:{})});
-    if(payload.reason.trim().length<8||payload.source.length<8||!payload.source_checked||!payload.confirmed||payload.lifecycle==='former'&&!['left','removed','kicked'].includes(payload.departure_event)){
-     message.textContent='Nicht gespeichert: Quelle, Begründung, Austrittsart und ausdrückliche Bestätigung prüfen.';return;
-    }
-   }
-   if(!window.confirm('Mitgliedsänderung für '+(cache.registry?.members.find(m=>m.id===payload.member_id)?.name||payload.member_id)+' mit Audit-Log speichern?'))return;
-   const button=form.querySelector('[type=submit]');button.disabled=true;
-   message.textContent='Wird gespeichert und unabhängig geprüft …';
-   try{
-    await request('/api/member-registry',{method:'POST',body:payload});
-    if(payload.transition){
-     const [registry,members,watch]=await Promise.all([request('/api/member-registry'),request('/api/members'),request('/api/membership-watch')]);
-     verifyRegistryReadback(payload,registry,members);
-     cache.registry=registry;cache.members=members;cache.watch=watch;
-    }
-    await view(mount);
-   }
-   catch(err){
-    form.querySelector('#native-form-message').textContent=err.status===409?'Nicht bestätigt (409): '+err.message+' Deine Eingaben bleiben erhalten. Lade den aktuellen Stand vor einer neuen Änderung.':'Nicht bestätigt'+(err.status?' ('+err.status+')':'')+': '+err.message;
-    if(err.status===409){form.dataset.conflict='1';form.querySelector('[data-registry-reload]').hidden=false}
-    else button.disabled=false;
-   }return;
-  }
+  if(form.id==='registry-save'){await saveRegistry(form,mount.querySelector('#native-admin-content'));return}
   if(form.id==='native-train-save'){form.dataset.kind='train';await saveForm(mount,form)}
   if(form.id==='native-record-save')await saveForm(mount,form);
  });
 }
 
-/** Both authenticated projections must agree before a lifecycle change is shown as saved. */
-export function verifyRegistryReadback(payload,registry,members){
- const member=registry?.members?.find(m=>m.id===payload.member_id);
- const active=Array.isArray(members)&&members.some(m=>m.id===payload.member_id);
- if(!member||member.lifecycle!==payload.lifecycle||!Array.isArray(members)||active!==(payload.lifecycle==='active'))
-  throw Error('Statusänderung noch nicht unabhängig bestätigt. Mitgliederbestand neu laden; nicht erneut blind speichern.');
+/** Independent registry read must prove the exact identity, changed revision and consistent counts. */
+export function verifyRegistryReadback(payload,registry){
+ const rows=registry?.members,member=Array.isArray(rows)?rows.find(m=>m.id===payload.member_id):null;
+ const validCounts=Array.isArray(rows)&&['active','former'].every(status=>
+  Number.isSafeInteger(registry?.counts?.[status])&&registry.counts[status]===rows.filter(m=>m.lifecycle===status).length);
+ if(!member||member.lifecycle!==payload.lifecycle||!validCounts||
+  !member.revision||member.revision===payload.revision||member.rank!==payload.rank||
+  Boolean(member.blacklisted)!==payload.blacklisted||member.reason?.trim()!==payload.reason?.trim()||
+  new Set(rows.map(m=>m.id)).size!==rows.length||registry.counts.active>100)
+  throw Error('Statusänderung noch nicht unabhängig bestätigt. Mitgliederbestand erneut lesen; nicht erneut speichern.');
 }
