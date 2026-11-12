@@ -719,7 +719,7 @@ function initLwRoster(host,batch,live){
   finally{if(current())load.disabled=false}
  });
 }
-// G2 supplies the census preview with the batch; never replay the historical seven-ID archive.
+// Review one complete current source against exact permanent IDs before reconciliation.
 function initCurrentLwRoster(host,batch,live){
  const load=host.querySelector('[data-lw-roster-load]'),mount=host.querySelector('[data-lw-roster-preview]'),message=host.querySelector('[data-lw-roster-result]');
  const path='/api/lw-import/'+batch.id;
@@ -731,29 +731,43 @@ function initCurrentLwRoster(host,batch,live){
    if(fresh.id!==batch.id||fresh.sha256!==batch.sha256)throw Error('Bestandsquelle stimmt nicht überein.');
    const r=fresh.reconciliation,gate=fresh.roster_gate,active=fresh.roster_state?.active_ids;
    if(!r||!gate||!Array.isArray(active))throw Error('Bestandsvorschau nicht verfügbar.');
-   const ids=fresh.rows.map(row=>row.member_id);
+   const ids=fresh.rows.map(row=>row.member_id),archived=r.archived.map(m=>m.id),returned=r.reactivated.map(m=>m.id);
+   const sameIds=(a,b)=>Array.isArray(a)&&Array.isArray(b)&&new Set(a).size===a.length&&new Set(b).size===b.length&&JSON.stringify([...a].sort())===JSON.stringify([...b].sort());
    const ready=gate.officer_attestation?.supported===true&&gate.officer_attestation.endpoint===path+'/reconcile'&&
     fresh.rows.length===fresh.row_count&&ids.every(Boolean)&&new Set(ids).size===ids.length&&
-    ids.length===active.length&&ids.every(id=>active.includes(id))&&
-    !r.archived.length&&!r.reactivated.length&&!r.unmatched.length&&!r.blocked.length&&
+    sameIds(archived,active.filter(id=>!ids.includes(id)))&&sameIds(returned,ids.filter(id=>!active.includes(id)))&&
+    !r.unmatched.length&&!r.blocked.length&&fresh.rows.every(row=>row.match_state==='matched'&&!row.errors?.length)&&
     !gate.blockers.some(b=>['superseded_source','ambiguous_identity','blocked_identity','unresolved_identity'].includes(b));
    mount.innerHTML='<p>'+active.length+' aktive Mitglieder · '+fresh.row_count+' Quellzeilen · '+r.archived.length+' Archivierungen · '+r.reactivated.length+' Rückkehrer · '+r.unmatched.length+' ungeklärt</p>'+
-    '<p>Dieser Abgleich erfordert dieselben bestehenden IDs, ohne neue Konten, Archivierungen oder Rückkehrer. Namensänderungen werden ausdrücklich geprüft.</p>'+
+    '<p>Die vollständige aktuelle CSV bestimmt den Bestand. Fehlende aktive IDs werden archiviert, Rückkehrer behalten ihre alte ID. Geschichte und Messwerte bleiben erhalten.</p>'+
+    '<details><summary>Archivierungen: '+archived.length+'</summary><ul data-native-no-translate>'+r.archived.map(m=>'<li>'+e(m.id)+' · '+e(m.name)+' · '+e(m.rank)+'</li>').join('')+'</ul></details>'+
+    '<details><summary>Rückkehrer: '+returned.length+'</summary><ul data-native-no-translate>'+r.reactivated.map(m=>'<li>'+e(m.id)+' · '+e(m.name)+'</li>').join('')+'</ul></details>'+
+    '<details><summary>Optionale CSV-Rangänderungen: '+(r.rank_changes||[]).length+'</summary><ul data-native-no-translate>'+(r.rank_changes||[]).map(m=>'<li>'+e(m.member_id)+' · '+e(m.name)+' · '+e(m.previous_rank)+' → '+e(m.rank)+'</li>').join('')+'</ul></details>'+
     '<ul data-native-no-translate>'+r.renamed.map(m=>'<li>'+e(m.member_id)+' · '+e(m.previous_name)+' → '+e(m.name)+'</li>').join('')+'</ul>'+
-    '<form data-lw-current-roster><label><input type="checkbox" name="checked" required> Vollständigen aktuellen Bestand, Original-SHA und alle Identitäten geprüft</label><label>Prüfbegründung<input name="reason" required minlength="8" maxlength="500"></label><button '+(!ready||fresh.reconciliation_receipt?'disabled':'')+'>Geprüften aktuellen Bestand bestätigen</button></form>';
+    '<form data-lw-current-roster><label><input type="checkbox" name="sync_ranks"> Ränge R1–R5 aus CSV Rank übernehmen und vorhandene Rang-Overrides ersetzen</label><label><input type="checkbox" name="checked" required> Vollständigen aktuellen Bestand, Original-SHA, alle Identitäten und obige Archiv-/Rückkehr-/Rangliste geprüft</label><label>Prüfbegründung<input name="reason" required minlength="8" maxlength="500"></label><button '+(!ready||fresh.reconciliation_receipt?'disabled':'')+'>Geprüften aktuellen Bestand bestätigen</button></form>';
    message.textContent=fresh.reconciliation_receipt?'Bestandsabgleich bereits quittiert; keine erneute Übernahme.':ready?'Vorschau geladen. Noch keine Daten geändert.':'Zuerst alle Identitäten im nativen Review klären. Unerwartete Bestandsänderungen bleiben gesperrt.';
    const form=mount.querySelector('form');
+   form.elements.sync_ranks.addEventListener('change',()=>{form.elements.checked.checked=false});
    form.addEventListener('submit',async event=>{
     event.preventDefault();if(!ready||!form.elements.checked.checked||form.elements.reason.value.trim().length<8)return;
     const button=form.querySelector('button');if(button.disabled)return;button.disabled=true;
     try{
-     const receipt=await request(path+'/reconcile',{method:'POST',body:{sha256:fresh.sha256,source_revision:fresh.revision,registry_revision:gate.registry_revision,member_count:fresh.row_count,full_roster_attested:true,new_members:[],reason:form.elements.reason.value}});
+     const syncRanks=form.elements.sync_ranks.checked;
+     if(syncRanks&&fresh.rows.some(row=>!/^R[1-5]$/.test(row.source?.Rank)))throw Error('Jede CSV-Zeile benötigt einen gültigen Rang R1–R5.');
+     const reason=form.elements.reason.value.trim();
+     const receipt=await request(path+'/reconcile',{method:'POST',body:{sha256:fresh.sha256,source_revision:fresh.revision,registry_revision:gate.registry_revision,member_count:fresh.row_count,full_roster_attested:true,new_members:[],sync_ranks:syncRanks,reason}});
+     if(!current())return;
      const reread=await request(path);if(!current())return;
+     const registry=await request('/api/member-registry');if(!current())return;
      const result=receipt.result,saved=reread.reconciliation_receipt;
-     if(!receipt.ok||result?.created!==0||result.archived!==0||result.reactivated!==0||!saved||saved.receipt_id!==receipt.receipt_id||reread.sha256!==fresh.sha256||reread.counts.applied!==fresh.row_count||
+     if(receipt.ok!==true||result?.created!==0||result.archived!==archived.length||result.reactivated!==returned.length||result.active!==ids.length||result.source_sha256!==fresh.sha256||result.reason!==reason||result.sync_ranks!==syncRanks||
+      !saved||saved.receipt_id!==receipt.receipt_id||JSON.stringify(saved.result)!==JSON.stringify(result)||reread.id!==fresh.id||reread.sha256!==fresh.sha256||reread.rows.length!==fresh.row_count||reread.counts.applied!==fresh.row_count||
+      !sameIds(result.targets?.map(row=>row.member_id),ids)||!sameIds(result.archived_ids,archived)||
       reread.rows.some(row=>!row.applied_at||!fresh.rows.some(old=>old.source_row===row.source_row&&old.member_id===row.member_id))||
-      JSON.stringify([...reread.roster_state.active_ids].sort())!==JSON.stringify([...active].sort()))throw Error('Quittung oder Bestands-Rücklesekontrolle unvollständig. Batch neu laden; nicht erneut senden.');
-     renderLwBatch(host,reread,live);host.querySelector('[data-lw-result]').textContent='Bestandsabgleich quittiert und erneut gelesen: '+fresh.row_count+' bestehende IDs, keine Archivierung oder Neuanlage.';
+      !sameIds(reread.roster_state?.active_ids,ids)||!sameIds(registry.members?.filter(m=>m.lifecycle==='active').map(m=>m.id),ids)||
+      archived.some(id=>!registry.members.some(m=>m.id===id&&m.lifecycle==='former'&&m.rank===r.archived.find(old=>old.id===id).rank))||
+      syncRanks&&fresh.rows.some(row=>!result.targets.some(m=>m.member_id===row.member_id&&m.rank===row.source.Rank)||!reread.roster_state?.active_ranks?.some(m=>m.member_id===row.member_id&&m.rank===row.source.Rank)||!registry.members.some(m=>m.id===row.member_id&&m.rank===row.source.Rank)))throw Error('Quittung oder Bestands-Rücklesekontrolle unvollständig. Batch neu laden; nicht erneut senden.');
+     cache.registry=registry;renderLwBatch(host,reread,live);host.querySelector('[data-lw-result]').textContent='Bestandsabgleich quittiert und erneut gelesen: '+fresh.row_count+' bestehende IDs, '+archived.length+' archiviert, '+returned.length+' reaktiviert'+(syncRanks?', CSV-Ränge bestätigt':'')+'.';
     }catch(error){if(current())message.textContent=error.message+' Vor erneutem Senden Batch neu laden.'}
    });
   }catch(error){if(current())message.textContent=error.message}
