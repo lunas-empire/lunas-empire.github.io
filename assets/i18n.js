@@ -18,7 +18,7 @@ export const UI = {
   today:['Heute','Today','Сьогодні','今日','Aujourd’hui','Oggi','Hari ini'],
   daily:['Täglich','Daily','Щодня','日課','Quotidien','Routine','Harian'],
   vs:['VS Duel','VS Duel','VS Duel','VS Duel','VS Duel','VS Duel','VS Duel'],
-  season:['Season 1','Season 1','Сезон 1','シーズン1','Saison 1','Stagione 1','Season 1'],
+  season:['Season','Season','Сезон','シーズン','Saison','Stagione','Season'],
   guides:['Guides','Guides','Поради','ガイド','Guides','Guide','Panduan'],
   guidesIntro:['Alle Guides als übersetzter Text mit ergänzender Originalgrafik. Antippen öffnet das Bild groß.','All guides as localized text with the original graphic as a visual aid. Tap an image to open it full size.','Усі гайди подано перекладеним текстом, а оригінальна схема слугує візуальною підказкою. Натисніть зображення, щоб відкрити його повністю.','すべてのガイドを翻訳テキストで掲載し、元画像は視覚的な補助として表示します。画像をタップすると原寸で開きます。','Tous les guides sont disponibles en texte traduit, avec l’image originale comme aide visuelle. Appuie sur une image pour l’ouvrir en grand.','Tutte le guide sono disponibili come testo tradotto, con la grafica originale come aiuto visivo. Tocca un’immagine per aprirla a grandezza intera.','Semua panduan tersedia sebagai teks terjemahan, dengan gambar asli sebagai bantuan visual. Ketuk gambar untuk membukanya penuh.'],
   quickReference:['Kurzreferenz','Quick reference','Коротка довідка','クイックリファレンス','Référence rapide','Riferimento rapido','Referensi cepat'],

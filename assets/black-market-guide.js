@@ -1,3 +1,4 @@
+import { seasonTransitionText } from './season-transition.js';
 // Standalone post-Season-1 guide. Prices are reference values: always check the in-game shop.
 export const BLACK_MARKET_SEARCH='black market schwarzmarkt season 1 celebration off season cash bingo exclusive weapon Kimberly DVA Tesla tower victory blueprints refresh free champion duel season 2';
 
@@ -243,7 +244,7 @@ export function blackMarketGuideHtml(lang,escape){
   return '<div class="bm-guide">'+
     '<p class="bm-intro">'+e(c.lead)+'</p>'+
     '<div class="bm-shopline" aria-label="'+e(c.shop)+'"><span><strong>1</strong>'+e(c.free)+'</span><span><strong>2</strong>'+e(c.discount)+'</span><span><strong>3</strong>'+e(c.regular)+'</span></div>'+
-    group(c.income,[c.week1,c.later,c.extra])+
+    group(c.income,[c.week1,seasonTransitionText(lang,'cashText')+' '+seasonTransitionText(lang,'cashActivities')+' '+seasonTransitionText(lang,'cashLimit'),c.extra])+
     group(c.shop,[c.shopText])+
     '<section class="bm-section"><h4>'+e(c.priority)+'</h4>'+
       paragraph(c.weapon)+paragraph(c.tower)+paragraph(c.blueprint)+paragraph(c.options)+

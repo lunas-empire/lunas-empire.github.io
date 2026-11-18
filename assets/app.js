@@ -6,6 +6,7 @@ import { GUIDE_COPY, GUIDE_TEXT, MEMBER_MEDIA } from './guide-text.js';
 import { SEASON_LIBRARY_COPY, SEASON_LIBRARY_GUIDES, SEASON_LIBRARY_MEDIA } from './season-library.js';
 import { TECH_GUIDE_TITLE, techGuideHtml, t10GuideHtml, t10GuideTitle, T10_GUIDE_SEARCH } from './tech-guide.js';
 import { blackMarketGuideHtml, blackMarketGuideTitle, BLACK_MARKET_SEARCH } from './black-market-guide.js';
+import { CELEBRATION_GUIDE_ID, POLAR_STORM_GUIDE_ID, SEASON_TRANSITION_SEARCH, celebrationGuideHtml, season2GuideHtml, seasonTransitionGuideTitle, seasonTransitionPage, seasonTransitionText } from './season-transition.js';
 import { professionGuideHtml, PROFESSION_GUIDE_SEARCH } from './profession-guide.js';
 import { trainGuideHtml, trainGuideTitle, TRAIN_GUIDE_SEARCH } from './train-guide.js';
 import { HOT_DEALS_ID, HOT_DEALS_SEARCH, hotDealsTitle, hotDealsHtml } from './hot-deals-guide.js';
@@ -131,6 +132,11 @@ function blackMarketGuideDisclosure() {
   const current=state.seasonDay>=49;
   return `<details class="guide-disclosure guide-disclosure--black-market" data-search data-filter-item data-guide-id="black-market" data-guide-category="season" data-guide-current="${current}" data-search-extra="${escape(BLACK_MARKET_SEARCH)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside">${blackMarketGuideHtml(lang,escape)}${guideShareButton('black-market')}</article></details>`;
 }
+function seasonTransitionGuideDisclosure(id) {
+  const body=id===CELEBRATION_GUIDE_ID?celebrationGuideHtml(lang,escape):season2GuideHtml(lang,escape);
+  const current=state.phase==='POST_SEASON';
+  return `<details class="guide-disclosure guide-disclosure--season-transition" data-search data-filter-item data-guide-id="${id}" data-guide-category="season" data-guide-current="${current}" data-search-extra="${escape(SEASON_TRANSITION_SEARCH)}"><summary>${escape(seasonTransitionGuideTitle(lang,id))}</summary><article class="guide-card guide-card--inside">${body}${guideShareButton(id)}</article></details>`;
+}
 function trainGuideDisclosure() {
   const title=trainGuideTitle(lang);
   return `<details class="guide-disclosure guide-disclosure--train" data-search data-filter-item data-guide-id="train" data-guide-category="account" data-guide-current="false" data-search-extra="${escape(TRAIN_GUIDE_SEARCH)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside guide-card--train">${trainGuideHtml(lang,escape)}${guideShareButton('train')}</article></details>`;
@@ -189,6 +195,7 @@ function shortGuideTitle(id) {
   if (id===HOT_DEALS_ID) return hotDealsTitle(lang);
   if (id===GOLD_GUIDE_ID) return goldGuideTitle(lang);
   if (id==='black-market') return blackMarketGuideTitle(lang);
+  if (id===CELEBRATION_GUIDE_ID || id===POLAR_STORM_GUIDE_ID) return seasonTransitionGuideTitle(lang,id);
   if (PRACTICAL_GUIDES[id]) return practicalGuideTitle(lang,id);
   return SEASON_LIBRARY_GUIDES[id]?t(SEASON_LIBRARY_GUIDES[id].title):guideAlt(MEMBER_MEDIA[id]);
 }
@@ -388,7 +395,12 @@ function first24Body({withChecklist = false} = {}) {
 function first24({withChecklist = false, open = false} = {}) {
   return details(`${t('seasonDay')} 1 · ${t('first24')}`,first24Body({withChecklist}),open,'first24');
 }
+function seasonOneArchive() {
+  const timeline=Object.entries(SEASON_CONTENT).map(([phase,items],index)=>details(index===0?t('pre'):index===9?t('post'):`${t('week')} ${index}`,list(items)+guideGallery(SEASON_GUIDES[phase]||[]),false,phase)).join('');
+  return `<details class="st-details st-archive" data-disclosure="season-1-archive"><summary>${seasonTransitionText(lang,'archiveOpen')}</summary><div class="st-details-body"><h2>${seasonTransitionText(lang,'archiveTitle')}</h2><p class="st-status">${seasonTransitionText(lang,'archiveStatus')}</p>${paragraph('after')}<p>${seasonTransitionText(lang,'archiveText')}</p>${timeline}${section('timeline',seasonRoadmapDisclosure())}</div></details>`;
+}
 function season() {
+  if(state.phase==='POST_SEASON')return `${notice()}${seasonTransitionPage(lang,escape,seasonOneArchive())}`;
   const {todayIds,weekIds}=seasonTaskGroups();
   const current=state.week>8?9:state.week;
   const isPreSeason=state.phase==='PRE_SEASON';
@@ -453,7 +465,9 @@ function guides() {
   const alliance=guideTopicSection('alliance',lang,escape,disclosures(practical('alliance')+teleportGuideDisclosure()+trainGuideDisclosure()));
   const power=guideTopicSection('power',lang,escape,disclosures(practical('power')+techGuideDisclosure()+t10GuideDisclosure())+`<details class="guide-reference-extra" data-search-group><summary>${tx('quickReference')}</summary>${referenceLibrary()}</details>`);
   const vs=guideTopicSection('vs',lang,escape,disclosures(vsGuides.map(guideDisclosure).join('')));
-  const season=guideTopicSection('season',lang,escape,seasonGuidePosition()+seasonGuideRoadmapLibrary());
+  const seasonArchive=`<details class="guide-roadmap-week st-archive" data-disclosure="season-1-guide-archive"><summary>${seasonTransitionText(lang,'archiveTitle')}</summary><div class="st-details-body"><p class="st-status">${seasonTransitionText(lang,'archiveStatus')}</p><p>${seasonTransitionText(lang,'archiveText')}</p>${seasonGuideRoadmapLibrary()}</div></details>`;
+  const seasonContent=state.phase==='POST_SEASON'?disclosures(seasonTransitionGuideDisclosure(CELEBRATION_GUIDE_ID)+seasonTransitionGuideDisclosure(POLAR_STORM_GUIDE_ID))+seasonArchive:seasonGuidePosition()+seasonGuideRoadmapLibrary();
+  const season=guideTopicSection('season',lang,escape,seasonContent);
   const economy=guideTopicSection('economy',lang,escape,disclosures(practical('economy')+goldGuideDisclosure()+hotDealsGuideDisclosure()+blackMarketGuideDisclosure()));
   return `${guideContextBar()}<h1>${tx('guides')}</h1>${notice()}${search}${landing}<div class="guide-library">${alliance}${power}${vs}${season}${economy}</div>`;
 }
