@@ -158,3 +158,13 @@ This supersedes the "LOCAL ONLY" deployment status in the preceding 20:55 CET se
 - **Still unverified:** an actual signed-in R4/R5 session resolving a genuine pending source observation in the live alliance D1 and a real Chrome/iPhone visual run. Do not mistake synthetic integration tests or publicly deployed assets for a completed real member-data review. Existing protected /api/session, /api/reviews/pending, /api/reviews/open continue requiring authentication.
 
 The private authoritative continuation summary is `C:\Users\Besitzer\Documents\Hias\Privat\dev\RZSN_WEITERARBEIT.md`, updated through Remote Desktop Commander after Codex's sandbox could not write outside its workspace.
+
+---
+
+## Update 2026-11-18: officer development views and train VIP released on both sites
+
+- **Luna frontend:** commit `4c3606e`, GitHub Pages run 44208795630 successful. **RZSN-Home frontend:** commit `3d1934a`, run 44209379233 successful. Both serve `BUILD_VERSION_BASE=2026.11.18-officer-development-vip` and the same cache version. Actual asset checks confirm VS weekly deltas and improvement sorting, donation development summaries, duel VP/day KPIs and independent train VIP controls.
+- **Workers:** reviewed backend commit `c8635e3` released as Luna version `4dfbc32e-d5db-4a7f-95cb-333be12ef0f4` and RZSN-Home version `c0c0e8ec-aca7-48a0-b6d1-cdbe567a665a`. Each release completed with a fresh private D1 backup, SQLite restore, integrity/table counts and record SHA verification. No schema migration was needed: the VIP table and all four protection triggers already existed remotely.
+- **Verification:** 1012/1012 Worker tests, 394/394 frontend tests, syntax checks, frontend lint and high-severity npm audit passed. Anonymous protected session/VIP calls return HTTP 403. D1 remains at 291 W46 profile values, 593 W46 VS values, 97 active members and the two pre-existing VIP rows; no officer test write was made to live data.
+- **Known baseline issue:** the production branch's full suite has three failures in unchanged legacy encrypted-admin tests (`tests/encrypted-admin.test.js` twice and `tests/public.test.js` once). The release diff leaves those files untouched; all 24 changed-area tests pass. This pre-existing mismatch was not hidden or used as a reason to weaken coverage.
+- **Not a live-user acceptance:** no real officer session or actual VIP/Dice change was performed on production data. Browser-executable unit/integration evidence and deployed asset checks exist, but a genuine R4 edit and a physical mobile Chrome run remain separate acceptance steps.
