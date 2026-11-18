@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026.11.18-vs-interactive-cockpit');
+@import url('./tokens.css?v=2026.11.18-donation-interactive-cockpit');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -2176,4 +2176,11 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 .native-admin .native-vs-report-day{box-shadow:none}
 .native-admin .native-vs-single-group .native-vs-person-daygrid{grid-template-columns:repeat(3,minmax(0,1fr))}
 @media(max-width:600px){.native-admin .native-vs-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.native-admin .native-vs-history-row{grid-template-columns:4.8rem minmax(3rem,1fr) 2.6rem}.native-admin .native-vs-result-tools{align-items:flex-start}}
+.native-admin .native-donation-tile[aria-pressed=true]{outline:3px solid var(--color-focus);outline-offset:-3px;background:color-mix(in srgb,var(--color-panel) 88%,var(--color-action))}
+.native-admin .native-donation-report-actions{margin:.45rem 0}
+.native-admin .native-donation-person{min-width:0;align-content:start}
+.native-admin .native-donation-person-below{border-left:3px solid #bf7b34}
+.native-admin .native-donation-person-below .native-donation-progress span{background:#bf7b34}
+.native-admin .native-donation-person-met{border-left:3px solid #439879}
+.native-admin .native-donation-person-unknown{border-left:3px solid #8997a9}
 @media(prefers-reduced-motion:reduce){.native-admin .native-vs-history-track>i,.native-admin .native-day-meter>i{transition:none}}
