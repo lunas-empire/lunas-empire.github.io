@@ -72,7 +72,7 @@ export function derivedVsWeekTotal(days=[]){
  }
  return {total:confirmed===6?sum:null,partial:confirmed?sum:null,confirmed,complete:confirmed===6};
 }
-export function buildVsLongTermReport(weeks,{range='4',lowThreshold=3600000,highThreshold=7200000,language='de'}={}){
+export function buildVsLongTermReport(weeks,{range='4',lowThreshold=3600000,highThreshold=7200000,language='de',sort={}}={}){
  const ordered=[...new Map((Array.isArray(weeks)?weeks:[]).filter(week=>week?.week).map(week=>[String(week.week),week])).values()]
   .sort((a,b)=>String(b.week).localeCompare(String(a.week)));
  const selected=(range==='all'?ordered:ordered.slice(0,4));
@@ -90,7 +90,7 @@ export function buildVsLongTermReport(weeks,{range='4',lowThreshold=3600000,high
    const metDays=states.filter(state=>state.kind==='met').length,lowDays=states.filter(state=>state.kind==='low').length;
    let points=0;for(const state of states)if(Number.isSafeInteger(state.points))points+=state.points;
    const record={week:String(week.week),complete:confirmed===5,metDays,lowDays,points:confirmed===5&&Number.isSafeInteger(points)?points:null};
-   if(!identities.has(id))identities.set(id,{id,name:String(person.name||id),records:[]});
+   if(!identities.has(id))identities.set(id,{id,name:String(person.name||id),rank:String(person.rank||''),records:[]});
    identities.get(id).records.push(record);
    states.forEach((state,weekday)=>{
     const day=days[weekday];
@@ -114,9 +114,16 @@ export function buildVsLongTermReport(weeks,{range='4',lowThreshold=3600000,high
   }
  }
  const byName=(a,b)=>names.compare(a.name,b.name)||a.id.localeCompare(b.id);
- repeated.sort((a,b)=>b.lowWeeks-a.lowWeeks||b.lowDays-a.lowDays||byName(a,b));
- neverPerfect.sort((a,b)=>a.bestMet-b.bestMet||b.completeWeeks-a.completeWeeks||byName(a,b));
- improved.sort((a,b)=>b.metDelta-a.metDelta||(b.pointsDelta??-Infinity)-(a.pointsDelta??-Infinity)||byName(a,b));
+ const byRank=(a,b)=>(Number(String(b.rank).slice(1))||0)-(Number(String(a.rank).slice(1))||0)||byName(a,b);
+ const repeatedSort={days:(a,b)=>b.lowDays-a.lowDays||byName(a,b),name:byName,rank:byRank,
+  problems:(a,b)=>b.lowWeeks-a.lowWeeks||b.lowDays-a.lowDays||byName(a,b)};
+ const neverSort={close:(a,b)=>b.bestMet-a.bestMet||byName(a,b),weeks:(a,b)=>b.completeWeeks-a.completeWeeks||byName(a,b),name:byName,rank:byRank,
+  problems:(a,b)=>a.bestMet-b.bestMet||b.completeWeeks-a.completeWeeks||byName(a,b)};
+ const improvedSort={points:(a,b)=>(b.pointsDelta??-Infinity)-(a.pointsDelta??-Infinity)||byName(a,b),name:byName,rank:byRank,
+  progress:(a,b)=>b.metDelta-a.metDelta||(b.pointsDelta??-Infinity)-(a.pointsDelta??-Infinity)||byName(a,b)};
+ repeated.sort(repeatedSort[sort.repeated]||repeatedSort.problems);
+ neverPerfect.sort(neverSort[sort.never]||neverSort.problems);
+ improved.sort(improvedSort[sort.improved]||improvedSort.progress);
  return {weeks:selected.map(week=>String(week.week)),days,repeated,neverPerfect,improved,memberCount:identities.size};
 }
 export function vsLongTermReportText(report,{language='de'}={}){
@@ -156,8 +163,8 @@ export function renderVsHistory(weeks,currentWeek,{language='de',esc=String,numb
    (item.unknown?' · '+n(item.unknown)+' '+text('unklar','unknown'):'')+(item.perfect===null?'':' · '+n(item.perfect)+'× 6/6')+'</small></button>').join('')+
   '</div><p class="native-muted">'+text('Anteil erreichteter Tagesziele an bestätigten Spieler-Tagen. Unbekannte Werte fehlen im Nenner.','Met daily goals as a share of confirmed player-days. Unknown values are excluded from the denominator.')+'</p></div></details>';
 }
-export function renderVsLongTermReport(weeks,{range='4',language='de',esc=String,numberText=String,currentWeek=null}={}){
- const report=buildVsLongTermReport(weeks,{range,language}),en=language==='en',e=esc,n=numberText;
+export function renderVsLongTermReport(weeks,{range='4',language='de',esc=String,numberText=String,currentWeek=null,sort={}}={}){
+ const report=buildVsLongTermReport(weeks,{range,language,sort}),en=language==='en',e=esc,n=numberText;
  const lowLabel=en?'3.6M':'3,6 Mio.',highLabel=en?'7.2M':'7,2 Mio.';
  const text=(de,english)=>en?english:de,percent=(value,total)=>total?Math.round(100*value/total)+'%':'—';
  const labels=en?['Mon','Tue','Wed','Thu','Fri']:['Mo','Di','Mi','Do','Fr'];
@@ -182,9 +189,19 @@ export function renderVsLongTermReport(weeks,{range='4',language='de',esc=String
    (person?'<div class="native-vs-person-daygrid">'+daysHtml+'</div>':daysHtml)+
    '<button type="button" class="native-vs-open-person" data-native-member="'+e(item.id)+'">'+text('Spielerakte & Entwicklung','Player profile & progress')+' ›</button></div></details>';
  };
- const group=(key,title,items,empty,detail)=>'<details class="native-fold native-vs-report-group native-vs-report-'+key+'"><summary><span>'+title+'</span><b>'+items.length+'</b></summary>'+
-  '<div class="native-fold-body"><p class="native-muted">'+empty+'</p><div class="native-vs-report-member-list">'+
-  (items.length?items.map(item=>memberButton(item,detail(item),key)).join(''):'<span class="native-muted">'+text('Keine Spieler erfüllen diese Bedingung im gewählten Zeitraum.','No players meet this condition in the selected period.')+'</span>')+'</div></div></details>';
+ const sortOptions={
+  repeated:[['problems',text('Problemwochen zuerst','Most problem weeks')],['days',text('Meiste Tage unter Ziel','Most days below goal')],['name','Name'],['rank',text('Allianzrang','Alliance rank')]],
+  never:[['problems',text('Niedrigster Bestwert','Lowest best result')],['close',text('Bestwert 4/5 zuerst','Best result 4/5 first')],['weeks',text('Meiste vollständige Wochen','Most complete weeks')],['name','Name'],['rank',text('Allianzrang','Alliance rank')]],
+  improved:[['progress',text('Größte Verbesserung','Greatest improvement')],['points',text('Größter Punktezuwachs','Greatest points increase')],['name','Name'],['rank',text('Allianzrang','Alliance rank')]]
+ };
+ const group=(key,title,items,empty,detail)=>{
+  const options=sortOptions[key],selected=sort[key]||options[0][0];
+  const controls=items.length>1?'<label class="native-vs-report-sort-control"><span>'+text('Sortieren','Sort')+'</span><select data-native-vs-report-sort="'+key+'">'+
+   options.map(([value,label])=>'<option value="'+value+'" '+(selected===value?'selected':'')+'>'+label+'</option>').join('')+'</select></label>':'';
+  return '<details class="native-fold native-vs-report-group native-vs-report-'+key+'"><summary><span>'+title+'</span><b>'+items.length+'</b></summary>'+
+   '<div class="native-fold-body">'+controls+'<p class="native-muted">'+empty+'</p><div class="native-vs-report-member-list">'+
+   (items.length?items.map(item=>memberButton(item,detail(item),key)).join(''):'<span class="native-muted">'+text('Keine Spieler erfüllen diese Bedingung im gewählten Zeitraum.','No players meet this condition in the selected period.')+'</span>')+'</div></div></details>';
+ };
  const groups=group('repeated',text('Wiederholt unter dem Tagesziel','Repeatedly below the daily goal'),report.repeated,
   text('Mindestens 2 Wochen mit je mindestens 3 bestätigten Mo–Fr-Tagen unter '+lowLabel+'.','At least 2 weeks with at least 3 confirmed Mon–Fri days below '+lowLabel+' each.'),
   item=>text(item.lowWeeks+' Wochen · '+item.lowDays+' bestätigte Tage unter Ziel',item.lowWeeks+' weeks · '+item.lowDays+' confirmed days below goal'))+
