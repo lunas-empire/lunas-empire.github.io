@@ -70,14 +70,20 @@ test('Same names are not merged and duplicate ID rows do not certify a week',()=
 
 test('Rendered report is accessible, escaped, bilingual and links only stable member IDs',()=>{
  const weeks=['2026-W46','2026-W45','2026-W44'].map(label=>lowWeek(label,'safe-id','<Unsafe>'));
- const html=renderVsLongTermReport(weeks,{range:'all',numberText:String,esc:value=>String(value).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;')});
+ const html=renderVsLongTermReport(weeks,{range:'all',currentWeek:weeks[0],numberText:String,esc:value=>String(value).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;')});
  const dom=new JSDOM(html),doc=dom.window.document;
  assert.equal(doc.querySelectorAll('.native-vs-report-days article').length,5);
  assert.equal(doc.querySelectorAll('.native-vs-report-group').length,3);
  assert.match(doc.querySelector('.native-vs-report-scope').textContent,/Saturday excluded|Samstag ausgeschlossen/);
  assert.equal(doc.querySelector('[data-native-member]').dataset.nativeMember,'safe-id');
- assert.equal(doc.querySelector('[data-native-member] strong').textContent,'<Unsafe>');
+ assert.equal(doc.querySelector('.native-vs-report-person summary strong').textContent,'<Unsafe>');
  assert.doesNotMatch(html,/<Unsafe>/);
+ const card=doc.querySelector('.native-vs-report-repeated .native-vs-report-person');
+ assert.equal(card.querySelectorAll('.native-vs-person-day').length,6,'inline player card shows all six days');
+ assert.equal(card.querySelectorAll('[data-native-vs-image]').length,6,'every verified day links to its image');
+ assert.match(card.querySelector('[data-native-vs-image="2026-W46|safe-id|0"]').textContent,/0 ↗/);
+ assert.equal(card.querySelector('summary').hasAttribute('data-native-member'),false,'summary expands inline instead of navigating away');
+ assert.match(card.querySelector('[data-native-member]').textContent,/Spielerakte/);
  assert.equal(doc.querySelectorAll('.native-vs-report-day[data-native-vs-day]').length,5,'all five report days open the selected week');
  assert.equal(doc.querySelectorAll('[data-native-vs-copy-report]').length,1);
  assert.equal(doc.querySelector('.native-vs-report-fallback[hidden]').readOnly,true);

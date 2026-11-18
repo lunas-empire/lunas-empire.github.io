@@ -1312,7 +1312,7 @@ function renderVs(target){
    (notices.length?'<ul>'+notices.map(note=>'<li>'+e(note)+'</li>').join('')+'</ul>':'')+
    '<p class="native-muted">'+(enUi?'One member can contribute six below-goal days. Scope: ':'Ein Spieler kann sechs Unterschreitungen beitragen. Umfang: ')+e(week.scopeMembers??'?')+(enUi?' unique IDs. Raw rows: ':' eindeutige IDs. Originalzeilen: ')+e(week.rawPlayerDays??'?')+(enUi?'; unlinked rows: ':'; davon ohne ID: ')+e(week.unresolvedPlayerDays??'?')+'</p></div></details>'+
   layout.dayTiles+renderVsHistory(cache.vs.weeks,week.week,{language:officerLanguage(target.ownerDocument),esc:e,numberText})+
-  renderVsLongTermReport(cache.vs.weeks,{range:cache.vsReportRange||'4',language:officerLanguage(target.ownerDocument),esc:e,numberText})+(layout.trendHtml||'')+layout.groupsHtml+
+  renderVsLongTermReport(cache.vs.weeks,{range:cache.vsReportRange||'4',language:officerLanguage(target.ownerDocument),esc:e,numberText,currentWeek:week})+(layout.trendHtml||'')+layout.groupsHtml+
   '<details class="native-fold native-vs-explainer"><summary>'+ (enUi?'How are results assessed?':'Wie werden die Werte bewertet?')+'</summary>'+
    '<p class="native-fold-body native-muted">'+(enUi?'Weekly totals are calculated from six confirmed daily scores. Missing or unclear values are never zero; partial sums remain marked as incomplete.':'Die Wochensumme wird aus sechs bestätigten Tageswerten berechnet. Fehlende oder unklare Tage sind nie automatisch 0; Teilstände bleiben als unvollständig gekennzeichnet.')+'</p></details>'+
   '</section>';
