@@ -6,6 +6,7 @@ import {buildOfficerActions} from './officer-cockpit.js';
 import {createStatEvidenceViewer} from './native-stat-evidence.js';
 import {renderEvidenceRow} from './native-evidence-row.js';
 import {renderVsOverview,renderVsLongTermReport,renderVsHistory,buildVsLongTermReport,vsLongTermReportText,derivedVsWeekTotal,enrichVsWeeks} from './native-vs-overview.js';
+import {donationReportText,renderDonationHistory} from './officer-reports.js';
 import {createDuelLeagueController} from './native-duel-league.js';
 import {duelCopy} from './native-duel-league-i18n.js';
 import {diceHistory} from './dice-winners.js';
@@ -1207,13 +1208,12 @@ function renderDonations(target,query=null,focusSelector=''){
   if(view.sort==='points_asc')return (a.points??Number.MAX_SAFE_INTEGER)-(b.points??Number.MAX_SAFE_INTEGER)||String(a.name||'').localeCompare(String(b.name||''),'de');
   if(view.sort==='name')return String(a.name||'').localeCompare(String(b.name||''),'de');
   if(view.sort==='rank')return (Number(String(b.rank||'').slice(1))||0)-(Number(String(a.rank||'').slice(1))||0)||String(a.name||'').localeCompare(String(b.name||''),'de');
-  return 0;
+  const priority={below:0,unknown:1,met:2};
+  return (priority[a.status]??3)-(priority[b.status]??3)||String(a.name||'').localeCompare(String(b.name||''),'de');
  });
- const tile=(label,value,extra,state,bad=false)=>'<article class="native-day-mini native-donation-tile'+(bad?' has-failures':'')+'">'+
-  '<button type="button" class="native-day-mini-open" data-native-donation-category="'+state+'" aria-pressed="'+(category===state)+'" aria-controls="native-donation-results">'+
-  '<span class="native-day-mini-heading"><strong>'+e(label)+'</strong><span>'+e(extra)+'</span></span>'+
-  '<strong class="native-day-mini-count">'+e(value)+'</strong><span class="native-day-mini-meta"><span>Spieler anzeigen</span></span></button></article>';
- const person=m=>'<article class="native-donation-person"><div class="native-donation-person-head">'+
+ const tile=(label,value,extra,state,bad=false)=>'<button type="button" class="native-vs-kpi native-donation-tile '+(state==='unknown'?'unknown':bad?'low':'perfect')+'" data-native-donation-category="'+state+'" aria-pressed="'+(category===state)+'" aria-controls="native-donation-results">'+
+  '<span>'+e(label)+'</span><strong>'+e(value)+'</strong><small>'+e(extra)+'</small></button>';
+ const person=m=>'<article class="native-donation-person native-donation-person-'+(['below','unknown','met'].includes(m.status)?m.status:'unknown')+'"><div class="native-donation-person-head">'+
   '<strong>'+e(m.name)+'</strong><small>'+e(m.rank||'?')+'</small><b>'+
   (m.points===null?'Unbekannt':statValueButton(m.points,m.snapshot_id||week.snapshot_id,m.id,'donations_weekly',m.name))+'</b></div>'+
   (m.points===null?'<p class="native-muted">Unbekannte Spenden sind keine 0.</p>':
@@ -1223,17 +1223,7 @@ function renderDonations(target,query=null,focusSelector=''){
   (m.delta!==null?' · '+(m.delta>0?'+':'')+numberText(m.delta)+' zu '+e(m.previous_week):
   ' · Kein verifizierter Vorwochenvergleich')+'</p>')+
   '<button type="button" data-native-member="'+e(m.id)+'">Spielerakte & Spendenverlauf ansehen ›</button></article>';
- const section=([state,label])=>{
-  if(!visibleStates.includes(state))return '';
-  const players=sortPlayers(allMembers.filter(m=>m.status===state)),n=players.length;
-  const limit=Math.max(10,Number(view.limits?.[state])||10),shown=players.slice(0,limit);
-  const open=Boolean(search)||(view.openGroups||[]).includes(state)||category!=='all';
-  return '<details class="native-fold native-donation-group native-donation-'+state+'" data-native-donation-group="'+state+'" '+(open?'open':'')+'><summary><strong>'+e(label)+'</strong><span>'+n+' Spieler</span></summary>'+
-   '<div class="native-fold-body">'+(n?shown.map(person).join(''):'<p class="native-muted">Keine Spieler in dieser Gruppe.</p>')+
-   (n?'<div class="native-vs-group-footer"><span>'+shown.length+' / '+n+' Spieler</span>'+
-    (shown.length<n?'<button type="button" data-native-donation-more-group="'+state+'">Weitere Spieler</button>':'')+'</div>':'')+
-   '</div></details>';
- };
+ const sortedMembers=sortPlayers(members),resultLimit=Math.max(10,Number(view.limits?.[category])||10),shownMembers=sortedMembers.slice(0,resultLimit);
  const existingSearch=target.querySelector('#native-donation-search');
  const focused=existingSearch===target.ownerDocument?.activeElement;
  const position=focused?existingSearch.selectionStart:null;
@@ -1249,15 +1239,19 @@ function renderDonations(target,query=null,focusSelector=''){
   '<div class="native-vs-heading"><div><h3>Wochenauswertung '+e(week.week)+'</h3>'+
    '<p class="native-muted">Alle Spendenwerte beziehen sich auf diesen Datenstand.</p></div>'+
    '<span class="native-donation-goal">Ziel '+numberText(minimum)+'</span></div>'+
-  '<div class="native-donation-tiles">'+tile('Ziel erreicht',week.met,'Bestätigte Spieler','met')+
-   tile('Unter Ziel',week.below,'Bestätigte Spieler','below',true)+
-   tile('Unbekannt',week.unknown,'Nicht als 0 gewertet','unknown')+
-   tile('Zielquote',rate===null?'—':rate+' %','Von '+week.verified+' bestätigten Werten','verified')+'</div>'+
+  '<div class="native-vs-kpis native-donation-tiles">'+tile('Zielquote',rate===null?'—':rate+'%','Von '+week.verified+' bestätigten Werten','verified')+
+   tile('Ziel erreicht',week.met,'Bestätigte Spieler','met')+
+   tile('Unter Ziel',week.below,'Spieler anzeigen','below',true)+
+   tile('Unbekannt',week.unknown,'Nicht als 0 gewertet','unknown')+'</div>'+
   developmentHtml+
-  '<p class="native-evidence-note">Werte gelten zum Zeitpunkt des Screenshots. '+week.verified+'/'+week.active+
+  renderDonationHistory(weeks,week.week,{language:officerLanguage(target.ownerDocument),esc:e,numberText})+
+  '<div class="native-vs-report-actions native-donation-report-actions"><button type="button" data-native-donation-copy-report>'+
+   (officerLanguage(target.ownerDocument)==='en'?'Copy report':'Bericht kopieren')+'</button><span role="status" aria-live="polite"></span></div>'+
+  '<textarea class="native-vs-report-fallback native-donation-report-fallback" readonly hidden aria-label="Berichtstext zum manuellen Kopieren"></textarea>'+
+  '<details class="native-fold native-vs-single-insight"><summary>Hinweise & Datenbasis</summary><div class="native-fold-body"><p class="native-evidence-note">Werte gelten zum Zeitpunkt des Screenshots. '+week.verified+'/'+week.active+
    ' aktive Spieler mit bestätigten Wochenspenden. '+(previousAvailable||compared.length?
    'Vergleiche erscheinen nur bei zwei bestätigten Messpunkten.':
-   'Bisher liegt nur eine verlässliche Wochenaufnahme vor – kein erfundener Vorwochenvergleich.')+'</p>'+
+   'Bisher liegt nur eine verlässliche Wochenaufnahme vor – kein erfundener Vorwochenvergleich.')+'</p></div></details>'+
   '<section class="native-donation-results" id="native-donation-results" data-native-donation-matches="'+members.length+'">'+
    '<div class="native-intel-section-head"><h3 id="native-donation-results-title" tabindex="-1">'+e(resultTitle)+' · '+e(week.week)+'</h3>'+
     '<span>'+members.length+' Spieler</span></div>'+
@@ -1265,10 +1259,12 @@ function renderDonations(target,query=null,focusSelector=''){
     [['priority','Ergebnis'],['improvement','Verbesserung zuerst'],['points_desc','Spenden: höchste zuerst'],['points_asc','Spenden: niedrigste zuerst'],['name','Name'],['rank','Allianzrang']].map(([value,label])=>'<option value="'+value+'" '+((view.sort||'priority')===value?'selected':'')+'>'+e(label)+'</option>').join('')+'</select></label>'+
     (category!=='all'?'<button type="button" data-native-donation-weekly>Wochenauswertung</button>':'')+'</div>'+
    '<nav class="native-vs-day-filters" aria-label="Spendenergebnisse">'+
-    [['all','Alle'],['met','Ziel erreicht'],['below','Unter Ziel'],['unknown','Unbekannt'],['verified','Bestätigt']].map(([value,label])=>
+    [['all','Alle'],['below','Unter Ziel'],['met','Ziel erreicht'],['unknown','Unbekannt'],['verified','Bestätigt']].map(([value,label])=>
      '<button type="button" data-native-donation-category="'+value+'" aria-pressed="'+(category===value)+'">'+e(label)+' <b>'+e(counts[value])+'</b></button>').join('')+'</nav>'+
    '<label class="native-ios-search">Spieler suchen<input id="native-donation-search" type="search" value="'+e(view.query||'')+'" placeholder="Mitglied oder Name" autocomplete="off"></label>'+
-   '<div class="native-donation-groups">'+groups.map(section).join('')+
+   '<div class="native-donation-groups native-vs-single-results"><div class="native-donation-group native-vs-single-group native-donation-'+category+'" data-native-donation-group="'+category+'">'+
+    '<div class="native-vs-compact-list">'+shownMembers.map(person).join('')+'</div><div class="native-vs-group-footer"><span>'+shownMembers.length+' / '+sortedMembers.length+' Spieler</span>'+
+    (shownMembers.length<sortedMembers.length?'<button type="button" data-native-donation-more-group="'+category+'">Weitere Spieler</button>':'')+'</div></div>'+
     (!members.length?'<p class="native-muted" data-native-donation-search-empty role="status">Keine Spieler gefunden.</p>':'')+'</div></section>'+
   '<details class="native-fold"><summary>So werden die Spenden bewertet</summary><div class="native-fold-body">'+
    '<p>Mindestens 20.000 Spenden pro Spieler und Woche. Nur nachweislich erfasste Werte aus „Wöchentliche Spenden“ zählen. Fehlende Werte bleiben unbekannt, ein späterer Messzeitpunkt wird nicht erfunden.</p>'+
@@ -2785,14 +2781,30 @@ export function initNativeAdmin(mount){
    state.query='';state.openGroups=state.category==='all'?['low']:[state.category];
    target.querySelector('#native-vs-search').value='';renderVsResults(target,'#native-vs-results-title');target.querySelector('#native-vs-results-title')?.scrollIntoView?.({block:'nearest'});return;
   }
-  const donationControl=event.target.closest?.('[data-native-donation-category],[data-native-donation-weekly],[data-native-donation-more-group]');
+  const donationControl=event.target.closest?.('[data-native-donation-category],[data-native-donation-weekly],[data-native-donation-more-group],[data-native-donation-history-week],[data-native-donation-copy-report]');
   if(donationControl&&cache.donationView){
    const target=mount.querySelector('#native-admin-content'),state=cache.donationView;
+   if(donationControl.hasAttribute('data-native-donation-copy-report')){
+    const section=donationControl.closest('.native-donation-summary'),language=officerLanguage(mount.ownerDocument);
+    const week=(cache.donations?.weeks||[]).find(item=>item.week===state.week),value=donationReportText(week,{minimum:cache.donations?.minimum||20000,language});
+    try{
+     if(!window.navigator?.clipboard?.writeText)throw Error('Clipboard unavailable');
+     await window.navigator.clipboard.writeText(value);section.querySelector('.native-donation-report-actions [role=status]').textContent=language==='en'?'Report copied.':'Bericht kopiert.';
+    }catch{
+     const fallback=section.querySelector('.native-donation-report-fallback');fallback.value=value;fallback.hidden=false;fallback.focus();fallback.select();
+     section.querySelector('.native-donation-report-actions [role=status]').textContent=language==='en'?'Select and copy the visible report text.':'Sichtbaren Berichtstext markieren und kopieren.';
+    }return;
+   }
+   if(donationControl.hasAttribute('data-native-donation-history-week')){
+    const selector=target.querySelector('#native-donation-week'),week=donationControl.dataset.nativeDonationHistoryWeek;
+    if(![...selector.options].some(option=>option.value===week))return;
+    selector.value=week;renderDonations(target);target.querySelector('#native-donation-week')?.focus({preventScroll:true});return;
+   }
    const openGroups=[...target.querySelectorAll('[data-native-donation-group][open]')].map(node=>node.dataset.nativeDonationGroup);
    if(donationControl.hasAttribute('data-native-donation-more-group')){
     const kind=donationControl.dataset.nativeDonationMoreGroup;state.limits[kind]=(state.limits[kind]||10)+10;state.openGroups=openGroups;
     renderDonations(target);
-    (target.querySelector('[data-native-donation-more-group="'+kind+'"]')||target.querySelector('[data-native-donation-group="'+kind+'"] > summary'))?.focus({preventScroll:true});return;
+    (target.querySelector('[data-native-donation-more-group="'+kind+'"]')||target.querySelector('#native-donation-results-title'))?.focus({preventScroll:true});return;
    }
    state.limits={};state.query='';
    if(donationControl.hasAttribute('data-native-donation-weekly'))state.category='all';
