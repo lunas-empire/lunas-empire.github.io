@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026.11.18-vs-longterm-player-days');
+@import url('./tokens.css?v=2026.11.18-r4-mobile-commander');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -2190,4 +2190,15 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 .native-admin .native-vs-report-person-body{display:grid;gap:.5rem;padding:.55rem;border-top:1px solid var(--color-rule);background:var(--color-panel)}
 .native-admin .native-vs-report-person-body>p{margin:0;font-size:.7rem}
 .native-admin .native-vs-report-person-body .native-vs-open-person{width:100%;margin:0}
+.native-admin .native-operational-item{min-width:0;max-width:100%}
+.native-admin .native-operational-item>button:first-child{max-width:100%;white-space:normal;overflow-wrap:anywhere}
+.native-admin .native-operational-item strong{overflow-wrap:anywhere}
+.native-admin .native-requirement-check input{width:24px;height:24px}
+@media(max-width:59.99rem){
+ .native-admin .native-admin-nav{position:sticky;top:0;z-index:60}
+ .native-admin .native-admin-subnav button{min-height:44px}
+ .native-admin input:not([type=checkbox]):not([type=radio]),.native-admin select,.native-admin textarea{font-size:16px}
+ .native-admin #native-vs-search{width:100%;min-height:48px;margin:.25rem 0 .5rem}
+}
+@media(max-width:359px){.native-admin .native-admin-nav .native-primary-tab{font-size:.64rem}}
 @media(prefers-reduced-motion:reduce){.native-admin .native-vs-history-track>i,.native-admin .native-day-meter>i{transition:none}}
