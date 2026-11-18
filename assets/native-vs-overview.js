@@ -72,14 +72,20 @@ export function derivedVsWeekTotal(days=[]){
  }
  return {total:confirmed===6?sum:null,partial:confirmed?sum:null,confirmed,complete:confirmed===6};
 }
-export function buildVsLongTermReport(weeks,{range='4',lowThreshold=3600000,highThreshold=7200000,language='de',sort={}}={}){
+export function buildVsLongTermReport(weeks,{range='4',lowThreshold=3600000,highThreshold=7200000,language='de',sort={},from=null,to=null}={}){
  const ordered=[...new Map((Array.isArray(weeks)?weeks:[]).filter(week=>week?.week).map(week=>[String(week.week),week])).values()]
   .sort((a,b)=>String(b.week).localeCompare(String(a.week)));
- const selected=(range==='all'?ordered:ordered.slice(0,4));
- const identities=new Map(),days=Array.from({length:5},(_,weekday)=>({weekday,confirmed:0,unknown:0,lowMet:0,highMet:0}));
+ let selected;
+ if(range==='custom'){
+  let start=String(from||ordered.at(-1)?.week||''),end=String(to||ordered[0]?.week||'');if(start>end)[start,end]=[end,start];
+  selected=ordered.filter(week=>String(week.week)>=start&&String(week.week)<=end);
+ }else if(range==='all')selected=ordered;
+ else selected=ordered.slice(0,[2,3,4].includes(Number(range))?Number(range):4);
+ const identities=new Map(),days=Array.from({length:5},(_,weekday)=>({weekday,confirmedIds:new Set(),unknownIds:new Set(),lowMetIds:new Set(),highMetIds:new Set()}));
  for(const week of selected){
   const rows=new Map();
   for(const person of [...(week.members||[]),...(week.missingMembers||[])]){
+   if(person?.former===true)continue;
    const id=String(person?.id||'').trim();if(!id)continue;
    const list=rows.get(id)||[];list.push(person);rows.set(id,list);
   }
@@ -95,8 +101,8 @@ export function buildVsLongTermReport(weeks,{range='4',lowThreshold=3600000,high
    states.forEach((state,weekday)=>{
     const day=days[weekday];
     if(state.kind==='met'||state.kind==='low'){
-     day.confirmed++;if(state.points>=lowThreshold)day.lowMet++;if(state.points>=highThreshold)day.highMet++;
-    }else if(state.kind==='unknown')day.unknown++;
+     day.confirmedIds.add(id);if(state.points>=lowThreshold)day.lowMetIds.add(id);if(state.points>=highThreshold)day.highMetIds.add(id);
+    }else if(state.kind==='unknown')day.unknownIds.add(id);
    });
   }
  }
@@ -124,7 +130,8 @@ export function buildVsLongTermReport(weeks,{range='4',lowThreshold=3600000,high
  repeated.sort(repeatedSort[sort.repeated]||repeatedSort.problems);
  neverPerfect.sort(neverSort[sort.never]||neverSort.problems);
  improved.sort(improvedSort[sort.improved]||improvedSort.progress);
- return {weeks:selected.map(week=>String(week.week)),days,repeated,neverPerfect,improved,memberCount:identities.size};
+ const dayResults=days.map(day=>({weekday:day.weekday,confirmed:day.confirmedIds.size,unknown:day.unknownIds.size,lowMet:day.lowMetIds.size,highMet:day.highMetIds.size}));
+ return {weeks:selected.map(week=>String(week.week)),days:dayResults,repeated,neverPerfect,improved,memberCount:identities.size};
 }
 export function vsLongTermReportText(report,{language='de'}={}){
  const en=language==='en',text=(de,english)=>en?english:de,labels=en?['Mon','Tue','Wed','Thu','Fri']:['Mo','Di','Mi','Do','Fr'];
@@ -163,13 +170,13 @@ export function renderVsHistory(weeks,currentWeek,{language='de',esc=String,numb
    (item.unknown?' · '+n(item.unknown)+' '+text('unklar','unknown'):'')+(item.perfect===null?'':' · '+n(item.perfect)+'× 6/6')+'</small></button>').join('')+
   '</div><p class="native-muted">'+text('Anteil erreichteter Tagesziele an bestätigten Spieler-Tagen. Unbekannte Werte fehlen im Nenner.','Met daily goals as a share of confirmed player-days. Unknown values are excluded from the denominator.')+'</p></div></details>';
 }
-export function renderVsLongTermReport(weeks,{range='4',language='de',esc=String,numberText=String,currentWeek=null,sort={}}={}){
- const report=buildVsLongTermReport(weeks,{range,language,sort}),en=language==='en',e=esc,n=numberText;
+export function renderVsLongTermReport(weeks,{range='4',language='de',esc=String,numberText=String,currentWeek=null,sort={},from=null,to=null}={}){
+ const report=buildVsLongTermReport(weeks,{range,language,sort,from,to}),en=language==='en',e=esc,n=numberText;
  const lowLabel=en?'3.6M':'3,6 Mio.',highLabel=en?'7.2M':'7,2 Mio.';
  const text=(de,english)=>en?english:de,percent=(value,total)=>total?Math.round(100*value/total)+'%':'—';
  const labels=en?['Mon','Tue','Wed','Thu','Fri']:['Mo','Di','Mi','Do','Fr'];
  const dayHtml=report.days.map((day,index)=>'<article><button type="button" class="native-vs-report-day" data-native-vs-day="'+index+'" aria-label="'+text(labels[index]+' in der aktuellen Woche öffnen','Open '+labels[index]+' in the selected week')+'"><strong>'+labels[index]+'</strong>'+
-  '<span><small>'+text('bestätigt','confirmed')+'</small><b>'+n(day.confirmed)+'</b></span>'+
+  '<span><small>'+text('Mitglieder belegt','members confirmed')+'</small><b>'+n(day.confirmed)+'</b></span>'+
   '<span><small>≥ '+lowLabel+'</small><b>'+n(day.lowMet)+' <em>'+percent(day.lowMet,day.confirmed)+'</em></b></span>'+
   '<span><small>≥ '+highLabel+'</small><b>'+n(day.highMet)+' <em>'+percent(day.highMet,day.confirmed)+'</em></b></span></button></article>').join('');
  const memberButton=(item,detail,kind)=>{
@@ -212,16 +219,25 @@ export function renderVsLongTermReport(weeks,{range='4',language='de',esc=String
    text('Vergleich der ersten und letzten vollständig erfassten Mo–Fr-Woche derselben ID.','Compares the first and last fully recorded Mon–Fri week for the same ID.'),
    item=>item.earliest.week+' '+item.earliest.metDays+'/5 → '+item.latest.week+' '+item.latest.metDays+'/5'+
     (item.pointsDelta===null?'':text(' · Punkte ',' · points ')+(item.pointsDelta>0?'+':'')+n(item.pointsDelta)));
- return '<section class="native-vs-longterm" aria-labelledby="native-vs-longterm-title"><div class="native-intel-section-head"><h3 id="native-vs-longterm-title">'+
+ const weekChoices=[...new Set((Array.isArray(weeks)?weeks:[]).map(week=>String(week?.week||'')).filter(Boolean))].sort().reverse();
+ const fromValue=from||weekChoices.at(-1)||'',toValue=to||weekChoices[0]||'';
+ const rangeOption=(value,de,english)=>'<option value="'+value+'" '+(range===value?'selected':'')+'>'+text(de,english)+'</option>';
+ const weekOptions=weekChoices.map(week=>'<option value="'+e(week)+'">'+e(week)+'</option>').join('');
+ const custom='<div class="native-vs-report-custom" '+(range==='custom'?'':'hidden')+'><label>'+text('Von Woche','From week')+'<select id="native-vs-report-from">'+
+  weekOptions.replace('value="'+e(fromValue)+'"','value="'+e(fromValue)+'" selected')+'</select></label><label>'+text('Bis Woche','To week')+'<select id="native-vs-report-to">'+
+  weekOptions.replace('value="'+e(toValue)+'"','value="'+e(toValue)+'" selected')+'</select></label></div>';
+ return '<details class="native-fold native-vs-longterm-fold"><summary><span>'+text('Mo–Fr & Langzeit','Mon–Fri & long-term')+'</span><small>'+report.memberCount+' '+text('aktive Mitglieder · Analyse öffnen','active members · open analysis')+'</small></summary><div class="native-fold-body">'+
+  '<section class="native-vs-longterm" aria-labelledby="native-vs-longterm-title"><div class="native-intel-section-head"><h3 id="native-vs-longterm-title">'+
   text('Mo–Fr & Langzeit','Mon–Fri & long-term')+'</h3><label>'+text('Zeitraum','Period')+' <select id="native-vs-report-range">'+
-  '<option value="4" '+(range!=='all'?'selected':'')+'>'+text('Letzte 4 Wochen','Last 4 weeks')+'</option>'+
-  '<option value="all" '+(range==='all'?'selected':'')+'>'+text('Alle erfassten Wochen','All recorded weeks')+'</option></select></label></div>'+
-  '<p class="native-vs-report-scope">'+e(report.weeks.at(-1)||'—')+'–'+e(report.weeks[0]||'—')+' · '+report.memberCount+' '+text('eindeutige IDs','unique IDs')+
-  ' · '+text('Samstag ausgeschlossen','Saturday excluded')+'</p><div class="native-vs-report-days">'+dayHtml+'</div><div class="native-vs-report-groups">'+groups+'</div>'+
+  rangeOption('2',text('Letzte 2 Wochen','Last 2 weeks'),'Last 2 weeks')+rangeOption('3',text('Letzte 3 Wochen','Last 3 weeks'),'Last 3 weeks')+
+  rangeOption('4',text('Letzte 4 Wochen','Last 4 weeks'),'Last 4 weeks')+rangeOption('all',text('Alle erfassten Wochen','All recorded weeks'),'All recorded weeks')+
+  rangeOption('custom',text('Benutzerdefiniert','Custom'),'Custom')+'</select></label></div>'+custom+
+  '<p class="native-vs-report-scope">'+e(report.weeks.at(-1)||'—')+'–'+e(report.weeks[0]||'—')+' · '+report.memberCount+' '+text('aktive Mitglieder','active members')+
+  ' · '+text('Samstag ausgeschlossen · pro Mitglied einmal gezählt','Saturday excluded · each member counted once')+'</p><div class="native-vs-report-days">'+dayHtml+'</div><div class="native-vs-report-groups">'+groups+'</div>'+
   '<div class="native-vs-report-actions"><button type="button" data-native-vs-copy-report>'+text('Bericht kopieren','Copy report')+'</button><span role="status" aria-live="polite"></span></div>'+
   '<textarea class="native-vs-report-fallback" readonly hidden aria-label="'+text('Berichtstext zum manuellen Kopieren','Report text for manual copying')+'"></textarea>'+
-  '<p class="native-muted">'+text('Nur bestätigte Werte derselben member_id. Unbekannt ist weder 0 noch eine Zielverfehlung. Der Bericht ist Entscheidungshilfe, keine automatische Sanktion.',
-   'Only confirmed values for the same member_id. Unknown is neither zero nor a missed goal. This report supports decisions; it does not apply automatic sanctions.')+'</p></section>';
+  '<p class="native-muted">'+text('Nur aktuell aktive Mitglieder und bestätigte Werte derselben member_id. Unbekannt ist weder 0 noch eine Zielverfehlung. Der Bericht ist Entscheidungshilfe, keine automatische Sanktion.',
+   'Only currently active members and confirmed values for the same member_id. Unknown is neither zero nor a missed goal. This report supports decisions; it does not apply automatic sanctions.')+'</p></section></div></details>';
 }
 /** Compact VS cockpit. Never implies an unverified weekly image or screenshot timestamp exists. */
 export function vsDataFreshness(week,formatTime){

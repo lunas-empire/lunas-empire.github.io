@@ -55,7 +55,11 @@ test('Officer can log Zombie Siege and Marshal Guard recurring runs, preserve De
   {id:'dddddddd-dddd-4ddd-dddd-dddddddddddd',event_type:'marshall_guard',event_date:'2026-10-12',level:5,waves:null,attendance:43,outcome:'completed'},
   {id:'eeeeeeee-eeee-4eee-eeee-eeeeeeeeeeee',event_type:'desert_storm',event_date:'2026-10-10',outcome:'completed'}
  ];
- const ops={events:existing,tasks:[],absences:[],members:[{id,name:'Synthetic Officer',rank:'R4'}]};
+ const ops={events:existing,tasks:[],absences:[],members:[{id,name:'Synthetic Officer',rank:'R4'}],protocolEvents:[
+  {id:'log-a',event:'marshall_reserved',game_timestamp:'2026-10-26 01:50:49',scheduled_server_time:'2026-10-27 17:00:00',level:8,member_id:id,name:'Synthetic Officer'},
+  {id:'log-b',event:'marshall_started',game_timestamp:'2026-10-25 16:00:12',scheduled_server_time:null,level:null,member_id:id,name:'Synthetic Officer'},
+  {id:'log-c',event:'zombie_fortress_found',game_timestamp:'2026-10-24 15:00:00',scheduled_server_time:null,level:6,member_id:id,name:'Synthetic Officer'}
+ ]};
  globalThis.fetch=async(url,options={})=>{
   const path=new URL(url).pathname;
   if(path==='/api/native-login')return Response.json({token:'synthetic-token',name:'Officer',role:'R4'});
@@ -81,6 +85,11 @@ test('Officer can log Zombie Siege and Marshal Guard recurring runs, preserve De
  assert.match(q('.native-event-panels').textContent,/Level unverändert|\+1 Level/);
  assert.match(q('#native-records').textContent,/Desert Storm \(1\)/);
  assert.match(q('#native-records').textContent,/54|51|19|18/);
+ assert.equal(mount.querySelectorAll('.native-event-log-row').length,3);
+ assert.match(q('.native-event-log-row').textContent,/6.*Level.*Allianz-Log/s);
+ assert.match(q('#native-records').textContent,/Gefunden · kein Siege-Ergebnis/);
+ assert.match(q('#native-records').textContent,/Reserviert.*2026-10-27 17:00:00|2026-10-27 17:00:00.*Reserviert/s);
+ assert.equal(mount.querySelector('.native-event-log-row[data-native-edit]'),null,'log observations are not editable officer results');
  q('[data-native-event-quick=zombie_siege]').click();
  let form=q('#native-record-save');
  assert.equal(form.elements.namedItem('event_type').value,'zombie_siege');
