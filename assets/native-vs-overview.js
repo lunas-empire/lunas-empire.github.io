@@ -156,7 +156,7 @@ export function renderVsHistory(weeks,currentWeek,{language='de',esc=String,numb
    (item.unknown?' · '+n(item.unknown)+' '+text('unklar','unknown'):'')+(item.perfect===null?'':' · '+n(item.perfect)+'× 6/6')+'</small></button>').join('')+
   '</div><p class="native-muted">'+text('Anteil erreichteter Tagesziele an bestätigten Spieler-Tagen. Unbekannte Werte fehlen im Nenner.','Met daily goals as a share of confirmed player-days. Unknown values are excluded from the denominator.')+'</p></div></details>';
 }
-export function renderVsLongTermReport(weeks,{range='4',language='de',esc=String,numberText=String}={}){
+export function renderVsLongTermReport(weeks,{range='4',language='de',esc=String,numberText=String,currentWeek=null}={}){
  const report=buildVsLongTermReport(weeks,{range,language}),en=language==='en',e=esc,n=numberText;
  const lowLabel=en?'3.6M':'3,6 Mio.',highLabel=en?'7.2M':'7,2 Mio.';
  const text=(de,english)=>en?english:de,percent=(value,total)=>total?Math.round(100*value/total)+'%':'—';
@@ -165,9 +165,23 @@ export function renderVsLongTermReport(weeks,{range='4',language='de',esc=String
   '<span><small>'+text('bestätigt','confirmed')+'</small><b>'+n(day.confirmed)+'</b></span>'+
   '<span><small>≥ '+lowLabel+'</small><b>'+n(day.lowMet)+' <em>'+percent(day.lowMet,day.confirmed)+'</em></b></span>'+
   '<span><small>≥ '+highLabel+'</small><b>'+n(day.highMet)+' <em>'+percent(day.highMet,day.confirmed)+'</em></b></span></button></article>').join('');
- const memberButton=(item,detail,kind)=>'<button type="button" class="native-vs-report-member" data-native-member="'+e(item.id)+'">'+
-  '<strong data-native-no-translate>'+e(item.name)+'</strong><small>'+e(detail)+'</small>'+
-  (kind==='improved'&&item.latest.metDays===5?'<b>'+text('Jetzt 5/5','Now 5/5')+'</b>':'')+'</button>';
+ const memberButton=(item,detail,kind)=>{
+  const matches=[...(currentWeek?.members||[]),...(currentWeek?.missingMembers||[])].filter(person=>String(person?.id||'')===item.id);
+  const person=matches.length===1?matches[0]:null,weekDays=en?['Mon','Tue','Wed','Thu','Fri','Sat']:['Mo','Di','Mi','Do','Fr','Sa'];
+  const daysHtml=person?weekDays.map((label,weekday)=>{
+   const state=vsDayState(person,weekday,currentWeek.threshold),beforeJoin=state.kind==='joined';
+   const value=state.points===null?text(beforeJoin?'Vor Beitritt':'Unbekannt',beforeJoin?'Before joining':'Unknown'):n(state.points);
+   const status=beforeJoin?'is-before-join':state.kind==='met'?'is-good':state.kind==='low'?'is-bad':'is-unknown';
+   return '<div class="native-vs-person-day '+status+'"><span>'+label+'</span>'+(state.points===null?'<span class="native-muted">'+value+'</span>':
+    '<button type="button" class="native-vs-day-link" data-native-vs-image="'+e(currentWeek.week+'|'+item.id+'|'+weekday)+'" aria-label="'+
+    text('VS-Beleg '+label+' für ','VS proof '+label+' for ')+e(item.name)+'">'+value+' ↗</button>')+'</div>';
+  }).join(''):'<p class="native-muted">'+text('Kein eindeutiger Tageswert in der ausgewählten Woche.','No unambiguous daily result in the selected week.')+'</p>';
+  return '<details class="native-vs-report-member native-vs-report-person"><summary><span><strong data-native-no-translate>'+e(item.name)+'</strong><small>'+e(detail)+'</small></span>'+
+   (kind==='improved'&&item.latest.metDays===5?'<b>'+text('Jetzt 5/5','Now 5/5')+'</b>':'')+'</summary>'+
+   '<div class="native-vs-report-person-body">'+(person?'<p class="native-muted">'+text('Tageswerte & Bildbelege','Daily results & image proofs')+' · '+e(currentWeek.week)+'</p>':'')+
+   (person?'<div class="native-vs-person-daygrid">'+daysHtml+'</div>':daysHtml)+
+   '<button type="button" class="native-vs-open-person" data-native-member="'+e(item.id)+'">'+text('Spielerakte & Entwicklung','Player profile & progress')+' ›</button></div></details>';
+ };
  const group=(key,title,items,empty,detail)=>'<details class="native-fold native-vs-report-group native-vs-report-'+key+'"><summary><span>'+title+'</span><b>'+items.length+'</b></summary>'+
   '<div class="native-fold-body"><p class="native-muted">'+empty+'</p><div class="native-vs-report-member-list">'+
   (items.length?items.map(item=>memberButton(item,detail(item),key)).join(''):'<span class="native-muted">'+text('Keine Spieler erfüllen diese Bedingung im gewählten Zeitraum.','No players meet this condition in the selected period.')+'</span>')+'</div></div></details>';
