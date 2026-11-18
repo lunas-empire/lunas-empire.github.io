@@ -1706,6 +1706,14 @@ function renderEventRuns(target){
   '<span><strong>'+e(x.level??'—')+'</strong><small>Level</small></span>'+
   (x.event_type==='zombie_siege'?'<span><strong>'+e(x.waves??'—')+'</strong><small>Wellen</small></span>':'')+
    '<span class="native-event-history-actor">'+e(names.get(x.lead_id)||'Leitung offen')+'<small>'+e(attendanceLabel(x))+'</small></span></button>';
+ const fortressLogs=(data?.fortressFinds||[]).map(item=>{
+  let settings={};try{settings=JSON.parse(item.settings_json||'{}')}catch{}
+  return {id:'fortress:'+item.id,event:'zombie_fortress_found',game_timestamp:item.begins_at,scheduled_server_time:null,
+   level:Number.isInteger(settings.level)?settings.level:null,member_id:null,name:german?'Allianz-Beleg':'Alliance record'};
+ });
+ const seenLogs=new Set(),logEvents=[...protocolEvents,...fortressLogs].filter(item=>{
+  const key=[item.event,item.game_timestamp,item.level??''].join('|');if(seenLogs.has(key))return false;seenLogs.add(key);return true;
+ });
  const groups=['zombie_siege','marshall_guard'].map(type=>{
   const data=summarizeAllianceEventRuns(entries,type);
   const last=data.latest,latestLevel=data.level??'—';
@@ -1715,7 +1723,7 @@ function renderEventRuns(target){
   const upcoming=data.planned.filter(x=>x.event_date>=today).sort((a,b)=>a.event_date.localeCompare(b.event_date))[0];
   const bars=data.historical.slice(0,7).reverse().filter(x=>Number.isInteger(x.level)&&x.level>0);
   const ceiling=Math.max(1,...bars.map(x=>x.level));
-  const logEntries=protocolEvents.filter(item=>type==='marshall_guard'?['marshall_reserved','marshall_started'].includes(item.event):['zombie_fortress_found','zombie_fortress_planned'].includes(item.event));
+  const logEntries=logEvents.filter(item=>type==='marshall_guard'?['marshall_reserved','marshall_started'].includes(item.event):['zombie_fortress_found','zombie_fortress_planned'].includes(item.event));
   const logStatus={marshall_reserved:german?'Reserviert':'Reserved',marshall_started:german?'Gestartet · kein Abschlussbeleg':'Started · no completion proof',
    zombie_fortress_found:german?'Gefunden · kein Siege-Ergebnis':'Found · not a Siege result',zombie_fortress_planned:german?'Geplant · kein Siege-Ergebnis':'Planned · not a Siege result'};
   const logHtml=logEntries.length?'<details class="native-fold native-event-log"><summary>Allianz-Log · '+logEntries.length+'</summary><div class="native-fold-body native-event-history">'+
@@ -1744,9 +1752,13 @@ function renderEventRuns(target){
     '<div class="native-fold-body native-event-history">'+(data.entries.length?data.entries.map(eventRow).join(''):
     '<p class="native-muted">Noch keine erfassten Durchgänge.</p>')+'</div></details>'+logHtml+'</section>';
  }).join('');
+ const trainLogs=protocolEvents.filter(item=>item.event==='train_leader_appointed');
+ const trainLogHtml=trainLogs.length?'<details class="native-fold native-event-log"><summary>'+(german?'Zug-Ernennungen aus dem Allianz-Log':'Train appointments from the alliance log')+' · '+trainLogs.length+'</summary><div class="native-fold-body native-event-history">'+
+  '<p class="native-muted">'+(german?'Nur Ernennungen; keine automatisch abgeschlossenen Fahrten.':'Appointments only; never automatically completed rides.')+'</p>'+
+  trainLogs.map(item=>'<div class="native-event-history-row native-event-log-row"><span><b>'+e(item.game_timestamp)+'</b><small>'+e(german?'Zugführer ernannt · keine Fahrtenquittung':'Train leader appointed · no ride receipt')+'</small></span><span class="native-event-history-actor">'+e(names.get(item.member_id)||item.name)+'<small>'+(german?'Allianz-Log':'Alliance log')+'</small></span></div>').join('')+'</div></details>':'';
  const other=entries.filter(x=>x.event_type==='desert_storm');
  target.querySelector('#native-records').innerHTML='<div class="native-event-intro"><p>Alle paar Tage erfassen: <strong>Level, Wellen, Ergebnis und Teilnahme</strong>. Jeder Durchgang bleibt mit Datum und verantwortlichem Officer erhalten.</p><p class="native-muted">'+(german?'Teilnahme ist ein manueller Offizierseintrag und wird ohne Beleg nicht automatisch ergänzt.':'Attendance is entered manually by an officer and is never inferred without evidence.')+'</p></div>'+
-  '<div class="native-event-panels">'+groups+'</div>'+
+  '<div class="native-event-panels">'+groups+'</div>'+trainLogHtml+
   '<details class="native-fold"><summary>Weitere Events · Desert Storm ('+other.length+')</summary>'+
   '<div class="native-fold-body native-event-history">'+(other.length?other.map(eventRow).join(''):
    '<p class="native-muted">Noch keine Desert-Storm-Durchgänge dokumentiert.</p>')+'</div></details>';
