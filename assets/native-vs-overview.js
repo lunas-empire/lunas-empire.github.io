@@ -71,6 +71,87 @@ export function derivedVsWeekTotal(days=[]){
  }
  return {total:confirmed===6?sum:null,partial:confirmed?sum:null,confirmed,complete:confirmed===6};
 }
+export function buildVsLongTermReport(weeks,{range='4',lowThreshold=3600000,highThreshold=7200000,language='de'}={}){
+ const ordered=[...new Map((Array.isArray(weeks)?weeks:[]).filter(week=>week?.week).map(week=>[String(week.week),week])).values()]
+  .sort((a,b)=>String(b.week).localeCompare(String(a.week)));
+ const selected=(range==='all'?ordered:ordered.slice(0,4));
+ const identities=new Map(),days=Array.from({length:5},(_,weekday)=>({weekday,confirmed:0,unknown:0,lowMet:0,highMet:0}));
+ for(const week of selected){
+  const rows=new Map();
+  for(const person of [...(week.members||[]),...(week.missingMembers||[])]){
+   const id=String(person?.id||'').trim();if(!id)continue;
+   const list=rows.get(id)||[];list.push(person);rows.set(id,list);
+  }
+  for(const [id,list] of rows){
+   if(list.length!==1)continue;
+   const person=list[0],states=days.map((_,weekday)=>vsDayState(person,weekday,lowThreshold));
+   const confirmed=states.filter(state=>state.kind==='met'||state.kind==='low').length;
+   const metDays=states.filter(state=>state.kind==='met').length,lowDays=states.filter(state=>state.kind==='low').length;
+   let points=0;for(const state of states)if(Number.isSafeInteger(state.points))points+=state.points;
+   const record={week:String(week.week),complete:confirmed===5,metDays,lowDays,points:confirmed===5&&Number.isSafeInteger(points)?points:null};
+   if(!identities.has(id))identities.set(id,{id,name:String(person.name||id),records:[]});
+   identities.get(id).records.push(record);
+   states.forEach((state,weekday)=>{
+    const day=days[weekday];
+    if(state.kind==='met'||state.kind==='low'){
+     day.confirmed++;if(state.points>=lowThreshold)day.lowMet++;if(state.points>=highThreshold)day.highMet++;
+    }else if(state.kind==='unknown')day.unknown++;
+   });
+  }
+ }
+ const names=new Intl.Collator(language==='en'?'en-US':'de-DE',{numeric:true,sensitivity:'base'});
+ const repeated=[],neverPerfect=[],improved=[];
+ for(const identity of identities.values()){
+  const complete=identity.records.filter(record=>record.complete);
+  const lowWeeks=identity.records.filter(record=>record.lowDays>=3);
+  if(lowWeeks.length>=2)repeated.push({...identity,lowWeeks:lowWeeks.length,lowDays:lowWeeks.reduce((sum,record)=>sum+record.lowDays,0)});
+  if(complete.length>=3&&!complete.some(record=>record.metDays===5))neverPerfect.push({...identity,completeWeeks:complete.length,bestMet:Math.max(...complete.map(record=>record.metDays))});
+  if(complete.length>=2){
+   const latest=complete[0],earliest=complete.at(-1),metDelta=latest.metDays-earliest.metDays;
+   const pointsDelta=latest.points===null||earliest.points===null?null:latest.points-earliest.points;
+   if(metDelta>0||(metDelta===0&&pointsDelta>0))improved.push({...identity,earliest,latest,metDelta,pointsDelta});
+  }
+ }
+ const byName=(a,b)=>names.compare(a.name,b.name)||a.id.localeCompare(b.id);
+ repeated.sort((a,b)=>b.lowWeeks-a.lowWeeks||b.lowDays-a.lowDays||byName(a,b));
+ neverPerfect.sort((a,b)=>a.bestMet-b.bestMet||b.completeWeeks-a.completeWeeks||byName(a,b));
+ improved.sort((a,b)=>b.metDelta-a.metDelta||(b.pointsDelta??-Infinity)-(a.pointsDelta??-Infinity)||byName(a,b));
+ return {weeks:selected.map(week=>String(week.week)),days,repeated,neverPerfect,improved,memberCount:identities.size};
+}
+export function renderVsLongTermReport(weeks,{range='4',language='de',esc=String,numberText=String}={}){
+ const report=buildVsLongTermReport(weeks,{range,language}),en=language==='en',e=esc,n=numberText;
+ const lowLabel=en?'3.6M':'3,6 Mio.',highLabel=en?'7.2M':'7,2 Mio.';
+ const text=(de,english)=>en?english:de,percent=(value,total)=>total?Math.round(100*value/total)+'%':'—';
+ const labels=en?['Mon','Tue','Wed','Thu','Fri']:['Mo','Di','Mi','Do','Fr'];
+ const dayHtml=report.days.map((day,index)=>'<article><strong>'+labels[index]+'</strong>'+
+  '<span><small>'+text('bestätigt','confirmed')+'</small><b>'+n(day.confirmed)+'</b></span>'+
+  '<span><small>≥ '+lowLabel+'</small><b>'+n(day.lowMet)+' <em>'+percent(day.lowMet,day.confirmed)+'</em></b></span>'+
+  '<span><small>≥ '+highLabel+'</small><b>'+n(day.highMet)+' <em>'+percent(day.highMet,day.confirmed)+'</em></b></span></article>').join('');
+ const memberButton=(item,detail,kind)=>'<button type="button" class="native-vs-report-member" data-native-member="'+e(item.id)+'">'+
+  '<strong data-native-no-translate>'+e(item.name)+'</strong><small>'+e(detail)+'</small>'+
+  (kind==='improved'&&item.latest.metDays===5?'<b>'+text('Jetzt 5/5','Now 5/5')+'</b>':'')+'</button>';
+ const group=(key,title,items,empty,detail)=>'<details class="native-fold native-vs-report-group native-vs-report-'+key+'"><summary><span>'+title+'</span><b>'+items.length+'</b></summary>'+
+  '<div class="native-fold-body"><p class="native-muted">'+empty+'</p><div class="native-vs-report-member-list">'+
+  (items.length?items.map(item=>memberButton(item,detail(item),key)).join(''):'<span class="native-muted">'+text('Keine Spieler erfüllen diese Bedingung im gewählten Zeitraum.','No players meet this condition in the selected period.')+'</span>')+'</div></div></details>';
+ const groups=group('repeated',text('Wiederholt unter dem Tagesziel','Repeatedly below the daily goal'),report.repeated,
+  text('Mindestens 2 Wochen mit je mindestens 3 bestätigten Mo–Fr-Tagen unter '+lowLabel+'.','At least 2 weeks with at least 3 confirmed Mon–Fri days below '+lowLabel+' each.'),
+  item=>text(item.lowWeeks+' Wochen · '+item.lowDays+' bestätigte Tage unter Ziel',item.lowWeeks+' weeks · '+item.lowDays+' confirmed days below goal'))+
+  group('never',text('Noch nie 5/5 erreicht','Never reached 5/5'),report.neverPerfect,
+   text('Mindestens 3 vollständig erfasste Mo–Fr-Wochen; unvollständige Wochen zählen nicht.','At least 3 fully recorded Mon–Fri weeks; incomplete weeks do not count.'),
+   item=>text(item.completeWeeks+' vollständige Wochen · bester Wert '+item.bestMet+'/5',item.completeWeeks+' complete weeks · best result '+item.bestMet+'/5'))+
+  group('improved',text('Positive Entwicklung','Positive progress'),report.improved,
+   text('Vergleich der ersten und letzten vollständig erfassten Mo–Fr-Woche derselben ID.','Compares the first and last fully recorded Mon–Fri week for the same ID.'),
+   item=>item.earliest.week+' '+item.earliest.metDays+'/5 → '+item.latest.week+' '+item.latest.metDays+'/5'+
+    (item.pointsDelta===null?'':text(' · Punkte ',' · points ')+(item.pointsDelta>0?'+':'')+n(item.pointsDelta)));
+ return '<section class="native-vs-longterm" aria-labelledby="native-vs-longterm-title"><div class="native-intel-section-head"><h3 id="native-vs-longterm-title">'+
+  text('Mo–Fr & Langzeit','Mon–Fri & long-term')+'</h3><label>'+text('Zeitraum','Period')+' <select id="native-vs-report-range">'+
+  '<option value="4" '+(range!=='all'?'selected':'')+'>'+text('Letzte 4 Wochen','Last 4 weeks')+'</option>'+
+  '<option value="all" '+(range==='all'?'selected':'')+'>'+text('Alle erfassten Wochen','All recorded weeks')+'</option></select></label></div>'+
+  '<p class="native-vs-report-scope">'+e(report.weeks.at(-1)||'—')+'–'+e(report.weeks[0]||'—')+' · '+report.memberCount+' '+text('eindeutige IDs','unique IDs')+
+  ' · '+text('Samstag ausgeschlossen','Saturday excluded')+'</p><div class="native-vs-report-days">'+dayHtml+'</div><div class="native-vs-report-groups">'+groups+'</div>'+
+  '<p class="native-muted">'+text('Nur bestätigte Werte derselben member_id. Unbekannt ist weder 0 noch eine Zielverfehlung. Der Bericht ist Entscheidungshilfe, keine automatische Sanktion.',
+   'Only confirmed values for the same member_id. Unknown is neither zero nor a missed goal. This report supports decisions; it does not apply automatic sanctions.')+'</p></section>';
+}
 /** Compact VS cockpit. Never implies an unverified weekly image or screenshot timestamp exists. */
 export function vsDataFreshness(week,formatTime){
  const stamp=week?.captured_at ? formatTime(week.captured_at) : null;
