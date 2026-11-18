@@ -98,8 +98,8 @@ test('Copyable long-term report contains exact daily ratios and attributable mem
  const report=buildVsLongTermReport(weeks,{range:'all'});
  const text=vsLongTermReportText(report);
  assert.match(text,/RZSN VS Mo–Fr \| 2026-W44–2026-W46/);
- assert.match(text,/Mo: 0\/3 ≥ 3,6 Mio\. \(0%\) \| 0\/3 ≥ 7,2 Mio\. \(0%\)/);
- assert.match(text,/Do: 3\/3 ≥ 3,6 Mio\. \(100%\) \| 3\/3 ≥ 7,2 Mio\. \(100%\)/);
+ assert.match(text,/Mo: 0\/1 ≥ 3,6 Mio\. \(0%\) \| 0\/1 ≥ 7,2 Mio\. \(0%\)/);
+ assert.match(text,/Do: 1\/1 ≥ 3,6 Mio\. \(100%\) \| 1\/1 ≥ 7,2 Mio\. \(100%\)/);
  assert.match(text,/Wiederholt unter dem Tagesziel \(1\)/);assert.match(text,/Repeat Example — 3 Wochen \/ 9 Tage unter Ziel/);
  assert.match(text,/Keine automatische Sanktion|keine automatische Sanktion/);
  const english=vsLongTermReportText(report,{language:'en'});
@@ -123,4 +123,30 @@ test('Weekly history is a clickable CSS chart with confirmed-only ratios and unk
  assert.equal(doc.querySelectorAll('svg').length,0);
  assert.match(doc.querySelector('.native-vs-history-track i').getAttribute('style'),/width:75%/);
  dom.window.close();
+});
+
+test('Long-term analysis counts unique active IDs once and excludes former members everywhere',()=>{
+ const weeks=['2026-W46','2026-W45','2026-W44'].map(label=>week(label,[
+  person('active','Active Member',[8000000,8000000,8000000,8000000,8000000,8000000]),
+  {...person('former','Former Member',[0,0,0,0,0,0]),former:true}
+ ]));
+ const report=buildVsLongTermReport(weeks,{range:'all'});
+ assert.equal(report.memberCount,1);assert.deepEqual(report.repeated,[]);assert.deepEqual(report.neverPerfect,[]);
+ assert.ok(report.days.every(day=>day.confirmed===1&&day.lowMet===1&&day.highMet===1&&day.unknown===0));
+ const html=renderVsLongTermReport(weeks,{range:'all',language:'en'});
+ assert.match(html,/1 active members/);assert.match(html,/each member counted once/);assert.doesNotMatch(html,/Former Member/);
+});
+
+test('Two, three and custom week ranges select only actual recordings',()=>{
+ const weeks=['2026-W46','2026-W45','2026-W44','2026-W43','2026-W42','2026-W41'].map(label=>lowWeek(label));
+ assert.deepEqual(buildVsLongTermReport(weeks,{range:'2'}).weeks,['2026-W46','2026-W45']);
+ assert.deepEqual(buildVsLongTermReport(weeks,{range:'3'}).weeks,['2026-W46','2026-W45','2026-W44']);
+ const custom=buildVsLongTermReport(weeks,{range:'custom',from:'2026-W42',to:'2026-W45'});
+ assert.deepEqual(custom.weeks,['2026-W45','2026-W44','2026-W43','2026-W42']);
+ assert.deepEqual(buildVsLongTermReport(weeks,{range:'custom',from:'2026-W45',to:'2026-W42'}).weeks,custom.weeks,'reversed inputs are normalized');
+ const html=renderVsLongTermReport(weeks,{range:'custom',from:'2026-W42',to:'2026-W45'});
+ assert.match(html,/class="native-vs-report-custom" >/);
+ assert.match(html,/id="native-vs-report-from"[\s\S]*?value="2026-W42" selected/);
+ assert.match(html,/id="native-vs-report-to"[\s\S]*?value="2026-W45" selected/);
+ assert.match(html,/native-vs-longterm-fold/);
 });

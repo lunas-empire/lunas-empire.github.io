@@ -75,5 +75,14 @@ test('Report sorting keeps its group open, restores focus and controls copied or
  q('.native-vs-report-repeated .native-vs-report-person > summary').click();
  assert.equal(q('.native-vs-report-repeated .native-vs-report-person').open,true);
  assert.equal(q('.native-vs-report-repeated .native-vs-report-person').querySelectorAll('[data-native-vs-image]').length,6);
- assert.equal(vsRequests,1,'sorting uses already loaded authorized data');
+ q('.native-vs-longterm-fold').open=true;
+ const range=q('#native-vs-report-range');range.value='2';range.dispatchEvent(new dom.window.Event('change',{bubbles:true}));
+ assert.match(q('.native-vs-report-scope').textContent,/2026-W45–2026-W46/);assert.equal(q('.native-vs-report-repeated').open,true);
+ const custom=q('#native-vs-report-range');custom.value='custom';custom.dispatchEvent(new dom.window.Event('change',{bubbles:true}));
+ q('#native-vs-report-from').value='2026-W44';q('#native-vs-report-from').dispatchEvent(new dom.window.Event('change',{bubbles:true}));
+ q('#native-vs-report-to').value='2026-W45';q('#native-vs-report-to').dispatchEvent(new dom.window.Event('change',{bubbles:true}));
+ assert.match(q('.native-vs-report-scope').textContent,/2026-W44–2026-W45/);assert.equal(q('.native-vs-report-repeated').open,true);
+ assert.equal(mount.querySelectorAll('.native-vs-longterm-fold').length,1,'range update never nests a duplicate long-term panel');
+ assert.equal(q('.native-vs-longterm-fold').open,true,'outer analysis stays open');
+ assert.equal(vsRequests,1,'sorting and range changes use already loaded authorized data');
 });

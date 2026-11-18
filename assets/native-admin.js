@@ -1273,6 +1273,21 @@ function renderDonations(target,query=null,focusSelector=''){
  if(focused){const input=target.querySelector('#native-donation-search');input.focus();if(position!==null)input.setSelectionRange(position,position)}
  else if(focusSelector)target.querySelector(focusSelector)?.focus({preventScroll:true});
 }
+function vsReportOptions(){
+ return {range:cache.vsReportRange||'4',from:cache.vsReportFrom||null,to:cache.vsReportTo||null,sort:cache.vsReportSort||{}};
+}
+function refreshVsLongTerm(target,focusSelector=''){
+ const section=target.querySelector('.native-vs-longterm-fold');if(!section)return;
+ const wasOpen=section.open;
+ const openGroups=new Set([...section.querySelectorAll('.native-vs-report-group[open]')].map(group=>group.className.match(/native-vs-report-(repeated|never|improved)/)?.[1]).filter(Boolean));
+ const week=cache.vs.weeks.find(item=>item.week===cache.vsView?.week);
+ section.outerHTML=renderVsLongTermReport(cache.vs.weeks,{...vsReportOptions(),language:officerLanguage(target.ownerDocument),esc:e,numberText,currentWeek:week});
+ const updated=target.querySelector('.native-vs-longterm-fold');updated.open=wasOpen;
+ for(const group of updated.querySelectorAll('.native-vs-report-group')){
+  const key=group.className.match(/native-vs-report-(repeated|never|improved)/)?.[1];if(openGroups.has(key))group.open=true;
+ }
+ if(focusSelector)updated.querySelector(focusSelector)?.focus({preventScroll:true});
+}
 function renderVs(target){
  const week=cache.vs?.weeks?.find(w=>w.week===target.querySelector('#native-vs-week')?.value)||cache.vs?.weeks?.[0];
  const host=target.querySelector('#native-vs-body');
@@ -1312,7 +1327,7 @@ function renderVs(target){
    (notices.length?'<ul>'+notices.map(note=>'<li>'+e(note)+'</li>').join('')+'</ul>':'')+
    '<p class="native-muted">'+(enUi?'One member can contribute six below-goal days. Scope: ':'Ein Spieler kann sechs Unterschreitungen beitragen. Umfang: ')+e(week.scopeMembers??'?')+(enUi?' unique IDs. Raw rows: ':' eindeutige IDs. Originalzeilen: ')+e(week.rawPlayerDays??'?')+(enUi?'; unlinked rows: ':'; davon ohne ID: ')+e(week.unresolvedPlayerDays??'?')+'</p></div></details>'+
   layout.dayTiles+renderVsHistory(cache.vs.weeks,week.week,{language:officerLanguage(target.ownerDocument),esc:e,numberText})+
-  renderVsLongTermReport(cache.vs.weeks,{range:cache.vsReportRange||'4',language:officerLanguage(target.ownerDocument),esc:e,numberText,currentWeek:week,sort:cache.vsReportSort||{}})+(layout.trendHtml||'')+layout.groupsHtml+
+  renderVsLongTermReport(cache.vs.weeks,{...vsReportOptions(),language:officerLanguage(target.ownerDocument),esc:e,numberText,currentWeek:week})+(layout.trendHtml||'')+layout.groupsHtml+
   '<details class="native-fold native-vs-explainer"><summary>'+ (enUi?'How are results assessed?':'Wie werden die Werte bewertet?')+'</summary>'+
    '<p class="native-fold-body native-muted">'+(enUi?'Weekly totals are calculated from six confirmed daily scores. Missing or unclear values are never zero; partial sums remain marked as incomplete.':'Die Wochensumme wird aus sechs bestätigten Tageswerten berechnet. Fehlende oder unklare Tage sind nie automatisch 0; Teilstände bleiben als unvollständig gekennzeichnet.')+'</p></details>'+
   '</section>';
@@ -1684,7 +1699,7 @@ export function summarizeAllianceEventRuns(source,type){
 function renderEventRuns(target){
  const data=cache.ops,entries=data?.events||[];
  const names=new Map((data?.members||[]).map(m=>[m.id,m.name]));
- const german=officerLanguage(target.ownerDocument)==='de';
+ const german=officerLanguage(target.ownerDocument)==='de',protocolEvents=data?.protocolEvents||[];
  const attendanceLabel=x=>Number.isInteger(x.attendance)?x.attendance+(german?' Teilnehmer · Offizierseintrag':' participants · officer entry'):(german?'Teilnahme nicht belegt':'Attendance not evidenced');
  const eventRow=x=>'<button type="button" class="native-event-history-row" data-native-edit="'+e(x.id)+'">'+
   '<span><b>'+e(x.event_date)+'</b><small>'+e(allianceEventOutcomeLabels[x.outcome]||'Nicht bestätigt')+'</small></span>'+
@@ -1700,6 +1715,13 @@ function renderEventRuns(target){
   const upcoming=data.planned.filter(x=>x.event_date>=today).sort((a,b)=>a.event_date.localeCompare(b.event_date))[0];
   const bars=data.historical.slice(0,7).reverse().filter(x=>Number.isInteger(x.level)&&x.level>0);
   const ceiling=Math.max(1,...bars.map(x=>x.level));
+  const logEntries=protocolEvents.filter(item=>type==='marshall_guard'?['marshall_reserved','marshall_started'].includes(item.event):['zombie_fortress_found','zombie_fortress_planned'].includes(item.event));
+  const logStatus={marshall_reserved:german?'Reserviert':'Reserved',marshall_started:german?'Gestartet · kein Abschlussbeleg':'Started · no completion proof',
+   zombie_fortress_found:german?'Gefunden · kein Siege-Ergebnis':'Found · not a Siege result',zombie_fortress_planned:german?'Geplant · kein Siege-Ergebnis':'Planned · not a Siege result'};
+  const logHtml=logEntries.length?'<details class="native-fold native-event-log"><summary>Allianz-Log · '+logEntries.length+'</summary><div class="native-fold-body native-event-history">'+
+   '<p class="native-muted">'+(german?'Quellbeobachtungen, keine automatisch abgeschlossenen Durchgänge.':'Source observations, never automatically completed runs.')+'</p>'+
+   logEntries.map(item=>'<div class="native-event-history-row native-event-log-row"><span><b>'+e(item.scheduled_server_time||item.game_timestamp)+'</b><small>'+e(logStatus[item.event]||'Beobachtet')+'</small></span>'+
+    '<span><strong>'+e(item.level??'—')+'</strong><small>Level</small></span><span class="native-event-history-actor">'+e(names.get(item.member_id)||item.name)+'<small>'+(german?'Allianz-Log':'Alliance log')+'</small></span></div>').join('')+'</div></details>':'';
   return '<section class="native-event-panel" aria-label="'+e(allianceEventLabels[type])+'">'+
    '<div class="native-event-panel-head"><div><span class="native-kicker">ALLIANZ-EINSATZ</span>'+
    '<h3>'+e(allianceEventLabels[type])+'</h3></div>'+
@@ -1720,7 +1742,7 @@ function renderEventRuns(target){
     '<p class="native-muted">Noch keine bestätigten Level für einen Verlauf vorhanden.</p>')+
    '<details class="native-fold"><summary>Alle Durchgänge · '+data.entries.length+'</summary>'+
     '<div class="native-fold-body native-event-history">'+(data.entries.length?data.entries.map(eventRow).join(''):
-    '<p class="native-muted">Noch keine erfassten Durchgänge.</p>')+'</div></details></section>';
+    '<p class="native-muted">Noch keine erfassten Durchgänge.</p>')+'</div></details>'+logHtml+'</section>';
  }).join('');
  const other=entries.filter(x=>x.event_type==='desert_storm');
  target.querySelector('#native-records').innerHTML='<div class="native-event-intro"><p>Alle paar Tage erfassen: <strong>Level, Wellen, Ergebnis und Teilnahme</strong>. Jeder Durchgang bleibt mit Datum und verantwortlichem Officer erhalten.</p><p class="native-muted">'+(german?'Teilnahme ist ein manueller Offizierseintrag und wird ohne Beleg nicht automatisch ergänzt.':'Attendance is entered manually by an officer and is never inferred without evidence.')+'</p></div>'+
@@ -2754,7 +2776,7 @@ export function initNativeAdmin(mount){
    const target=mount.querySelector('#native-admin-content'),state=cache.vsView;
    if(vsControl.hasAttribute('data-native-vs-copy-report')){
     const section=vsControl.closest('.native-vs-longterm'),language=officerLanguage(mount.ownerDocument);
-    const report=buildVsLongTermReport(cache.vs.weeks,{range:cache.vsReportRange||'4',language,sort:cache.vsReportSort||{}}),value=vsLongTermReportText(report,{language});
+    const report=buildVsLongTermReport(cache.vs.weeks,{...vsReportOptions(),language}),value=vsLongTermReportText(report,{language});
     try{
      if(!window.navigator?.clipboard?.writeText)throw Error('Clipboard unavailable');
      await window.navigator.clipboard.writeText(value);section.querySelector('[role=status]').textContent=language==='en'?'Report copied.':'Bericht kopiert.';
@@ -3159,19 +3181,18 @@ export function initNativeAdmin(mount){
   if(event.target.matches('[data-native-vs-report-sort]')&&cache.vsView){
    const key=event.target.dataset.nativeVsReportSort;if(!['repeated','never','improved'].includes(key))return;
    cache.vsReportSort={...cache.vsReportSort,[key]:event.target.value};
-   const target=mount.querySelector('#native-admin-content'),section=target.querySelector('.native-vs-longterm');
-   const openGroups=new Set([...section.querySelectorAll('.native-vs-report-group[open]')].map(group=>group.className.match(/native-vs-report-(repeated|never|improved)/)?.[1]).filter(Boolean));
-   const week=cache.vs.weeks.find(item=>item.week===cache.vsView.week);
-   section.outerHTML=renderVsLongTermReport(cache.vs.weeks,{range:cache.vsReportRange||'4',language:officerLanguage(mount.ownerDocument),esc:e,numberText,currentWeek:week,sort:cache.vsReportSort});
-   const updated=target.querySelector('.native-vs-longterm');
-   for(const group of updated.querySelectorAll('.native-vs-report-group')){
-    const groupKey=group.className.match(/native-vs-report-(repeated|never|improved)/)?.[1];if(openGroups.has(groupKey))group.open=true;
-   }
-   updated.querySelector('[data-native-vs-report-sort="'+key+'"]')?.focus({preventScroll:true});return;
+   refreshVsLongTerm(mount.querySelector('#native-admin-content'),'[data-native-vs-report-sort="'+key+'"]');return;
+  }
+  if(['native-vs-report-from','native-vs-report-to'].includes(event.target.id)&&cache.vsView){
+   cache.vsReportRange='custom';cache[event.target.id==='native-vs-report-from'?'vsReportFrom':'vsReportTo']=event.target.value;
+   refreshVsLongTerm(mount.querySelector('#native-admin-content'),'#'+event.target.id);return;
   }
   if(event.target.id==='native-vs-report-range'){
-   cache.vsReportRange=event.target.value==='all'?'all':'4';const target=mount.querySelector('#native-admin-content');renderVs(target);
-   target.querySelector('#native-vs-report-range')?.focus({preventScroll:true});return;
+   cache.vsReportRange=['2','3','4','all','custom'].includes(event.target.value)?event.target.value:'4';
+   if(cache.vsReportRange==='custom'){
+    cache.vsReportFrom ||= cache.vs.weeks.at(-1)?.week||null;cache.vsReportTo ||= cache.vs.weeks[0]?.week||null;
+   }
+   refreshVsLongTerm(mount.querySelector('#native-admin-content'),'#native-vs-report-range');return;
   }
   if(event.target.id==='native-vs-sort'&&cache.vsView){
    const target=mount.querySelector('#native-admin-content');cache.vsView.sort=event.target.value;cache.vsView.limits={};
