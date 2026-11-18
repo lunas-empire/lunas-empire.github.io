@@ -47,7 +47,8 @@ export function vsResultGroups(week,{day=-1,category='all',sort='priority',query
  const labels={low:'Unter Tagesziel',unknown:daily?'Unbekannt':'Messwerte unvollständig',joined:daily?'Vor Beitritt':'Beitritt während der Woche',met:'Tagesziel erreicht'};
  const groups=Object.keys(buckets).filter(key=>category==='all'||key===category)
   .map(key=>({kind:key,label:labels[key],members:buckets[key].sort(compare)})).filter(group=>group.members.length);
- return {groups,counts,matchingCount:groups.reduce((sum,group)=>sum+group.members.length,0),daily};
+ const matching=(category==='all'?Object.values(buckets).flat():buckets[category]||[]).sort(compare);
+ return {groups,matching,counts,matchingCount:groups.reduce((sum,group)=>sum+group.members.length,0),daily};
 }
 export function derivedVsWeekTotal(days=[]){
  const entries=new Map(), duplicates=new Set();
@@ -118,15 +119,52 @@ export function buildVsLongTermReport(weeks,{range='4',lowThreshold=3600000,high
  improved.sort((a,b)=>b.metDelta-a.metDelta||(b.pointsDelta??-Infinity)-(a.pointsDelta??-Infinity)||byName(a,b));
  return {weeks:selected.map(week=>String(week.week)),days,repeated,neverPerfect,improved,memberCount:identities.size};
 }
+export function vsLongTermReportText(report,{language='de'}={}){
+ const en=language==='en',text=(de,english)=>en?english:de,labels=en?['Mon','Tue','Wed','Thu','Fri']:['Mo','Di','Mi','Do','Fr'];
+ const percent=(value,total)=>total?Math.round(100*value/total)+'%':'—';
+ const lines=['RZSN VS '+text('Mo–Fr','Mon–Fri')+' | '+(report.weeks.at(-1)||'—')+'–'+(report.weeks[0]||'—'),
+  text('Samstag ausgeschlossen. Nur bestätigte Werte; unbekannt ist nicht 0.','Saturday excluded. Confirmed values only; unknown is not zero.')];
+ for(const day of report.days)lines.push(labels[day.weekday]+': '+day.lowMet+'/'+day.confirmed+' ≥ '+(en?'3.6M':'3,6 Mio.')+' ('+percent(day.lowMet,day.confirmed)+') | '+day.highMet+'/'+day.confirmed+' ≥ '+(en?'7.2M':'7,2 Mio.')+' ('+percent(day.highMet,day.confirmed)+')');
+ const append=(title,items,detail)=>{
+  lines.push('',title+' ('+items.length+')');
+  if(items.length)for(const item of items)lines.push(item.name+' — '+detail(item));
+  else lines.push(text('Keine Spieler im gewählten Zeitraum.','No players in the selected period.'));
+ };
+ append(text('Wiederholt unter dem Tagesziel','Repeatedly below the daily goal'),report.repeated,item=>item.lowWeeks+text(' Wochen / ',' weeks / ')+item.lowDays+text(' Tage unter Ziel',' days below goal'));
+ append(text('Noch nie 5/5','Never reached 5/5'),report.neverPerfect,item=>item.completeWeeks+text(' vollständige Wochen / bester Wert ',' complete weeks / best ')+item.bestMet+'/5');
+ append(text('Positive Entwicklung','Positive progress'),report.improved,item=>item.earliest.week+' '+item.earliest.metDays+'/5 → '+item.latest.week+' '+item.latest.metDays+'/5');
+ lines.push('',text('Entscheidungshilfe, keine automatische Sanktion.','Decision support only; no automatic sanctions.'));
+ return lines.join('\n');
+}
+export function buildVsHistory(weeks){
+ const ordered=[...new Map((Array.isArray(weeks)?weeks:[]).filter(week=>week?.week).map(week=>[String(week.week),week])).values()]
+  .sort((a,b)=>String(b.week).localeCompare(String(a.week)));
+ return ordered.map(week=>{
+  const totals=(week.dayTotals||[]),confirmed=totals.reduce((sum,day)=>sum+Number(day.passed||0)+Number(day.failed||0),0);
+  const met=totals.reduce((sum,day)=>sum+Number(day.passed||0),0),unknown=totals.reduce((sum,day)=>sum+Number(day.unknown||0),0);
+  return {week:String(week.week),state:week.state,confirmed,met,unknown,percent:confirmed?Math.round(100*met/confirmed):null,perfect:Number.isSafeInteger(week.perfect)?week.perfect:null};
+ });
+}
+export function renderVsHistory(weeks,currentWeek,{language='de',esc=String,numberText=String}={}){
+ const history=buildVsHistory(weeks),en=language==='en',e=esc,n=numberText,text=(de,english)=>en?english:de;
+ if(!history.length)return '';
+ return '<details class="native-fold native-vs-history"><summary><span>'+text('Wochenverlauf','Weekly history')+'</span><small>'+history.length+' '+text('Wochen · zum Wechseln antippen','weeks · tap to open')+'</small></summary>'+
+  '<div class="native-fold-body"><div class="native-vs-history-chart" aria-label="'+text('Zielerreichung je Woche','Goal attainment by week')+'">'+
+  history.map(item=>'<button type="button" class="native-vs-history-row" data-native-vs-history-week="'+e(item.week)+'" aria-pressed="'+(item.week===currentWeek)+'">'+
+   '<strong>'+e(item.week)+'</strong><span class="native-vs-history-track" aria-hidden="true"><i style="width:'+(item.percent??0)+'%"></i></span>'+
+   '<b>'+(item.percent===null?'—':n(item.percent)+'%')+'</b><small>'+n(item.met)+'/'+n(item.confirmed)+' '+text('bestätigt','confirmed')+
+   (item.unknown?' · '+n(item.unknown)+' '+text('unklar','unknown'):'')+(item.perfect===null?'':' · '+n(item.perfect)+'× 6/6')+'</small></button>').join('')+
+  '</div><p class="native-muted">'+text('Anteil erreichteter Tagesziele an bestätigten Spieler-Tagen. Unbekannte Werte fehlen im Nenner.','Met daily goals as a share of confirmed player-days. Unknown values are excluded from the denominator.')+'</p></div></details>';
+}
 export function renderVsLongTermReport(weeks,{range='4',language='de',esc=String,numberText=String}={}){
  const report=buildVsLongTermReport(weeks,{range,language}),en=language==='en',e=esc,n=numberText;
  const lowLabel=en?'3.6M':'3,6 Mio.',highLabel=en?'7.2M':'7,2 Mio.';
  const text=(de,english)=>en?english:de,percent=(value,total)=>total?Math.round(100*value/total)+'%':'—';
  const labels=en?['Mon','Tue','Wed','Thu','Fri']:['Mo','Di','Mi','Do','Fr'];
- const dayHtml=report.days.map((day,index)=>'<article><strong>'+labels[index]+'</strong>'+
+ const dayHtml=report.days.map((day,index)=>'<article><button type="button" class="native-vs-report-day" data-native-vs-day="'+index+'" aria-label="'+text(labels[index]+' in der aktuellen Woche öffnen','Open '+labels[index]+' in the selected week')+'"><strong>'+labels[index]+'</strong>'+
   '<span><small>'+text('bestätigt','confirmed')+'</small><b>'+n(day.confirmed)+'</b></span>'+
   '<span><small>≥ '+lowLabel+'</small><b>'+n(day.lowMet)+' <em>'+percent(day.lowMet,day.confirmed)+'</em></b></span>'+
-  '<span><small>≥ '+highLabel+'</small><b>'+n(day.highMet)+' <em>'+percent(day.highMet,day.confirmed)+'</em></b></span></article>').join('');
+  '<span><small>≥ '+highLabel+'</small><b>'+n(day.highMet)+' <em>'+percent(day.highMet,day.confirmed)+'</em></b></span></button></article>').join('');
  const memberButton=(item,detail,kind)=>'<button type="button" class="native-vs-report-member" data-native-member="'+e(item.id)+'">'+
   '<strong data-native-no-translate>'+e(item.name)+'</strong><small>'+e(detail)+'</small>'+
   (kind==='improved'&&item.latest.metDays===5?'<b>'+text('Jetzt 5/5','Now 5/5')+'</b>':'')+'</button>';
@@ -149,6 +187,8 @@ export function renderVsLongTermReport(weeks,{range='4',language='de',esc=String
   '<option value="all" '+(range==='all'?'selected':'')+'>'+text('Alle erfassten Wochen','All recorded weeks')+'</option></select></label></div>'+
   '<p class="native-vs-report-scope">'+e(report.weeks.at(-1)||'—')+'–'+e(report.weeks[0]||'—')+' · '+report.memberCount+' '+text('eindeutige IDs','unique IDs')+
   ' · '+text('Samstag ausgeschlossen','Saturday excluded')+'</p><div class="native-vs-report-days">'+dayHtml+'</div><div class="native-vs-report-groups">'+groups+'</div>'+
+  '<div class="native-vs-report-actions"><button type="button" data-native-vs-copy-report>'+text('Bericht kopieren','Copy report')+'</button><span role="status" aria-live="polite"></span></div>'+
+  '<textarea class="native-vs-report-fallback" readonly hidden aria-label="'+text('Berichtstext zum manuellen Kopieren','Report text for manual copying')+'"></textarea>'+
   '<p class="native-muted">'+text('Nur bestätigte Werte derselben member_id. Unbekannt ist weder 0 noch eine Zielverfehlung. Der Bericht ist Entscheidungshilfe, keine automatische Sanktion.',
    'Only confirmed values for the same member_id. Unknown is neither zero nor a missed goal. This report supports decisions; it does not apply automatic sanctions.')+'</p></section>';
 }
@@ -211,7 +251,7 @@ export function renderVsOverview(week,policy={},api={}){
   ['Spieler','players'],
   ['Ziel','goal']
  ];
- translated.unshift(['bestätigten IDs','confirmed IDs'],[' IDs im Umfang',' IDs in scope'],['% der ','% of '],['Sortieren nach','Sort by'],['Tage unter Ziel','Days below goal'],['Punkte: höchste zuerst','Points: highest first'],['Punkte: niedrigste zuerst','Points: lowest first']);
+ translated.unshift(['bestätigten IDs','confirmed IDs'],['bestätigte IDs','confirmed IDs'],[' IDs im Umfang',' IDs in scope'],['% der ','% of '],['Sortieren nach','Sort by'],['Tage unter Ziel','Days below goal'],['Punkte: höchste zuerst','Points: highest first'],['Punkte: niedrigste zuerst','Points: lowest first']);
  translated.push(['Entwicklung','Development'],[' verbessert',' improved'],[' gesunken',' declined'],[' unverändert',' unchanged'],
   ['Kein Vergleich: vollständige Wochenpunkte fehlen','No comparison: complete weekly points are missing'],
   ['Verbesserung zuerst','Most improved first'],['Nur vollständig bestätigte Wochenpunkte derselben ID','Only fully confirmed weekly points for the same ID']);
@@ -237,12 +277,12 @@ export function renderVsOverview(week,policy={},api={}){
   '<div class="native-day-overview-grid">'+days.map((label,i)=>{
    const d=(week.dayTotals||[]).find(x=>x.weekday===i);
    const pass=d?.passed??0,failed=d?.failed??0,unknown=d?.unknown??members.length,beforeJoin=d?.beforeJoin??0;
-   const eligible=Math.max(0,members.length-beforeJoin);
+   const eligible=Math.max(0,members.length-beforeJoin),known=pass+failed,attainment=known?Math.round(100*pass/known):null;
    return '<article class="native-day-mini'+(failed?' has-failures':'')+'">'+
     '<button type="button" class="native-day-mini-open" data-native-vs-day="'+i+'" aria-pressed="'+(view.day===i)+'" aria-controls="native-vs-results">'+
-    '<span class="native-day-mini-heading"><strong>'+label+'</strong><span>'+ (eligible?Math.min(100,Math.round(100*(pass+failed)/eligible)):0)+'% erfasst</span></span>'+
-    '<strong class="native-day-mini-count">'+pass+'<small> Ziel erreicht</small></strong>'+
-    '<small>'+(d?.attainmentPercent==null?'?':n(Math.round(d.attainmentPercent)))+'% der '+(pass+failed)+' bestätigten IDs · '+(week.scopeMembers??members.length)+' IDs im Umfang</small>'+
+    '<span class="native-day-mini-heading"><strong>'+label+'</strong><span>'+ (eligible?Math.min(100,Math.round(100*known/eligible)):0)+'% erfasst</span></span>'+
+    '<strong class="native-day-mini-count">'+(attainment===null?'—':n(attainment)+'%')+'<small> Ziel erreicht</small></strong>'+
+    '<small>'+pass+' / '+known+' bestätigte IDs</small><span class="native-day-meter" aria-hidden="true"><i style="width:'+(attainment??0)+'%"></i></span>'+
     '<span class="native-day-mini-meta"><span class="bad">'+failed+' unter</span><span>'+unknown+' unklar</span>'+(beforeJoin?'<span>'+beforeJoin+' vor Beitritt</span>':'')+'</span>'+
     '</button></article>';
   }).join('')+'</div></section>';
@@ -285,23 +325,19 @@ export function renderVsOverview(week,policy={},api={}){
    '<button type="button" class="native-vs-open-person" data-native-member="'+e(p.id)+'">Spielerakte & Entwicklung öffnen ›</button>'+
    '</div></details>';
  };
+ const activeCategory=['all','low','met','unknown','joined'].includes(view.category)?view.category:'all';
+ const resultLimit=Math.max(10,Number(view.limits?.[activeCategory])||10),shownResults=result.matching.slice(0,resultLimit);
  const groupsHtml='<section class="native-vs-results" id="native-vs-results" data-native-vs-matches="'+result.matchingCount+'">'+
   '<div class="native-intel-section-head"><h3 id="native-vs-results-title" tabindex="-1">'+(result.daily?tr(['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'][view.day])+' · '+e(week.week):'Spieler nach Ergebnis')+'</h3>'+
-   '<span>'+members.length+' erfasste Spieler · '+(result.daily?result.counts.low+result.counts.met:verified)+' bestätigte Tageswerte</span></div>'+
+   '<span>'+result.matchingCount+' '+tr('Spieler')+' · '+(result.daily?result.counts.low+result.counts.met:verified)+' bestätigte Tageswerte</span></div>'+
   '<div class="native-vs-result-tools"><label><span>'+tr('Sortieren nach')+'</span><select id="native-vs-sort">'+
    [['priority','Tage unter Ziel'],['improvement','Verbesserung zuerst'],['points_desc','Punkte: höchste zuerst'],['points_asc','Punkte: niedrigste zuerst'],['name','Name'],['rank','Allianzrang']].map(([value,label])=>'<option value="'+value+'" '+((view.sort||'priority')===value?'selected':'')+'>'+tr(label)+'</option>').join('')+'</select></label>'+
    (result.daily?'<button type="button" data-native-vs-weekly>'+tr('Wochenauswertung')+'</button>':'')+'</div>'+
-  (result.daily?'<nav class="native-vs-day-filters" aria-label="'+tr('Tagesergebnisse')+'">'+[['all','Alle'],['met','Ziel erreicht'],['low','Unter Ziel'],['unknown','Unbekannt'],['joined','Vor Beitritt']].map(([value,label])=>
-   '<button type="button" data-native-vs-category="'+value+'" aria-pressed="'+((view.category||'all')===value)+'">'+tr(label)+' <b>'+e(value==='all'?members.length:result.counts[value])+'</b></button>').join('')+'</nav>':'')+
-  '<div class="native-vs-groups">'+result.groups.map(({label,members:people,kind})=>{
-   const limit=Math.max(10,Number(view.limits?.[kind])||10),shown=people.slice(0,limit);
-   const open=Boolean(view.query)||(view.openGroups?view.openGroups.includes(kind):result.daily&&((view.category||'all')==='all'?kind==='low':true));
-   return '<details class="native-fold native-vs-group native-vs-group-'+kind+'" data-native-vs-group="'+kind+'" '+(open?'open':'')+'><summary>'+
-   '<span>'+e(label)+'</span><b>'+people.length+' Spieler</b></summary>'+
-   '<div class="native-fold-body native-vs-compact-list">'+
-   shown.map(person).join('')+'<div class="native-vs-group-footer"><span>'+shown.length+' / '+people.length+' '+tr('Spieler')+'</span>'+
-   (shown.length<people.length?'<button type="button" data-native-vs-more-group="'+kind+'">'+tr('Weitere Spieler')+'</button>':'')+'</div></div></details>';
-  }).join('')+
+  '<nav class="native-vs-day-filters" aria-label="'+tr('Tagesergebnisse')+'">'+[['all','Alle'],['low','Unter Ziel'],['met','Ziel erreicht'],['unknown','Unbekannt'],['joined','Vor Beitritt']].map(([value,label])=>
+   '<button type="button" data-native-vs-category="'+value+'" aria-pressed="'+(activeCategory===value)+'">'+tr(label)+' <b>'+e(value==='all'?members.length:result.counts[value])+'</b></button>').join('')+'</nav>'+
+  '<div class="native-vs-groups native-vs-single-results"><div class="native-vs-group native-vs-single-group native-vs-group-'+activeCategory+'" data-native-vs-group="'+activeCategory+'">'+
+   '<div class="native-vs-compact-list">'+shownResults.map(person).join('')+'</div><div class="native-vs-group-footer"><span>'+shownResults.length+' / '+result.matchingCount+' '+tr('Spieler')+'</span>'+
+   (shownResults.length<result.matchingCount?'<button type="button" data-native-vs-more-group="'+activeCategory+'">'+tr('Weitere Spieler')+'</button>':'')+'</div></div>'+
    (!members.length?'<p class="native-muted">Noch keine Spieler für diese Woche.</p>':'')+
    '<p class="native-muted" data-native-vs-search-empty role="status" '+(result.matchingCount||!members.length?'hidden':'')+'>'+tr('Keine Spieler gefunden.')+'</p></div></section>';
  return {freshness:loc(h),dayTiles:loc(dayTiles),trendHtml:loc(trendHtml),groupsHtml:loc(groupsHtml)};
