@@ -2863,12 +2863,13 @@ export function initNativeAdmin(mount){
    cache.requirements=await request('/api/alliance-requirements');renderRequirements(mount.querySelector('#native-admin-content'));return
   }
   if(button.dataset.officerTab){panel=button.dataset.officerTab;pageLimit=20;historyLimit=20;activityLimit=30;await view(mount);
+   mount.scrollIntoView?.({block:'start',behavior:'auto'});
    if(panel==='more')mount.querySelector('.native-hub-section h3')?.focus();
    return}
   if(button.dataset.nativeAction){
    const action=button.dataset.nativeAction;
    panel=({ 'train-today':'train','event-planning':'events','member-find':'members','review-open':'reviews','tasks-open':'tasks','absences-open':'absences','vs-open':'vs','donations-open':'donations'})[action]||'overview';
-   pageLimit=20;historyLimit=20;await view(mount);
+   pageLimit=20;historyLimit=20;await view(mount);mount.scrollIntoView?.({block:'start',behavior:'auto'});
    const destination=mount.querySelector('#native-admin-content');
    if(action==='train-today'&&cache.trains?.today&&Array.isArray(cache.trains.history))editTrain(destination,cache.trains.today);
    if(action==='event-planning'&&cache.ops?.events)editRecord(destination,'events','');
