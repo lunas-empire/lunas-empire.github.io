@@ -58,7 +58,11 @@ test('Officer can log Zombie Siege and Marshal Guard recurring runs, preserve De
  const ops={events:existing,tasks:[],absences:[],members:[{id,name:'Synthetic Officer',rank:'R4'}],protocolEvents:[
   {id:'log-a',event:'marshall_reserved',game_timestamp:'2026-10-26 01:50:49',scheduled_server_time:'2026-10-27 17:00:00',level:8,member_id:id,name:'Synthetic Officer'},
   {id:'log-b',event:'marshall_started',game_timestamp:'2026-10-25 16:00:12',scheduled_server_time:null,level:null,member_id:id,name:'Synthetic Officer'},
-  {id:'log-c',event:'zombie_fortress_found',game_timestamp:'2026-10-24 15:00:00',scheduled_server_time:null,level:6,member_id:id,name:'Synthetic Officer'}
+  {id:'log-c',event:'zombie_fortress_found',game_timestamp:'2026-10-24 15:00:00',scheduled_server_time:null,level:6,member_id:id,name:'Synthetic Officer'},
+  {id:'log-d',event:'train_leader_appointed',game_timestamp:'2026-10-23 15:00:00',scheduled_server_time:null,level:null,member_id:id,name:'Synthetic Officer'}
+ ],fortressFinds:[
+  {id:'fortress-old',begins_at:'2026-10-21 15:00:00',status:'found',settings_json:'{"level":5}'},
+  {id:'fortress-duplicate',begins_at:'2026-10-24 15:00:00',status:'found',settings_json:'{"level":6}'}
  ]};
  globalThis.fetch=async(url,options={})=>{
   const path=new URL(url).pathname;
@@ -85,7 +89,9 @@ test('Officer can log Zombie Siege and Marshal Guard recurring runs, preserve De
  assert.match(q('.native-event-panels').textContent,/Level unverändert|\+1 Level/);
  assert.match(q('#native-records').textContent,/Desert Storm \(1\)/);
  assert.match(q('#native-records').textContent,/54|51|19|18/);
- assert.equal(mount.querySelectorAll('.native-event-log-row').length,3);
+ assert.equal(mount.querySelectorAll('.native-event-log-row').length,5,'fortress history appears once without duplicates');
+ assert.match(q('#native-records').textContent,/2026-10-21 15:00:00/);
+ assert.match(q('#native-records').textContent,/Zugführer ernannt · keine Fahrtenquittung/);
  assert.match(q('.native-event-log-row').textContent,/6.*Level.*Allianz-Log/s);
  assert.match(q('#native-records').textContent,/Gefunden · kein Siege-Ergebnis/);
  assert.match(q('#native-records').textContent,/Reserviert.*2026-10-27 17:00:00|2026-10-27 17:00:00.*Reserviert/s);
