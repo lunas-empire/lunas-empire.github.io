@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026.11.18-officer-development-vip');
+@import url('./tokens.css?v=2026.11.18-vs-weekday-longterm');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -1803,6 +1803,30 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 .native-admin .native-vs-v39 .native-vs-person-compact>summary{min-height:50px}
 .native-admin .native-vs-reports{display:grid;gap:.35rem}
 .native-admin .native-vs-reports>details{margin:0}
+.native-admin .native-vs-longterm{display:grid;gap:.45rem;padding:.65rem;border:1px solid var(--color-rule);border-radius:8px;background:var(--color-raised)}
+.native-admin .native-vs-longterm .native-intel-section-head{margin:0;align-items:center}
+.native-admin .native-vs-longterm .native-intel-section-head label{display:flex;align-items:center;gap:.35rem;font-size:.7rem;color:var(--color-muted)}
+.native-admin .native-vs-longterm select{min-height:40px;max-width:11rem;padding:.3rem;font-size:.75rem;color:var(--color-ink);background:var(--color-panel);border:1px solid var(--color-rule);border-radius:5px}
+.native-admin .native-vs-report-scope{margin:0;font-size:.72rem;color:var(--color-muted);overflow-wrap:anywhere}
+.native-admin .native-vs-report-days{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.3rem}
+.native-admin .native-vs-report-days article{display:grid;gap:.3rem;min-width:0;padding:.45rem;border:1px solid var(--color-rule);border-top:2px solid #5a9f84;border-radius:6px;background:var(--color-panel)}
+.native-admin .native-vs-report-days article>strong{font-size:.85rem}
+.native-admin .native-vs-report-days article span{display:grid;gap:.08rem;min-width:0}
+.native-admin .native-vs-report-days small{font-size:.61rem;color:var(--color-muted);overflow-wrap:anywhere}
+.native-admin .native-vs-report-days b{font-size:.78rem;font-variant-numeric:tabular-nums}
+.native-admin .native-vs-report-days em{font-size:.65rem;font-style:normal;font-weight:600;color:var(--color-muted)}
+.native-admin .native-vs-report-groups{display:grid;gap:.35rem}
+.native-admin .native-vs-report-group{margin:0;background:var(--color-panel)}
+.native-admin .native-vs-report-group>summary{display:flex;align-items:center;justify-content:space-between;gap:.5rem;min-height:44px;font-size:.78rem}
+.native-admin .native-vs-report-group>summary>b{min-width:1.7rem;text-align:center;color:var(--color-action);font-variant-numeric:tabular-nums}
+.native-admin .native-vs-report-group .native-fold-body>p{margin:.1rem 0 .45rem;font-size:.7rem}
+.native-admin .native-vs-report-member-list{display:grid;gap:.3rem}
+.native-admin .native-vs-report-member{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.1rem .5rem;min-width:0;min-height:44px;padding:.42rem .5rem;text-align:start;background:var(--color-raised);border:1px solid var(--color-rule-soft);border-radius:5px}
+.native-admin .native-vs-report-member strong{min-width:0;font-size:.77rem;overflow-wrap:anywhere}
+.native-admin .native-vs-report-member small{grid-column:1/-1;font-size:.67rem;color:var(--color-muted);overflow-wrap:anywhere}
+.native-admin .native-vs-report-member>b{grid-column:2;grid-row:1;font-size:.66rem;color:#397657;align-self:center}
+.native-admin .native-vs-longterm>.native-muted{margin:0;font-size:.66rem;line-height:1.4}
+@media(max-width:600px){.native-admin .native-vs-report-days{grid-template-columns:repeat(2,minmax(0,1fr))}.native-admin .native-vs-report-days article{grid-template-columns:repeat(3,minmax(0,1fr));align-items:center}.native-admin .native-vs-report-days article>strong{grid-column:1/-1}.native-admin .native-vs-report-days article:last-child{grid-column:1/-1}.native-admin .native-vs-longterm .native-intel-section-head{align-items:flex-start;flex-wrap:wrap}}
 @media(max-width:390px){
  .native-admin .native-dashboard-microstats{width:100%}
  .native-admin .native-vs-compact-top{align-items:flex-start}

@@ -56,6 +56,11 @@ test('VS data starts compact with under-target and day breakdown collapsed, whil
  assert.equal(mount.querySelectorAll('.native-day-mini').length,6,'switching week keeps weekday summary visible');
  assert.ok(q('.native-vs-tools [data-native-action=review-open]'),'small review action remains visible');
  assert.equal(mount.querySelectorAll('.native-vs-single-insight').length,1,'one combined warning note');
+ assert.equal(mount.querySelectorAll('.native-vs-report-days article').length,5,'Mo-Fr analysis is visible and Saturday is excluded');
+ assert.equal(mount.querySelectorAll('.native-vs-report-group').length,3,'repeat, consistency and progress groups are available');
+ q('#native-vs-report-range').value='all';q('#native-vs-report-range').dispatchEvent(new dom.window.Event('change',{bubbles:true}));
+ assert.equal(q('#native-vs-report-range').value,'all','officer can switch from the month view to all recorded weeks');
+ assert.match(q('.native-vs-report-scope').textContent,/Samstag ausgeschlossen/);
 });
 
 test('day tiles reveal attributable scores, categories, sorting and pagination without losing week or profile context',async t=>{
