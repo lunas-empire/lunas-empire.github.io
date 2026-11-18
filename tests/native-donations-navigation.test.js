@@ -14,8 +14,8 @@ test('iPhone More navigation offers direct grouped shortcuts and closes on tap',
  const weekly={minimum:20000,weeks:[{week:'2026-W41',captured_at:'2026-10-11T00:19:36+02:00',
   is_complete:true,active:14,verified:13,met:1,below:12,unknown:1,
   members:[
-   {id,name:'Alpha',rank:'R4',status:'met',points:22000,difference:2000,delta:null,previous_week:null},
-   {id:'b',name:'Bravo',rank:'R3',status:'below',points:15000,difference:-5000,delta:null,previous_week:null},
+   {id,name:'Alpha',rank:'R4',status:'met',points:22000,difference:2000,delta:2000,previous_week:'2026-W40'},
+   {id:'b',name:'Bravo',rank:'R3',status:'below',points:15000,difference:-5000,delta:-1000,previous_week:'2026-W40'},
    ...belowExtras,
    {id:'c',name:'Charlie',rank:'R2',status:'unknown',points:null,difference:null,delta:null,previous_week:null}
   ]}]};
@@ -63,7 +63,10 @@ test('iPhone More navigation offers direct grouped shortcuts and closes on tap',
  assert.ok(calls.includes('/api/donations-intelligence'));
  assert.match(q('.native-donation-summary').textContent,/20.000/);
  assert.equal(q('.native-donation-tiles').querySelectorAll('article').length,4);
- assert.match(q('.native-donation-summary').textContent,/Bisher liegt nur eine verlässliche Wochenaufnahme vor/);
+ assert.match(q('.native-donation-summary').textContent,/Entwicklung/);
+ assert.match(q('.native-donation-summary').textContent,/1 verbessert/);
+ assert.match(q('.native-donation-summary').textContent,/1 gesunken/);
+ assert.ok(q('#native-donation-sort option[value="improvement"]'));
  const folds=q('.native-donation-groups').querySelectorAll('details');
  assert.equal(folds.length,3);
  assert.match(folds[0].textContent,/Bravo/);

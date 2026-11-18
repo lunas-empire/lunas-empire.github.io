@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026.11.05-member-actual-delta-mobile');
+@import url('./tokens.css?v=2026.11.12-lw-ranks');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -2096,3 +2096,12 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 .native-admin .native-lw-all-points summary{cursor:pointer;color:var(--color-action);font-weight:650;min-height:44px;display:flex;align-items:center}
 @media(max-width:31rem){.native-admin .native-lw-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:.4rem}.native-admin .native-lw-kpis button{padding:.55rem;min-height:108px}.native-admin .native-lw-kpis button .native-lw-card-date{display:none}}
 @media(min-width:768px){.native-admin .native-lw-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.native-admin .native-vs-development,.native-admin .native-donation-development{display:grid;grid-template-columns:auto minmax(0,1fr);gap:.2rem .65rem;align-items:baseline;padding:.6rem .7rem;border:1px solid var(--color-rule);border-left:3px solid var(--color-action);border-radius:6px;background:var(--color-raised)}
+.native-admin .native-vs-development small,.native-admin .native-donation-development small{grid-column:1/-1;color:var(--color-muted);font-size:.7rem;overflow-wrap:anywhere}
+.native-admin .native-vs-change.is-up{color:#397c62}.native-admin .native-vs-change.is-down{color:#b65457}.native-admin .native-vs-change.is-same{color:var(--color-muted)}
+.native-admin .native-vs-week-development{margin:0;font-size:.76rem;color:var(--color-muted);overflow-wrap:anywhere}
+.native-admin .native-dl-match-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.4rem;margin:.45rem 0 .65rem}
+.native-admin .native-dl-match-kpis>span{display:grid;gap:.15rem;min-width:0;padding:.45rem;border:1px solid var(--color-rule);border-radius:5px;background:var(--color-raised)}
+.native-admin .native-dl-match-kpis small{color:var(--color-muted);font-size:.66rem;overflow-wrap:anywhere}
+.native-admin .native-dl-match-kpis strong{font-size:.9rem;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+@media(max-width:600px){.native-admin .native-vs-development,.native-admin .native-donation-development{grid-template-columns:minmax(0,1fr)}.native-admin .native-dl-match-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}

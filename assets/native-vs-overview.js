@@ -14,6 +14,12 @@ export function vsDayState(person,weekday,threshold){
  const passed=Number.isSafeInteger(threshold)&&threshold>=0?day.points>=threshold:day.passed;
  return {kind:passed===true?'met':passed===false?'low':'unknown',points:day.points};
 }
+function weeklyDelta(person){
+ const trend=Array.isArray(person?.weekTrend)?person.weekTrend:[];
+ const current=trend[0],previous=trend[1];
+ if(!current||!previous||!Number.isSafeInteger(current.points)||!Number.isSafeInteger(previous.points))return null;
+ return {week:previous.week,delta:current.points-previous.points};
+}
 export function vsResultGroups(week,{day=-1,category='all',sort='priority',query='',language='de'}={}){
  const daily=Number.isInteger(day)&&day>=0&&day<6,threshold=week.threshold;
  const people=week.members||[],counts={low:0,unknown:0,joined:0,met:0};
@@ -25,6 +31,10 @@ export function vsResultGroups(week,{day=-1,category='all',sort='priority',query
  const compare=(a,b)=>{
   let order=0;
   if(sort==='points_desc'||sort==='points_asc')order=points(a,b,sort==='points_desc'?-1:1);
+  else if(sort==='improvement'){
+   const av=weeklyDelta(a)?.delta??null,bv=weeklyDelta(b)?.delta??null;
+   order=av===null?(bv===null?0:1):bv===null?-1:bv-av;
+  }
   else if(sort==='rank')order=(Number(String(b.rank||'').slice(1))||0)-(Number(String(a.rank||'').slice(1))||0);
   else if(sort!=='name')order=daily?points(a,b,kind(a)==='low'?1:-1):Number(b.failed||0)-Number(a.failed||0)||Number(b.unknown||0)-Number(a.unknown||0);
   return order||names.compare(String(a.name||''),String(b.name||''))||String(a.id||'').localeCompare(String(b.id||''));
@@ -121,11 +131,19 @@ export function renderVsOverview(week,policy={},api={}){
   ['Ziel','goal']
  ];
  translated.unshift(['bestätigten IDs','confirmed IDs'],[' IDs im Umfang',' IDs in scope'],['% der ','% of '],['Sortieren nach','Sort by'],['Tage unter Ziel','Days below goal'],['Punkte: höchste zuerst','Points: highest first'],['Punkte: niedrigste zuerst','Points: lowest first']);
+ translated.push(['Entwicklung','Development'],[' verbessert',' improved'],[' gesunken',' declined'],[' unverändert',' unchanged'],
+  ['Kein Vergleich: vollständige Wochenpunkte fehlen','No comparison: complete weekly points are missing'],
+  ['Verbesserung zuerst','Most improved first'],['Nur vollständig bestätigte Wochenpunkte derselben ID','Only fully confirmed weekly points for the same ID']);
  const loc=html=>(language==='de'?html:translated.reduce((s,[a,b])=>s.replaceAll(a,b),html))
   .replace(/__RZSN_PRIVATE_(\d+)__/g,(token,index)=>privateText[Number(index)]??token);
 
  const meta=vsDataFreshness(week,formatTime);
  const verified=members.reduce((v,p)=>v+(Number.isSafeInteger(p.verified)?p.verified:(p.days||[]).filter(d=>d?.verified===true&&Number.isSafeInteger(d.points)).length),0);
+ const developments=members.map(weeklyDelta).filter(Boolean),previousWeek=week.comparisons?.previous?.week||developments[0]?.week;
+ const trendHtml=developments.length?'<section class="native-vs-development" aria-label="Entwicklung zur Vorwoche">'+
+  '<strong>Entwicklung'+(previousWeek?' zu '+e(previousWeek):'')+'</strong><span>'+
+  developments.filter(item=>item.delta>0).length+' verbessert · '+developments.filter(item=>item.delta<0).length+' gesunken · '+
+  developments.filter(item=>item.delta===0).length+' unverändert</span><small>Nur vollständig bestätigte Wochenpunkte derselben ID</small></section>':'';
  const h='<div class="native-capture-banner '+(meta.captureKnown?'is-dated':'is-undated')+'">'+
   '<div class="native-capture-banner-main"><small>DATENSTAND · VS '+e(week.week)+'</small>'+
   '<strong>'+(meta.captureKnown?'Screenshot-Aufnahme: '+e(meta.capture):'Screenshot-Uhrzeit nicht erfasst')+'</strong>'+
@@ -153,7 +171,7 @@ export function renderVsOverview(week,policy={},api={}){
   const status=selected?{low:'is-warning',unknown:'is-unknown',joined:'is-joined',met:'is-okay'}[selected.kind]:failures>=3?'is-critical':failures>0?'is-warning':unknown>0?'is-unknown':p.beforeJoin>0?'is-joined':'is-okay';
   const eligible=6-Number(p.beforeJoin||0);
   const marker=failures?failures+'/'+eligible+' unter Ziel':unknown?unknown+' unklar':p.beforeJoin?eligible+'/'+eligible+' nach Beitritt':'6/6 Ziel erreicht';
-  const computed=derivedVsWeekTotal(p.days);
+  const computed=derivedVsWeekTotal(p.days),change=weeklyDelta(p);
   const shownMarker=selected?translateOfficerText({low:'Unter Tagesziel',met:'Ziel erreicht',unknown:'Unbekannt',joined:'Vor Beitritt'}[selected.kind],language):marker;
   const weekly='<div class="native-player-weekline"><div><small>WOCHENPUNKTE</small>'+
    (computed.complete?
@@ -170,8 +188,9 @@ export function renderVsOverview(week,policy={},api={}){
    (unknown?'<small>'+unknown+' unbekannt'+(computed.partial!==null?' · Teilstand '+n(computed.partial):'')+'</small>':
     computed.complete?'<small>'+n(computed.total)+' Wochenpunkte</small>':
     '<small>'+n(computed.partial)+' Teilstand · '+Number(p.beforeJoin||0)+' vor Beitritt</small>')+
+   (change?'<small class="native-vs-change '+(change.delta>0?'is-up':change.delta<0?'is-down':'is-same')+'">Entwicklung '+(change.delta>0?'+':'')+n(change.delta)+' zu '+e(change.week)+'</small>':'')+
    '</span></summary><div class="native-vs-person-expanded">'+
-   weekly+
+   weekly+'<p class="native-vs-week-development">'+(change?'Wochenpunkte '+(change.delta>0?'+':'')+n(change.delta)+' zu '+e(change.week):'Kein Vergleich: vollständige Wochenpunkte fehlen')+'</p>'+
    '<div class="native-vs-person-daygrid">'+days.map((day,i)=>{
     const item=(p.days||[]).find(x=>x.weekday===i);
     const valid=item?.verified&&Number.isSafeInteger(item.points),beforeJoin=item?.quality==='before_join';
@@ -189,7 +208,7 @@ export function renderVsOverview(week,policy={},api={}){
   '<div class="native-intel-section-head"><h3 id="native-vs-results-title" tabindex="-1">'+(result.daily?tr(['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'][view.day])+' · '+e(week.week):'Spieler nach Ergebnis')+'</h3>'+
    '<span>'+members.length+' erfasste Spieler · '+(result.daily?result.counts.low+result.counts.met:verified)+' bestätigte Tageswerte</span></div>'+
   '<div class="native-vs-result-tools"><label><span>'+tr('Sortieren nach')+'</span><select id="native-vs-sort">'+
-   [['priority','Tage unter Ziel'],['points_desc','Punkte: höchste zuerst'],['points_asc','Punkte: niedrigste zuerst'],['name','Name'],['rank','Allianzrang']].map(([value,label])=>'<option value="'+value+'" '+((view.sort||'priority')===value?'selected':'')+'>'+tr(label)+'</option>').join('')+'</select></label>'+
+   [['priority','Tage unter Ziel'],['improvement','Verbesserung zuerst'],['points_desc','Punkte: höchste zuerst'],['points_asc','Punkte: niedrigste zuerst'],['name','Name'],['rank','Allianzrang']].map(([value,label])=>'<option value="'+value+'" '+((view.sort||'priority')===value?'selected':'')+'>'+tr(label)+'</option>').join('')+'</select></label>'+
    (result.daily?'<button type="button" data-native-vs-weekly>'+tr('Wochenauswertung')+'</button>':'')+'</div>'+
   (result.daily?'<nav class="native-vs-day-filters" aria-label="'+tr('Tagesergebnisse')+'">'+[['all','Alle'],['met','Ziel erreicht'],['low','Unter Ziel'],['unknown','Unbekannt'],['joined','Vor Beitritt']].map(([value,label])=>
    '<button type="button" data-native-vs-category="'+value+'" aria-pressed="'+((view.category||'all')===value)+'">'+tr(label)+' <b>'+e(value==='all'?members.length:result.counts[value])+'</b></button>').join('')+'</nav>':'')+
@@ -204,7 +223,7 @@ export function renderVsOverview(week,policy={},api={}){
   }).join('')+
    (!members.length?'<p class="native-muted">Noch keine Spieler für diese Woche.</p>':'')+
    '<p class="native-muted" data-native-vs-search-empty role="status" '+(result.matchingCount||!members.length?'hidden':'')+'>'+tr('Keine Spieler gefunden.')+'</p></div></section>';
- return {freshness:loc(h),dayTiles:loc(dayTiles),groupsHtml:loc(groupsHtml)};
+ return {freshness:loc(h),dayTiles:loc(dayTiles),trendHtml:loc(trendHtml),groupsHtml:loc(groupsHtml)};
 }
 
 // Derived locally from the existing authorized API; no new backend fields required.

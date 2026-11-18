@@ -39,6 +39,7 @@ test('renders exact overview safely in DE and EN without a backend-pending warni
  const de=renderDuelLeague(sample,'de');
  assert.doesNotMatch(de,/<img src=x/);assert.match(de,/&lt;img src=x onerror=alert\(1\)&gt;/);
  assert.match(de,/1:0 ist nur ein Zwischenstand/);assert.doesNotMatch(de,/Backend-Freigabe/);
+ assert.match(de,/>VP</);assert.match(de,/1 \/ 13/);assert.equal(new JSDOM(de).window.document.querySelector('.native-dl-match-kpis')!==null,true);
  const en=renderDuelLeague(sample,'en');assert.match(en,/Historic 4-week leagues/);assert.match(en,/Duel &amp; League/);assert.doesNotMatch(en,/Duellverlauf|Unbekannt/);
 });
 
