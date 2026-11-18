@@ -1756,9 +1756,12 @@ function renderEventRuns(target){
  const trainLogHtml=trainLogs.length?'<details class="native-fold native-event-log"><summary>'+(german?'Zug-Ernennungen aus dem Allianz-Log':'Train appointments from the alliance log')+' · '+trainLogs.length+'</summary><div class="native-fold-body native-event-history">'+
   '<p class="native-muted">'+(german?'Nur Ernennungen; keine automatisch abgeschlossenen Fahrten.':'Appointments only; never automatically completed rides.')+'</p>'+
   trainLogs.map(item=>'<div class="native-event-history-row native-event-log-row"><span><b>'+e(item.game_timestamp)+'</b><small>'+e(german?'Zugführer ernannt · keine Fahrtenquittung':'Train leader appointed · no ride receipt')+'</small></span><span class="native-event-history-actor">'+e(names.get(item.member_id)||item.name)+'<small>'+(german?'Allianz-Log':'Alliance log')+'</small></span></div>').join('')+'</div></details>':'';
+ const genericLogs=protocolEvents.filter(item=>item.event==='alliance_event_observed');
+ const genericLogHtml=genericLogs.length?'<details class="native-fold native-event-log"><summary>'+(german?'Weitere Logbeobachtungen':'Other log observations')+' · '+genericLogs.length+'</summary><div class="native-fold-body native-event-history">'+
+  genericLogs.map(item=>'<div class="native-event-history-row native-event-log-row"><span><b>'+e(item.game_timestamp)+'</b><small>'+e(german?'Nicht fachlich klassifiziert · kein Eventabschluss':'Unclassified · no event completion')+'</small></span><span class="native-event-history-actor">'+e(item.source_text||item.name)+'<small>'+(german?'Zwei-OCR-Rohtext':'Two-OCR raw text')+'</small></span></div>').join('')+'</div></details>':'';
  const other=entries.filter(x=>x.event_type==='desert_storm');
  target.querySelector('#native-records').innerHTML='<div class="native-event-intro"><p>Alle paar Tage erfassen: <strong>Level, Wellen, Ergebnis und Teilnahme</strong>. Jeder Durchgang bleibt mit Datum und verantwortlichem Officer erhalten.</p><p class="native-muted">'+(german?'Teilnahme ist ein manueller Offizierseintrag und wird ohne Beleg nicht automatisch ergänzt.':'Attendance is entered manually by an officer and is never inferred without evidence.')+'</p></div>'+
-  '<div class="native-event-panels">'+groups+'</div>'+trainLogHtml+
+  '<div class="native-event-panels">'+groups+'</div>'+trainLogHtml+genericLogHtml+
   '<details class="native-fold"><summary>Weitere Events · Desert Storm ('+other.length+')</summary>'+
   '<div class="native-fold-body native-event-history">'+(other.length?other.map(eventRow).join(''):
    '<p class="native-muted">Noch keine Desert-Storm-Durchgänge dokumentiert.</p>')+'</div></details>';
