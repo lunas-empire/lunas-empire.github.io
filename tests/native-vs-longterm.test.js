@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {JSDOM} from 'jsdom';
-import {buildVsLongTermReport,renderVsLongTermReport} from '../assets/native-vs-overview.js';
+import {buildVsLongTermReport,renderVsLongTermReport,vsLongTermReportText,buildVsHistory,renderVsHistory} from '../assets/native-vs-overview.js';
 
 const person=(id,name,points)=>({id,name,days:points.map((value,weekday)=>({weekday,verified:Number.isSafeInteger(value),points:Number.isSafeInteger(value)?value:null,quality:Number.isSafeInteger(value)?'observed':'inferred'}))});
 const week=(week,members)=>({week,state:'final',members});
@@ -78,8 +78,43 @@ test('Rendered report is accessible, escaped, bilingual and links only stable me
  assert.equal(doc.querySelector('[data-native-member]').dataset.nativeMember,'safe-id');
  assert.equal(doc.querySelector('[data-native-member] strong').textContent,'<Unsafe>');
  assert.doesNotMatch(html,/<Unsafe>/);
+ assert.equal(doc.querySelectorAll('.native-vs-report-day[data-native-vs-day]').length,5,'all five report days open the selected week');
+ assert.equal(doc.querySelectorAll('[data-native-vs-copy-report]').length,1);
+ assert.equal(doc.querySelector('.native-vs-report-fallback[hidden]').readOnly,true);
  const english=renderVsLongTermReport(weeks,{language:'en'});
  assert.match(english,/Mon–Fri &amp; long-term|Mon–Fri & long-term/);assert.match(english,/Saturday excluded/);assert.match(english,/3\.6M/);assert.match(english,/7\.2M/);
  assert.doesNotMatch(english,/Wiederholt unter|Noch nie/);
+ dom.window.close();
+});
+
+test('Copyable long-term report contains exact daily ratios and attributable member lists',()=>{
+ const weeks=['2026-W46','2026-W45','2026-W44'].map(label=>lowWeek(label,'stable','Repeat Example'));
+ const report=buildVsLongTermReport(weeks,{range:'all'});
+ const text=vsLongTermReportText(report);
+ assert.match(text,/RZSN VS Mo–Fr \| 2026-W44–2026-W46/);
+ assert.match(text,/Mo: 0\/3 ≥ 3,6 Mio\. \(0%\) \| 0\/3 ≥ 7,2 Mio\. \(0%\)/);
+ assert.match(text,/Do: 3\/3 ≥ 3,6 Mio\. \(100%\) \| 3\/3 ≥ 7,2 Mio\. \(100%\)/);
+ assert.match(text,/Wiederholt unter dem Tagesziel \(1\)/);assert.match(text,/Repeat Example — 3 Wochen \/ 9 Tage unter Ziel/);
+ assert.match(text,/Keine automatische Sanktion|keine automatische Sanktion/);
+ const english=vsLongTermReportText(report,{language:'en'});
+ assert.match(english,/Saturday excluded/);assert.match(english,/Repeatedly below the daily goal/);
+});
+
+test('Weekly history is a clickable CSS chart with confirmed-only ratios and unknown counts',()=>{
+ const weeks=[
+  {week:'2026-W46',state:'final',perfect:24,dayTotals:[{weekday:0,passed:77,failed:21,unknown:1},{weekday:1,passed:71,failed:28,unknown:0}]},
+  {week:'2026-W45',state:'final',perfect:20,dayTotals:[{weekday:0,passed:50,failed:50,unknown:0}]},
+  {week:'2026-W44',state:'preliminary',dayTotals:[]}
+ ];
+ const history=buildVsHistory(weeks);
+ assert.deepEqual(history.map(item=>item.percent),[75,50,null]);
+ assert.equal(history[0].confirmed,197);assert.equal(history[0].met,148);assert.equal(history[0].unknown,1);
+ const html=renderVsHistory(weeks,'2026-W46',{numberText:String});
+ const dom=new JSDOM(html),doc=dom.window.document;
+ assert.equal(doc.querySelectorAll('[data-native-vs-history-week]').length,3);
+ assert.equal(doc.querySelector('[data-native-vs-history-week="2026-W46"]').getAttribute('aria-pressed'),'true');
+ assert.match(doc.body.textContent,/148\/197/);assert.match(doc.body.textContent,/24× 6\/6/);assert.match(doc.body.textContent,/1 unklar/);
+ assert.equal(doc.querySelectorAll('svg').length,0);
+ assert.match(doc.querySelector('.native-vs-history-track i').getAttribute('style'),/width:75%/);
  dom.window.close();
 });

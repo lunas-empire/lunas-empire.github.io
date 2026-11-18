@@ -5,7 +5,7 @@ import {localizeOfficerTree,officerLanguage,officerLocale,translateOfficerText} 
 import {buildOfficerActions} from './officer-cockpit.js';
 import {createStatEvidenceViewer} from './native-stat-evidence.js';
 import {renderEvidenceRow} from './native-evidence-row.js';
-import {renderVsOverview,renderVsLongTermReport,derivedVsWeekTotal,enrichVsWeeks} from './native-vs-overview.js';
+import {renderVsOverview,renderVsLongTermReport,renderVsHistory,buildVsLongTermReport,vsLongTermReportText,derivedVsWeekTotal,enrichVsWeeks} from './native-vs-overview.js';
 import {createDuelLeagueController} from './native-duel-league.js';
 import {duelCopy} from './native-duel-league-i18n.js';
 import {diceHistory} from './dice-winners.js';
@@ -1295,7 +1295,9 @@ function renderVs(target){
   participationWarnings>0?(enUi?participationWarnings+' members have too few active days with complete data.':participationWarnings+' Spieler mit zu wenigen aktiven Tagen bei vollständiger Erfassung.'):null,
   policy.shield_reminder_saturday?(enUi?'Saturday shield: remind manually; not automatically verified.':'Samstag: Schildpflicht manuell erinnern (nicht automatisch geprüft).'):null
  ].filter(Boolean);
- const kpi=(label,value,kind)=>'<div class="native-vs-kpi '+kind+'"><span>'+e(label)+'</span><strong>'+e(value)+'</strong></div>';
+ const met=week.metPlayerDays??0,scope=week.scopePlayerDays??0,attainment=scope>0?Math.round(100*met/scope):null;
+ const affected=week.affectedMembers??(week.members||[]).filter(p=>p.failed>0).length;
+ const kpi=(label,value,kind,filter,detail)=>'<button type="button" class="native-vs-kpi '+kind+'" data-native-vs-kpi-filter="'+filter+'"><span>'+e(label)+'</span><strong>'+e(value)+'</strong><small>'+e(detail)+'</small></button>';
  host.innerHTML='<section class="native-vs-brief native-vs-v39" aria-label="'+(enUi?'Alliance duel weekly data':'VS-Wochendaten')+'">'+
   layout.freshness+
   '<div class="native-vs-compact-top">'+
@@ -1304,17 +1306,17 @@ function renderVs(target){
     '<button type="button" class="native-vs-tool" data-native-action="review-open">'+
     'OCR '+e(reviewCount??'—')+'</button>'+
    '</div></div>'+
-  '<div class="native-vs-kpis" aria-label="'+(enUi?'Weekly metrics':'Wochenkennzahlen')+'">'+
-    kpi(enUi?'Below goal (player-days)':'Unterschreitungen (Spieler-Tage)',week.failedDays??'—','low')+
-    kpi(enUi?'Affected players (unique IDs)':'Betroffene Spieler (eindeutige IDs)',week.affectedMembers??(week.members||[]).filter(p=>p.failed>0).length,'low')+
-    kpi(enUi?'Met player-days':'Erreichte Spieler-Tage',(week.metPlayerDays??'?')+' / '+(week.scopePlayerDays??'?'),'perfect')+
-    kpi(enUi?'Unclear':'Unklar',week.unknownDays??'—','unknown')+
-    kpi(enUi?'Perfect 6/6':'6 von 6',week.perfect??'—','perfect')+
+  '<div class="native-vs-kpis" aria-label="'+(enUi?'Weekly metrics; activate to filter players':'Wochenkennzahlen; zum Filtern aktivieren')+'">'+
+    kpi(enUi?'Goal attainment':'Zielerreichung',attainment===null?'—':attainment+'%','perfect','all',met+' / '+scope+(enUi?' player-days':' Spieler-Tage'))+
+    kpi(enUi?'Below goal':'Unter Ziel',week.failedDays??'—','low','low',affected+(enUi?' players · tap to filter':' Spieler · zum Filtern tippen'))+
+    kpi(enUi?'Perfect 6/6':'6/6 erreicht',week.perfect??'—','perfect','met',enUi?'complete weekly results':'vollständige Wochenergebnisse')+
+    kpi(enUi?'Unclear':'Unklar',week.unknownDays??'—','unknown','unknown',enUi?'unknown is not zero':'unbekannt ist nicht 0')+
   '</div>'+
-  (notices.length?'<div class="native-vs-single-insight"><b>'+ (enUi?'Note':'Hinweis')+'</b>'+
-    '<span>'+notices.map(e).join(' · ')+'</span></div>':'')+
-  '<p class="native-muted">'+(enUi?'One member can contribute six below-goal days. Scope: ':'Ein Spieler kann sechs Unterschreitungen beitragen. Umfang: ')+e(week.scopeMembers??'?')+(enUi?' unique IDs. Raw rows: ':' eindeutige IDs. Originalzeilen: ')+e(week.rawPlayerDays??'?')+(enUi?'; unlinked rows: ':'; davon ohne ID: ')+e(week.unresolvedPlayerDays??'?')+'</p>'+
-  layout.dayTiles+renderVsLongTermReport(cache.vs.weeks,{range:cache.vsReportRange||'4',language:officerLanguage(target.ownerDocument),esc:e,numberText})+(layout.trendHtml||'')+layout.groupsHtml+
+  '<details class="native-fold native-vs-single-insight"><summary>'+(enUi?'Notes & data basis':'Hinweise & Datenbasis')+' <b>'+notices.length+'</b></summary><div class="native-fold-body">'+
+   (notices.length?'<ul>'+notices.map(note=>'<li>'+e(note)+'</li>').join('')+'</ul>':'')+
+   '<p class="native-muted">'+(enUi?'One member can contribute six below-goal days. Scope: ':'Ein Spieler kann sechs Unterschreitungen beitragen. Umfang: ')+e(week.scopeMembers??'?')+(enUi?' unique IDs. Raw rows: ':' eindeutige IDs. Originalzeilen: ')+e(week.rawPlayerDays??'?')+(enUi?'; unlinked rows: ':'; davon ohne ID: ')+e(week.unresolvedPlayerDays??'?')+'</p></div></details>'+
+  layout.dayTiles+renderVsHistory(cache.vs.weeks,week.week,{language:officerLanguage(target.ownerDocument),esc:e,numberText})+
+  renderVsLongTermReport(cache.vs.weeks,{range:cache.vsReportRange||'4',language:officerLanguage(target.ownerDocument),esc:e,numberText})+(layout.trendHtml||'')+layout.groupsHtml+
   '<details class="native-fold native-vs-explainer"><summary>'+ (enUi?'How are results assessed?':'Wie werden die Werte bewertet?')+'</summary>'+
    '<p class="native-fold-body native-muted">'+(enUi?'Weekly totals are calculated from six confirmed daily scores. Missing or unclear values are never zero; partial sums remain marked as incomplete.':'Die Wochensumme wird aus sechs bestätigten Tageswerten berechnet. Fehlende oder unklare Tage sind nie automatisch 0; Teilstände bleiben als unvollständig gekennzeichnet.')+'</p></details>'+
   '</section>';
@@ -2751,18 +2753,36 @@ export function initNativeAdmin(mount){
  mount.lang=officerLanguage(mount.ownerDocument);
  mount.dir=mount.lang==='ar'?'rtl':'ltr';
  mount.addEventListener('click',async event=>{
-  const vsControl=event.target.closest?.('[data-native-vs-day],[data-native-vs-category],[data-native-vs-weekly],[data-native-vs-more-group]');
+  const vsControl=event.target.closest?.('[data-native-vs-day],[data-native-vs-category],[data-native-vs-weekly],[data-native-vs-more-group],[data-native-vs-history-week],[data-native-vs-copy-report],[data-native-vs-kpi-filter]');
   if(vsControl&&cache.vsView){
    const target=mount.querySelector('#native-admin-content'),state=cache.vsView;
+   if(vsControl.hasAttribute('data-native-vs-copy-report')){
+    const section=vsControl.closest('.native-vs-longterm'),language=officerLanguage(mount.ownerDocument);
+    const report=buildVsLongTermReport(cache.vs.weeks,{range:cache.vsReportRange||'4',language}),value=vsLongTermReportText(report,{language});
+    try{
+     if(!window.navigator?.clipboard?.writeText)throw Error('Clipboard unavailable');
+     await window.navigator.clipboard.writeText(value);section.querySelector('[role=status]').textContent=language==='en'?'Report copied.':'Bericht kopiert.';
+    }catch{
+     const fallback=section.querySelector('.native-vs-report-fallback');fallback.value=value;fallback.hidden=false;fallback.focus();fallback.select();
+     section.querySelector('[role=status]').textContent=language==='en'?'Select and copy the visible report text.':'Sichtbaren Berichtstext markieren und kopieren.';
+    }return;
+   }
+   if(vsControl.hasAttribute('data-native-vs-history-week')){
+    const selector=target.querySelector('#native-vs-week'),week=vsControl.dataset.nativeVsHistoryWeek;
+    if(![...selector.options].some(option=>option.value===week))return;
+    selector.value=week;renderVs(target);target.querySelector('#native-vs-week')?.focus({preventScroll:true});return;
+   }
    const openGroups=[...target.querySelectorAll('[data-native-vs-group][open]')].map(node=>node.dataset.nativeVsGroup);
    if(vsControl.hasAttribute('data-native-vs-more-group')){
     const kind=vsControl.dataset.nativeVsMoreGroup;state.limits[kind]=(state.limits[kind]||10)+10;state.openGroups=openGroups;
     renderVsResults(target);
-    (target.querySelector('[data-native-vs-more-group="'+kind+'"]')||target.querySelector('[data-native-vs-group="'+kind+'"] > summary'))?.focus({preventScroll:true});return;
+    (target.querySelector('[data-native-vs-more-group="'+kind+'"]')||target.querySelector('[data-native-vs-group="'+kind+'"] .native-vs-player > summary'))?.focus({preventScroll:true});return;
    }
    state.limits={};
    if(vsControl.hasAttribute('data-native-vs-category')){state.category=vsControl.dataset.nativeVsCategory;state.openGroups=state.category==='all'?['low']:[state.category];renderVsResults(target,'[data-native-vs-category="'+state.category+'"]');return;}
-   state.day=vsControl.hasAttribute('data-native-vs-day')?Number(vsControl.dataset.nativeVsDay):-1;state.category='all';state.query='';state.openGroups=state.day>=0?['low']:[];
+   state.day=vsControl.hasAttribute('data-native-vs-day')?Number(vsControl.dataset.nativeVsDay):-1;
+   state.category=vsControl.hasAttribute('data-native-vs-kpi-filter')?vsControl.dataset.nativeVsKpiFilter:state.day>=0?'low':'all';
+   state.query='';state.openGroups=state.category==='all'?['low']:[state.category];
    target.querySelector('#native-vs-search').value='';renderVsResults(target,'#native-vs-results-title');target.querySelector('#native-vs-results-title')?.scrollIntoView?.({block:'nearest'});return;
   }
   const donationControl=event.target.closest?.('[data-native-donation-category],[data-native-donation-weekly],[data-native-donation-more-group]');
