@@ -49,13 +49,15 @@ test('Protected review workflow requires a screenshot, searchable member and exp
   if(path==='/api/session')return Response.json({authenticated:true,reviewWritesEnabled:true});
   if(path==='/api/train-manager')return Response.json({today:'2026-10-13',counts:{missing_recent:0},calendar:[]});
   if(path==='/api/operations')return Response.json({tasks:[],events:[],absences:[],members:[]});
-  if(path==='/api/reviews'&&opts.method!=='POST')return Response.json(cases);
+  if(path==='/api/reviews'&&opts.method!=='POST')return Response.json(cases.filter(row=>row.status===(new URL(url).searchParams.get('status')||'open')));
   if(path==='/api/identity-options')return Response.json([{id,name:'Synthetic Officer',rank:'R4'},{id:'bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb',name:'Another Player',rank:'R2'}]);
   if(path.endsWith('/evidence'))return new Response(tampered?Uint8Array.from([...imageBytes.slice(0,-1),3]):imageBytes,{headers:{'Content-Type':'image/png'}});
   if(path.endsWith('/resolve')){
    posts.push(JSON.parse(opts.body));
    if(posts.length===2)return Response.json({error:'synthetic conflict'},{status:409});
-   return Response.json({ok:true,status:'approved'});
+   const saved=cases.find(row=>path==='/api/reviews/'+row.id+'/resolve');
+   saved.status='approved';saved.resolution=posts.at(-1);
+   return Response.json({ok:true,status:'approved',review_id:saved.id,kind:saved.kind});
   }
   throw Error('Unexpected '+path);
  };
@@ -106,7 +108,7 @@ test('Protected review workflow requires a screenshot, searchable member and exp
  assert.equal(posts[0].evidence_sha,imageHash);
  assert.ok(!('corrected_value' in posts[0]));
  await wait(()=>!q('[data-review-id=case-with-image]'));
- assert.match(q('#native-review-finished').textContent,/erledigt/);
+ assert.match(q('#native-review-finished').textContent,/case-with-image.*quittiert.*gelesen/);
  const next=q('[data-review-id=case-no-image]');
  assert.ok(next,'Unresolved review must remain');
  assert.equal(next.open,true,'Next open review is expanded immediately after a confirmed save');

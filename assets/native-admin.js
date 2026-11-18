@@ -1191,8 +1191,18 @@ function renderDonations(target,query=null,focusSelector=''){
  const members=allMembers.filter(m=>visibleStates.includes(m.status));
  const previousAvailable=weeks.some(w=>w.week!==week.week&&w.week<week.week);
  const rate=week.verified>0?Math.round(100*week.met/week.verified):null;
+ const compared=(week.members||[]).filter(m=>Number.isSafeInteger(m.delta));
+ const previousWeek=compared[0]?.previous_week||null;
+ const developmentHtml=compared.length?'<div class="native-donation-development" role="status">'+
+  '<strong>Entwicklung'+(previousWeek?' zu '+e(previousWeek):'')+'</strong><span>'+
+  compared.filter(m=>m.delta>0).length+' verbessert · '+compared.filter(m=>m.delta<0).length+' gesunken · '+
+  compared.filter(m=>m.delta===0).length+' unverändert</span><small>Nur bestätigte Werte derselben ID</small></div>':'';
  const counts={all:(week.members||[]).length,below:week.below||0,unknown:week.unknown||0,met:week.met||0,verified:week.verified||0};
  const sortPlayers=list=>[...list].sort((a,b)=>{
+  if(view.sort==='improvement'){
+   const av=Number.isSafeInteger(a.delta)?a.delta:null,bv=Number.isSafeInteger(b.delta)?b.delta:null;
+   return (av===null?(bv===null?0:1):bv===null?-1:bv-av)||String(a.name||'').localeCompare(String(b.name||''),'de');
+  }
   if(view.sort==='points_desc')return (b.points??-1)-(a.points??-1)||String(a.name||'').localeCompare(String(b.name||''),'de');
   if(view.sort==='points_asc')return (a.points??Number.MAX_SAFE_INTEGER)-(b.points??Number.MAX_SAFE_INTEGER)||String(a.name||'').localeCompare(String(b.name||''),'de');
   if(view.sort==='name')return String(a.name||'').localeCompare(String(b.name||''),'de');
@@ -1243,15 +1253,16 @@ function renderDonations(target,query=null,focusSelector=''){
    tile('Unter Ziel',week.below,'Bestätigte Spieler','below',true)+
    tile('Unbekannt',week.unknown,'Nicht als 0 gewertet','unknown')+
    tile('Zielquote',rate===null?'—':rate+' %','Von '+week.verified+' bestätigten Werten','verified')+'</div>'+
+  developmentHtml+
   '<p class="native-evidence-note">Werte gelten zum Zeitpunkt des Screenshots. '+week.verified+'/'+week.active+
-   ' aktive Spieler mit bestätigten Wochenspenden. '+(previousAvailable?
+   ' aktive Spieler mit bestätigten Wochenspenden. '+(previousAvailable||compared.length?
    'Vergleiche erscheinen nur bei zwei bestätigten Messpunkten.':
    'Bisher liegt nur eine verlässliche Wochenaufnahme vor – kein erfundener Vorwochenvergleich.')+'</p>'+
   '<section class="native-donation-results" id="native-donation-results" data-native-donation-matches="'+members.length+'">'+
    '<div class="native-intel-section-head"><h3 id="native-donation-results-title" tabindex="-1">'+e(resultTitle)+' · '+e(week.week)+'</h3>'+
     '<span>'+members.length+' Spieler</span></div>'+
    '<div class="native-vs-result-tools"><label><span>Sortieren nach</span><select id="native-donation-sort">'+
-    [['priority','Ergebnis'],['points_desc','Spenden: höchste zuerst'],['points_asc','Spenden: niedrigste zuerst'],['name','Name'],['rank','Allianzrang']].map(([value,label])=>'<option value="'+value+'" '+((view.sort||'priority')===value?'selected':'')+'>'+e(label)+'</option>').join('')+'</select></label>'+
+    [['priority','Ergebnis'],['improvement','Verbesserung zuerst'],['points_desc','Spenden: höchste zuerst'],['points_asc','Spenden: niedrigste zuerst'],['name','Name'],['rank','Allianzrang']].map(([value,label])=>'<option value="'+value+'" '+((view.sort||'priority')===value?'selected':'')+'>'+e(label)+'</option>').join('')+'</select></label>'+
     (category!=='all'?'<button type="button" data-native-donation-weekly>Wochenauswertung</button>':'')+'</div>'+
    '<nav class="native-vs-day-filters" aria-label="Spendenergebnisse">'+
     [['all','Alle'],['met','Ziel erreicht'],['below','Unter Ziel'],['unknown','Unbekannt'],['verified','Bestätigt']].map(([value,label])=>
@@ -1303,7 +1314,7 @@ function renderVs(target){
   (notices.length?'<div class="native-vs-single-insight"><b>'+ (enUi?'Note':'Hinweis')+'</b>'+
     '<span>'+notices.map(e).join(' · ')+'</span></div>':'')+
   '<p class="native-muted">'+(enUi?'One member can contribute six below-goal days. Scope: ':'Ein Spieler kann sechs Unterschreitungen beitragen. Umfang: ')+e(week.scopeMembers??'?')+(enUi?' unique IDs. Raw rows: ':' eindeutige IDs. Originalzeilen: ')+e(week.rawPlayerDays??'?')+(enUi?'; unlinked rows: ':'; davon ohne ID: ')+e(week.unresolvedPlayerDays??'?')+'</p>'+
-  layout.dayTiles+layout.groupsHtml+
+  layout.dayTiles+(layout.trendHtml||'')+layout.groupsHtml+
   '<details class="native-fold native-vs-explainer"><summary>'+ (enUi?'How are results assessed?':'Wie werden die Werte bewertet?')+'</summary>'+
    '<p class="native-fold-body native-muted">'+(enUi?'Weekly totals are calculated from six confirmed daily scores. Missing or unclear values are never zero; partial sums remain marked as incomplete.':'Die Wochensumme wird aus sechs bestätigten Tageswerten berechnet. Fehlende oder unklare Tage sind nie automatisch 0; Teilstände bleiben als unvollständig gekennzeichnet.')+'</p></details>'+
   '</section>';

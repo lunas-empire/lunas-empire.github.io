@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {JSDOM} from 'jsdom';
 import {readFile} from 'node:fs/promises';
-import {renderVsOverview,enrichVsWeeks} from '../assets/native-vs-overview.js';
+import {renderVsOverview,enrichVsWeeks,vsResultGroups} from '../assets/native-vs-overview.js';
 const api={esc:s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;'),numberText:String,formatTime:String,language:'de'};
 test('W44 FINAL keeps proof, player cards and zero vs unknown without charts or signed changes',async()=>{
  const days=Array.from({length:6},(_,weekday)=>({weekday,verified:weekday<2,points:weekday<2?weekday*3600000:null,passed:weekday===1,pointsDelta:3600000,goalChange:'met'}));
@@ -37,4 +37,18 @@ test('verified normalization keeps distinct people and player-days without compu
  assert.equal(w.members[0].days[1].pointsDelta,undefined);assert.equal(w.members[0].days[1].goalChange,undefined);
  for(const d of w.dayTotals)for(const key of ['passedDelta','percentagePointDelta','pairedMembers','pairedMetDelta'])assert.equal(d[key],undefined);
  assert.equal(enrichVsWeeks({weeks:[{week:'2026-W44',state:'final'}]}).weeks[0].scopeMembers,0);
+});
+test('weekly development is visible, sortable and never inferred from missing values',()=>{
+ const people=[
+  {id:'better',name:'Improved',rank:'R3',failed:0,unknown:0,days:[],weekTrend:[{week:'2026-W44',points:5000},{week:'2026-W43',points:3000}]},
+  {id:'unknown',name:'Unknown',rank:'R2',failed:0,unknown:0,days:[],weekTrend:[{week:'2026-W44',points:null},{week:'2026-W43',points:3000}]},
+  {id:'lower',name:'Lower',rank:'R2',failed:0,unknown:0,days:[],weekTrend:[{week:'2026-W44',points:2000},{week:'2026-W43',points:3000}]}
+ ];
+ const week={week:'2026-W44',state:'final',threshold:3600000,dayTotals:[],members:people,
+  comparisons:{previous:{week:'2026-W43',pointsDelta:500}}};
+ const layout=renderVsOverview(week,{},api),text=layout.trendHtml+layout.groupsHtml;
+ assert.match(text,/1 verbessert/);assert.match(text,/1 gesunken/);assert.match(text,/\+2\.000|\+2000/);
+ assert.match(text,/Kein Vergleich/);assert.match(text,/value="improvement"/);
+ const sorted=vsResultGroups(week,{sort:'improvement'});
+ assert.deepEqual(sorted.groups.flatMap(group=>group.members).map(p=>p.id),['better','lower','unknown']);
 });
