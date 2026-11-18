@@ -41,7 +41,8 @@ test('Black Market guide renders for all 15 site languages without untranslated 
 test('cash rollover and all pricing instructions remain present',()=>{
   const html=blackMarketGuideHtml('en',escaped);
   assert.match(html,/carries over/);
-  assert.match(html,/600 Cash per day/);
+  assert.match(html,/current daily limit and progress/);
+  assert.doesNotMatch(html,/600 Cash per day/);
   assert.match(html,/first is free/);
   assert.match(html,/60 Cash/);
   assert.match(html,/regular 5-pack costs 500/);

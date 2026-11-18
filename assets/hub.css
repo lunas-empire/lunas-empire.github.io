@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026.11.18-r4-data-events-analysis');
+@import url('./tokens.css?v=2026.11.18-season-2-transition');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -2222,3 +2222,30 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 .native-admin .native-vs-report-custom select{min-height:44px;width:100%;background:var(--color-panel);color:var(--color-ink);border:1px solid var(--color-rule);border-radius:6px}
 .native-admin .native-event-log-row{cursor:default}
 @media(prefers-reduced-motion:reduce){.native-admin .native-vs-history-track>i,.native-admin .native-day-meter>i{transition:none}}
+
+.st-hero{display:grid;gap:var(--space-sm);padding:var(--space-lg);border:1px solid var(--color-game-rim);border-inline-start:5px solid var(--color-game-orange);border-radius:var(--radius-sm);background:var(--color-panel)}
+.st-hero h1{max-width:22ch;margin:0;overflow-wrap:break-word;font-size:clamp(1.8rem,4.5vw,3rem);line-height:1.08}
+.st-hero>p{margin:0;max-width:65ch}.st-hero .st-status{color:var(--color-accent);font-weight:700}
+.st-status{font-size:.84rem;font-weight:700}.st-jumps{display:flex;flex-wrap:wrap;gap:var(--space-sm);margin-block:var(--space-md)}
+.st-jumps a,.st-overview a{display:inline-flex;align-items:center;min-height:44px;padding:.55rem .75rem;border:1px solid var(--color-game-rim);border-radius:var(--radius-sm);background:var(--color-panel);font-weight:700;text-decoration:none}
+.st-jumps a:focus-visible,.st-overview a:focus-visible,.st-details summary:focus-visible{outline:3px solid var(--color-focus);outline-offset:3px}
+.st-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-md);margin-block:var(--space-lg)}
+.st-overview article{min-width:0;padding:var(--space-md);border-block-start:3px solid var(--color-game-blue);background:var(--color-panel)}
+.st-overview article:nth-child(2){border-color:var(--color-game-orange)}.st-overview article:nth-child(3){border-color:var(--color-action)}
+.st-overview h2{font-size:1.15rem;line-height:1.25}.st-overview p{color:var(--color-muted)}
+#season-now,#season-today,#season-next,#season-archive{scroll-margin-top:var(--space-md)}
+.st-priorities-now{margin-block:var(--space-xl)}.st-preparation{display:grid;gap:var(--space-md)}
+.st-priority{min-width:0;padding:var(--space-lg);border:1px solid var(--color-game-rim);border-inline-start:4px solid var(--color-game-orange);border-radius:var(--radius-sm);background:var(--color-panel)}
+.st-priority h3{margin-top:0;font-size:1.3rem;overflow-wrap:break-word}.st-priority p{margin-block:.6rem}.st-priority p:last-child{margin-bottom:0}
+.st-priority--tower{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:var(--space-lg)}
+.st-priority--tower figure{display:grid;justify-items:center;gap:var(--space-xs);margin:0;min-width:0}.st-priority--tower img{display:block;width:clamp(100px,14vw,160px);height:auto}
+.st-priority--tower figcaption{max-width:14rem;color:var(--color-muted);font-size:.75rem;text-align:center}.st-temperature{color:var(--color-accent);font-size:1.05rem;font-weight:800}
+.st-details{margin-block:var(--space-md);border:1px solid var(--color-game-rim);border-radius:var(--radius-sm);background:var(--color-panel)}
+.st-details>summary{min-height:52px;padding:var(--space-md);font-weight:750;cursor:pointer}.st-details-body{padding:var(--space-lg);border-block-start:1px solid var(--color-rule)}
+.st-guide{display:grid;gap:var(--space-lg);min-width:0}.st-guide> h3{margin-bottom:calc(-1 * var(--space-sm))}.st-daily ol,.st-timeline ol{display:grid;gap:var(--space-sm);padding-inline-start:1.5rem}
+.st-daily li::marker,.st-timeline li::marker{color:var(--color-accent);font-weight:800}.st-topics{display:grid;gap:var(--space-lg)}
+.st-topic{min-width:0}.st-topic h3{margin-bottom:var(--space-xs);font-size:1.08rem}.st-topic p{margin-block:.45rem}.st-callout{padding:var(--space-md);border-inline-start:3px solid var(--color-accent);background:var(--color-raised)}
+.st-archive{border-color:var(--color-rule)}.st-archive .season-roadmap{margin-bottom:var(--space-lg)}
+@media(min-width:60rem){.st-preparation{grid-template-columns:repeat(2,minmax(0,1fr))}.st-priority--tower{grid-column:1/-1}}
+@media(max-width:59.99rem){.st-overview{grid-template-columns:minmax(0,1fr)}.st-jumps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.st-jumps a{justify-content:center;text-align:center}}
+@media(max-width:30rem){.st-hero,.st-details-body,.st-priority{padding:var(--space-md)}.st-jumps{grid-template-columns:minmax(0,1fr)}.st-priority--tower{grid-template-columns:minmax(0,1fr)}.st-priority--tower figure{grid-row:1}.st-priority--tower img{width:110px}}
