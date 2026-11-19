@@ -3,6 +3,9 @@ import {ALLIANCE_CONFIG} from './config.js';
 import {icon} from './icons.js';
 import {localizeOfficerTree,officerLanguage,officerLocale,translateOfficerText} from './native-admin-i18n.js';
 import {buildOfficerActions} from './officer-cockpit.js';
+import {renderActionCenter,buildActionCenter} from './officer-action-center.js';
+import {renderOperationsCalendar} from './officer-operations-calendar.js';
+import {renderDataQuality} from './officer-data-quality.js';
 import {createStatEvidenceViewer} from './native-stat-evidence.js';
 import {renderEvidenceRow} from './native-evidence-row.js';
 import {renderVsOverview,renderVsLongTermReport,renderVsHistory,buildVsLongTermReport,vsLongTermReportText,derivedVsWeekTotal,enrichVsWeeks} from './native-vs-overview.js';
@@ -57,12 +60,12 @@ const primaryPanels=[
 const secondaryPanels=[
  ['lwImport','LW Import'],
  ['registry','Ränge & Archiv'],['watch','Mitglieder-Abgleich'],['diplomacy','Diplomatie'],
- ['reviews','OCR-Prüffälle'],['tasks','Admin-Aufgaben'],['absences','Abwesenheiten'],['events','Allianz-Events'],
+ ['reviews','OCR-Prüffälle'],['dataQuality','Datenqualität'],['tasks','Admin-Aufgaben'],['absences','Abwesenheiten'],['events','Allianz-Events'],
  ['activity','Änderungsprotokoll'],['access','Zugangscodes'],['requirements','Einstellungen']
 ];
 const parentPanel=key=>({
  overview:'overview',vs:'vs',duelLeague:'vs',donations:'vs',members:'members',lwImport:'members',train:'train',more:'more',
- registry:'more',watch:'more',diplomacy:'more',reviews:'more',tasks:'more',
+ registry:'more',watch:'more',diplomacy:'more',reviews:'more',dataQuality:'more',tasks:'more',
  absences:'more',events:'more',activity:'more',access:'more',requirements:'more'
 }[key]||'overview');
 const moreSections=[
@@ -74,7 +77,8 @@ const moreSections=[
  {title:'Mitglieder & Kontrolle',items:[
   ['registry','Ränge & Archiv','alliance','Ränge und ehemalige Mitglieder'],
   ['watch','Mitglieder-Abgleich','power','Zuordnungen prüfen'],
-  ['reviews','OCR-Prüffälle','vs','Screenshots kontrollieren']]},
+  ['reviews','OCR-Prüffälle','vs','Screenshots kontrollieren'],
+  ['dataQuality','Datenqualität','standard','Quellen & Lücken prüfen']]},
  {title:'System & Sicherheit',items:[
   ['activity','Admin-Protokoll','standard','Wer hat was geändert?'],
   ['access','Zugangscodes','guides','Offizierszugänge'],
@@ -330,9 +334,12 @@ async function view(mount,{registrySnapshot=null}={}){
     cache.rotation=await request('/api/train-rotation').catch(()=>null);
    target.innerHTML='<div class="native-row"><h2>Zugplanung</h2><div class="native-row-actions"><button type="button" data-native-dice-date="'+e(cache.trains.today)+'">🎲 Dice Game</button><button data-native-new="train">+ Fahrer / Datum</button></div></div><div id="native-train-body"></div>';renderTrain(target);
   }else if(['tasks','absences','events'].includes(panel)){
-   cache.ops=await request('/api/operations');
+   [cache.ops,cache.trains]=await Promise.all([request('/api/operations'),panel==='events'?request('/api/train-manager').catch(()=>null):Promise.resolve(null)]);
    target.innerHTML='<div class="native-row"><h2>'+({tasks:'Admin-Aufgaben',absences:'Abwesenheiten & Vertretung',events:'Allianz-Events'}[panel])+'</h2><button data-native-new="'+panel+'">+ Eintragen</button></div>'+renderImpactWarnings(cache.ops.warnings||[],officerLanguage(target.ownerDocument))+'<div id="native-form"></div><div id="native-records"></div>';
    renderRecords(target);
+  }else if(panel==='dataQuality'){
+   [cache.dataQuality,cache.ops]=await Promise.all([request('/api/data-quality'),request('/api/operations')]);
+   target.innerHTML='<div class="native-row"><h2>Datenqualität</h2><button data-native-refresh>Aktualisieren</button></div><div id="native-data-quality-body">'+renderDataQuality(cache.dataQuality,cache.ops,{language:officerLanguage(target.ownerDocument),esc:e,numberText})+'</div>';
   }
  }catch(err){target.innerHTML='<p class="native-error" role="alert">'+e(err.message)+'</p><button data-native-refresh>Erneut laden</button>'}
 }
@@ -1326,7 +1333,7 @@ function renderVs(target){
   '<details class="native-fold native-vs-single-insight"><summary>'+(enUi?'Notes & data basis':'Hinweise & Datenbasis')+' <b>'+notices.length+'</b></summary><div class="native-fold-body">'+
    (notices.length?'<ul>'+notices.map(note=>'<li>'+e(note)+'</li>').join('')+'</ul>':'')+
    '<p class="native-muted">'+(enUi?'One member can contribute six below-goal days. Scope: ':'Ein Spieler kann sechs Unterschreitungen beitragen. Umfang: ')+e(week.scopeMembers??'?')+(enUi?' unique IDs. Raw rows: ':' eindeutige IDs. Originalzeilen: ')+e(week.rawPlayerDays??'?')+(enUi?'; unlinked rows: ':'; davon ohne ID: ')+e(week.unresolvedPlayerDays??'?')+'</p></div></details>'+
-  layout.dayTiles+renderVsHistory(cache.vs.weeks,week.week,{language:officerLanguage(target.ownerDocument),esc:e,numberText})+
+  layout.dayTiles+renderActionCenter(cache.vs.weeks,cache.ops,{range:['2','4','8'].includes(cache.vsReportRange)?cache.vsReportRange:'8',language:officerLanguage(target.ownerDocument),esc:e,numberText})+renderVsHistory(cache.vs.weeks,week.week,{language:officerLanguage(target.ownerDocument),esc:e,numberText})+
   renderVsLongTermReport(cache.vs.weeks,{...vsReportOptions(),language:officerLanguage(target.ownerDocument),esc:e,numberText,currentWeek:week})+(layout.trendHtml||'')+layout.groupsHtml+
   '<details class="native-fold native-vs-explainer"><summary>'+ (enUi?'How are results assessed?':'Wie werden die Werte bewertet?')+'</summary>'+
    '<p class="native-fold-body native-muted">'+(enUi?'Weekly totals are calculated from six confirmed daily scores. Missing or unclear values are never zero; partial sums remain marked as incomplete.':'Die Wochensumme wird aus sechs bestätigten Tageswerten berechnet. Fehlende oder unklare Tage sind nie automatisch 0; Teilstände bleiben als unvollständig gekennzeichnet.')+'</p></details>'+
@@ -1761,7 +1768,7 @@ function renderEventRuns(target){
   genericLogs.map(item=>'<div class="native-event-history-row native-event-log-row"><span><b>'+e(item.game_timestamp)+'</b><small>'+e(german?'Nicht fachlich klassifiziert · kein Eventabschluss':'Unclassified · no event completion')+'</small></span><span class="native-event-history-actor">'+e(item.source_text||item.name)+'<small>'+(german?'Zwei-OCR-Rohtext':'Two-OCR raw text')+'</small></span></div>').join('')+'</div></details>':'';
  const other=entries.filter(x=>x.event_type==='desert_storm');
  target.querySelector('#native-records').innerHTML='<div class="native-event-intro"><p>Alle paar Tage erfassen: <strong>Level, Wellen, Ergebnis und Teilnahme</strong>. Jeder Durchgang bleibt mit Datum und verantwortlichem Officer erhalten.</p><p class="native-muted">'+(german?'Teilnahme ist ein manueller Offizierseintrag und wird ohne Beleg nicht automatisch ergänzt.':'Attendance is entered manually by an officer and is never inferred without evidence.')+'</p></div>'+
-  '<div class="native-event-panels">'+groups+'</div>'+trainLogHtml+genericLogHtml+
+  renderOperationsCalendar(data,cache.trains||{},{language:german?'de':'en',esc:e})+'<div class="native-event-panels">'+groups+'</div>'+trainLogHtml+genericLogHtml+
   '<details class="native-fold"><summary>Weitere Events · Desert Storm ('+other.length+')</summary>'+
   '<div class="native-fold-body native-event-history">'+(other.length?other.map(eventRow).join(''):
    '<p class="native-muted">Noch keine Desert-Storm-Durchgänge dokumentiert.</p>')+'</div></details>';
@@ -2885,7 +2892,7 @@ export function initNativeAdmin(mount){
    if(url.startsWith('blob:'))window.open(url,'_blank','noopener,noreferrer');
    return;
   }
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-recheck],[data-registry-reload],[data-native-action],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-watch-archive],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-vip-date],[data-native-dice-delete],[data-native-train-choice],[data-native-history-reset],[data-native-access-mode],[data-native-access-copy],[data-native-access-signout],[data-native-member-create],[data-native-registry-quick],[data-native-access-link],[data-native-access-disable],[data-audit-category],[data-native-vs-image],[data-native-vs-image-close],[data-native-requirements-reload]');
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-recheck],[data-registry-reload],[data-native-action],[data-native-action-task],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-watch-archive],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-vip-date],[data-native-dice-delete],[data-native-train-choice],[data-native-history-reset],[data-native-access-mode],[data-native-access-copy],[data-native-access-signout],[data-native-member-create],[data-native-registry-quick],[data-native-access-link],[data-native-access-disable],[data-audit-category],[data-native-vs-image],[data-native-vs-image-close],[data-native-requirements-reload]');
   if(!button)return;
   if(button.hasAttribute('data-native-history-reset')){
    trainHistoryFilters={member:'',date:''};historyLimit=20;
@@ -2947,6 +2954,26 @@ export function initNativeAdmin(mount){
    return;
   }
   const target=mount.querySelector('#native-admin-content');if(!target)return;
+  if(button.dataset.nativeActionTask){
+   if(!cache.ops)cache.ops=await request('/api/operations');
+   const range=['2','4','8'].includes(cache.vsReportRange)?cache.vsReportRange:'8',groups=buildActionCenter(cache.vs.weeks,cache.ops,range);
+   const person=[...groups.coaching,...groups.clarify,...groups.improved].find(item=>item.id===button.dataset.nativeActionTask);if(!person)return;
+   const clarify=groups.clarify.some(item=>item.id===person.id);
+   panel='tasks';await view(mount);
+   editRecord(mount.querySelector('#native-admin-content'),'tasks','');
+   const form=mount.querySelector('#native-record-save');
+   if(form){
+    form.elements.namedItem('title').value=(clarify?'Daten klären: ':'Coaching: ')+person.name;
+    const reasons=[];
+    if(person.lowWeeks)reasons.push(person.lowWeeks+' Problemwochen');
+    if(person.lowDays)reasons.push(person.lowDays+' Tage unter Tagesziel');
+    if(person.bestMet!==null&&person.bestMet!==undefined)reasons.push('Bester Wert '+person.bestMet+'/5');
+    if(person.unknownDays)reasons.push(person.unknownDays+' unbestätigte Tage');
+    if(person.absences?.length)reasons.push(person.absences.length+' Abwesenheit(en)');
+    form.elements.namedItem('description').value=reasons.join(' · ')+'\nSpielerakte: '+person.id+'\nVS-Zeitraum: '+(range==='8'?'alle verfügbaren Wochen':range+' Wochen');
+   }
+   return;
+  }
   if(button.hasAttribute('data-native-vs-image-close')){
    const modal=target.querySelector('#native-vs-evidence-viewer');modal?.remove();
    for(const [key,url] of reviewBlobUrls)if(key.startsWith('vs:')){URL.revokeObjectURL(url);reviewBlobUrls.delete(key)}
