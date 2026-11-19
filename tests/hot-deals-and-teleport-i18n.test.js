@@ -12,7 +12,7 @@ test('new guide isolated under economy, existing teleport remains in alliance',(
  assert.equal(guideTopicOf(HOT_DEALS_ID),'economy');
  assert.equal(guideTopicOf(TELEPORT_GUIDE_ID),'alliance');
  assert.equal(guideTopicCount('economy',[],[]),4);
- assert.equal(guideTopicCount('alliance',[],[]),8);
+ assert.equal(guideTopicCount('alliance',[],[]),9);
 });
 test('all 15 full translations: Hot Deals and Teleport have no incomplete fallback',()=>{
  assert.deepEqual([...HOT_DEALS_LOCALES],localeSet);

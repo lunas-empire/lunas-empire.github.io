@@ -8,7 +8,7 @@ const escape=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/
 test('teleport guide is present in Alliance category and navigable',()=>{
  assert.equal(TELEPORT_GUIDE_ID,'free-teleport');
  assert.equal(guideTopicOf(TELEPORT_GUIDE_ID),'alliance');
- assert.equal(guideTopicCount('alliance',[],[]),8);
+ assert.equal(guideTopicCount('alliance',[],[]),9);
 });
 test('15 locales contain concrete gameplay instructions and five real photographs',()=>{
  for(const lang of languages){

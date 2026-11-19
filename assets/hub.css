@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026.11.18-alliance-event-logs-v2');
+@import url('./tokens.css?v=2026.11.19-ghost-ops');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -2249,3 +2249,9 @@ html[data-officer-mode='true'] .native-dashboard-heading{margin-top:.1rem}
 @media(min-width:60rem){.st-preparation{grid-template-columns:repeat(2,minmax(0,1fr))}.st-priority--tower{grid-column:1/-1}}
 @media(max-width:59.99rem){.st-overview{grid-template-columns:minmax(0,1fr)}.st-jumps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.st-jumps a{justify-content:center;text-align:center}}
 @media(max-width:30rem){.st-hero,.st-details-body,.st-priority{padding:var(--space-md)}.st-jumps{grid-template-columns:minmax(0,1fr)}.st-priority--tower{grid-template-columns:minmax(0,1fr)}.st-priority--tower figure{grid-row:1}.st-priority--tower img{width:110px}}
+
+.ghost-ops-guide{display:grid;gap:var(--space-lg);min-width:0}.ghost-ops-intro{margin:0;font-weight:650}.ghost-ops-topics{display:grid;gap:var(--space-md)}
+.ghost-ops-topic{min-width:0;padding-inline-start:var(--space-md);border-inline-start:3px solid var(--color-game-blue)}.ghost-ops-topic h3{margin:0 0 .3rem;font-size:1.05rem}.ghost-ops-topic p{margin:0}
+.ghost-ops-routine{padding:var(--space-md);border:1px solid var(--color-game-rim);border-radius:var(--radius-sm);background:var(--color-raised)}.ghost-ops-routine h3{margin-top:0}.ghost-ops-routine ol{display:grid;gap:var(--space-sm);margin-bottom:0;padding-inline-start:1.5rem}
+.ghost-ops-sources{display:flex;flex-wrap:wrap;gap:.5rem 1rem;font-size:.82rem}.ghost-ops-sources strong{flex-basis:100%;color:var(--color-muted)}
+@media(min-width:52rem){.ghost-ops-topics{grid-template-columns:repeat(2,minmax(0,1fr))}}
