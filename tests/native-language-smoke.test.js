@@ -7,6 +7,7 @@ const mk=(path)=>{
  if(path==='/api/native-login')return {token:'test',role:'R4',name:'Test Officer',siteOwner:true};
  if(path==='/api/overview')return {active:92,reviews:0,reviewCount:0};
  if(path==='/api/operations')return {tasks:[],events:[],absences:[],members:[]};
+ if(path==='/api/event-insights')return {runs:[],series:[],summary:{total:0,completed:0,failed:0,cancelled:0,scheduled:0}};
  if(path==='/api/members')return [{id:'p1',name:'User Sample',rank:'R5',power:80376261,kills:1712531,donations_weekly:41750}];
  if(path==='/api/train-manager')return {today:'2026-10-14',calendar:[{date:'2026-10-14',type:'Members Day',suggestions:[{id:'p1',name:'User Sample',rank:'R5'}]}],history:[],absences:[],counts:{},members:[]};
  if(path==='/api/train-rotation')return {revision:1,types:['Members Day','R5','R4','R5','R4','Members Day','VS Hero'],coordinators:['','','','','','',''],auto_suggest:true};

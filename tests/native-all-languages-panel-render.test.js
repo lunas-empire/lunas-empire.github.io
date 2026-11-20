@@ -9,6 +9,7 @@ const mk=(path)=>{
  if(path==='/api/native-login')return {token:'test',role:'R4',name:'Test Officer',siteOwner:true};
  if(path==='/api/overview')return {active:92,reviews:0,reviewCount:0};
  if(path==='/api/operations')return {tasks:[],events:[],absences:[],members:[]};
+ if(path==='/api/event-insights')return {runs:[],series:[],summary:{total:0,completed:0,failed:0,cancelled:0,scheduled:0}};
  if(path==='/api/general-trial')return {runs:[],entries:[],members:[],history:[]};
  if(path==='/api/desert-war-room')return {rooms:[],slots:[],members:[],history:[]};
  if(path==='/api/members')return [{id:'p1',name:'User Sample',rank:'R5',power:80376261,kills:1712531,donations_weekly:41750}];
