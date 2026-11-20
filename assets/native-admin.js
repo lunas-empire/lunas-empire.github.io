@@ -4,13 +4,19 @@ import {icon} from './icons.js';
 import {localizeOfficerTree,officerLanguage,officerLocale,translateOfficerText} from './native-admin-i18n.js';
 import {buildOfficerActions} from './officer-cockpit.js';
 import {renderActionCenter,buildActionCenter} from './officer-action-center.js';
+import {renderAllianceTrends} from './officer-alliance-trends.js';
+import {renderCohortCompare} from './officer-cohort-compare.js';
+import {renderReadiness} from './officer-readiness.js';
+import {renderEventInsights} from './officer-event-insights.js';
+import {renderRewardFairness} from './officer-reward-fairness.js';
+import {buildWeeklyReport} from './officer-weekly-report.js';
 import {renderOperationsCalendar} from './officer-operations-calendar.js';
 import {renderDataQuality} from './officer-data-quality.js';
 import {createStatEvidenceViewer} from './native-stat-evidence.js';
 import {renderEvidenceRow} from './native-evidence-row.js';
 import {renderVsOverview,renderVsLongTermReport,renderVsHistory,buildVsLongTermReport,vsLongTermReportText,derivedVsWeekTotal,enrichVsWeeks} from './native-vs-overview.js';
 import {donationReportText,renderDonationHistory} from './officer-reports.js';
-import {createDuelLeagueController} from './native-duel-league.js';
+import {createDuelLeagueController,normalizeDuelLeague} from './native-duel-league.js';
 import {duelCopy} from './native-duel-league-i18n.js';
 import {diceHistory} from './dice-winners.js';
 import {formerArchiveFromTrain} from './former-train-archive.js';
@@ -64,7 +70,7 @@ const secondaryPanels=[
  ['activity','Änderungsprotokoll'],['access','Zugangscodes'],['requirements','Einstellungen']
 ];
 const parentPanel=key=>({
- overview:'overview',vs:'vs',duelLeague:'vs',donations:'vs',members:'members',lwImport:'members',train:'train',more:'more',
+ overview:'overview',vs:'vs',duelLeague:'vs',donations:'vs',allianceTrends:'vs',weeklyReport:'vs',members:'members',readiness:'members',lwImport:'members',train:'train',more:'more',
  registry:'more',watch:'more',diplomacy:'more',reviews:'more',dataQuality:'more',tasks:'more',
  absences:'more',events:'more',activity:'more',access:'more',requirements:'more'
 }[key]||'overview');
@@ -85,8 +91,8 @@ const moreSections=[
   ['requirements','Einstellungen','research','Mindestwerte & Regeln']]}
 ];
 const sectionPanels={
- vs:[['vs','VS-Duell'],['duelLeague','Duell & Liga'],['donations','Allianzspenden']],
- members:[['members','Mitglieder'],['diplomacy','Diplomatie'],['lwImport','LW Import']],
+ vs:[['vs','VS-Duell'],['duelLeague','Duell & Liga'],['donations','Allianzspenden'],['allianceTrends','Allianz-Entwicklung'],['weeklyReport','R4-Bericht']],
+ members:[['members','Mitglieder'],['readiness','Bereitschaft'],['diplomacy','Diplomatie'],['lwImport','LW Import']],
  train:[['train','Züge'],['events','Allianz-Events']]
 };
 const contextTools={
@@ -297,14 +303,16 @@ async function view(mount,{registrySnapshot=null}={}){
    const sources=mount.ownerDocument.createElement('section');sources.id='native-source-reviews';target.append(sources);
    initSourceReviews(sources);
    const pending=mount.ownerDocument.createElement('section');target.prepend(pending);void initPendingReviews(pending);
+  }else if(panel==='readiness'){
+   cache.readiness=await request('/api/readiness');readinessView(target);
   }else if(panel==='members'){
     const [list,trains]=await Promise.all([request('/api/members'),request('/api/train-manager').catch(()=>null)]);
     cache.members=list;cache.archivedTrains=trains;
     cache.membersArchive=await formerArchiveFromTrain(trains,list);cache.archivedTrains=trains;
     cache.membersArchiveAvailable=Boolean(trains);
-   target.innerHTML='<div class="native-row"><h2>Allianzmitglieder</h2><input id="native-member-search" type="search" placeholder="Spieler suchen" autocomplete="off"></div>'+
-    '<p class="native-muted">Nach Rang sortiert. Spieler antippen: Profil, Messwerte, Wochenverlauf, Erfolge und Zug-Historie.</p><p class="native-muted">'+(officerLanguage(target.ownerDocument)==='de'?'Spieler öffnen → LW Import.':'Open player → LW Import.')+'</p><div id="native-member-list"></div>';
-   renderMembers(target,'');
+   target.innerHTML='<div class="native-row"><h2>Allianzmitglieder</h2><div class="native-row-actions"><button type="button" data-native-cohort-open>Gruppen vergleichen</button><input id="native-member-search" type="search" placeholder="Spieler suchen" autocomplete="off"></div></div>'+
+    '<p class="native-muted">Nach Rang sortiert. Spieler antippen: Profil, Messwerte, Wochenverlauf, Erfolge und Zug-Historie.</p><p class="native-muted">'+(officerLanguage(target.ownerDocument)==='de'?'Spieler öffnen → LW Import.':'Open player → LW Import.')+'</p><div id="native-cohort-compare"></div><div id="native-member-list"></div>';
+   renderMembers(target,'');if(cache.cohortOpen)cohortView(target);
   }else if(panel==='vs'){
    const [data,summary]=await Promise.all([request('/api/vs-intelligence'),request('/api/overview')]);
    cache.vs=enrichVsWeeks(data);cache.overview=summary;
@@ -327,6 +335,17 @@ async function view(mount,{registrySnapshot=null}={}){
     '<label>Aufnahmewoche<select id="native-donation-week">'+(cache.donations.weeks||[]).map(w=>'<option value="'+e(w.week)+'">'+e(w.week)+'</option>').join('')+'</select></label></div>'+
     '<div id="native-donations-body"></div>';
    renderDonations(target);
+  }else if(panel==='allianceTrends'){
+   [cache.allianceTrends,cache.vs]=await Promise.all([request('/api/alliance-trends'),cache.vs?Promise.resolve(cache.vs):request('/api/vs-intelligence').then(enrichVsWeeks)]);
+   allianceTrendsView(target);
+  }else if(panel==='weeklyReport'){
+   [cache.allianceTrends,cache.vs,cache.donations,cache.readiness,cache.eventInsights,cache.trains,cache.dice,cache.diceMembers,cache.operations,cache.overview,cache.duel]=await Promise.all([
+    request('/api/alliance-trends'),cache.vs?Promise.resolve(cache.vs):request('/api/vs-intelligence').then(enrichVsWeeks),
+    cache.donations?Promise.resolve(cache.donations):request('/api/donations-intelligence'),request('/api/readiness'),request('/api/event-insights'),
+    cache.trains?Promise.resolve(cache.trains):request('/api/train-manager'),cache.dice?Promise.resolve(cache.dice):request('/api/train-dice'),
+    cache.diceMembers?Promise.resolve(cache.diceMembers):request('/api/members'),cache.operations?Promise.resolve(cache.operations):request('/api/operations'),
+    cache.overview?Promise.resolve(cache.overview):request('/api/overview'),request('/api/duel-league').then(normalizeDuelLeague)]);
+   weeklyReportView(target);
   }else if(panel==='train'){
    [cache.trains,cache.dice,cache.diceMembers]=await Promise.all([
     request('/api/train-manager'),request('/api/train-dice').catch(()=>[]),request('/api/members').catch(()=>[])]);
@@ -334,7 +353,7 @@ async function view(mount,{registrySnapshot=null}={}){
     cache.rotation=await request('/api/train-rotation').catch(()=>null);
    target.innerHTML='<div class="native-row"><h2>Zugplanung</h2><div class="native-row-actions"><button type="button" data-native-dice-date="'+e(cache.trains.today)+'">🎲 Dice Game</button><button data-native-new="train">+ Fahrer / Datum</button></div></div><div id="native-train-body"></div>';renderTrain(target);
   }else if(['tasks','absences','events'].includes(panel)){
-   [cache.ops,cache.trains]=await Promise.all([request('/api/operations'),panel==='events'?request('/api/train-manager').catch(()=>null):Promise.resolve(null)]);
+   [cache.ops,cache.trains,cache.eventInsights]=await Promise.all([request('/api/operations'),panel==='events'?request('/api/train-manager').catch(()=>null):Promise.resolve(null),panel==='events'?request('/api/event-insights'):Promise.resolve(null)]);
    target.innerHTML='<div class="native-row"><h2>'+({tasks:'Admin-Aufgaben',absences:'Abwesenheiten & Vertretung',events:'Allianz-Events'}[panel])+'</h2><button data-native-new="'+panel+'">+ Eintragen</button></div>'+renderImpactWarnings(cache.ops.warnings||[],officerLanguage(target.ownerDocument))+'<div id="native-form"></div><div id="native-records"></div>';
    renderRecords(target);
   }else if(panel==='dataQuality'){
@@ -342,6 +361,38 @@ async function view(mount,{registrySnapshot=null}={}){
    target.innerHTML='<div class="native-row"><h2>Datenqualität</h2><button data-native-refresh>Aktualisieren</button></div><div id="native-data-quality-body">'+renderDataQuality(cache.dataQuality,cache.ops,{language:officerLanguage(target.ownerDocument),esc:e,numberText})+'</div>';
   }
  }catch(err){target.innerHTML='<p class="native-error" role="alert">'+e(err.message)+'</p><button data-native-refresh>Erneut laden</button>'}
+}
+function allianceTrendsView(target){
+ const current=cache.allianceTrendRange||'all',options=[['previous','Vorherige Aufnahme'],['2','2 Wochen'],['4','4 Wochen'],['5','5 Wochen'],['all','Alle']];
+ target.innerHTML='<div class="native-row native-data-heading"><div><h2>Allianz-Entwicklung</h2><p class="native-muted">Bestätigte Werte, faire Vergleiche und sichtbare Datenabdeckung.</p></div><label>Zeitraum<select id="native-alliance-trend-range">'+options.map(([value,label])=>'<option value="'+value+'" '+(value===current?'selected':'')+'>'+label+'</option>').join('')+'</select></label></div><div id="native-alliance-trends-body">'+
+  renderAllianceTrends(cache.allianceTrends,cache.vs,{range:current,language:officerLanguage(target.ownerDocument),esc:e,numberText})+'</div>';
+}
+function readinessView(target){
+ target.innerHTML='<div class="native-row native-data-heading"><div><h2>Season- & Kampfbereitschaft</h2><p class="native-muted">Angewandte LW-Importe im Vergleich, ohne automatische Aufstellung.</p></div></div><div id="native-readiness-body">'+
+  renderReadiness(cache.readiness,{metric:cache.readinessMetric||'power',language:officerLanguage(target.ownerDocument),esc:e,numberText})+'</div>';
+}
+function weeklyReportView(target){
+ cache.weeklyReportText=buildWeeklyReport({...cache,trends:cache.allianceTrends},{language:officerLanguage(target.ownerDocument)});
+ target.innerHTML='<div class="native-row native-data-heading"><div><h2>R4-Wochenbericht</h2><p class="native-muted">Alle bestätigten Bereiche, Datenlücken und nächsten Aktionen in einem Bericht.</p></div><button type="button" data-native-weekly-report-copy>Bericht kopieren</button></div>'+
+  '<section class="native-weekly-report"><pre id="native-weekly-report-text" tabindex="0"></pre><span role="status" aria-live="polite"></span><textarea class="native-weekly-report-fallback" readonly hidden aria-label="Berichtstext zum manuellen Kopieren"></textarea></section>';
+ target.querySelector('#native-weekly-report-text').textContent=cache.weeklyReportText;
+}
+function eventInsightsView(target){
+ const host=target.querySelector('#native-event-insight-body');if(!host)return;
+ host.innerHTML=renderEventInsights(cache.eventInsights,{type:cache.eventInsightType||'all',range:cache.eventInsightRange||'all',language:officerLanguage(target.ownerDocument),esc:e,numberText});
+}
+function rewardFairnessView(target){
+ const host=target.querySelector('#native-reward-fairness-body');if(!host)return;
+ const membersOpen=host.querySelector('.native-reward-members')?.open===true;
+ host.innerHTML=renderRewardFairness(cache.trains,cache.dice,cache.diceMembers,{sort:cache.rewardSort||'vip',language:officerLanguage(target.ownerDocument),esc:e,numberText});
+ if(membersOpen)host.querySelector('.native-reward-members').open=true;
+}
+function cohortView(target){
+ const host=target.querySelector('#native-cohort-compare');if(!host)return;
+ const pickerOpen=host.querySelector('.native-cohort-picker')?.open===true;
+ cache.cohort||={A:[],B:[],query:'',sort:'name'};
+ host.innerHTML=renderCohortCompare({members:cache.members,vs:cache.vs,donations:cache.donations},cache.cohort,{language:officerLanguage(target.ownerDocument),esc:e,numberText});
+ if(pickerOpen)host.querySelector('.native-cohort-picker').open=true;
 }
 const rankOrder=['R5','R4','R3','R2','R1','Ungeklärt'];
 const metricNames={power:'Stärke',kills:'Kills',donations_weekly:'Wöchentliche Spenden',tech_donations:'Forschungsspenden'};
@@ -1526,8 +1577,8 @@ function renderTrain(target){
     '<div class="native-train-unlinked-group"><div><strong>'+e(group.name)+'</strong><small>'+group.count+' <span>'+(group.count===1?'Fahrt':'Fahrten')+'</span> · <span>Zuordnung offen</span></small></div>'+
     '<div class="native-train-unlinked-dates">'+group.dates.map(date=>
      '<button type="button" data-native-train="'+e(date)+'" aria-label="'+e(group.name)+' · '+e(date)+' · '+e(assignVerb)+'"><span>'+e(date.slice(5))+'</span> <span>Zuordnen</span></button>').join('')+'</div></div>').join('')+'</div></div></details>':'')+
-  '<details class="native-fold native-train-rotation"><summary>Wochenrotation & Zuständigkeiten bearbeiten</summary><div class="native-fold-body" id="native-train-rotation-body"></div></details>';
- renderTrainRotation(target);
+  '<div id="native-reward-fairness-body"></div><details class="native-fold native-train-rotation"><summary>Wochenrotation & Zuständigkeiten bearbeiten</summary><div class="native-fold-body" id="native-train-rotation-body"></div></details>';
+ rewardFairnessView(target);renderTrainRotation(target);
  updateTrainHistoryResults(target);
 }
 function editTrain(target,date,allowDateChange=false,preferredMemberId=null){
@@ -1768,10 +1819,11 @@ function renderEventRuns(target){
   genericLogs.map(item=>'<div class="native-event-history-row native-event-log-row"><span><b>'+e(item.game_timestamp)+'</b><small>'+e(german?'Nicht fachlich klassifiziert · kein Eventabschluss':'Unclassified · no event completion')+'</small></span><span class="native-event-history-actor">'+e(item.source_text||item.name)+'<small>'+(german?'Zwei-OCR-Rohtext':'Two-OCR raw text')+'</small></span></div>').join('')+'</div></details>':'';
  const other=entries.filter(x=>x.event_type==='desert_storm');
  target.querySelector('#native-records').innerHTML='<div class="native-event-intro"><p>Alle paar Tage erfassen: <strong>Level, Wellen, Ergebnis und Teilnahme</strong>. Jeder Durchgang bleibt mit Datum und verantwortlichem Officer erhalten.</p><p class="native-muted">'+(german?'Teilnahme ist ein manueller Offizierseintrag und wird ohne Beleg nicht automatisch ergänzt.':'Attendance is entered manually by an officer and is never inferred without evidence.')+'</p></div>'+
-  renderOperationsCalendar(data,cache.trains||{},{language:german?'de':'en',esc:e})+'<div class="native-event-panels">'+groups+'</div>'+trainLogHtml+genericLogHtml+
+  renderOperationsCalendar(data,cache.trains||{},{language:german?'de':'en',esc:e})+'<div id="native-event-insight-body"></div><div class="native-event-panels">'+groups+'</div>'+trainLogHtml+genericLogHtml+
   '<details class="native-fold"><summary>Weitere Events · Desert Storm ('+other.length+')</summary>'+
   '<div class="native-fold-body native-event-history">'+(other.length?other.map(eventRow).join(''):
    '<p class="native-muted">Noch keine Desert-Storm-Durchgänge dokumentiert.</p>')+'</div></details>';
+ eventInsightsView(target);
 }
 function updateEventForm(form){
  if(!form||form.dataset.kind!=='events')return;
@@ -2892,7 +2944,7 @@ export function initNativeAdmin(mount){
    if(url.startsWith('blob:'))window.open(url,'_blank','noopener,noreferrer');
    return;
   }
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-registry-edit],[data-registry-recheck],[data-registry-reload],[data-native-action],[data-native-action-task],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-watch-archive],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-vip-date],[data-native-dice-delete],[data-native-train-choice],[data-native-history-reset],[data-native-access-mode],[data-native-access-copy],[data-native-access-signout],[data-native-member-create],[data-native-registry-quick],[data-native-access-link],[data-native-access-disable],[data-audit-category],[data-native-vs-image],[data-native-vs-image-close],[data-native-requirements-reload]');
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-native-weekly-report-copy],[data-native-cohort-open],[data-native-cohort-close],[data-cohort-pick],[data-registry-edit],[data-registry-recheck],[data-registry-reload],[data-native-action],[data-native-action-task],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-watch-archive],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-vip-date],[data-native-dice-delete],[data-native-train-choice],[data-native-history-reset],[data-native-access-mode],[data-native-access-copy],[data-native-access-signout],[data-native-member-create],[data-native-registry-quick],[data-native-access-link],[data-native-access-disable],[data-audit-category],[data-native-vs-image],[data-native-vs-image-close],[data-native-requirements-reload]');
   if(!button)return;
   if(button.hasAttribute('data-native-history-reset')){
    trainHistoryFilters={member:'',date:''};historyLimit=20;
@@ -2919,6 +2971,34 @@ export function initNativeAdmin(mount){
    if(action==='event-planning'&&cache.ops?.events)editRecord(destination,'events','');
    if(action==='member-find')destination.querySelector('#native-member-search')?.focus();
    return;
+  }
+  if(button.hasAttribute('data-native-weekly-report-copy')){
+   const section=mount.querySelector('.native-weekly-report'),language=officerLanguage(mount.ownerDocument);
+   try{
+    if(!window.navigator?.clipboard?.writeText)throw Error('Clipboard unavailable');
+    await window.navigator.clipboard.writeText(cache.weeklyReportText);section.querySelector('[role=status]').textContent=language==='en'?'Report copied.':'Bericht kopiert.';
+   }catch{
+    const fallback=section.querySelector('.native-weekly-report-fallback');fallback.value=cache.weeklyReportText;fallback.hidden=false;fallback.focus();fallback.select();
+    section.querySelector('[role=status]').textContent=language==='en'?'Select and copy the report manually.':'Berichtstext markieren und manuell kopieren.';
+   }
+   return;
+  }
+  if(button.hasAttribute('data-native-cohort-open')){
+   [cache.vs,cache.donations]=await Promise.all([
+    cache.vs?Promise.resolve(cache.vs):request('/api/vs-intelligence').then(enrichVsWeeks),
+    cache.donations?Promise.resolve(cache.donations):request('/api/donations-intelligence')]);
+   cache.cohortOpen=true;cohortView(mount.querySelector('#native-admin-content'));return;
+  }
+  if(button.hasAttribute('data-native-cohort-close')){
+   cache.cohortOpen=false;const host=mount.querySelector('#native-cohort-compare');if(host)host.innerHTML='';return;
+  }
+  if(button.dataset.cohortPick){
+   const [group,id]=button.dataset.cohortPick.split(':');if(!['A','B'].includes(group)||!id)return;
+   cache.cohort||={A:[],B:[],query:'',sort:'name'};
+   const other=group==='A'?'B':'A',selected=cache.cohort[group].includes(id);
+   cache.cohort[other]=cache.cohort[other].filter(memberId=>memberId!==id);
+   cache.cohort[group]=selected?cache.cohort[group].filter(memberId=>memberId!==id):[...cache.cohort[group],id];
+   const target=mount.querySelector('#native-admin-content');cohortView(target);target.querySelector('[data-cohort-pick="'+group+':'+id+'"]')?.focus();return;
   }
   if(button.hasAttribute('data-native-refresh')){await view(mount);return}
   if(button.dataset.nativeTaskToggle){
@@ -3195,6 +3275,10 @@ export function initNativeAdmin(mount){
    historyLimit=20;updateTrainHistoryResults(mount.querySelector('#native-admin-content'));return;
   }
   if(event.target.id==='native-member-search'){pageLimit=20;renderMembers(mount.querySelector('#native-admin-content'),event.target.value)}
+  if(event.target.id==='native-cohort-search'){
+   cache.cohort.query=event.target.value;const target=mount.querySelector('#native-admin-content');cohortView(target);
+   const search=target.querySelector('#native-cohort-search');if(search){search.focus();search.setSelectionRange(search.value.length,search.value.length)}
+  }
   if(event.target.id==='registry-search'){pageLimit=20;renderRegistry(mount.querySelector('#native-admin-content'),event.target.value)}
   if(event.target.id==='native-diplomacy-search')renderDiplomacy(mount.querySelector('#native-admin-content'),event.target.value);
   if(event.target.id==='activity-search'){activityLimit=30;renderActivity(mount.querySelector('#native-admin-content'),event.target.value)}
@@ -3220,6 +3304,27 @@ export function initNativeAdmin(mount){
   await loadTrainEditor(mount.querySelector('#native-admin-content'),event.target.value,event.target.form.id==='native-vip-save'?'vip':'dice');return;
  }
  if(event.target.id==='activity-group-by'){activityGroupBy=event.target.value;activityLimit=30;renderActivity(mount.querySelector('#native-admin-content'),mount.querySelector('#activity-search')?.value||'')}
+  if(event.target.id==='native-reward-sort'){
+   cache.rewardSort=['vip','dice','name'].includes(event.target.value)?event.target.value:'vip';
+   const target=mount.querySelector('#native-admin-content');rewardFairnessView(target);target.querySelector('#native-reward-sort')?.focus();return;
+  }
+  if(['native-event-insight-type','native-event-insight-range'].includes(event.target.id)){
+   if(event.target.id==='native-event-insight-type')cache.eventInsightType=['all',...new Set((cache.eventInsights?.runs||[]).map(item=>item.event_type))].includes(event.target.value)?event.target.value:'all';
+   else cache.eventInsightRange=['30','90','all'].includes(event.target.value)?event.target.value:'all';
+   const target=mount.querySelector('#native-admin-content');eventInsightsView(target);target.querySelector('#'+event.target.id)?.focus();return;
+  }
+  if(event.target.id==='native-readiness-metric'){
+   cache.readinessMetric=['power','army_power','total_troops','hq','vip','t1_power','t2_power','t3_power','t4_power','drone','kills'].includes(event.target.value)?event.target.value:'power';
+   const target=mount.querySelector('#native-admin-content');readinessView(target);target.querySelector('#native-readiness-metric')?.focus();return;
+  }
+  if(event.target.id==='native-cohort-sort'){
+   cache.cohort.sort=['name','rank','problem','donations','power'].includes(event.target.value)?event.target.value:'name';
+   const target=mount.querySelector('#native-admin-content');cohortView(target);target.querySelector('#native-cohort-sort')?.focus();return;
+  }
+  if(event.target.id==='native-alliance-trend-range'){
+   cache.allianceTrendRange=['previous','2','4','5','all'].includes(event.target.value)?event.target.value:'all';
+   const target=mount.querySelector('#native-admin-content');allianceTrendsView(target);target.querySelector('#native-alliance-trend-range')?.focus();return;
+  }
   if(event.target.matches('[data-native-vs-report-sort]')&&cache.vsView){
    const key=event.target.dataset.nativeVsReportSort;if(!['repeated','never','improved'].includes(key))return;
    cache.vsReportSort={...cache.vsReportSort,[key]:event.target.value};

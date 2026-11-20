@@ -71,6 +71,7 @@ test('Officer can log Zombie Siege and Marshal Guard recurring runs, preserve De
   if(path==='/api/overview')return Response.json({active:92,reviews:0});
   if(path==='/api/operations'&&(!options.method||options.method==='GET'))return Response.json(ops);
   if(path==='/api/train-manager')return Response.json({today:'2026-10-13',counts:{missing_recent:0},calendar:[]});
+  if(path==='/api/event-insights')return Response.json({runs:existing,series:existing.filter(event=>event.outcome==='completed'),summary:{total:existing.length}});
   if(path==='/api/operations/events'&&options.method==='POST'){
    const payload=JSON.parse(options.body);posts.push(payload);
    return Response.json({ok:true,id:payload.id||'12345678-1234-1234-1234-123456789abc'});
