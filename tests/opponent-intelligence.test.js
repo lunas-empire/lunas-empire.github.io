@@ -35,6 +35,7 @@ test('Controller loads history, uploads confirmed raw CSV and selects another me
  const bytes=new TextEncoder().encode('synthetic').buffer;Object.defineProperty(form.elements.csv,'files',{value:[{size:bytes.byteLength,arrayBuffer:async()=>bytes}]});
  form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));await wait(()=>upload);
  assert.equal(upload.bytes,bytes);assert.equal(upload.params.matchId,'match');assert.equal(upload.params.reportDate,'2026-11-21');assert.equal(upload.params.confirmed,true);
+ assert.equal(reads.at(-1).snapshot,selected.id);
  await wait(()=>root.querySelector('[data-native-opponent-status]').textContent.includes('saved and read back'));
  root.querySelector('[data-native-opponent-metric]').value='drone';root.querySelector('[data-native-opponent-metric]').dispatchEvent(new dom.window.Event('change',{bubbles:true}));
  assert.match(root.querySelector('.native-opponent-table caption').textContent,/Drone/);
