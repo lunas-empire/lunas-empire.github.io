@@ -23,6 +23,7 @@ test('Alliance development loads once through the real tab and changes range wit
   if(path==='/api/officer-alerts')return Response.json({});
   if(path==='/api/alliance-trends')return Response.json(trends);
   if(path==='/api/vs-intelligence')return Response.json({weeks:trends.weeks.map(week=>({week:week.week,state:'final',dayTotals:[{passed:1,failed:1,unknown:0}],members:[]}))});
+  if(path==='/api/donations-intelligence')return Response.json({weeks:trends.weeks.map(week=>({week:week.week,members:[]}))});
   throw Error('Unexpected '+path);
  };
  const mount=dom.window.document.querySelector('#mount'),q=selector=>mount.querySelector(selector);
