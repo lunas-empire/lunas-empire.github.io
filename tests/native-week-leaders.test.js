@@ -32,8 +32,8 @@ test('Trend weeks open detailed leaders with daily evidence and metric switch',a
  initNativeAdmin(mount);await renderNativeAdmin(mount);q('[name=code]').value='synthetic';q('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
  await until(()=>q('.native-primary-tab[data-officer-tab="vs"]'));q('.native-primary-tab[data-officer-tab="vs"]').click();await until(()=>q('[data-officer-tab="allianceTrends"]'));
  q('[data-officer-tab="allianceTrends"]').click();await until(()=>q('.native-week-leaders'));
- assert.equal(q('[data-alliance-trend-week="2026-W46"]').getAttribute('aria-pressed'),'true');assert.equal(q('.native-week-leader-days').children.length,6);
+ assert.equal(q('[data-alliance-trend-week="2026-W46"]').getAttribute('aria-pressed'),'true');q('[data-week-leader-metric="vs"]').click();assert.equal(q('.native-week-leader-days').children.length,6);
  q('[data-alliance-trend-week="2026-W45"]').click();assert.equal(q('[data-alliance-trend-week="2026-W45"]').getAttribute('aria-pressed'),'true');
- q('[data-week-leader-metric="donations"]').click();assert.match(q('.native-week-leader-delta').textContent,/\+1\.000/);assert.equal(q('[data-week-leader-metric="donations"]').getAttribute('aria-pressed'),'true');
+ q('[data-week-leader-metric="donations"]').click();assert.match(q('.native-week-leader-breakdown').textContent,/\+1\.000/);assert.equal(q('[data-week-leader-metric="donations"]').getAttribute('aria-pressed'),'true');
  q('.native-week-leader summary').click();assert.equal(q('.native-week-leader').open,true);assert.ok(q('.native-week-leader [data-native-member="a"]'));
 });
