@@ -367,9 +367,11 @@ function allianceTrendsView(target){
  const current=cache.allianceTrendRange||'all',options=[['previous','Vorherige Aufnahme'],['2','2 Wochen'],['4','4 Wochen'],['5','5 Wochen'],['all','Alle']];
  const selectedWeek=cache.allianceTrendWeek||cache.vs?.weeks?.at(-1)?.week||cache.allianceTrends?.weeks?.[0]?.week;
  const vsWeek=(cache.vs?.weeks||[]).find(week=>week.week===selectedWeek),donationWeek=(cache.donations?.weeks||[]).find(week=>week.week===selectedWeek);
+ const previous=items=>{const ordered=[...(items||[])].sort((a,b)=>a.week.localeCompare(b.week)),index=ordered.findIndex(week=>week.week===selectedWeek);return index>0?ordered[index-1]:null};
+ const previousVsWeek=previous(cache.vs?.weeks),previousDonationWeek=previous(cache.donations?.weeks);
  target.innerHTML='<div class="native-row native-data-heading"><div><h2>Allianz-Entwicklung</h2><p class="native-muted">Bestätigte Werte, faire Vergleiche und sichtbare Datenabdeckung.</p></div><label>Zeitraum<select id="native-alliance-trend-range">'+options.map(([value,label])=>'<option value="'+value+'" '+(value===current?'selected':'')+'>'+label+'</option>').join('')+'</select></label></div><div id="native-alliance-trends-body">'+
   renderAllianceTrends(cache.allianceTrends,cache.vs,{range:current,selectedWeek,language:officerLanguage(target.ownerDocument),esc:e,numberText})+'</div><div id="native-week-leaders-body">'+
-  renderWeekLeaders(vsWeek,donationWeek,{metric:cache.weekLeaderMetric||'vs',language:officerLanguage(target.ownerDocument),esc:e,numberText})+'</div>';
+  renderWeekLeaders(vsWeek,donationWeek,{metric:cache.weekLeaderMetric||'combined',trends:cache.allianceTrends,selectedWeek,previousVsWeek,previousDonationWeek,language:officerLanguage(target.ownerDocument),esc:e,numberText})+'</div>';
 }
 function readinessView(target){
  target.innerHTML='<div class="native-row native-data-heading"><div><h2>Season- & Kampfbereitschaft</h2><p class="native-muted">Angewandte LW-Importe im Vergleich, ohne automatische Aufstellung.</p></div></div><div id="native-readiness-body">'+
@@ -2986,7 +2988,7 @@ export function initNativeAdmin(mount){
    target.querySelector('#native-week-leaders-body')?.scrollIntoView?.({block:'start',behavior:'auto'});return;
   }
   if(button.dataset.weekLeaderMetric){
-   cache.weekLeaderMetric=button.dataset.weekLeaderMetric==='donations'?'donations':'vs';
+   cache.weekLeaderMetric=['combined','development','growth','kills','donations','vs'].includes(button.dataset.weekLeaderMetric)?button.dataset.weekLeaderMetric:'combined';
    const target=mount.querySelector('#native-admin-content');allianceTrendsView(target);target.querySelector('[data-week-leader-metric="'+cache.weekLeaderMetric+'"]')?.focus();return;
   }
   if(button.hasAttribute('data-native-weekly-report-copy')){
