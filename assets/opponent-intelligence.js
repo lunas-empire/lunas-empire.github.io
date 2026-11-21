@@ -66,7 +66,7 @@ export function createOpponentIntelligenceController({root,api,language='de'}={}
   const status=root.querySelector('[data-native-opponent-status]'),file=form.elements.csv.files?.[0],button=form.querySelector('[type=submit]');
   if(!file||!form.elements.confirmed.checked)return;if(file.size>262144){status.textContent='256 KiB';return}
   busy=true;button.disabled=true;
-  try{const bytes=await file.arrayBuffer();data=await api.upload(bytes,{matchId:form.elements.match_id.value,reportDate:form.elements.report_date.value,confirmed:true});state.week=data.selected?.iso_week||state.week;form.elements.csv.value='';draw();root.querySelector('[data-native-opponent-status]').textContent=opponentCopy(language)[data.reused?'reused':'uploadSuccess']}catch(error){status.textContent=error.message;button.disabled=false}finally{busy=false}
+  try{const bytes=await file.arrayBuffer(),receipt=await api.upload(bytes,{matchId:form.elements.match_id.value,reportDate:form.elements.report_date.value,confirmed:true}),reread=await api.read({week:receipt.selected?.iso_week,snapshot:receipt.selected?.id});if(!receipt.selected||reread.selected?.id!==receipt.selected.id||reread.selected?.sha256!==receipt.selected.sha256||reread.selected?.row_count!==receipt.selected.row_count)throw Error('Readback mismatch');data={...reread,reused:receipt.reused};state.week=data.selected?.iso_week||state.week;form.elements.csv.value='';draw();root.querySelector('[data-native-opponent-status]').textContent=opponentCopy(language)[data.reused?'reused':'uploadSuccess']}catch(error){status.textContent=error.message;button.disabled=false}finally{busy=false}
  });
  return{load};
 }
