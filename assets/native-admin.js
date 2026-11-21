@@ -19,6 +19,8 @@ import {renderVsOverview,renderVsLongTermReport,renderVsHistory,buildVsLongTermR
 import {donationReportText,renderDonationHistory} from './officer-reports.js';
 import {createDuelLeagueController,normalizeDuelLeague} from './native-duel-league.js';
 import {duelCopy} from './native-duel-league-i18n.js';
+import {createOpponentIntelligenceController} from './opponent-intelligence.js';
+import {opponentCopy} from './opponent-intelligence-i18n.js';
 import {diceHistory} from './dice-winners.js';
 import {formerArchiveFromTrain} from './former-train-archive.js';
 import {renderImpactWarnings} from './native-impact-warnings.js';
@@ -71,7 +73,7 @@ const secondaryPanels=[
  ['activity','Änderungsprotokoll'],['access','Zugangscodes'],['requirements','Einstellungen']
 ];
 const parentPanel=key=>({
- overview:'overview',vs:'vs',duelLeague:'vs',donations:'vs',allianceTrends:'vs',weeklyReport:'vs',members:'members',readiness:'members',lwImport:'members',train:'train',more:'more',
+ overview:'overview',vs:'vs',duelLeague:'vs',opponentIntel:'vs',donations:'vs',allianceTrends:'vs',weeklyReport:'vs',members:'members',readiness:'members',lwImport:'members',train:'train',more:'more',
  registry:'more',watch:'more',diplomacy:'more',reviews:'more',dataQuality:'more',tasks:'more',
  absences:'more',events:'more',activity:'more',access:'more',requirements:'more'
 }[key]||'overview');
@@ -92,7 +94,7 @@ const moreSections=[
   ['requirements','Einstellungen','research','Mindestwerte & Regeln']]}
 ];
 const sectionPanels={
- vs:[['vs','VS-Duell'],['duelLeague','Duell & Liga'],['donations','Allianzspenden'],['allianceTrends','Allianz-Entwicklung'],['weeklyReport','R4-Bericht']],
+ vs:[['vs','VS-Duell'],['duelLeague','Duell & Liga'],['opponentIntel','VS-Gegner'],['donations','Allianzspenden'],['allianceTrends','Allianz-Entwicklung'],['weeklyReport','R4-Bericht']],
  members:[['members','Mitglieder'],['readiness','Bereitschaft'],['diplomacy','Diplomatie'],['lwImport','LW Import']],
  train:[['train','Züge'],['events','Allianz-Events']]
 };
@@ -101,7 +103,7 @@ const contextTools={
  train:{label:'Aufgaben & Abwesenheiten',items:[['tasks','Aufgaben'],['absences','Abwesenheiten']]}
 };
 
-const navButton=([key,label],cls='',language='de')=>'<button type="button" class="'+cls+'" data-officer-tab="'+key+'" '+(panel===key?'aria-current="page"':'')+'>'+e(key==='duelLeague'?duelCopy(language).title:label)+'</button>';
+const navButton=([key,label],cls='',language='de')=>'<button type="button" class="'+cls+'" data-officer-tab="'+key+'" '+(panel===key?'aria-current="page"':'')+'>'+e(key==='duelLeague'?duelCopy(language).title:key==='opponentIntel'?opponentCopy(language).title:label)+'</button>';
 function nav(documentRef){
  const parent=parentPanel(panel);
  const language=officerLanguage(documentRef);
@@ -330,6 +332,14 @@ async function view(mount,{registrySnapshot=null}={}){
     loadEvidence:id=>binaryRequest('/api/duel-league/evidence/'+encodeURIComponent(id)+'/image')
    }});
    await duelLeagueController.load();
+  }else if(panel==='opponentIntel'){
+   target.innerHTML='<div id="native-opponent-intelligence-root"></div>';
+   const controller=createOpponentIntelligenceController({root:target.querySelector('#native-opponent-intelligence-root'),language:officerLanguage(target.ownerDocument),api:{
+    read:({week,snapshot,previous})=>request('/api/opponent-intelligence'+new URLSearchParams(Object.fromEntries(Object.entries({week:week||'',snapshot:snapshot||'',previous:previous||''}).filter(([,value])=>value))).toString().replace(/^/,'?')),
+    upload:(bytes,{matchId,reportDate,confirmed})=>binaryRequest('/api/opponent-intelligence?'+new URLSearchParams({match_id:matchId,report_date:reportDate,confirmed:confirmed?'1':'0'}),{method:'POST',body:bytes,headers:{'Content-Type':'text/csv'}}),
+    original:async id=>{const response=await binaryRequest('/api/opponent-intelligence/'+encodeURIComponent(id)+'/original',{raw:true,headers:{Accept:'text/csv'}});return{bytes:await response.arrayBuffer(),sha256:response.headers.get('X-Evidence-SHA256')}}
+   }});
+   await controller.load();
   }else if(panel==='donations'){
    cache.donations=await request('/api/donations-intelligence');
    target.innerHTML='<div class="native-row native-data-heading"><div><h2>Allianzspenden</h2><p class="native-muted">Wöchentliches Forschungsziel · mindestens 20.000 pro Mitglied</p></div>'+
