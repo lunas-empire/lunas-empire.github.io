@@ -16,7 +16,7 @@ test('All opponent UI languages have complete non-empty dictionaries',()=>{
 test('Opponent rendering preserves zero, hides missing values and contains no coordinates or prediction',()=>{
  const html=renderOpponentIntelligence(data,{language:'en',metric:'power'});
  assert.match(html,/Synthetic Opponent/);assert.match(html,/Measurable differences only/);assert.match(html,/100/);assert.match(html,/2026-11-15/);
- assert.match(html,/Own snapshot/);assert.match(html,/Opponent development/);assert.doesNotMatch(html,/Coords|1:2|win probability/i);
+ assert.match(html,/Own snapshot/);assert.match(html,/Opponent development/);assert.doesNotMatch(html,/Coords|1:2|win probability|LWMap/i);
  const empty=renderOpponentIntelligence({matches:data.matches,snapshots:[],selected:null},{language:'en'});assert.match(empty,/One import is enough/);
  const other={...data.matches[0],id:'other-match',iso_week:'2026-W48',alliance_tag:'NEXT'};
  const emptyWeek=renderOpponentIntelligence({matches:[other],snapshots:[],selected:null},{language:'en',allMatches:[data.matches[0],other]});
