@@ -10,6 +10,7 @@ import {renderReadiness} from './officer-readiness.js';
 import {renderEventInsights} from './officer-event-insights.js';
 import {renderRewardFairness} from './officer-reward-fairness.js';
 import {buildWeeklyReport} from './officer-weekly-report.js';
+import {renderWeekLeaders} from './officer-week-leaders.js';
 import {renderOperationsCalendar} from './officer-operations-calendar.js';
 import {renderDataQuality} from './officer-data-quality.js';
 import {createStatEvidenceViewer} from './native-stat-evidence.js';
@@ -336,7 +337,7 @@ async function view(mount,{registrySnapshot=null}={}){
     '<div id="native-donations-body"></div>';
    renderDonations(target);
   }else if(panel==='allianceTrends'){
-   [cache.allianceTrends,cache.vs]=await Promise.all([request('/api/alliance-trends'),cache.vs?Promise.resolve(cache.vs):request('/api/vs-intelligence').then(enrichVsWeeks)]);
+   [cache.allianceTrends,cache.vs,cache.donations]=await Promise.all([cache.allianceTrends?Promise.resolve(cache.allianceTrends):request('/api/alliance-trends'),cache.vs?Promise.resolve(cache.vs):request('/api/vs-intelligence').then(enrichVsWeeks),cache.donations?Promise.resolve(cache.donations):request('/api/donations-intelligence')]);
    allianceTrendsView(target);
   }else if(panel==='weeklyReport'){
    [cache.allianceTrends,cache.vs,cache.donations,cache.readiness,cache.eventInsights,cache.trains,cache.dice,cache.diceMembers,cache.operations,cache.overview,cache.duel]=await Promise.all([
@@ -364,8 +365,11 @@ async function view(mount,{registrySnapshot=null}={}){
 }
 function allianceTrendsView(target){
  const current=cache.allianceTrendRange||'all',options=[['previous','Vorherige Aufnahme'],['2','2 Wochen'],['4','4 Wochen'],['5','5 Wochen'],['all','Alle']];
+ const selectedWeek=cache.allianceTrendWeek||cache.vs?.weeks?.at(-1)?.week||cache.allianceTrends?.weeks?.[0]?.week;
+ const vsWeek=(cache.vs?.weeks||[]).find(week=>week.week===selectedWeek),donationWeek=(cache.donations?.weeks||[]).find(week=>week.week===selectedWeek);
  target.innerHTML='<div class="native-row native-data-heading"><div><h2>Allianz-Entwicklung</h2><p class="native-muted">Bestätigte Werte, faire Vergleiche und sichtbare Datenabdeckung.</p></div><label>Zeitraum<select id="native-alliance-trend-range">'+options.map(([value,label])=>'<option value="'+value+'" '+(value===current?'selected':'')+'>'+label+'</option>').join('')+'</select></label></div><div id="native-alliance-trends-body">'+
-  renderAllianceTrends(cache.allianceTrends,cache.vs,{range:current,language:officerLanguage(target.ownerDocument),esc:e,numberText})+'</div>';
+  renderAllianceTrends(cache.allianceTrends,cache.vs,{range:current,selectedWeek,language:officerLanguage(target.ownerDocument),esc:e,numberText})+'</div><div id="native-week-leaders-body">'+
+  renderWeekLeaders(vsWeek,donationWeek,{metric:cache.weekLeaderMetric||'vs',language:officerLanguage(target.ownerDocument),esc:e,numberText})+'</div>';
 }
 function readinessView(target){
  target.innerHTML='<div class="native-row native-data-heading"><div><h2>Season- & Kampfbereitschaft</h2><p class="native-muted">Angewandte LW-Importe im Vergleich, ohne automatische Aufstellung.</p></div></div><div id="native-readiness-body">'+
@@ -373,7 +377,7 @@ function readinessView(target){
 }
 function weeklyReportView(target){
  cache.weeklyReportText=buildWeeklyReport({...cache,trends:cache.allianceTrends},{language:officerLanguage(target.ownerDocument)});
- target.innerHTML='<div class="native-row native-data-heading"><div><h2>R4-Wochenbericht</h2><p class="native-muted">Alle bestätigten Bereiche, Datenlücken und nächsten Aktionen in einem Bericht.</p></div><button type="button" data-native-weekly-report-copy>Bericht kopieren</button></div>'+
+ target.innerHTML='<div class="native-row native-data-heading"><div><h2>R4-Wochenbericht</h2><p class="native-muted">Alle bestätigten Bereiche, Datenlücken und nächsten Aktionen in einem Bericht.</p></div><div class="native-row-actions"><button type="button" data-native-weekly-report-details>Details & Top 10</button><button type="button" data-native-weekly-report-copy>Bericht kopieren</button></div></div>'+
   '<section class="native-weekly-report"><pre id="native-weekly-report-text" tabindex="0"></pre><span role="status" aria-live="polite"></span><textarea class="native-weekly-report-fallback" readonly hidden aria-label="Berichtstext zum manuellen Kopieren"></textarea></section>';
  target.querySelector('#native-weekly-report-text').textContent=cache.weeklyReportText;
 }
@@ -2944,7 +2948,7 @@ export function initNativeAdmin(mount){
    if(url.startsWith('blob:'))window.open(url,'_blank','noopener,noreferrer');
    return;
   }
-  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-native-weekly-report-copy],[data-native-cohort-open],[data-native-cohort-close],[data-cohort-pick],[data-registry-edit],[data-registry-recheck],[data-registry-reload],[data-native-action],[data-native-action-task],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-watch-archive],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-vip-date],[data-native-dice-delete],[data-native-train-choice],[data-native-history-reset],[data-native-access-mode],[data-native-access-copy],[data-native-access-signout],[data-native-member-create],[data-native-registry-quick],[data-native-access-link],[data-native-access-disable],[data-audit-category],[data-native-vs-image],[data-native-vs-image-close],[data-native-requirements-reload]');
+  const button=event.target.closest('[data-officer-tab],[data-officer-logout],[data-native-member],[data-native-more],[data-native-train],[data-native-new],[data-native-edit],[data-native-refresh],[data-native-weekly-report-copy],[data-native-weekly-report-details],[data-alliance-trend-week],[data-week-leader-metric],[data-native-cohort-open],[data-native-cohort-close],[data-cohort-pick],[data-registry-edit],[data-registry-recheck],[data-registry-reload],[data-native-action],[data-native-action-task],[data-native-manage],[data-native-member-log],[data-native-member-close],[data-native-add-absence],[data-native-form-reload],[data-native-copy-train],[data-native-event-quick],[data-native-watch-person],[data-native-watch-archive],[data-native-diplomacy-new],[data-native-diplomacy-edit],[data-native-diplomacy-cancel],[data-native-diplomacy-reload],[data-native-registry-filter],[data-native-review-pick],[data-native-review-upload],[data-native-review-resolve],[data-native-mark-zero],[data-native-capture-preview],[data-native-capture-attach],[data-native-review-replace],[data-native-rotation-reload],[data-native-task-toggle],[data-native-record-delete],[data-native-dice-date],[data-native-vip-date],[data-native-dice-delete],[data-native-train-choice],[data-native-history-reset],[data-native-access-mode],[data-native-access-copy],[data-native-access-signout],[data-native-member-create],[data-native-registry-quick],[data-native-access-link],[data-native-access-disable],[data-audit-category],[data-native-vs-image],[data-native-vs-image-close],[data-native-requirements-reload]');
   if(!button)return;
   if(button.hasAttribute('data-native-history-reset')){
    trainHistoryFilters={member:'',date:''};historyLimit=20;
@@ -2971,6 +2975,19 @@ export function initNativeAdmin(mount){
    if(action==='event-planning'&&cache.ops?.events)editRecord(destination,'events','');
    if(action==='member-find')destination.querySelector('#native-member-search')?.focus();
    return;
+  }
+  if(button.hasAttribute('data-native-weekly-report-details')){
+   cache.allianceTrendWeek=cache.vs?.weeks?.at(-1)?.week||[...(cache.allianceTrends?.weeks||[])].sort((a,b)=>b.week.localeCompare(a.week))[0]?.week;panel='allianceTrends';await view(mount);
+   mount.querySelector('#native-week-leaders-body')?.scrollIntoView?.({block:'start',behavior:'auto'});return;
+  }
+  if(button.dataset.allianceTrendWeek){
+   cache.allianceTrendWeek=button.dataset.allianceTrendWeek;
+   const target=mount.querySelector('#native-admin-content');allianceTrendsView(target);
+   target.querySelector('#native-week-leaders-body')?.scrollIntoView?.({block:'start',behavior:'auto'});return;
+  }
+  if(button.dataset.weekLeaderMetric){
+   cache.weekLeaderMetric=button.dataset.weekLeaderMetric==='donations'?'donations':'vs';
+   const target=mount.querySelector('#native-admin-content');allianceTrendsView(target);target.querySelector('[data-week-leader-metric="'+cache.weekLeaderMetric+'"]')?.focus();return;
   }
   if(button.hasAttribute('data-native-weekly-report-copy')){
    const section=mount.querySelector('.native-weekly-report'),language=officerLanguage(mount.ownerDocument);

@@ -36,5 +36,6 @@ test('Weekly report loads all areas once and copies the consolidated evidence te
  q('[data-officer-tab="weeklyReport"]').click();await until(()=>q('#native-weekly-report-text'));const text=q('#native-weekly-report-text').textContent;
  assert.match(text,/Stärke: 400/);assert.match(text,/Keine bestätigten finalen Matches/);assert.match(text,/Offene OCR-Reviews: 2/);
  q('[data-native-weekly-report-copy]').click();await until(()=>copied.length===1);assert.equal(copied[0],text);assert.match(q('.native-weekly-report [role=status]').textContent,/kopiert/);
+ q('[data-native-weekly-report-details]').click();await until(()=>q('.native-week-leaders'));
  for(const path of ['/api/alliance-trends','/api/readiness','/api/event-insights','/api/duel-league'])assert.equal(calls.filter(call=>call===path).length,1,path);
 });

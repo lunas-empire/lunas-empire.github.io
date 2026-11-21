@@ -25,7 +25,7 @@ const delta=(latest,first)=>{
 };
 
 export function renderAllianceTrends(trends={},vs={},options={}){
- const {range='all',language='de',esc=String,numberText=String}=options,en=language==='en',text=(de,english)=>en?english:de,e=esc,n=numberText;
+ const {range='all',selectedWeek=null,language='de',esc=String,numberText=String}=options,en=language==='en',text=(de,english)=>en?english:de,e=esc,n=numberText;
  const points=buildAllianceTrendSeries(trends,vs,range),latest=points.at(-1),first=points[0];
  if(!latest)return '<section class="native-alliance-trends"><p class="native-muted">'+text('Noch keine bestätigten Allianz-Verlaufsdaten.','No confirmed alliance trend data yet.')+'</p></section>';
  const labels={power:text('Stärke','Power'),kills:'Kills',donations_weekly:text('Wochenspenden','Weekly donations')};
@@ -43,9 +43,9 @@ export function renderAllianceTrends(trends={},vs={},options={}){
    return '<div class="native-trend-metric"><span>'+e(labels[metric])+'</span><div class="native-trend-track" aria-hidden="true"><i style="width:'+width+'%"></i></div>'+
     '<strong>'+(value.total===null?'—':n(value.total))+'</strong><small>'+n(value.verified)+' · '+n(value.coverage)+'%</small></div>';
   }).join('');
-  return '<article class="native-trend-week"><h3>'+e(point.week)+(point.is_complete?'':' <small>'+text('Teilaufnahme','Partial capture')+'</small>')+'</h3>'+cells+
+  return '<button type="button" class="native-trend-week" data-alliance-trend-week="'+e(point.week)+'" aria-pressed="'+e(point.week===selectedWeek)+'"><h3>'+e(point.week)+(point.is_complete?'':' <small>'+text('Teilaufnahme','Partial capture')+'</small>')+'</h3>'+cells+
    '<div class="native-trend-metric"><span>'+text('VS-Zielquote','VS goal rate')+'</span><div class="native-trend-track" aria-hidden="true"><i style="width:'+(point.vs.percent??0)+'%"></i></div>'+
-   '<strong>'+(point.vs.percent===null?'—':n(point.vs.percent)+'%')+'</strong><small>'+n(point.vs.met)+'/'+n(point.vs.confirmed)+' · '+n(point.vs.unknown)+' '+text('unklar','unknown')+'</small></div></article>';
+   '<strong>'+(point.vs.percent===null?'—':n(point.vs.percent)+'%')+'</strong><small>'+n(point.vs.met)+'/'+n(point.vs.confirmed)+' · '+n(point.vs.unknown)+' '+text('unklar','unknown')+'</small></div></button>';
  }).join('');
  return '<section class="native-alliance-trends"><div class="native-trend-kpis">'+cards+
   '<article class="native-trend-kpi"><small>'+text('VS-Zielquote','VS goal rate')+'</small><strong>'+(latest.vs.percent===null?'—':n(latest.vs.percent)+'%')+'</strong>'+
