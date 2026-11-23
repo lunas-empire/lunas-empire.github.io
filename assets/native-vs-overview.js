@@ -119,6 +119,11 @@ export function renderVsOverview(week,policy={},api={}){
   [' erfasst',' captured'],
   ['Spieler','players'],
   ['Ziel','goal']
+  ['bestätigt','confirmed'],
+  ['Aufgenommen nach Reset','Captured after reset'],
+  ['Keine rechtzeitige Tagesaufnahme vor Duellende. Nur der spätere Wochenrang; keine Tageswerte und kein finales Duell-Ergebnis.',
+   'No timely daily capture before the duel ended. This is only the later weekly ranking, with no daily scores and no final duel result.']
+
  ];
  const loc=html=>(language==='de'?html:translated.reduce((s,[a,b])=>s.replaceAll(a,b),html))
   .replace(/__RZSN_PRIVATE_(\d+)__/g,(token,index)=>privateText[Number(index)]??token);
@@ -183,6 +188,19 @@ export function renderVsOverview(week,policy={},api={}){
    '<button type="button" class="native-vs-open-person" data-native-member="'+e(p.id)+'">Spielerakte & Entwicklung öffnen ›</button>'+
    '</div></details>';
  };
+ const fallback=week.weeklyFallback;
+ const fallbackHtml=!fallback?'':
+  '<details class="native-fold native-weekly-fallback"><summary>'+
+  '<span>Wochenrang 1–20</span><b>'+e(fallback.verified_rows)+' bestätigt / '+
+  e(fallback.deferred_rows)+' unklar</b></summary><div class="native-fold-body">'+
+  '<p class="native-weekly-fallback-note">Keine rechtzeitige Tagesaufnahme vor Duellende. Nur der spätere Wochenrang; keine Tageswerte und kein finales Duell-Ergebnis.</p>'+
+  '<small>Aufgenommen nach Reset: '+e(formatTime(fallback.captured_at))+'</small>'+
+  '<ol class="native-weekly-fallback-list">'+fallback.rows.map(row=>
+   '<li class="native-weekly-fallback-row'+(row.state==='verified'?' is-verified':' is-unknown')+'">'+
+   '<span class="native-weekly-fallback-rank">'+e(row.weekly_rank)+'</span>'+
+   '<strong data-native-no-translate>'+privateName(row.source_name)+'</strong>'+
+   '<span>'+(Number.isSafeInteger(row.weekly_points)?n(row.weekly_points):tr('Unbekannt'))+'</span></li>').join('')+
+  '</ol></div></details>';
  const groupsHtml='<section class="native-vs-results" id="native-vs-results" data-native-vs-matches="'+result.matchingCount+'">'+
   '<div class="native-intel-section-head"><h3 id="native-vs-results-title" tabindex="-1">'+(result.daily?tr(['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'][view.day])+' · '+e(week.week):'Spieler nach Ergebnis')+'</h3>'+
    '<span>'+members.length+' erfasste Spieler · '+(result.daily?result.counts.low+result.counts.met:verified)+' bestätigte Tageswerte</span></div>'+
@@ -202,5 +220,5 @@ export function renderVsOverview(week,policy={},api={}){
   }).join('')+
    (!members.length?'<p class="native-muted">Noch keine Spieler für diese Woche.</p>':'')+
    '<p class="native-muted" data-native-vs-search-empty role="status" '+(result.matchingCount||!members.length?'hidden':'')+'>'+tr('Keine Spieler gefunden.')+'</p></div></section>';
- return {freshness:loc(h),dayTiles:loc(dayTiles),groupsHtml:loc(groupsHtml)};
+ return {freshness:loc(h),dayTiles:loc(dayTiles),fallbackHtml:loc(fallbackHtml),groupsHtml:loc(groupsHtml)};
 }

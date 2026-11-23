@@ -845,7 +845,7 @@ function renderVs(target){
   '</div>'+
   (notices.length?'<div class="native-vs-single-insight"><b>'+ (enUi?'Note':'Hinweis')+'</b>'+
     '<span>'+notices.map(e).join(' · ')+'</span>'+reportContext(week,officerLanguage(target.ownerDocument))+'</div>':'')+
-  layout.dayTiles+layout.groupsHtml+
+  layout.dayTiles+layout.fallbackHtml+layout.groupsHtml+
   '<details class="native-fold native-vs-explainer"><summary>'+ (enUi?'How are results assessed?':'Wie werden die Werte bewertet?')+'</summary>'+
    '<p class="native-fold-body native-muted">'+(enUi?'Weekly totals are calculated from six confirmed daily scores. Missing or unclear values are never zero; partial sums remain marked as incomplete.':'Die Wochensumme wird aus sechs bestätigten Tageswerten berechnet. Fehlende oder unklare Tage sind nie automatisch 0; Teilstände bleiben als unvollständig gekennzeichnet.')+'</p></details>'+
   '</section>';
