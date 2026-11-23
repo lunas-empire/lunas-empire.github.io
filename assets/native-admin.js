@@ -21,6 +21,7 @@ import {createDuelLeagueController,normalizeDuelLeague} from './native-duel-leag
 import {duelCopy} from './native-duel-league-i18n.js';
 import {createOpponentIntelligenceController} from './opponent-intelligence.js';
 import {opponentCopy} from './opponent-intelligence-i18n.js';
+import {createAllianceAnalysisController} from './alliance-analysis.js';
 import {diceHistory} from './dice-winners.js';
 import {formerArchiveFromTrain} from './former-train-archive.js';
 import {renderImpactWarnings} from './native-impact-warnings.js';
@@ -54,7 +55,9 @@ async function binaryRequest(path,{method='GET',body,headers={},raw=false}={}){
  }
  return raw?response:method==='GET'?response.blob():response.json();
 }
-const statViewer=createStatEvidenceViewer({request,getToken:()=>sessionToken,apiBase});
+const statViewer=createStatEvidenceViewer({request,getToken:()=>sessionToken,apiBase,
+ loadMembers:()=>request('/api/identity-options?include_former=1'),
+ onApplied:async()=>{cache.vs=enrichVsWeeks(await request('/api/vs-intelligence?fresh=1'));const target=document.querySelector('#native-admin-content');if(target)await renderVs(target)}});
 const statEvidenceKey=(snapshot,member,metric)=>snapshot&&member&&['power','kills','donations_weekly'].includes(metric)?String(snapshot)+'|'+member+'|'+metric:'';
 const statValueButton=(value,snapshot,member,metric)=>{
  const key=statEvidenceKey(snapshot,member,metric);
@@ -73,7 +76,7 @@ const secondaryPanels=[
  ['activity','Änderungsprotokoll'],['access','Zugangscodes'],['requirements','Einstellungen']
 ];
 const parentPanel=key=>({
- overview:'overview',vs:'vs',duelLeague:'vs',opponentIntel:'vs',donations:'vs',allianceTrends:'vs',weeklyReport:'vs',members:'members',readiness:'members',lwImport:'members',train:'train',more:'more',
+ overview:'overview',vs:'vs',duelLeague:'vs',opponentIntel:'vs',allianceAnalysis:'vs',donations:'vs',allianceTrends:'vs',weeklyReport:'vs',members:'members',readiness:'members',lwImport:'members',train:'train',more:'more',
  registry:'more',watch:'more',diplomacy:'more',reviews:'more',dataQuality:'more',tasks:'more',
  absences:'more',events:'more',activity:'more',access:'more',requirements:'more'
 }[key]||'overview');
@@ -94,7 +97,7 @@ const moreSections=[
   ['requirements','Einstellungen','research','Mindestwerte & Regeln']]}
 ];
 const sectionPanels={
- vs:[['vs','VS-Duell'],['duelLeague','Duell & Liga'],['opponentIntel','VS-Gegner'],['donations','Allianzspenden'],['allianceTrends','Allianz-Entwicklung'],['weeklyReport','R4-Bericht']],
+ vs:[['vs','VS-Duell'],['duelLeague','Duell & Liga'],['opponentIntel','VS-Gegner'],['allianceAnalysis','Allianz-Analyser'],['donations','Allianzspenden'],['allianceTrends','Allianz-Entwicklung'],['weeklyReport','R4-Bericht']],
  members:[['members','Mitglieder'],['readiness','Bereitschaft'],['diplomacy','Diplomatie'],['lwImport','LW Import']],
  train:[['train','Züge'],['events','Allianz-Events']]
 };
@@ -338,6 +341,14 @@ async function view(mount,{registrySnapshot=null}={}){
     read:({week,snapshot,previous})=>request('/api/opponent-intelligence'+new URLSearchParams(Object.fromEntries(Object.entries({week:week||'',snapshot:snapshot||'',previous:previous||''}).filter(([,value])=>value))).toString().replace(/^/,'?')),
     upload:(bytes,{matchId,reportDate,confirmed})=>binaryRequest('/api/opponent-intelligence?'+new URLSearchParams({match_id:matchId,report_date:reportDate,confirmed:confirmed?'1':'0'}),{method:'POST',body:bytes,headers:{'Content-Type':'text/csv'}}),
     original:async id=>{const response=await binaryRequest('/api/opponent-intelligence/'+encodeURIComponent(id)+'/original',{raw:true,headers:{Accept:'text/csv'}});return{bytes:await response.arrayBuffer(),sha256:response.headers.get('X-Evidence-SHA256')}}
+   }});
+   await controller.load();
+  }else if(panel==='allianceAnalysis'){
+   target.innerHTML='<div id="native-alliance-analysis-root"></div>';
+   const controller=createAllianceAnalysisController({root:target.querySelector('#native-alliance-analysis-root'),language:officerLanguage(target.ownerDocument),api:{
+    read:({snapshot,previous,compare})=>request('/api/alliance-analysis'+new URLSearchParams(Object.fromEntries(Object.entries({snapshot:snapshot||'',previous:previous||'',compare:compare||''}).filter(([,value])=>value))).toString().replace(/^/,'?')),
+    request:body=>request('/api/alliance-analysis/request',{method:'POST',body}),
+    upload:(bytes,{requestId,reportDate,confirmed})=>binaryRequest('/api/alliance-analysis/upload?'+new URLSearchParams({request_id:requestId,report_date:reportDate,confirmed:confirmed?'1':'0'}),{method:'POST',body:bytes,headers:{'Content-Type':'text/csv'}})
    }});
    await controller.load();
   }else if(panel==='donations'){
@@ -1371,6 +1382,10 @@ function renderVs(target){
  if(cache.vsView?.week!==week.week)cache.vsView={week:week.week,day:-1,category:'all',sort:cache.vsView?.sort||'priority',query:'',limits:{},openGroups:[]};
  const enUi=officerLanguage(target.ownerDocument)!=='de';
  const layout=renderVsOverview(week,policy,{esc:e,numberText,formatTime:formatOfficerTime,language:officerLanguage(target.ownerDocument),view:cache.vsView});
+ if(week.weeklyFallback&&!layout.dayTiles&&!layout.groupsHtml){
+  host.innerHTML='<section class="native-vs-brief native-vs-v39" aria-label="'+(enUi?'Alliance duel weekly top 20':'VS-Wochenrang 1–20')+'">'+layout.freshness+layout.fallbackHtml+'</section>';
+  return;
+ }
  const lowWarnings=(week.members||[]).filter(x=>x.repeatedLowDays).length;
  const participationWarnings=(week.members||[]).filter(x=>x.participationStatus==='below').length;
  const reviewCount=cache.overview?.reviews;
@@ -2407,7 +2422,9 @@ function initSourceReviews(host){
  let offset=0,decisionOffset=0,epoch=0;
  const live=()=>host.isConnected&&panel==='reviews'&&generation===sessionGeneration;
  host.innerHTML='<h2>Source publication reviews</h2><p>Save a decision, then apply it separately. OCR cases and unknown donation values are counted independently. Unknown never means confirmed zero.</p><form data-source-filters class="native-row"><label>Week<input name="week" type="week"></label><label>Kind<select name="kind"><option value="">All</option><option value="profile">Profile</option><option value="vs">VS</option></select></label><label>Metric<select name="metric"><option value="">All</option><option>power</option><option>kills</option><option>donations_weekly</option><option>vs_day_0</option><option>vs_day_1</option><option>vs_day_2</option><option>vs_day_3</option><option>vs_day_4</option><option>vs_day_5</option></select></label><button>Load filters</button></form><p data-source-status role="status" aria-live="polite"></p><div data-source-list></div><button type="button" data-source-more>More cases (25)</button><h3>Saved decisions</h3><div data-source-decisions></div><button type="button" data-source-decisions-more>More saved decisions (25)</button>';
- const status=host.querySelector('[data-source-status]'),form=host.querySelector('form');
+ const status=host.querySelector('[data-source-status]'),form=host.querySelector('form'),defaults=cache.sourceReviewDefaults||{};
+ for(const key of ['week','kind','metric'])if(defaults[key])form.elements[key].value=defaults[key];
+ cache.sourceReviewDefaults=null;
  let pendingBusy=false,savedBusy=false;
  async function loadPending(append=false){
   if(pendingBusy)return;
@@ -2947,7 +2964,9 @@ export function initNativeAdmin(mount){
   if(weeklyProof){
    await statViewer.openArchive(mount.querySelector('#native-admin-content'),{
     capture_id:weeklyProof.dataset.nativeWeeklyEvidence,sha256:weeklyProof.dataset.nativeWeeklySha,
-    weekly_rank:weeklyProof.dataset.nativeWeeklyRank});return;
+    weekly_rank:weeklyProof.dataset.nativeWeeklyRank,batch_id:weeklyProof.dataset.nativeWeeklyBatch,
+    source_row:Number(weeklyProof.dataset.nativeWeeklySourceRow),source_row_y:Number(weeklyProof.dataset.nativeWeeklyY),
+    state:weeklyProof.dataset.nativeWeeklyState});return;
   }
   const proof=event.target.closest?.('[data-native-stat-evidence],[data-native-stat-close],[data-native-stat-prev],[data-native-stat-next],[data-native-stat-link],[data-native-stat-browse]');
   if(proof){
@@ -2987,6 +3006,7 @@ export function initNativeAdmin(mount){
   if(button.dataset.nativeAction){
    const action=button.dataset.nativeAction;
    panel=({ 'train-today':'train','event-planning':'events','member-find':'members','review-open':'reviews','tasks-open':'tasks','absences-open':'absences','vs-open':'vs','donations-open':'donations'})[action]||'overview';
+   if(action==='review-open')cache.sourceReviewDefaults={week:button.dataset.nativeReviewWeek,kind:button.dataset.nativeReviewKind,metric:button.dataset.nativeReviewMetric};
    pageLimit=20;historyLimit=20;await view(mount);mount.scrollIntoView?.({block:'start',behavior:'auto'});
    const destination=mount.querySelector('#native-admin-content');
    if(action==='train-today'&&cache.trains?.today&&Array.isArray(cache.trains.history))editTrain(destination,cache.trains.today);

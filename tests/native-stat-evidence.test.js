@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {webcrypto} from 'node:crypto';
 import {JSDOM} from 'jsdom';
 import {initNativeAdmin,renderNativeAdmin,clearOfficer} from '../assets/native-admin.js';
+import {createStatEvidenceViewer} from '../assets/native-stat-evidence.js';
 if(!globalThis.crypto)globalThis.crypto=webcrypto;
 test('Weekly donation value and profile history open only the exact private approved screenshot',async t=>{
  const dom=new JSDOM('<html lang="en"><body><main id="app"></main></body></html>',
@@ -81,7 +82,7 @@ test('weekly fallback opens exact private original without a takeover action',as
    '/api/train-manager':{today:'2026-11-22',history:[],calendar:[],counts:{}},
    '/api/vs-intelligence':{weeks:[{week:'2026-W47',state:'preliminary',members:[],dayTotals:[],
     weeklyFallback:{status:'partial_top20',verified_rows:0,deferred_rows:1,captured_at:'2026-11-22T12:00:00+01:00',
-     rows:[{source_row:1,source_name:'Synthetic Review',weekly_rank:1,weekly_points:null,state:'deferred',
+     rows:[{source_row:1,source_name:'Synthetic Review',weekly_rank:1,weekly_points:1000,state:'verified',
       capture_id:captureId,capture_sha256:sha}]}}]}
   };
   if(!Object.hasOwn(data,path))throw Error('Unexpected request '+path);
@@ -97,4 +98,30 @@ test('weekly fallback opens exact private original without a takeover action',as
  const proof=await until('[data-native-weekly-evidence]');proof.click();
  await until('#native-stat-evidence-viewer img');
  assert.equal(app.querySelectorAll('[data-native-stat-link]').length,0,'proof view has no takeover action');
+});
+
+
+test('deferred weekly proof accepts member ID and exact value after image verification',async t=>{
+ const dom=new JSDOM('<main id="app"></main>',{url:'https://lunas-empire.github.io/#admin'});t.after(()=>dom.window.close());
+ const image=new Uint8Array([137,80,78,71,13,10,26,10,...Array(60).fill(3)]),captureId='12345678-1234-4abc-8def-1234567890ab';
+ const sha=Array.from(new Uint8Array(await webcrypto.subtle.digest('SHA-256',image)),x=>x.toString(16).padStart(2,'0')).join('');
+ const oldFetch=globalThis.fetch,oldCreate=URL.createObjectURL;URL.createObjectURL=()=> 'blob:weekly-review';
+ globalThis.fetch=async(url,options={})=>{
+  assert.equal(url,'/api/capture-archive/'+captureId+'/image');assert.equal(options.headers.Authorization,'Bearer officer');
+  return new Response(image,{headers:{'Content-Type':'image/png'}});
+ };
+ t.after(()=>{globalThis.fetch=oldFetch;URL.createObjectURL=oldCreate});
+ let payload=null,applied=null;
+ const viewer=createStatEvidenceViewer({apiBase:'',getToken:()=> 'officer',loadMembers:async()=>[{id:'member-1',name:'Reviewed Player',rank:'R2',status:'active'}],
+  request:async(path,options)=>{assert.equal(path,'/api/vs-weekly-fallback/review');payload=options.body;return{reused:false,review:options.body}},
+  onApplied:async result=>{applied=result}});
+ const app=dom.window.document.querySelector('#app');
+ await viewer.openArchive(app,{capture_id:captureId,sha256:sha,weekly_rank:2,batch_id:'weekly-fallback-2026-W47-'+'a'.repeat(16),source_row:2,source_row_y:40,state:'deferred'});
+ const form=app.querySelector('.native-weekly-review');assert.ok(form);
+ form.elements.member_id.value='member-1';form.elements.weekly_points.value='0';form.elements.confirmed.checked=true;
+ form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
+ await new Promise(resolve=>setTimeout(resolve,0));
+ assert.deepEqual(payload,{batch_id:'weekly-fallback-2026-W47-'+'a'.repeat(16),source_row:2,member_id:'member-1',weekly_points:0,
+  capture_sha256:sha,source_row_y:40,confirmed:true,reason:'Wochenrang, Mitglied und Wert im Originalbild bestätigt'});
+ assert.equal(applied.reused,false);assert.equal(app.querySelector('#native-stat-evidence-viewer'),null);
 });

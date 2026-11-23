@@ -379,9 +379,9 @@ export function renderVsOverview(week,policy={},api={}){
  };
  const activeCategory=['all','low','met','unknown','joined'].includes(view.category)?view.category:'all';
  const resultLimit=Math.max(10,Number(view.limits?.[activeCategory])||10),shownResults=result.matching.slice(0,resultLimit);
- const fallback=week.weeklyFallback;
+ const fallback=week.weeklyFallback,fallbackOnly=Boolean(fallback&&verified===0);
  const fallbackHtml=!fallback?'':
-  '<details class="native-fold native-weekly-fallback"><summary>'+
+  '<details class="native-fold native-weekly-fallback" '+(fallbackOnly?'open':'')+'><summary>'+
   '<span>Wochenrang 1–20</span><b>'+e(fallback.verified_rows)+' bestätigt / '+
   e(fallback.deferred_rows)+' unklar</b></summary><div class="native-fold-body">'+
   '<p class="native-weekly-fallback-note">Keine rechtzeitige Tagesaufnahme vor Duellende. Nur der spätere Wochenrang; keine Tageswerte und kein finales Duell-Ergebnis.</p>'+
@@ -392,7 +392,10 @@ export function renderVsOverview(week,policy={},api={}){
    '<strong data-native-no-translate>'+privateName(row.source_name)+'</strong>'+
    '<span class="native-weekly-fallback-value">'+(Number.isSafeInteger(row.weekly_points)?n(row.weekly_points):tr('Unbekannt'))+
    (row.capture_id&&row.capture_sha256?'<button type="button" data-native-weekly-evidence="'+e(row.capture_id)+
-    '" data-native-weekly-sha="'+e(row.capture_sha256)+'" data-native-weekly-rank="'+e(row.weekly_rank)+'" aria-label="Originalbeleg zu Rang '+e(row.weekly_rank)+'">Originalbeleg ansehen</button>':'')+
+    '" data-native-weekly-sha="'+e(row.capture_sha256)+'" data-native-weekly-rank="'+e(row.weekly_rank)+
+    '" data-native-weekly-batch="'+e(row.batch_id)+'" data-native-weekly-source-row="'+e(row.source_row)+
+    '" data-native-weekly-y="'+e(row.source_row_y)+'" data-native-weekly-state="'+e(row.state)+
+    '" aria-label="Originalbeleg zu Rang '+e(row.weekly_rank)+'">Originalbeleg ansehen</button>':'')+
    '</span></li>').join('')+
   '</ol></div></details>';
  const groupsHtml='<section class="native-vs-results" id="native-vs-results" data-native-vs-matches="'+result.matchingCount+'">'+
@@ -408,7 +411,7 @@ export function renderVsOverview(week,policy={},api={}){
    (shownResults.length<result.matchingCount?'<button type="button" data-native-vs-more-group="'+activeCategory+'">'+tr('Weitere Spieler')+'</button>':'')+'</div></div>'+
    (!members.length?'<p class="native-muted">Noch keine Spieler für diese Woche.</p>':'')+
    '<p class="native-muted" data-native-vs-search-empty role="status" '+(result.matchingCount||!members.length?'hidden':'')+'>'+tr('Keine Spieler gefunden.')+'</p></div></section>';
- return {freshness:loc(h),dayTiles:loc(dayTiles),trendHtml:loc(trendHtml),fallbackHtml:loc(fallbackHtml),groupsHtml:loc(groupsHtml)};
+ return {freshness:loc(h),dayTiles:fallbackOnly?'':loc(dayTiles),trendHtml:fallbackOnly?'':loc(trendHtml),fallbackHtml:loc(fallbackHtml),groupsHtml:fallbackOnly?'':loc(groupsHtml)};
 }
 
 // Derived locally from the existing authorized API; no new backend fields required.

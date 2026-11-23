@@ -62,7 +62,9 @@ test('weekly fallback card lists all twenty ranks without claiming daily or fina
   capture_id:'capture-'+index,capture_sha256:'a'.repeat(64)}));
  const week={week:'2026-W47',state:'preliminary',members:[],weeklyFallback:{
   status:'partial_top20',verified_rows:11,deferred_rows:9,captured_at:'2026-11-22T12:00:00+01:00',rows}};
- const html=renderVsOverview(week,{}, {esc,numberText:String,formatTime:fmt,language:'de'}).fallbackHtml;
+ const layout=renderVsOverview(week,{}, {esc,numberText:String,formatTime:fmt,language:'de'}),html=layout.fallbackHtml;
+ assert.equal(layout.dayTiles,'');assert.equal(layout.groupsHtml,'');assert.equal(layout.trendHtml,'');
+ assert.match(html,/native-weekly-fallback" open/);
  assert.match(html,/Wochenrang 1–20/);
  assert.match(html,/Keine rechtzeitige Tagesaufnahme/);
  assert.match(html,/kein finales Duell-Ergebnis/);

@@ -12,7 +12,7 @@ const fieldValue=(row,key,locale,copy)=>{
  const value=row?.values?.[key],formatted=metrics.includes(key)?format(value,locale):value;
  return formatted===null||formatted===undefined||formatted===''?'<span title="'+esc(copy.notCaptured)+'">—</span>':'<span data-native-no-translate>'+esc(formatted)+'</span>';
 };
-function comparisonTable(comparison,copy,locale,metric){
+export function comparisonTable(comparison,copy,locale,metric){
  const row=comparison?.metrics?.[metric];if(!row)return '';
  const cell=(side,key)=>format(side?.[key],locale)??'<span title="'+esc(copy.notCaptured)+'">—</span>';
  const coverage=side=>format(side?.verified,locale)??'0';
@@ -27,7 +27,7 @@ function rankedRows(rows,metric,limit){
 function playerDetails(row,copy,locale){
  return '<dl class="native-opponent-player-details">'+[...metrics,...textFields].map(key=>'<div><dt>'+esc(metricLabels[key]||key)+'</dt><dd>'+fieldValue(row,key,locale,copy)+'</dd></div>').join('')+'</dl>';
 }
-function playerList(rows,side,metric,limit,copy,locale,canCompare){
+export function playerList(rows,side,metric,limit,copy,locale,canCompare){
  const ranked=rankedRows(rows,metric,limit);
  if(!ranked.length)return '<p class="native-muted">'+esc(copy.notCaptured)+'</p>';
  return '<ol class="native-opponent-top native-opponent-player-list">'+ranked.map((row,index)=>'<li><details class="native-opponent-player"><summary><span class="native-opponent-player-rank">'+esc(index+1)+'</span><span class="native-opponent-player-name" data-native-no-translate><strong>'+esc(row.source_name)+'</strong><small>'+esc(row.source_rank||copy.unknown)+'</small></span><b>'+esc(format(row.values[metric],locale))+'</b></summary><div class="native-opponent-player-body"><h4>'+esc(copy.playerDetails)+'</h4>'+playerDetails(row,copy,locale)+(canCompare?'<button type="button" data-native-opponent-compare="'+esc(side)+'" data-native-opponent-row="'+esc(row.source_row)+'">'+esc(copy.comparePlayer)+'</button>':'')+'</div></details></li>').join('')+'</ol>';
@@ -46,7 +46,7 @@ function personSelect(side,rows,selected,copy,locale){
  const collator=new Intl.Collator(locale,{numeric:true,sensitivity:'base'}),ordered=[...rows].sort((a,b)=>collator.compare(a.source_name,b.source_name)||a.source_row-b.source_row);
  return '<label>'+esc(side==='own'?copy.own:copy.opponentSide)+'<select data-native-opponent-compare-'+side+'>'+ordered.map(row=>'<option value="'+esc(row.source_row)+'" '+(row.source_row===selected?'selected':'')+'>'+esc(row.source_name)+'</option>').join('')+'</select></label>';
 }
-function personComparison(data,compare,copy,locale){
+export function personComparison(data,compare,copy,locale){
  if(!compare)return '';
  const own=list(data.ownRows).find(row=>row.source_row===compare.ownRow),opponent=list(data.opponentRows).find(row=>row.source_row===compare.opponentRow);
  if(!own||!opponent)return '';
@@ -69,7 +69,7 @@ export function renderOpponentIntelligence(data={},options={}){
   (!selected?'<p class="native-muted">'+esc(copy.noSnapshots)+'</p>':'<section class="native-opponent-current"><div class="native-row"><div><h3 data-native-no-translate>'+esc(selected.alliance_name)+' ['+esc(selected.alliance_tag)+'] · S'+esc(selected.server_number??copy.unknown)+'</h3><p class="native-muted">'+esc(text(copy,'dates',{own:data.ownBatch?.report_date,opponent:selected.report_date}))+'</p></div><button type="button" data-native-opponent-original>'+esc(copy.download)+'</button></div><p class="native-evidence-note">'+esc(copy.noPrediction)+'</p><div class="native-opponent-analysis-controls"><label>'+esc(copy.metric)+'<select data-native-opponent-metric>'+metrics.map(key=>'<option value="'+key+'" '+(key===metric?'selected':'')+'>'+esc(metricLabels[key])+'</option>').join('')+'</select></label><label>'+esc(copy.topN)+'<select data-native-opponent-limit>'+limitOptions+'</select></label></div>'+comparisonTable(data.comparison,copy,locale,metric)+
    '<section class="native-opponent-player-rankings"><div class="native-opponent-player-columns"><section><h3>'+esc(copy.own)+'</h3>'+(ownRows.length?playerList(ownRows,'own',metric,limit,copy,locale,opponentRows.length>0):'<p class="native-muted">'+esc(copy.noOwnPlayers)+'</p>')+'</section><section><h3>'+esc(copy.opponentSide)+'</h3>'+playerList(opponentRows,'opponent',metric,limit,copy,locale,ownRows.length>0)+'</section></div></section>'+
    personComparison(data,options.compare,copy,locale)+'<div class="native-opponent-analysis"><section><h3>'+esc(copy.own)+' · '+esc(copy.squads)+'</h3>'+squads(ownRows,copy)+'</section><section><h3>'+esc(copy.opponentSide)+' · '+esc(copy.squads)+'</h3>'+squads(opponentRows,copy)+'</section></div></section>'+evolution(data,copy,locale))+
-  '<section class="native-opponent-history"><h3>'+esc(copy.history)+'</h3>'+(snapshots.length?'<div class="native-opponent-history-list">'+snapshots.map(item=>'<button type="button" data-native-opponent-open="'+esc(item.id)+'" '+(item.id===selected?.id?'aria-current="true"':'')+'><strong data-native-no-translate>'+esc(item.iso_week)+' · '+esc(item.alliance_tag)+'</strong><span>'+esc(item.report_date)+'</span><small>'+esc(item.row_count)+' '+esc(copy.players)+'</small></button>').join('')+'</div>':'<p class="native-muted">'+esc(copy.noSnapshots)+'</p>')+'</section></div>';
+  '<details class="native-fold native-opponent-history"><summary><span>'+esc(copy.history)+'</span><b>'+snapshots.length+'</b></summary><div class="native-fold-body">'+(snapshots.length?'<div class="native-opponent-history-list">'+snapshots.map(item=>'<button type="button" data-native-opponent-open="'+esc(item.id)+'" '+(item.id===selected?.id?'aria-current="true"':'')+'><strong data-native-no-translate>'+esc(item.iso_week)+' · '+esc(item.alliance_tag)+'</strong><span>'+esc(item.report_date)+'</span><small>'+esc(item.row_count)+' '+esc(copy.players)+'</small></button>').join('')+'</div>':'<p class="native-muted">'+esc(copy.noSnapshots)+'</p>')+'</div></details></div>';
 }
 export function createOpponentIntelligenceController({root,api,language='de'}={}){
  if(!root||!api)throw new TypeError('Opponent root and API are required');

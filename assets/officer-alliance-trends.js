@@ -10,7 +10,7 @@ export function buildAllianceTrendSeries(trends={},vs={},range='all'){
   const below=days.reduce((sum,day)=>sum+(Number.isSafeInteger(day.failed)?day.failed:0),0);
   const unknown=days.reduce((sum,day)=>sum+(Number.isSafeInteger(day.unknown)?day.unknown:0),0);
   const confirmed=met+below;
-  return {week,captured_at:profileWeek?.captured_at||null,is_complete:profileWeek?.is_complete===true,
+  return {week,captured_at:profileWeek?.captured_at||null,is_complete:profileWeek?.is_complete===true,active:profileWeek?.active??trends.active??0,
    metrics:Object.fromEntries(metricKeys.map(metric=>[metric,profileWeek?.metrics?.[metric]||emptyMetric()])),
    vs:{met,below,unknown,confirmed,percent:confirmed?Math.round(met/confirmed*100):null}};
  });
@@ -33,7 +33,8 @@ export function renderAllianceTrends(trends={},vs={},options={}){
   const value=latest.metrics[metric],change=delta({...value,week:latest.week},{...first.metrics[metric],week:first.week});
   return '<article class="native-trend-kpi"><small>'+e(labels[metric])+'</small><strong>'+(value.total===null?'—':n(value.total))+'</strong>'+
    '<span>'+text('Median','Median')+': '+(value.median===null?'—':n(value.median))+'</span>'+
-   '<small>'+n(value.verified)+' '+text('bestätigt','confirmed')+' · '+n(value.coverage)+'%</small>'+
+   '<small>'+n(value.verified)+'/'+n(latest.active)+' '+text('bestätigt','confirmed')+' · '+n(value.coverage)+'%</small>'+
+   (value.coverage<100?'<button type="button" data-native-action="review-open" data-native-review-week="'+e(latest.week)+'" data-native-review-kind="profile" data-native-review-metric="'+e(metric)+'">'+text('Offene Fälle prüfen','Review pending cases')+'</button>':'')+
    '<b>'+(change===null?text('Kein Vergleich','No comparison'):(change>0?'+':'')+n(change)+' '+text('seit','since')+' '+e(first.week))+'</b></article>';
  }).join('');
  const vsChange=latest.vs.percent!==null&&first.vs.percent!==null&&latest.week!==first.week?latest.vs.percent-first.vs.percent:null;

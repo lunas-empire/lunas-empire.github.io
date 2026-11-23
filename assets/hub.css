@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026.11.23-duel-opponent-workbench');
+@import url('./tokens.css?v=2026.11.23-alliance-analysis-workbench');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -2348,3 +2348,16 @@ button.native-trend-week{text-align:start;white-space:normal;color:inherit}butto
 .native-opponent-person-table th:first-child{width:23%}
 .native-opponent-person-table th,.native-opponent-person-table td{padding:.5rem .4rem;overflow-wrap:anywhere}
 @media(max-width:30rem){.native-opponent-person-table{font-size:.75rem}.native-opponent-person-table th,.native-opponent-person-table td{padding:.45rem .25rem}}
+.native-weekly-review{display:grid;gap:var(--space-sm);margin-top:var(--space-md)}
+.native-weekly-review label{display:grid;gap:.3rem;min-width:0}
+.native-weekly-review label:has(input[type=checkbox]){display:flex;align-items:flex-start;gap:var(--space-xs)}
+.native-weekly-review :is(select,input){width:100%;min-width:0;max-width:100%}
+.native-weekly-review input[type=checkbox]{flex:0 0 22px;width:22px;height:22px;margin-top:.2rem}
+.native-weekly-review [role=status]{margin:0}
+.native-alliance-request form,.native-alliance-pending-item form{display:grid;gap:var(--space-sm);padding-top:var(--space-sm)}
+.native-alliance-request label,.native-alliance-pending-item label,.native-alliance-evolution label{display:grid;gap:.3rem;min-width:0}
+.native-alliance-pending,.native-alliance-archive,.native-alliance-current{margin-block:var(--space-lg)}
+.native-alliance-pending-item>summary{display:flex;justify-content:space-between;align-items:center;gap:var(--space-sm);flex-wrap:wrap}
+.native-alliance-pending-item>summary small{color:var(--color-muted)}
+.native-alliance-pending-item :is(input,select),.native-alliance-request :is(input,select){width:100%;min-width:0;max-width:100%}
+@media(min-width:45rem){.native-alliance-request form,.native-alliance-pending-item form{grid-template-columns:repeat(2,minmax(0,1fr))}.native-alliance-request form button,.native-alliance-pending-item form button{grid-column:1/-1}}

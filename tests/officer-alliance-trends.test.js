@@ -23,6 +23,7 @@ test('Alliance trend series uses confirmed denominators and preserves zeroes and
 test('Alliance trend rendering shows deltas, partial captures and no false zero fallback',()=>{
  const html=renderAllianceTrends(trends,vs,{range:'all',numberText:String}),dom=new JSDOM(html),text=dom.window.document.body.textContent;
  assert.match(text,/\+200 seit 2026-W45/);assert.match(text,/Teilaufnahme/);assert.match(text,/100%/);
+ assert.match(text,/1\/2 bestätigt · 50%/);assert.match(html,/data-native-review-week="2026-W46" data-native-review-kind="profile" data-native-review-metric="kills"/);
  assert.doesNotMatch(html,/undefined|NaN/);dom.window.close();
  const single=renderAllianceTrends({weeks:[trends.weeks[1]]},{weeks:[vs.weeks[1]]},{numberText:String});assert.match(single,/Kein Vergleich/);
  const empty=renderAllianceTrends({weeks:[]},{weeks:[]},{numberText:String});assert.match(empty,/Noch keine/);

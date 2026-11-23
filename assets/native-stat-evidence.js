@@ -5,7 +5,7 @@ import {renderEvidenceRow} from './native-evidence-row.js';
 const safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const validKey=key=>/^([A-Za-z0-9-]{1,80})\|([A-Za-z0-9-]{1,80})\|(power|kills|donations_weekly)$/.exec(String(key));
 const PATH=(id,member,metric)=>'/api/stat-evidence/'+encodeURIComponent(id)+'/'+encodeURIComponent(member)+'/'+metric;
-export function createStatEvidenceViewer({request,getToken,apiBase}){
+export function createStatEvidenceViewer({request,getToken,apiBase,loadMembers=async()=>[],onApplied=async()=>{}}){
  let active=null;
  const clearBlob=()=>{
   if(active?.url){URL.revokeObjectURL(active.url);active.url=null}
@@ -150,12 +150,36 @@ export function createStatEvidenceViewer({request,getToken,apiBase}){
   host.innerHTML='<div class="native-vs-evidence-panel native-stat-evidence-panel">'+
    '<div class="native-row"><h3>Wochenrang · Originalbeleg</h3>'+
    '<button type="button" data-native-stat-close>Bild schließen ✕</button></div>'+
-   '<p class="native-muted">Rang '+safe(proof.weekly_rank)+' · Nur zur manuellen Prüfung. Keine automatische Übernahme.</p>'+
-   '<div class="native-stat-image" role="status">Originalquelle wird geprüft …</div></div>';
-  target.append(host);active={host,url:null};host.querySelector('[data-native-stat-close]')?.focus();
-  try{await loadImage('/api/capture-archive/'+encodeURIComponent(id)+'/image',sha256,
-   host.querySelector('.native-stat-image'),'Privater Wochenrang-Originalbeleg')}
-  catch(error){if(active?.host===host)host.querySelector('.native-stat-image').textContent=error.message}
+   '<p class="native-muted">Rang '+safe(proof.weekly_rank)+' · Originalbild und Zeile zuerst prüfen.</p>'+
+   '<div class="native-stat-image" role="status">Originalquelle wird geprüft …</div><div class="native-stat-body"></div></div>';
+  target.append(host);active={host,url:null,proof,imageVerified:false,busy:false};host.querySelector('[data-native-stat-close]')?.focus();
+  const state=active;
+  try{
+   state.imageVerified=await loadImage('/api/capture-archive/'+encodeURIComponent(id)+'/image',sha256,
+    host.querySelector('.native-stat-image'),'Privater Wochenrang-Originalbeleg');
+   if(!state.imageVerified||proof.state!=='deferred')return;
+   const answer=await loadMembers();if(active!==state)return;
+   const members=Array.isArray(answer)?answer:answer?.members||[];
+   const options=members.map(member=>'<option value="'+safe(member.id)+'">'+safe(member.name)+' · '+safe(member.rank)+' · '+safe(member.status)+' · '+safe(member.id)+'</option>').join('');
+   host.querySelector('.native-stat-body').innerHTML='<form class="native-weekly-review"><label>Permanente member_id<select name="member_id" required><option value="">Bitte ausdrücklich auswählen</option>'+options+'</select></label>'+
+    '<label>Exakter Wochenwert<input name="weekly_points" type="number" min="0" step="1" inputmode="numeric" required></label>'+
+    '<label>Prüfgrund<input name="reason" minlength="8" maxlength="300" required value="Wochenrang, Mitglied und Wert im Originalbild bestätigt"></label>'+
+    '<label><input type="checkbox" name="confirmed" required> Originalbild, Zeile, Mitglied und Wert visuell bestätigt</label>'+
+    '<button type="submit">Geprüften Wert übernehmen</button><p role="status" aria-live="polite"></p></form>';
+   host.querySelector('form').addEventListener('submit',async event=>{
+    event.preventDefault();if(state.busy||!state.imageVerified)return;
+    const form=event.currentTarget,message=form.querySelector('[role=status]');
+    if(!form.reportValidity()){message.textContent='Mitglied, exakten Wert, Grund und Bestätigung ausfüllen.';return}
+    state.busy=true;form.querySelector('[type=submit]').disabled=true;let applied=false;
+    try{
+     const result=await request('/api/vs-weekly-fallback/review',{method:'POST',body:{
+      batch_id:proof.batch_id,source_row:proof.source_row,member_id:form.elements.member_id.value,
+      weekly_points:Number(form.elements.weekly_points.value),capture_sha256:sha256,source_row_y:proof.source_row_y,
+      confirmed:form.elements.confirmed.checked,reason:form.elements.reason.value.trim()}});
+     applied=true;close(target);await onApplied(result);
+    }catch(error){if(active===state){message.textContent=(applied?'Gespeichert; Anzeige konnte nicht aktualisiert werden: ':'Nicht übernommen: ')+error.message;form.querySelector('[type=submit]').disabled=false;state.busy=false}}
+   });
+  }catch(error){if(active?.host===host)host.querySelector('.native-stat-body').textContent=error.message}
  };
  return {open,openArchive,close,step,link};
 }
