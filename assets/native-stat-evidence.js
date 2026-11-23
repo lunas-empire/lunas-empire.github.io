@@ -139,5 +139,23 @@ export function createStatEvidenceViewer({request,getToken,apiBase}){
    if(active===s)await open(s.host.parentElement,s.key);
   }catch(error){if(active===s){message.textContent='Nicht zugeordnet: '+error.message;btn.disabled=false}}
  };
- return {open,close,step,link};
+ const openArchive=async(target,proof)=>{
+  const id=String(proof?.capture_id||''),sha256=String(proof?.sha256||'');
+  if(!/^[a-f0-9-]{36}$/i.test(id)||!/^[a-f0-9]{64}$/.test(sha256))return;
+  close(target);
+  const host=target.ownerDocument.createElement('section');
+  host.id='native-stat-evidence-viewer';host.className='native-vs-evidence-backdrop';
+  host.setAttribute('role','dialog');host.setAttribute('aria-modal','true');
+  host.setAttribute('aria-label','Privater Originalbeleg zum Wochenrang');
+  host.innerHTML='<div class="native-vs-evidence-panel native-stat-evidence-panel">'+
+   '<div class="native-row"><h3>Wochenrang · Originalbeleg</h3>'+
+   '<button type="button" data-native-stat-close>Bild schließen ✕</button></div>'+
+   '<p class="native-muted">Rang '+safe(proof.weekly_rank)+' · Nur zur manuellen Prüfung. Keine automatische Übernahme.</p>'+
+   '<div class="native-stat-image" role="status">Originalquelle wird geprüft …</div></div>';
+  target.append(host);active={host,url:null};host.querySelector('[data-native-stat-close]')?.focus();
+  try{await loadImage('/api/capture-archive/'+encodeURIComponent(id)+'/image',sha256,
+   host.querySelector('.native-stat-image'),'Privater Wochenrang-Originalbeleg')}
+  catch(error){if(active?.host===host)host.querySelector('.native-stat-image').textContent=error.message}
+ };
+ return {open,openArchive,close,step,link};
 }

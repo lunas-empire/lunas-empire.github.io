@@ -390,7 +390,10 @@ export function renderVsOverview(week,policy={},api={}){
    '<li class="native-weekly-fallback-row'+(row.state==='verified'?' is-verified':' is-unknown')+'">'+
    '<span class="native-weekly-fallback-rank">'+e(row.weekly_rank)+'</span>'+
    '<strong data-native-no-translate>'+privateName(row.source_name)+'</strong>'+
-   '<span>'+(Number.isSafeInteger(row.weekly_points)?n(row.weekly_points):tr('Unbekannt'))+'</span></li>').join('')+
+   '<span class="native-weekly-fallback-value">'+(Number.isSafeInteger(row.weekly_points)?n(row.weekly_points):tr('Unbekannt'))+
+   (row.capture_id&&row.capture_sha256?'<button type="button" data-native-weekly-evidence="'+e(row.capture_id)+
+    '" data-native-weekly-sha="'+e(row.capture_sha256)+'" data-native-weekly-rank="'+e(row.weekly_rank)+'" aria-label="Originalbeleg zu Rang '+e(row.weekly_rank)+'">Originalbeleg ansehen</button>':'')+
+   '</span></li>').join('')+
   '</ol></div></details>';
  const groupsHtml='<section class="native-vs-results" id="native-vs-results" data-native-vs-matches="'+result.matchingCount+'">'+
   '<div class="native-intel-section-head"><h3 id="native-vs-results-title" tabindex="-1">'+(result.daily?tr(['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'][view.day])+' · '+e(week.week):'Spieler nach Ergebnis')+'</h3>'+

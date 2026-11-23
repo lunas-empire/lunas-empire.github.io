@@ -61,3 +61,40 @@ test('Weekly donation value and profile history open only the exact private appr
  app.querySelector('[data-native-stat-close]').click();
  assert.equal(app.querySelector('#native-stat-evidence-viewer'),null);
 });
+
+test('weekly fallback opens exact private original without a takeover action',async t=>{
+ const dom=new JSDOM('<main id="app"></main>',{url:'https://lunas-empire.github.io/#admin'});
+ const oldWindow=globalThis.window,oldFetch=globalThis.fetch,oldCreate=URL.createObjectURL;
+ globalThis.window=dom.window;URL.createObjectURL=()=> 'blob:weekly-proof';
+ const image=new Uint8Array([137,80,78,71,13,10,26,10,...Array(60).fill(2)]);
+ const sha=Array.from(new Uint8Array(await webcrypto.subtle.digest('SHA-256',image)),x=>x.toString(16).padStart(2,'0')).join('');
+ const captureId='12345678-1234-4abc-8def-1234567890ab';
+ globalThis.fetch=async(url,options={})=>{
+  const path=new URL(url).pathname;
+  if(path==='/api/capture-archive/'+captureId+'/image'){
+   assert.equal(options.headers.Authorization,'Bearer weekly-memory');
+   return new Response(image,{headers:{'Content-Type':'image/png'}});
+  }
+  const data={
+   '/api/native-login':{token:'weekly-memory',name:'Officer',role:'R4'},
+   '/api/overview':{reviews:0,active:1},'/api/operations':{tasks:[],events:[],members:[]},
+   '/api/train-manager':{today:'2026-11-22',history:[],calendar:[],counts:{}},
+   '/api/vs-intelligence':{weeks:[{week:'2026-W47',state:'preliminary',members:[],dayTotals:[],
+    weeklyFallback:{status:'partial_top20',verified_rows:0,deferred_rows:1,captured_at:'2026-11-22T12:00:00+01:00',
+     rows:[{source_row:1,source_name:'Synthetic Review',weekly_rank:1,weekly_points:null,state:'deferred',
+      capture_id:captureId,capture_sha256:sha}]}}]}
+  };
+  if(!Object.hasOwn(data,path))throw Error('Unexpected request '+path);
+  return Response.json(data[path]);
+ };
+ t.after(()=>{clearOfficer();globalThis.window=oldWindow;globalThis.fetch=oldFetch;URL.createObjectURL=oldCreate;dom.window.close()});
+ const app=dom.window.document.querySelector('#app');
+ const until=async predicate=>{for(let i=0;i<120;i++){const node=app.querySelector(predicate);if(node)return node;await new Promise(r=>setTimeout(r,5))}throw Error('UI missing '+predicate)};
+ initNativeAdmin(app);await renderNativeAdmin(app);
+ app.querySelector('[name=code]').value='synthetic';
+ app.querySelector('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
+ (await until('[data-officer-tab=vs]')).click();
+ const proof=await until('[data-native-weekly-evidence]');proof.click();
+ await until('#native-stat-evidence-viewer img');
+ assert.equal(app.querySelectorAll('[data-native-stat-link]').length,0,'proof view has no takeover action');
+});

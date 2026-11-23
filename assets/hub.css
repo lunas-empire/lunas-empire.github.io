@@ -2314,3 +2314,5 @@ button.native-trend-week{text-align:start;white-space:normal;color:inherit}butto
 .native-weekly-fallback-row strong{min-width:0;overflow-wrap:anywhere}
 .native-weekly-fallback-rank{font-weight:700;color:var(--color-accent)}
 .native-weekly-fallback-row.is-unknown>span:last-child{color:var(--color-muted)}
+.native-weekly-fallback-value{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:.35rem}
+.native-weekly-fallback-value button{min-height:36px;padding:.25rem .5rem;font-size:.78rem;white-space:normal}

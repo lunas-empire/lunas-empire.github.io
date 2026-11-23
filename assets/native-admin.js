@@ -2943,6 +2943,12 @@ export function initNativeAdmin(mount){
    }
    return;
   }
+  const weeklyProof=event.target.closest?.('[data-native-weekly-evidence]');
+  if(weeklyProof){
+   await statViewer.openArchive(mount.querySelector('#native-admin-content'),{
+    capture_id:weeklyProof.dataset.nativeWeeklyEvidence,sha256:weeklyProof.dataset.nativeWeeklySha,
+    weekly_rank:weeklyProof.dataset.nativeWeeklyRank});return;
+  }
   const proof=event.target.closest?.('[data-native-stat-evidence],[data-native-stat-close],[data-native-stat-prev],[data-native-stat-next],[data-native-stat-link],[data-native-stat-browse]');
   if(proof){
    const area=mount.querySelector('#native-admin-content');

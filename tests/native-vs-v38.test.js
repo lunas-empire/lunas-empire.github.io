@@ -58,7 +58,8 @@ test('Weekly result comes only from six verified daily values, never imported le
 
 test('weekly fallback card lists all twenty ranks without claiming daily or final results',()=>{
  const rows=Array.from({length:20},(_,index)=>({source_row:index+1,source_name:'Player '+(index+1),
-  weekly_rank:index+1,weekly_points:index===0?1000:null,state:index===0?'verified':'deferred'}));
+  weekly_rank:index+1,weekly_points:index===0?1000:null,state:index===0?'verified':'deferred',
+  capture_id:'capture-'+index,capture_sha256:'a'.repeat(64)}));
  const week={week:'2026-W47',state:'preliminary',members:[],weeklyFallback:{
   status:'partial_top20',verified_rows:11,deferred_rows:9,captured_at:'2026-11-22T12:00:00+01:00',rows}};
  const html=renderVsOverview(week,{}, {esc,numberText:String,formatTime:fmt,language:'de'}).fallbackHtml;
@@ -68,5 +69,7 @@ test('weekly fallback card lists all twenty ranks without claiming daily or fina
  assert.equal((html.match(/class="native-weekly-fallback-row/g)||[]).length,20);
  assert.match(html,/Player 1/);
  assert.match(html,/Unbekannt/);
+ assert.equal((html.match(/data-native-weekly-evidence="capture-/g)||[]).length,20);
+ assert.match(html,/data-native-weekly-sha="a{64}"/);
  assert.doesNotMatch(html,/6\/6 Ziel erreicht/);
 });
