@@ -9,11 +9,14 @@ test('iPhone More navigation offers direct grouped shortcuts and closes on tap',
  globalThis.window=dom.window;dom.window.HTMLElement.prototype.scrollIntoView=()=>{};
  t.after(()=>{clearOfficer();globalThis.window=previousWindow;globalThis.fetch=previousFetch;dom.window.close()});
  const id='aaaa-aaaa';
+ const belowExtras=Array.from({length:11},(_,i)=>({id:'below-'+i,name:'Below '+String(i+1).padStart(2,'0'),rank:'R2',
+  status:'below',points:1000+i*500,difference:1000+i*500-20000,delta:null,previous_week:null}));
  const weekly={minimum:20000,weeks:[{week:'2026-W41',captured_at:'2026-10-11T00:19:36+02:00',
-  is_complete:true,active:3,verified:2,met:1,below:1,unknown:1,
+  is_complete:true,active:14,verified:13,met:1,below:12,unknown:1,
   members:[
-   {id,name:'Alpha',rank:'R4',status:'met',points:22000,difference:2000,delta:null,previous_week:null},
-   {id:'b',name:'Bravo',rank:'R3',status:'below',points:15000,difference:-5000,delta:null,previous_week:null},
+   {id,name:'Alpha',rank:'R4',status:'met',points:22000,difference:2000,delta:2000,previous_week:'2026-W40'},
+   {id:'b',name:'Bravo',rank:'R3',status:'below',points:15000,difference:-5000,delta:-1000,previous_week:'2026-W40'},
+   ...belowExtras,
    {id:'c',name:'Charlie',rank:'R2',status:'unknown',points:null,difference:null,delta:null,previous_week:null}
   ]}]};
  const calls=[];
@@ -42,9 +45,9 @@ test('iPhone More navigation offers direct grouped shortcuts and closes on tap',
  q('[data-officer-tab=more]').click();
  assert.ok(q('.native-more-hub'),'A dedicated More page opens');
  assert.equal(mount.querySelectorAll('.native-hub-section').length,3);
- assert.equal(mount.querySelectorAll('.native-hub-tile').length,10);
+ assert.equal(mount.querySelectorAll('.native-hub-tile').length,11);
  const shortcuts=[...mount.querySelectorAll('.native-hub-tile[data-officer-tab]')].map(x=>x.dataset.officerTab);
- assert.equal(new Set(shortcuts).size,10);
+ assert.equal(new Set(shortcuts).size,11);
  assert.ok(shortcuts.includes('requirements'));
  assert.ok(shortcuts.includes('registry')&&shortcuts.includes('access'));
  assert.equal(q('.native-more-menu'),null,'Old menu is removed');
@@ -59,40 +62,46 @@ test('iPhone More navigation offers direct grouped shortcuts and closes on tap',
  await until(()=>q('.native-donation-tiles'));
  assert.ok(calls.includes('/api/donations-intelligence'));
  assert.match(q('.native-donation-summary').textContent,/20.000/);
- assert.equal(q('.native-donation-tiles').querySelectorAll('article').length,4);
- assert.match(q('.native-donation-summary').textContent,/Bisher liegt nur eine verlässliche Wochenaufnahme vor/);
- const folds=q('.native-donation-groups').querySelectorAll('details');
- assert.equal(folds.length,3);
- assert.match(folds[0].textContent,/Bravo/);
- assert.match(folds[1].textContent,/Charlie/);
- assert.doesNotMatch(folds[1].textContent,/0 zum Wochenminimum/);
- assert.match(folds[2].textContent,/Alpha/);
+ assert.equal(q('.native-donation-tiles').querySelectorAll('button').length,4);
+ assert.match(q('.native-donation-summary').textContent,/Entwicklung/);
+ assert.match(q('.native-donation-summary').textContent,/1 verbessert/);
+ assert.match(q('.native-donation-summary').textContent,/1 gesunken/);
+ assert.ok(q('#native-donation-sort option[value="improvement"]'));
+ assert.equal(q('.native-donation-groups').querySelectorAll('details').length,0,'separate long donation folds are removed');
+ assert.equal(q('.native-donation-groups').querySelectorAll('.native-donation-group').length,1,'one shared result queue');
+ assert.equal(q('.native-donation-groups').querySelectorAll('.native-donation-person').length,10);
+ assert.match(q('.native-donation-groups').textContent,/Below 01/);
+ assert.equal(q('.native-donation-history').querySelectorAll('[data-native-donation-history-week]').length,1);
+ const tileButtons=q('.native-donation-tiles').querySelectorAll('[data-native-donation-category]');
+ assert.equal(tileButtons.length,4,'all four donation summary tiles are clickable');
+ q('.native-donation-tiles [data-native-donation-category="below"]').click();
+ await until(()=>q('#native-donation-results-title')?.textContent.includes('Unter Wochenziel'));
+ assert.equal(q('.native-donation-groups').querySelectorAll('.native-donation-group').length,1);
+ assert.equal(q('.native-donation-below').querySelectorAll('.native-donation-person').length,10,'long result starts compact');
+ assert.ok(q('[data-native-donation-more-group="below"]'));
+ q('[data-native-donation-more-group="below"]').click();
+ assert.equal(q('.native-donation-below').querySelectorAll('.native-donation-person').length,12,'more reveals the remaining players');
+ const donationSort=q('#native-donation-sort');donationSort.value='points_desc';
+ donationSort.dispatchEvent(new dom.window.Event('change',{bubbles:true}));
+ assert.equal(q('.native-donation-below .native-donation-person strong').textContent,'Bravo');
+ q('[data-native-donation-weekly]').click();
+ await until(()=>q('[data-native-donation-group="all"]'));
+ q('.native-donation-tiles [data-native-donation-category="unknown"]').click();
+ await until(()=>q('#native-donation-results-title')?.textContent.includes('Wert nicht bestätigt'));
+ assert.match(q('.native-donation-groups').textContent,/Charlie/);
+ assert.doesNotMatch(q('.native-donation-groups').textContent,/Alpha|Bravo|0 zum Wochenminimum/);
+ q('[data-native-donation-weekly]').click();
+ await until(()=>q('[data-native-donation-group="all"]'));
  q('#native-donation-search').value='Bravo';
  q('#native-donation-search').dispatchEvent(new dom.window.Event('input',{bubbles:true}));
  assert.match(q('.native-donation-groups').textContent,/Bravo/);
  assert.doesNotMatch(q('.native-donation-groups').textContent,/Alpha/);
  q('#native-donation-search').value='';
  q('#native-donation-search').dispatchEvent(new dom.window.Event('input',{bubbles:true}));
- const btn=q('.native-donation-met [data-native-member]');
- const donationsView=q('#native-admin-content');
- btn.click();
- await until(()=>q('.native-profile h3'));
- assert.equal(q('.native-profile h3').textContent,'Alpha');
- assert.match(q('.native-profile-metrics').textContent,/22.000/);
- q('[data-native-member-close]').click();
- await until(()=>q('.native-donation-groups'));
- assert.equal(q('#native-admin-content'),donationsView,'Return restores the original report DOM');
- assert.equal(q('#native-donation-week').value,'2026-W41');
- assert.equal(dom.window.document.activeElement,btn,'Return restores the invoking player control');
- assert.equal(calls.filter(path=>path==='/api/donations-intelligence').length,1,'Returning does not reload or change the report');
- q('[data-officer-tab=members]').click();await until(()=>q('#native-member-search'));
- q('#native-member-search').value='Alpha';q('#native-member-search').dispatchEvent(new dom.window.Event('input',{bubbles:true}));
- const membersView=q('#native-admin-content'),registryButton=q('[data-officer-tab=registry]');
- registryButton.click();await until(()=>q('#registry-search'));
- assert.equal(q('.native-primary-tab[data-officer-tab=members]').getAttribute('aria-current'),'page');
- assert.equal(q('.native-more-tab').hasAttribute('aria-current'),false);
- q('[data-native-nav-back]').click();
- assert.equal(q('#native-admin-content'),membersView);
- assert.equal(q('#native-member-search').value,'Alpha');
- assert.equal(dom.window.document.activeElement,registryButton);
+ let copied='';Object.defineProperty(dom.window.navigator,'clipboard',{configurable:true,value:{writeText:async value=>{copied=value}}});
+ q('[data-native-donation-copy-report]').click();await until(()=>Boolean(copied));
+ assert.match(copied,/RZSN Allianzspenden \| 2026-W41/);assert.match(copied,/Bravo — 15\.000 \/ 20\.000 \(-5\.000\)/);
+ assert.match(copied,/Charlie — Wert unbekannt/);assert.match(copied,/Alpha — \+2\.000 2026-W40/);
+ assert.match(copied,/Momentaufnahme; kein finales Wochenergebnis/);
+ q('[data-native-donation-history-week="2026-W41"]').click();assert.equal(q('#native-donation-week').value,'2026-W41');
 });

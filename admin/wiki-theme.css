@@ -52,3 +52,8 @@ td,th{min-width:120px}
   .copybtn{padding-inline:12px!important}
 }
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+/* Same-route Commander Center returns stay reachable on narrow screens. */
+.admin-runtime-bar,.admin-runtime-actions{flex-wrap:wrap}
+.admin-runtime-home:focus-visible{outline:3px solid currentColor;outline-offset:3px}
+@media(max-width:600px){.admin-runtime-bar{padding:8px 12px}.admin-runtime-actions{width:100%}.admin-runtime-home{min-height:44px}}

@@ -2,22 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {JSDOM} from 'jsdom';
 import {LOCALES} from '../assets/i18n.js';
-import {OFFICER_LANGUAGES,OFFICER_TEXT,translateOfficerText,localizeOfficerTree,officerLocale,officerStatusLabel} from '../assets/native-admin-i18n.js';
+import {OFFICER_LANGUAGES,OFFICER_TEXT,translateOfficerText,localizeOfficerTree,officerLocale} from '../assets/native-admin-i18n.js';
 import {initNativeAdmin,renderNativeAdmin,clearOfficer} from '../assets/native-admin.js';
 const wait=async predicate=>{
  for(let i=0;i<150;i++){if(predicate())return;await new Promise(resolve=>setTimeout(resolve,5))}
  assert.ok(predicate(),'localization timeout');
 };
-test('technical workflow states have human display labels in all languages without mutating payloads',()=>{
- const raw={status:'REVIEW',value:null,checkpoint:'NO_CHECKPOINT'},original=JSON.stringify(raw);
- for(const language of OFFICER_LANGUAGES){
-  for(const status of ['REVIEW','NULL','NO_CHECKPOINT','completed','former']){
-   const label=officerStatusLabel(status,language);assert.ok(label&&label!==status,language+'/'+status);
-   if(language!=='de')assert.notEqual(label,officerStatusLabel(status,'de'),language+'/'+status+' untranslated');
-  }
- }
- assert.equal(JSON.stringify(raw),original);
-});
 test('Every officer language has a complete static dictionary, sane glossary and locale',()=>{
  assert.equal(OFFICER_LANGUAGES.length,15);
  const keys=['Weitere Verwaltung','Wähle einen Bereich, um deine Allianz zu verwalten.',
@@ -86,7 +76,7 @@ test('All 15 languages localize the login, fifth tab, twelve tile labels, settin
    await wait(()=>q('.native-hub-section h3'));
    await wait(()=>q('.native-hub-section h3').textContent===translateOfficerText('Allianz & Planung',lang));
    assert.equal(q('.native-hub-heading'),null,'More hub header must not exist');
-   assert.equal(mount.querySelectorAll('.native-hub-tile').length,10,lang);
+   assert.equal(mount.querySelectorAll('.native-hub-tile').length,11,lang);
    assert.equal(mount.querySelectorAll('.native-hub-tile-gold').length,0,lang);
    assert.equal(q('.native-hub-section h3').textContent,translateOfficerText('Allianz & Planung',lang));
    assert.equal(q('[data-officer-tab=tasks].native-hub-tile strong').textContent,translateOfficerText('Aufgaben',lang));

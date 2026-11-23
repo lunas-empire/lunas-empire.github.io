@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {JSDOM} from 'jsdom';
-import {summarizeAllianceEventRuns,unifyAllianceEventHistory,initNativeAdmin,renderNativeAdmin,clearOfficer} from '../assets/native-admin.js';
+import {summarizeAllianceEventRuns,initNativeAdmin,renderNativeAdmin,clearOfficer} from '../assets/native-admin.js';
 async function openMore(mount) {
  for(let i=0;i<160;i++){
   const more=mount.querySelector('[data-officer-tab=more]');
@@ -19,8 +19,6 @@ test('Alliance event history preserves unknown levels, outcomes, waves and genui
   {id:'b',event_type:'zombie_siege',event_date:'2026-10-05',level:6,waves:null,outcome:'failed'},
   {id:'c',event_type:'zombie_siege',event_date:'2026-10-20',level:99,waves:20,outcome:'scheduled'},
   {id:'d',event_type:'marshall_guard',event_date:'2026-10-12',level:null,outcome:'completed'},
-  {id:'start-proof',event_type:'marshall_guard',event_date:'2026-10-22',level:null,outcome:'scheduled',notes:'RZSN_GAME_LOG_START_CONFIRMED; source_event_id=abc'},
-  {id:'auto-start',event_type:'marshall_guard',event_date:'2026-10-25',level:8,outcome:'scheduled',notes:'RZSN_MARSHALL_AUTO_START_RESERVATION; server_time=2026-10-25 16:00:00; result_unverified'},
   {id:'e',event_type:'zombie_siege',event_date:'invalid',level:8,outcome:'completed'}
  ];
  const siege=summarizeAllianceEventRuns(runs,'zombie_siege');
@@ -41,33 +39,7 @@ test('Alliance event history preserves unknown levels, outcomes, waves and genui
  assert.equal(guard.level,null);
  assert.equal(guard.waves,null);
  assert.equal(guard.deltaLevel,null);
- assert.equal(guard.started.length,2);
- assert.equal(guard.entries.find(x=>x.id==='auto-start').level,8);
- assert.equal(guard.planned.length,0,'A confirmed start must not be displayed as a future scheduled event');
- assert.equal(guard.confirmedCount,1,'Start is not proof that the event completed');
  assert.equal(summarizeAllianceEventRuns([{event_type:'zombie_siege',event_date:'2026-10-11',level:0,waves:null,outcome:'failed'}],'zombie_siege').waves,null);
-});
-
-test('six source-proven fortress discoveries become six Zombie Siege runs without separate category or double count',()=>{
- const dates=['2026-10-09','2026-10-12','2026-10-15','2026-10-18','2026-10-21','2026-10-24'];
- const sources=dates.map((date,i)=>({id:'original-'+i,begins_at:date+' 15:00:00',
-  settings_json:JSON.stringify({level:i===5?6:5,member_id:id,source_name:'Synthetic Officer',source_sha256:'a'.repeat(64),confirmed_outcome:'completed',outcome_source:'user_confirmation_2026-10-26'})}));
- const existing=[
-  {id:'planned-level-five',event_type:'zombie_siege',event_date:'2026-10-15',level:5,outcome:'scheduled'},
-  {id:'guard',event_type:'marshall_guard',event_date:'2026-10-25',level:8,outcome:'scheduled'}
- ];
- const siege=unifyAllianceEventHistory(existing,sources,'zombie_siege');
- const guard=unifyAllianceEventHistory(existing,sources,'marshall_guard');
- assert.equal(siege.length,6,'planned placeholder and matching discovery represent one logged run');
- assert.equal(siege[0].event_date,'2026-10-24');
- assert.equal(siege[0].level,6);
- assert.equal(siege.filter(x=>x.event_date==='2026-10-15').length,1);
- assert.ok(siege.every(x=>x.source_kind==='fortress_found'&&x.outcome==='completed'&&x.waves===null));
- assert.equal(summarizeAllianceEventRuns(siege,'zombie_siege').confirmedCount,6,'explicit user attestation verifies outcomes, not missing waves');
- const unconfirmed=unifyAllianceEventHistory(existing,[{id:'not-yet-confirmed',begins_at:'2026-10-10 15:00:00',settings_json:JSON.stringify({level:5,member_id:id})}],'zombie_siege');
- assert.equal(unconfirmed.find(x=>x.source_kind==='fortress_found').outcome,'found','a discovery without a user confirmation must never become a win');
- assert.equal(guard.length,1,'Marshall Guard must not acquire zombie findings');
- assert.equal(guard[0].level,8);
 });
 
 test('Officer can log Zombie Siege and Marshal Guard recurring runs, preserve Desert Storm and edit history',async t=>{
@@ -83,14 +55,23 @@ test('Officer can log Zombie Siege and Marshal Guard recurring runs, preserve De
   {id:'dddddddd-dddd-4ddd-dddd-dddddddddddd',event_type:'marshall_guard',event_date:'2026-10-12',level:5,waves:null,attendance:43,outcome:'completed'},
   {id:'eeeeeeee-eeee-4eee-eeee-eeeeeeeeeeee',event_type:'desert_storm',event_date:'2026-10-10',outcome:'completed'}
  ];
- const ops={events:existing,tasks:[],absences:[],members:[{id,name:'Synthetic Officer',rank:'R4'}],
-  fortressFinds:[{id:'fortress-proof',title:'Zombie-Festung Lv. 6 gefunden',begins_at:'2026-10-24 15:00:00',status:'found',settings_json:JSON.stringify({level:6,member_id:id,source_name:'Synthetic Officer'})}]};
+ const ops={events:existing,tasks:[],absences:[],members:[{id,name:'Synthetic Officer',rank:'R4'}],protocolEvents:[
+  {id:'log-a',event:'marshall_reserved',game_timestamp:'2026-10-26 01:50:49',scheduled_server_time:'2026-10-27 17:00:00',level:8,member_id:id,name:'Synthetic Officer'},
+  {id:'log-b',event:'marshall_started',game_timestamp:'2026-10-25 16:00:12',scheduled_server_time:null,level:null,member_id:id,name:'Synthetic Officer'},
+  {id:'log-c',event:'zombie_fortress_found',game_timestamp:'2026-10-24 15:00:00',scheduled_server_time:null,level:6,member_id:id,name:'Synthetic Officer'},
+  {id:'log-d',event:'train_leader_appointed',game_timestamp:'2026-10-23 15:00:00',scheduled_server_time:null,level:null,member_id:id,name:'Synthetic Officer'},
+  {id:'log-e',event:'alliance_event_observed',game_timestamp:'2026-10-22 15:00:00',scheduled_server_time:null,level:null,member_id:null,name:'Allianz-Log',source_text:'Synthetic General Trial preparation'}
+ ],fortressFinds:[
+  {id:'fortress-old',begins_at:'2026-10-21 15:00:00',status:'found',settings_json:'{"level":5}'},
+  {id:'fortress-duplicate',begins_at:'2026-10-24 15:00:00',status:'found',settings_json:'{"level":6}'}
+ ]};
  globalThis.fetch=async(url,options={})=>{
   const path=new URL(url).pathname;
   if(path==='/api/native-login')return Response.json({token:'synthetic-token',name:'Officer',role:'R4'});
   if(path==='/api/overview')return Response.json({active:92,reviews:0});
   if(path==='/api/operations'&&(!options.method||options.method==='GET'))return Response.json(ops);
   if(path==='/api/train-manager')return Response.json({today:'2026-10-13',counts:{missing_recent:0},calendar:[]});
+  if(path==='/api/event-insights')return Response.json({runs:existing,series:existing.filter(event=>event.outcome==='completed'),summary:{total:existing.length}});
   if(path==='/api/operations/events'&&options.method==='POST'){
    const payload=JSON.parse(options.body);posts.push(payload);
    return Response.json({ok:true,id:payload.id||'12345678-1234-1234-1234-123456789abc'});
@@ -107,24 +88,18 @@ test('Officer can log Zombie Siege and Marshal Guard recurring runs, preserve De
  q('[data-officer-tab=events]').click();
  await until(()=>q('.native-event-panels'));
  assert.equal(mount.querySelectorAll('.native-event-panel').length,2);
- assert.match(q('.native-event-panels').textContent,/Fund belegt · Ausgang offen/);
- assert.match(q('.native-event-panels').textContent,/2 dokumentierte Ergebnisse/);
+ assert.match(q('.native-event-panels').textContent,/Level unverändert|\+1 Level/);
  assert.match(q('#native-records').textContent,/Desert Storm \(1\)/);
- const siegePanel=q('.native-event-panel[aria-label^="Zombie Siege"]');
- const marshallPanel=q('.native-event-panel[aria-label^="Marshall Guard"]');
- assert.ok(siegePanel,'Zombie Siege panel must exist');
- assert.ok(marshallPanel,'Marshall Guard panel must exist');
- assert.match(siegePanel.textContent,/Alle Durchgänge · 3/);
- assert.match(siegePanel.textContent,/Fortress|Festung/);
- assert.match(siegePanel.textContent,/Ergebnis offen/);
- assert.match(siegePanel.textContent,/Synthetic Officer/);
- assert.doesNotMatch(siegePanel.textContent,/Zombie-Festungen gefunden/);
- assert.equal(siegePanel.querySelectorAll('.native-event-history-row').length,3);
- assert.equal(marshallPanel.querySelectorAll('.native-event-history-row').length,1);
- assert.doesNotMatch(marshallPanel.textContent,/Festung gefunden/);
- assert.equal(q('#native-records').querySelectorAll(':scope > details.native-fold').length,1,
-  'Only unrelated Desert Storm remains outside the two event panels');
  assert.match(q('#native-records').textContent,/54|51|19|18/);
+ assert.equal(mount.querySelectorAll('.native-event-log-row').length,6,'fortress history and unclassified events appear without duplicates');
+ assert.match(q('#native-records').textContent,/Synthetic General Trial preparation/);
+ assert.match(q('#native-records').textContent,/Nicht fachlich klassifiziert · kein Eventabschluss/);
+ assert.match(q('#native-records').textContent,/2026-10-21 15:00:00/);
+ assert.match(q('#native-records').textContent,/Zugführer ernannt · keine Fahrtenquittung/);
+ assert.match(q('.native-event-log-row').textContent,/6.*Level.*Allianz-Log/s);
+ assert.match(q('#native-records').textContent,/Gefunden · kein Siege-Ergebnis/);
+ assert.match(q('#native-records').textContent,/Reserviert.*2026-10-27 17:00:00|2026-10-27 17:00:00.*Reserviert/s);
+ assert.equal(mount.querySelector('.native-event-log-row[data-native-edit]'),null,'log observations are not editable officer results');
  q('[data-native-event-quick=zombie_siege]').click();
  let form=q('#native-record-save');
  assert.equal(form.elements.namedItem('event_type').value,'zombie_siege');

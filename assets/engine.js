@@ -13,10 +13,10 @@ export function berlinParts(now) {
   }).formatToParts(now).filter(p => p.type !== 'literal').map(p => [p.type,p.value]));
 }
 export function guideState(now = getGuideDate()) {
-  // Game midnight stays at 02:00 UTC. Berlin switches between 04:00 CEST
-  // and 03:00 CET; a fixed Berlin hour would be wrong for half the year.
-  const resetMinutes=GUIDE_CONFIG.serverResetUtcHour*60;
-  const date = new Date(now.getTime()-resetMinutes*60000).toISOString().slice(0,10);
+  const p = berlinParts(now);
+  // Server Time stays UTC-02:00 year-round; Berlin civil time changes at DST.
+  const serverNow = new Date(now.getTime() - GUIDE_CONFIG.serverResetUtcHour * 3600000);
+  const date = serverNow.toISOString().slice(0,10);
   const start = berlinParts(new Date(GUIDE_CONFIG.seasonStart));
   const seasonDate = `${start.year}-${start.month}-${start.day}`;
   const delta = Math.round(ordinal(date) - ordinal(seasonDate));
@@ -28,8 +28,8 @@ export function guideState(now = getGuideDate()) {
     serverDay: GUIDE_CONFIG.serverDayAnchor.day + Math.round(ordinal(date)-ordinal(GUIDE_CONFIG.serverDayAnchor.date)),
     seasonDay, week, phase: !seasonDay ? 'PRE_SEASON' : week > 8 ? 'POST_SEASON' : `SEASON_WEEK_${week}`,
     countdown: Math.max(0, new Date(GUIDE_CONFIG.seasonStart) - now),
-    minute: (()=>{const p=berlinParts(now);return +p.hour*60 + +p.minute;})(),
-    serverMinute: ((now.getUTCHours()*60+now.getUTCMinutes())-resetMinutes+1440)%1440,
+    minute: +p.hour * 60 + +p.minute,
+    serverMinute: serverNow.getUTCHours() * 60 + serverNow.getUTCMinutes(),
   };
 }
 export function selectedDate(state, weekdayIndex) {
@@ -56,7 +56,8 @@ export function availableTask(task, state) {
   return true;
 }
 export function resetInstant(date) {
-  return new Date(`${date}T${String(GUIDE_CONFIG.serverResetUtcHour).padStart(2,'0')}:00:00Z`);
+  // ST 00:00 is always 02:00 UTC, irrespective of Berlin's DST offset.
+  return new Date(Date.parse(`${date}T${String(GUIDE_CONFIG.serverResetUtcHour).padStart(2,'0')}:00:00Z`));
 }
 export function seasonEventInstant(day) {
   if (!Number.isInteger(day) || day<1) throw new RangeError('Season day must be a positive integer.');

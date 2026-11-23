@@ -6,19 +6,20 @@ import { GUIDE_COPY, GUIDE_TEXT, MEMBER_MEDIA } from './guide-text.js';
 import { SEASON_LIBRARY_COPY, SEASON_LIBRARY_GUIDES, SEASON_LIBRARY_MEDIA } from './season-library.js';
 import { TECH_GUIDE_TITLE, techGuideHtml, t10GuideHtml, t10GuideTitle, T10_GUIDE_SEARCH } from './tech-guide.js';
 import { blackMarketGuideHtml, blackMarketGuideTitle, BLACK_MARKET_SEARCH } from './black-market-guide.js';
+import { CELEBRATION_GUIDE_ID, POLAR_STORM_GUIDE_ID, SEASON_TRANSITION_SEARCH, celebrationGuideHtml, season2GuideHtml, seasonTransitionGuideTitle, seasonTransitionPage, seasonTransitionText } from './season-transition.js';
 import { professionGuideHtml, PROFESSION_GUIDE_SEARCH } from './profession-guide.js';
 import { trainGuideHtml, trainGuideTitle, TRAIN_GUIDE_SEARCH } from './train-guide.js';
+import { GHOST_OPS_ID, GHOST_OPS_SEARCH, ghostOpsGuideHtml, ghostOpsGuideTitle } from './ghost-ops-guide.js';
 import { HOT_DEALS_ID, HOT_DEALS_SEARCH, hotDealsTitle, hotDealsHtml } from './hot-deals-guide.js';
 import { GOLD_GUIDE_ID, GOLD_GUIDE_SEARCH, goldGuideTitle, goldGuideHtml } from './gold-farming-guide.js';
 import { TELEPORT_GUIDE_ID, TELEPORT_GUIDE_SEARCH, teleportGuideTitle, teleportGuideHtml } from './teleport-guide.js';
-import {diceDisclosure,HISTORY} from './dice-winners.js';
 import { PRACTICAL_GUIDES, practicalGuideHtml, practicalGuideTitle } from './practical-guides.js';
 import { GUIDE_TOPIC_ORDER, guideTopicOf, guideTopicCount, guideSearchExtra } from './guide-library-nav.js';
 import { guideNavText } from './guide-library-nav-i18n.js';
 import { guideLanding, guideTopicSection } from './guide-library-ui.js';
 import { updateGuideLibrary } from './guide-library-filter.js';
 import { memberRoute, guideHash, guideUrl } from './guide-links.js';
-import { DAY_MS, WEEKDAYS, guideState, berlinParts, selectedDate, checklistKey, armsWindow, availableTask, enemyBusterPhase, seasonEventInstant } from './engine.js';
+import { DAY_MS, WEEKDAYS, guideState, selectedDate, checklistKey, armsWindow, availableTask, enemyBusterPhase, seasonEventInstant } from './engine.js';
 import { createStorage, checkedMap } from './storage.js';
 import { OVERVIEW_COPY } from './overview-i18n.js';
 import { localizeTerms, armsPhase, termLabel } from './terminology.js';
@@ -132,6 +133,15 @@ function blackMarketGuideDisclosure() {
   const current=state.seasonDay>=49;
   return `<details class="guide-disclosure guide-disclosure--black-market" data-search data-filter-item data-guide-id="black-market" data-guide-category="season" data-guide-current="${current}" data-search-extra="${escape(BLACK_MARKET_SEARCH)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside">${blackMarketGuideHtml(lang,escape)}${guideShareButton('black-market')}</article></details>`;
 }
+function seasonTransitionGuideDisclosure(id) {
+  const body=id===CELEBRATION_GUIDE_ID?celebrationGuideHtml(lang,escape):season2GuideHtml(lang,escape);
+  const current=state.phase==='POST_SEASON';
+  return `<details class="guide-disclosure guide-disclosure--season-transition" data-search data-filter-item data-guide-id="${id}" data-guide-category="season" data-guide-current="${current}" data-search-extra="${escape(SEASON_TRANSITION_SEARCH)}"><summary>${escape(seasonTransitionGuideTitle(lang,id))}</summary><article class="guide-card guide-card--inside">${body}${guideShareButton(id)}</article></details>`;
+}
+function ghostOpsGuideDisclosure() {
+  const current=state.weekday==='thursday';
+  return `<details class="guide-disclosure guide-disclosure--ghost-ops" data-search data-filter-item data-guide-id="${GHOST_OPS_ID}" data-guide-category="alliance" data-guide-current="${current}" data-guide-today="${current}" data-guide-label="${tx('today')}" data-search-extra="${escape(GHOST_OPS_SEARCH)}"><summary data-guide-label="${tx('today')}">${escape(ghostOpsGuideTitle(lang))}</summary><article class="guide-card guide-card--inside">${ghostOpsGuideHtml(lang,escape)}${guideShareButton(GHOST_OPS_ID)}</article></details>`;
+}
 function trainGuideDisclosure() {
   const title=trainGuideTitle(lang);
   return `<details class="guide-disclosure guide-disclosure--train" data-search data-filter-item data-guide-id="train" data-guide-category="account" data-guide-current="false" data-search-extra="${escape(TRAIN_GUIDE_SEARCH)}"><summary>${escape(title)}</summary><article class="guide-card guide-card--inside guide-card--train">${trainGuideHtml(lang,escape)}${guideShareButton('train')}</article></details>`;
@@ -190,6 +200,8 @@ function shortGuideTitle(id) {
   if (id===HOT_DEALS_ID) return hotDealsTitle(lang);
   if (id===GOLD_GUIDE_ID) return goldGuideTitle(lang);
   if (id==='black-market') return blackMarketGuideTitle(lang);
+  if (id===GHOST_OPS_ID) return ghostOpsGuideTitle(lang);
+  if (id===CELEBRATION_GUIDE_ID || id===POLAR_STORM_GUIDE_ID) return seasonTransitionGuideTitle(lang,id);
   if (PRACTICAL_GUIDES[id]) return practicalGuideTitle(lang,id);
   return SEASON_LIBRARY_GUIDES[id]?t(SEASON_LIBRARY_GUIDES[id].title):guideAlt(MEMBER_MEDIA[id]);
 }
@@ -226,15 +238,10 @@ function serverTime(s=state) {
   const minutes=s.serverMinute%60;
   return `${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')} ST`;
 }
-// Convert the next actual 00:00 ST instant into Berlin civil time. No fixed 03/04 hour.
-function berlinResetLabel(s=state) {
-  const local=berlinParts(nextReset(s));
-  return `${local.hour}:${local.minute}`;
-}
 function commandHud(items) {
   const stats=taskProgress(items);
   const points=new Intl.NumberFormat(LOCALES[lang],{notation:'compact',maximumFractionDigits:1}).format(ALLIANCE_CONFIG.vsDailyMinimum);
-  return `<section class="command-hud" aria-label="${escape(hudText(lang,'commandCenter'))}"><div class="command-hud__cells"><div class="command-hud__cell" data-hud-vs-target="${ALLIANCE_CONFIG.vsDailyMinimum}"><span>${escape(hudText(lang,'vsTarget'))}</span><strong>${escape(points)}</strong><small>${escape(hudText(lang,'allianceTarget'))}</small></div><div class="command-hud__cell" data-hud-tasks data-refs="${escape(JSON.stringify(items.map(item=>item.refs)))}"><span>${escape(hudText(lang,'tasksComplete'))}</span><strong data-hud-task-count>${stats.done} / ${stats.total}</strong><progress value="${stats.done}" max="${stats.total||1}" aria-label="${escape(hudText(lang,'tasksComplete'))}" data-hud-progress></progress></div><div class="command-hud__cell"><span>${escape(hudText(lang,'serverTime'))}</span><strong data-server-time data-server-minute="${state.serverMinute}">${serverTime()}</strong><small data-server-time-anchor>${escape(hudText(lang,'timeAnchor',{localTime:berlinResetLabel()}))}</small></div></div></section>`;
+  return `<section class="command-hud" aria-label="${escape(hudText(lang,'commandCenter'))}"><div class="command-hud__cells"><div class="command-hud__cell" data-hud-vs-target="${ALLIANCE_CONFIG.vsDailyMinimum}"><span>${escape(hudText(lang,'vsTarget'))}</span><strong>${escape(points)}</strong><small>${escape(hudText(lang,'allianceTarget'))}</small></div><div class="command-hud__cell" data-hud-tasks data-refs="${escape(JSON.stringify(items.map(item=>item.refs)))}"><span>${escape(hudText(lang,'tasksComplete'))}</span><strong data-hud-task-count>${stats.done} / ${stats.total}</strong><progress value="${stats.done}" max="${stats.total||1}" aria-label="${escape(hudText(lang,'tasksComplete'))}" data-hud-progress></progress></div><div class="command-hud__cell"><span>${escape(hudText(lang,'serverTime'))}</span><strong data-server-time data-server-minute="${state.serverMinute}">${serverTime()}</strong><small>${escape(hudText(lang,'timeAnchor'))}</small></div></div></section>`;
 }
 function remainingReset() {
   const minutes=Math.max(0,Math.ceil((nextReset(state)-state.now)/60000));
@@ -348,16 +355,6 @@ function nextRoadmapText(s=state) {
   const next=SEASON_ROADMAP.find(entry=>entry.day>s.seasonDay);
   return next ? `${t('seasonDay')} ${next.day} · ${t(next.label)}` : t('post');
 }
-function diceHome(){
- return '<details class="guide-disclosure guide-disclosure--dice-home">'+
- '<summary>'+(lang==='de'?'Dice Gewinner':'Dice Game Winners')+' · '+HISTORY.length+'</summary>'+
- '<div class="guide-card guide-card--inside"><p>'+
- escape(lang==='de'?'Bestätigte Gewinner aus der Zugliste. Ohne Namen kein bestätigter Gewinn.':
- 'Confirmed winners from the train sheet; unnamed entries are not counted.')+'</p>'+
- '<ul class="dice-winners-list">'+[...HISTORY].reverse().map(w=>
- '<li><time datetime="'+escape(w.ride_date)+'">'+escape(w.ride_date)+'</time> — <strong>'+
- escape(w.winner_name)+'</strong></li>').join('')+'</ul></div></details>';
-}
 function today() {
   const guide=DAILY_GUIDES[state.weekday];
   const routine=allTaskItems();
@@ -365,11 +362,11 @@ function today() {
   const unique=[...new Map(candidates.filter(item=>permitted(item.id)).map(item=>[taskToken(item.refs[0]),item])).values()];
   const pending=unique.filter(item=>!item.done&&!item.unavailable).slice(0,4);
   const quickTasks=pending.map(item=>checklist(item.kind,[item],state,{filter:'open',group:'today'})).join('');
-  const related=[`vs-${state.weekday}`,...seasonSynergies(state).map(id=>TASK_GUIDES[id]),...(state.week>=1&&state.week<=8?['profession']:[])].filter(Boolean);
+  const related=[`vs-${state.weekday}`,...(state.weekday==='thursday'?[GHOST_OPS_ID]:[]),...seasonSynergies(state).map(id=>TASK_GUIDES[id]),...(state.week>=1&&state.week<=8?['profession']:[])].filter(Boolean);
   const next=SEASON_ROADMAP.find(entry=>entry.day>state.seasonDay);
   return `<header class="page-heading"><div><p class="eyebrow">${escape(longDate(state.date))}</p><h1>${tx('today')}</h1></div>${status()}</header>${notice()}${commandHud(routine)}${enemyBusterBanner(state)}
     <section class="focus-panel"><div class="focus-panel__main"><span class="eyebrow">${tx('focus')}</span><h2>${tx(state.weekday)}</h2><p>${tx(guide.focus)}</p><a class="primary-link" href="#vs">${tx('doNow')} →</a></div><div class="focus-panel__time"><span class="eyebrow">${tx('bestArms')}</span>${arms(state,guide)}${resetCard()}</div><div class="focus-panel__save"><strong>${tx('save')}</strong><span>${guide.save.filter(permitted).map(id=>tx(id)).join(' · ')}</span></div></section>
-    <div class="overview-columns"><section class="open-tasks"><div class="section-heading"><h2>${tx('doNow')}</h2><a href="#daily">${tx('tasks')} →</a></div>${quickTasks||`<p class="empty-state">${tx('allDone')}</p>`}<p class="empty-state" data-today-empty hidden>${tx('allDone')}</p><a class="text-link" href="#daily">${tx('checklist')} →</a></section><aside class="overview-aside"><section><h2>${tx('relevantGuides')}</h2><div class="related-guides">${[...new Set(related)].slice(0,3).map(id=>`<a href="${guideHash(id)}"><span>${escape(shortGuideTitle(id))}</span><span aria-hidden="true">↗</span></a>`).join('')}</div></section><section class="next-preview"><span class="eyebrow">${tx('nextMilestone')}</span><h2>${next?tx(next.label):tx('post')}</h2>${next?`<p>${tx('seasonDay')} ${next.day} · ${tx('week')} ${Math.ceil(next.day/7)}</p>`:''}<a href="#season">${tx('season')} →</a></section></aside></div>${diceHome()}`;
+    <div class="overview-columns"><section class="open-tasks"><div class="section-heading"><h2>${tx('doNow')}</h2><a href="#daily">${tx('tasks')} →</a></div>${quickTasks||`<p class="empty-state">${tx('allDone')}</p>`}<p class="empty-state" data-today-empty hidden>${tx('allDone')}</p><a class="text-link" href="#daily">${tx('checklist')} →</a></section><aside class="overview-aside"><section><h2>${tx('relevantGuides')}</h2><div class="related-guides">${[...new Set(related)].slice(0,3).map(id=>`<a href="${guideHash(id)}"><span>${escape(shortGuideTitle(id))}</span><span aria-hidden="true">↗</span></a>`).join('')}</div></section><section class="next-preview"><span class="eyebrow">${tx('nextMilestone')}</span><h2>${next?tx(next.label):tx('post')}</h2>${next?`<p>${tx('seasonDay')} ${next.day} · ${tx('week')} ${Math.ceil(next.day/7)}</p>`:''}<a href="#season">${tx('season')} →</a></section></aside></div>`;
 }
 function daySelector() {
   return `<div class="week-selector" role="group" aria-label="${tx('vs')}">${WEEKDAYS.map((day,index)=>{
@@ -404,7 +401,12 @@ function first24Body({withChecklist = false} = {}) {
 function first24({withChecklist = false, open = false} = {}) {
   return details(`${t('seasonDay')} 1 · ${t('first24')}`,first24Body({withChecklist}),open,'first24');
 }
+function seasonOneArchive() {
+  const timeline=Object.entries(SEASON_CONTENT).map(([phase,items],index)=>details(index===0?t('pre'):index===9?t('post'):`${t('week')} ${index}`,list(items)+guideGallery(SEASON_GUIDES[phase]||[]),false,phase)).join('');
+  return `<details class="st-details st-archive" data-disclosure="season-1-archive"><summary>${seasonTransitionText(lang,'archiveOpen')}</summary><div class="st-details-body"><h2>${seasonTransitionText(lang,'archiveTitle')}</h2><p class="st-status">${seasonTransitionText(lang,'archiveStatus')}</p>${paragraph('after')}<p>${seasonTransitionText(lang,'archiveText')}</p>${timeline}${section('timeline',seasonRoadmapDisclosure())}</div></details>`;
+}
 function season() {
+  if(state.phase==='POST_SEASON')return `${notice()}${seasonTransitionPage(lang,escape,seasonOneArchive())}`;
   const {todayIds,weekIds}=seasonTaskGroups();
   const current=state.week>8?9:state.week;
   const isPreSeason=state.phase==='PRE_SEASON';
@@ -466,10 +468,12 @@ function guides() {
   const landing=guideLanding({lang,escape,t,guideHash,shortTitle:shortGuideTitle,weekday:state.weekday,week:state.week,seasonGroups:SEASON_GUIDE_ROADMAP,weekdays:WEEKDAYS});
   const practical=topic=>Object.entries(PRACTICAL_GUIDES).filter(([id])=>guideTopicOf(id)===topic).map(([id])=>practicalGuideDisclosure(id)).join('');
   const disclosures=html=>`<div class="guide-disclosures">${html}</div>`;
-  const alliance=guideTopicSection('alliance',lang,escape,disclosures(practical('alliance')+teleportGuideDisclosure()+trainGuideDisclosure()+diceDisclosure(lang,escape)));
+  const alliance=guideTopicSection('alliance',lang,escape,disclosures(practical('alliance')+ghostOpsGuideDisclosure()+teleportGuideDisclosure()+trainGuideDisclosure()));
   const power=guideTopicSection('power',lang,escape,disclosures(practical('power')+techGuideDisclosure()+t10GuideDisclosure())+`<details class="guide-reference-extra" data-search-group><summary>${tx('quickReference')}</summary>${referenceLibrary()}</details>`);
   const vs=guideTopicSection('vs',lang,escape,disclosures(vsGuides.map(guideDisclosure).join('')));
-  const season=guideTopicSection('season',lang,escape,seasonGuidePosition()+seasonGuideRoadmapLibrary());
+  const seasonArchive=`<details class="guide-roadmap-week st-archive" data-disclosure="season-1-guide-archive"><summary>${seasonTransitionText(lang,'archiveTitle')}</summary><div class="st-details-body"><p class="st-status">${seasonTransitionText(lang,'archiveStatus')}</p><p>${seasonTransitionText(lang,'archiveText')}</p>${seasonGuideRoadmapLibrary()}</div></details>`;
+  const seasonContent=state.phase==='POST_SEASON'?disclosures(seasonTransitionGuideDisclosure(CELEBRATION_GUIDE_ID)+seasonTransitionGuideDisclosure(POLAR_STORM_GUIDE_ID))+seasonArchive:seasonGuidePosition()+seasonGuideRoadmapLibrary();
+  const season=guideTopicSection('season',lang,escape,seasonContent);
   const economy=guideTopicSection('economy',lang,escape,disclosures(practical('economy')+goldGuideDisclosure()+hotDealsGuideDisclosure()+blackMarketGuideDisclosure()));
   return `${guideContextBar()}<h1>${tx('guides')}</h1>${notice()}${search}${landing}<div class="guide-library">${alliance}${power}${vs}${season}${economy}</div>`;
 }
@@ -502,6 +506,8 @@ function syncChrome() {
     if (a.hash === `#${currentView}`) a.setAttribute('aria-current','page');
     else a.removeAttribute('aria-current');
   });
+  document.querySelector('#admin-link').toggleAttribute('aria-current',currentView==='admin');
+  if(currentView==='admin')document.querySelector('#admin-link').setAttribute('aria-current','page');
   showStorageError();
 }
 function showStorageError() {
@@ -633,20 +639,27 @@ function applyGuideFilters() {
   updateGuideLibrary(main,{topic:guideTopicSelected,query:guideSearchQuery,locale:LOCALES[lang],resultText:guideNavText(lang,'count')});
 }
 function render({focus = false,preserve = false} = {}) {
-  const route=memberRoute(location.hash);
+  const nativeReview=location.hash==='#admin-review';
+  const route=memberRoute(nativeReview?'#admin':location.hash);
   if (route.view === 'main') { main.focus(); return; }
   currentView = Object.hasOwn(views,route.view) ? route.view : 'today';
   document.documentElement.dataset.officerMode=String(currentView==='admin');
   if(currentView==='guides' && route.guideId){guideTopicSelected=guideTopicOf(route.guideId);guideSearchQuery='';}
   else if(currentView==='guides'&&!preserve){guideTopicSelected='';guideSearchQuery='';}
   const open = preserve ? new Set([...main.querySelectorAll('details[open][data-disclosure]')].map(el=>el.dataset.disclosure)) : null;
-  main.innerHTML = views[currentView]();
+  const retainedMount=currentView==='admin' ? main.querySelector('#native-officer-root') : null;
+  if(!retainedMount) main.innerHTML = views[currentView]();
   if(currentView==='admin'){
     import('./native-admin.js').then(async mod=>{
       const mount=main.querySelector('#native-officer-root');
       if(!mount)return;
+      mount.lang=lang;
+      mount.dir=lang==='ar'?'rtl':'ltr';
       mod.initNativeAdmin(mount);
-      await mod.renderNativeAdmin(mount);
+      if(nativeReview&&(!retainedMount||!preserve)){
+        await mod.openNativeReviews(mount);
+        if(!mod.hasOfficer())await mod.renderNativeAdmin(mount);
+      }else if(!retainedMount||preserve)await mod.renderNativeAdmin(mount);
     }).catch(error=>{
       const mount=main.querySelector('#native-officer-root');
       if(mount)mount.textContent='Adminansicht derzeit nicht verfügbar: '+error.message;
@@ -674,7 +687,6 @@ function refreshClock() {
     document.querySelectorAll('[data-arms-state]').forEach(el=>{const phase=armsWindow(state,DAILY_GUIDES[state.weekday]);el.textContent=t(phase);el.dataset.state=phase;});
     document.querySelectorAll('[data-reset-countdown]').forEach(el=>{el.textContent=remainingReset();});
     document.querySelectorAll('[data-server-time]').forEach(el=>{el.textContent=serverTime();el.dataset.serverMinute=String(state.serverMinute);});
-    document.querySelectorAll('[data-server-time-anchor]').forEach(el=>{el.textContent=hudText(lang,'timeAnchor',{localTime:berlinResetLabel()});});
   }
 }
 const languageEntries = Object.entries(LANGUAGES).sort(([a],[b])=>a==='en'?-1:b==='en'?1:0);

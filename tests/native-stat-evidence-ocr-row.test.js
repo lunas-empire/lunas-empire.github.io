@@ -4,8 +4,7 @@ import {webcrypto} from 'node:crypto';
 import {JSDOM} from 'jsdom';
 import {createStatEvidenceViewer} from '../assets/native-stat-evidence.js';
 if(!globalThis.crypto)globalThis.crypto=webcrypto;
-for(const kind of ['ocr_original_row','archive_profile_auto_qa_row','archive_capture_publication_row'])
-test('Exact player row keeps canonical name and verification authority: '+kind,async t=>{
+test('Below-target click displays the exact player row instead of top 3 or a generic image',async t=>{
  const dom=new JSDOM('<div id="target"></div>',{url:'https://lunas-empire.github.io/#admin'});
  const oldWindow=globalThis.window,oldFetch=globalThis.fetch;
  const oldCreate=URL.createObjectURL,oldRevoke=URL.revokeObjectURL;
@@ -21,22 +20,18 @@ test('Exact player row keeps canonical name and verification authority: '+kind,a
   request:async path=>{
    requests.push(path);
    return {captured_at:'2026-10-11T10:00:00Z',value:19100,metric:'donations_weekly',
-    verified_source:{kind,id:'donations_weekly-2026-10-11-020',
-     sha256:hash,row_y:277,source_name:'KerrandaBerdarah OCR',source_value:19100,
-     visually_checked:false,automated_qa:kind!=='ocr_original_row'},candidates:[]};
+    verified_source:{kind:'ocr_original_row',id:'donations_weekly-2026-10-11-020',
+     sha256:hash,row_y:277,source_name:'KerrandaBerdarah OCR',member_name:'KerandaBerdarah',source_value:19100,
+     visually_checked:true},candidates:[]};
   }});
  t.after(()=>{viewer.close(root);globalThis.window=oldWindow;globalThis.fetch=oldFetch;
   URL.createObjectURL=oldCreate;URL.revokeObjectURL=oldRevoke;dom.window.close()});
- await viewer.open(root,'snapshot|player|donations_weekly','KerandaBerdarah');
+ await viewer.open(root,'snapshot|player|donations_weekly');
  assert.equal(requests.length,2);
  assert.equal(requests[1],'/api/stat-evidence/snapshot/player/donations_weekly/image');
  assert.equal(root.querySelectorAll('[data-native-stat-browse]').length,0);
  assert.match(root.querySelector('.native-stat-row-identity').textContent,/KerandaBerdarah/);
- assert.match(root.querySelector('.native-stat-row-source').textContent,/OCR: KerrandaBerdarah OCR/);
- assert.doesNotMatch(root.querySelector('.native-stat-row-identity').textContent,/KerrandaBerdarah OCR/);
  assert.match(root.querySelector('.native-stat-row-identity').textContent,/19.100/);
- if(kind!=='ocr_original_row')assert.match(root.querySelector('.native-stat-body').textContent,/keine gesonderte Officer-Abnahme/);
- assert.doesNotMatch(root.querySelector('.native-stat-body').textContent,/Von einem Officer geprüft/);
  const wrap=root.querySelector('.native-stat-row-window'),img=wrap.querySelector('img');
  Object.defineProperty(img,'naturalWidth',{value:714});
  Object.defineProperty(img,'naturalHeight',{value:660});

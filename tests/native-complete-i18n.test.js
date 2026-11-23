@@ -30,26 +30,22 @@ test('Real member reconciliation UI is entirely English for archive rules and wa
  await wait(()=>mount.querySelector('.native-hub-tile[data-officer-tab=watch]'));
  mount.querySelector('[data-officer-tab=watch]').click();
  await wait(()=>mount.querySelector('#native-watch-list .native-evidence-note'));
- await wait(()=>mount.querySelector('#native-watch-list').textContent.includes('two fully verified profile rosters'));
+ await wait(()=>mount.querySelector('#native-watch-list').textContent.includes('verified complete current member roster'));
  const content=mount.querySelector('#native-admin-content').textContent;
  const german=['Quellen','Wochensnapshots','bestätigte Kandidaten','Spielerakte geändert','Austritt','vollständig','archiviert','Stärke-Snapshot','Prüfkandidaten','Sicherheitsprüfung'];
  for(const token of german)assert.ok(!content.includes(token),'German residue: '+token);
  assert.match(content,/Power .*2026-10-11/);
- assert.match(content,/two fully verified profile rosters in consecutive weeks/);
- assert.match(content,/VS scores and alliance logs alone do not change membership status/);
- assert.match(content,/Individual missing images or values do not prove a departure/);
- assert.doesNotMatch(content,/nightly staging check|R4\/R5 are never archived automatically/);
+ assert.match(content,/Automatic changes require a verified complete current member roster/);
+ assert.match(content,/R4\/R5 may manually archive a witnessed departure/);
+ assert.match(content,/No automatic removals/);
  assert.match(content,/Candidates for review/);
  assert.match(content,/Missing from power snapshot/);
  assert.match(content,/No missing members appear/);
 });
 test('All languages translate archive warnings but never player identifiers',()=>{
  for(const language of ['en','uk','ja','fr','it','id','ar','ko','sv','pt','nl','th','km','fil']){
-  for(const german of [
-   'Einzelne fehlende Bilder oder Werte belegen keinen Austritt. Die Blacklist wird nur manuell mit Begründung geändert.',
-   'Austritte und Rückkehr werden aus zwei vollständig bestätigten Profilbeständen aufeinanderfolgender Wochen ermittelt. VS-Punkte und Allianzlogs allein ändern den Status nicht.',
-   'OCR-Herkunft, keine gesonderte Officer-Abnahme.'
-  ])assert.notEqual(translateOfficerText(german,language),german,language);
+  const german='Fehlt ein Spieler auf einem Screenshot, bleibt er aktiv. Bei fehlenden Daten ist keine Blacklist zulässig. Status und Blacklist werden ausschließlich manuell in der Spielerakte geändert.';
+  assert.notEqual(translateOfficerText(german,language),german,language);
  }
  const name='R5 · Łuna_日本🇵🇹';
  assert.equal(translateOfficerText(name,'en'),name);

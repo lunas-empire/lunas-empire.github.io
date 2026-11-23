@@ -12,6 +12,8 @@ import {HUD_COPY} from '../assets/hud-i18n.js';
 import {GUIDE_NAV_TEXT} from '../assets/guide-library-nav-i18n.js';
 import {PRACTICAL_LABELS,PRACTICAL_GUIDE_COPY} from '../assets/practical-guide-i18n.js';
 import {SPECIAL_GUIDE_COPY} from '../assets/special-guide-i18n.js';
+import {SEASON_TRANSITION_COPY} from '../assets/season-transition.js';
+import {GHOST_OPS_COPY} from '../assets/ghost-ops-guide.js';
 import {OFFICER_TEXT,OFFICER_LANGUAGES,localizeOfficerTree,translateOfficerText} from '../assets/native-admin-i18n.js';
 
 const languages=['de','en','uk','ja','fr','it','id','ar','ko','sv','pt','nl','th','km','fil'];
@@ -43,7 +45,7 @@ test('All 15 public, guide, overview, HUD and officer resources have safe values
    }
   }
  }
- for(const [name,table] of Object.entries({overview:OVERVIEW_COPY,hud:HUD_COPY,guideNav:GUIDE_NAV_TEXT,practicalLabels:PRACTICAL_LABELS,practicalGuides:PRACTICAL_GUIDE_COPY,specialGuides:SPECIAL_GUIDE_COPY})){
+ for(const [name,table] of Object.entries({overview:OVERVIEW_COPY,hud:HUD_COPY,guideNav:GUIDE_NAV_TEXT,practicalLabels:PRACTICAL_LABELS,practicalGuides:PRACTICAL_GUIDE_COPY,specialGuides:SPECIAL_GUIDE_COPY,seasonTransition:SEASON_TRANSITION_COPY,ghostOps:GHOST_OPS_COPY})){
   const base=flatten(table.de);
   for(const lang of languages){
    const rows=flatten(table[lang]);

@@ -136,12 +136,25 @@ async function browserQA(executable,role){
   await evaluate(`document.querySelector('[data-officer-tab=vs]').click()`);
   await until(`Boolean(document.querySelector('[data-officer-tab=duelLeague]'))`);
   await evaluate(`document.querySelector('[data-officer-tab=duelLeague]').click()`);
-  await until(`Boolean(document.querySelector('.native-dl'))`);
-  assert.equal(await evaluate(`Boolean(document.querySelector('.native-dl-upload-form'))`),false);
+  await until(`Boolean(document.querySelector('.native-dl-upload-form'))`);
+  await evaluate(`document.querySelector('.native-dl-upload-form').closest('details').open=true`);
+  await evaluate(`(()=>{const form=document.querySelector('.native-dl-upload-form'),transfer=new DataTransfer();transfer.items.add(new File([Uint8Array.of(137,80,78,71)],'league first.png',{type:'image/png',lastModified:1}));transfer.items.add(new File([Uint8Array.of(255,216,255,217)],'league second.jpg',{type:'image/jpeg',lastModified:2}));Object.defineProperty(form.elements.files,'files',{configurable:true,value:transfer.files});form.elements.files.dispatchEvent(new Event('change',{bubbles:true}));form.elements.scope_key.value='S38';form.elements.captured_at.value='2026-10-20T12:00';form.elements.ocr_text.value='only one OCR block'})()`);
+  assert.equal(await evaluate(`document.querySelectorAll('.native-dl-upload-preview li').length`),2);
+  assert.match(await evaluate(`document.querySelector('.native-dl-upload-preview').textContent`),/league first\.png.*league second\.jpg/s);
+  assert.equal(await evaluate(`document.querySelector('[data-native-dl-remove-file="0"]').getBoundingClientRect().height>=44`),true);
   for(const width of [320,375,390,430]){
    await send('Emulation.setDeviceMetricsOverride',{width,height:820,deviceScaleFactor:2,mobile:true});
-   assert.ok(await evaluate(`document.documentElement.scrollWidth`)<=width,`${executable} duel ${width}: horizontal scroll`);
+   assert.ok(await evaluate(`document.documentElement.scrollWidth`)<=width,`${executable} duel upload preview ${width}: horizontal scroll`);
   }
+  const writesBeforeUpload=await evaluate(`window.__syntheticWrites.length`);
+  await evaluate(`document.querySelector('.native-dl-upload-form').requestSubmit()`);
+  assert.equal(await evaluate(`window.__syntheticWrites.length`),writesBeforeUpload);
+  assert.match(await evaluate(`document.querySelector('.native-dl-upload-form [role=status]').textContent`),/Zahl der OCR-Textblöcke|number of OCR text blocks/);
+  await evaluate(`document.querySelector('[data-native-dl-remove-file="1"]').click()`);
+  assert.equal(await evaluate(`document.querySelectorAll('.native-dl-upload-preview li').length`),1);
+  await evaluate(`document.querySelector('.native-dl-upload-form').requestSubmit()`);
+  await until(`window.__syntheticWrites.some(item=>item.path==='/api/duel-league/ocr-proposal')`);
+  assert.equal(await evaluate(`window.__syntheticWrites.filter(item=>item.path==='/api/duel-league/evidence').length`),1);
   await evaluate(`document.querySelector('[data-officer-tab=train]').click()`);
   await until(`Boolean(document.querySelector('.native-train-unlinked-dates button'))`);
   await evaluate(`document.querySelector('.native-train-unlinked-dates button').click()`);

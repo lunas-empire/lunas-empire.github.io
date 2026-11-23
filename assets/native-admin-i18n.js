@@ -9,24 +9,6 @@ const TRANSLATION_ROWS={"ar":{"+ Allianz":"+ التحالف","+ Durchgang":"+ م
 
 // V43 corrections for verified officer UI strings. Order: en, uk, ja, fr, it, id, ar, ko, sv, pt, nl, th, km, fil.
 const V43_ROWS={
- 'Das tägliche Datenbank-Leselimit ist erreicht. Neue Daten sind nach dem nächsten Reset um 00:00 UTC verfügbar.':['The daily database read limit has been reached. New data is available after the next reset at 00:00 UTC.','Досягнуто денного ліміту читання бази даних. Нові дані будуть доступні після наступного скидання о 00:00 UTC.','データベースの1日の読み取り上限に達しました。新しいデータは次の00:00 UTCのリセット後に利用できます。','La limite quotidienne de lecture de la base de données est atteinte. Les nouvelles données seront disponibles après la prochaine remise à zéro à 00:00 UTC.','È stato raggiunto il limite giornaliero di lettura del database. I nuovi dati saranno disponibili dopo il prossimo ripristino alle 00:00 UTC.','Batas baca database harian telah tercapai. Data baru tersedia setelah reset berikutnya pukul 00:00 UTC.','تم الوصول إلى حد قراءة قاعدة البيانات اليومي. تتوفر البيانات الجديدة بعد إعادة الضبط التالية الساعة 00:00 UTC.','데이터베이스 일일 읽기 한도에 도달했습니다. 다음 00:00 UTC 초기화 후 새 데이터를 확인할 수 있습니다.','Databasens dagliga läsgräns har nåtts. Nya data är tillgängliga efter nästa återställning kl. 00:00 UTC.','O limite diário de leitura da base de dados foi atingido. Novos dados estarão disponíveis após a próxima reposição às 00:00 UTC.','De dagelijkse leeslimiet van de database is bereikt. Nieuwe gegevens zijn beschikbaar na de volgende reset om 00:00 UTC.','ถึงขีดจำกัดการอ่านฐานข้อมูลรายวันแล้ว ข้อมูลใหม่จะพร้อมหลังรีเซ็ตครั้งถัดไปเวลา 00:00 UTC','បានឈានដល់ដែនកំណត់អានមូលដ្ឋានទិន្នន័យប្រចាំថ្ងៃ។ ទិន្នន័យថ្មីនឹងមានបន្ទាប់ពីការកំណត់ឡើងវិញនៅម៉ោង 00:00 UTC។','Naabot na ang pang-araw-araw na limitasyon sa pagbasa ng database. Magiging available ang bagong data pagkatapos ng susunod na reset sa 00:00 UTC.'],
- 'Sortieren nach':['Sort by','Сортувати за','並べ替え','Trier par','Ordina per','Urutkan menurut','ترتيب حسب','정렬 기준','Sortera efter','Ordenar por','Sorteren op','เรียงตาม','តម្រៀបតាម','Ayusin ayon sa'],
- 'Tage unter Ziel':['Days below target','Дні нижче цілі','目標未達の日数','Jours sous l’objectif','Giorni sotto l’obiettivo','Hari di bawah target','أيام دون الهدف','목표 미달 일수','Dagar under målet','Dias abaixo da meta','Dagen onder het doel','วันที่ต่ำกว่าเป้าหมาย','ថ្ងៃក្រោមគោលដៅ','Mga araw na kulang sa target'],
- 'Punkte: höchste zuerst':['Points: highest first','Бали: спочатку найбільші','ポイント：高い順','Points : décroissants','Punti: dal più alto','Poin: tertinggi dahulu','النقاط: الأعلى أولاً','점수: 높은 순','Poäng: högsta först','Pontos: maior primeiro','Punten: hoogste eerst','คะแนน: มากไปน้อย','ពិន្ទុ៖ ខ្ពស់មុន','Puntos: pinakamataas muna'],
- 'Punkte: niedrigste zuerst':['Points: lowest first','Бали: спочатку найменші','ポイント：低い順','Points : croissants','Punti: dal più basso','Poin: terendah dahulu','النقاط: الأقل أولاً','점수: 낮은 순','Poäng: lägsta först','Pontos: menor primeiro','Punten: laagste eerst','คะแนน: น้อยไปมาก','ពិន្ទុ៖ ទាបមុន','Puntos: pinakamababa muna'],
- 'Tagesergebnisse':['Daily results','Денні результати','日別結果','Résultats du jour','Risultati giornalieri','Hasil harian','النتائج اليومية','일별 결과','Dagens resultat','Resultados diários','Dagresultaten','ผลรายวัน','លទ្ធផលប្រចាំថ្ងៃ','Mga resulta sa araw'],
- 'Vor Beitritt':['Before joining','До вступу','加入前','Avant l’adhésion','Prima dell’ingresso','Sebelum bergabung','قبل الانضمام','가입 전','Före inträde','Antes da entrada','Voor toetreding','ก่อนเข้าร่วม','មុនចូលរួម','Bago sumali'],
- 'Vollständig':['Complete','Повністю','完全','Complet','Completo','Lengkap','مكتمل','완전함','Fullständig','Completo','Volledig','ครบถ้วน','ពេញលេញ','Kumpleto'],
- 'Zurück':['Back','Назад','戻る','Retour','Indietro','Kembali','رجوع','뒤로','Tillbaka','Voltar','Terug','กลับ','ត្រឡប់','Bumalik'],
- 'Alle Spieler':['All players','Усі гравці','全プレイヤー','Tous les joueurs','Tutti i giocatori','Semua pemain','كل اللاعبين','모든 플레이어','Alla spelare','Todos os jogadores','Alle spelers','ผู้เล่นทั้งหมด','អ្នកលេងទាំងអស់','Lahat ng manlalaro'],
- 'Datenstand':['Data status','Стан даних','データ状況','État des données','Stato dei dati','Status data','حالة البيانات','데이터 상태','Datastatus','Estado dos dados','Gegevensstatus','สถานะข้อมูล','ស្ថានភាពទិន្នន័យ','Katayuan ng datos'],
- 'Aufnahmezeit unbekannt':['Capture time unknown','Час знімка невідомий','撮影時刻不明','Heure de capture inconnue','Ora di acquisizione sconosciuta','Waktu pengambilan tidak diketahui','وقت الالتقاط غير معروف','촬영 시각 미상','Okänd inspelningstid','Hora de captura desconhecida','Opnametijd onbekend','ไม่ทราบเวลาบันทึก','មិនស្គាល់ពេលថត','Hindi alam ang oras ng pagkuha'],
- 'Noch keine Aufnahme gestartet':['No capture started yet','Запис ще не розпочато','撮影はまだ開始されていません','Aucune capture démarrée','Nessuna acquisizione avviata','Pengambilan belum dimulai','لم يبدأ الالتقاط بعد','아직 촬영을 시작하지 않았습니다','Ingen inspelning har startats','Nenhuma captura iniciada','Nog geen opname gestart','ยังไม่ได้เริ่มบันทึก','មិនទាន់ចាប់ផ្តើមថត','Hindi pa nagsisimula ang pagkuha'],
- 'Alle Berichtswochen':['All reporting weeks','Усі звітні тижні','すべてのレポート週','Toutes les semaines de rapport','Tutte le settimane del rapporto','Semua minggu laporan','كل أسابيع التقارير','모든 보고 주차','Alla rapportveckor','Todas as semanas do relatório','Alle rapportweken','ทุกสัปดาห์รายงาน','សប្តាហ៍របាយការណ៍ទាំងអស់','Lahat ng linggo ng ulat'],
- 'Abgerufen':['Retrieved','Отримано','取得日時','Consulté','Recuperato','Diambil','تم الاسترجاع','조회 시각','Hämtat','Consultado','Opgehaald','ดึงข้อมูลเมื่อ','បានទាញយក','Kinuha'],
- 'Austritte und Rückkehr werden aus zwei vollständig bestätigten Profilbeständen aufeinanderfolgender Wochen ermittelt. VS-Punkte und Allianzlogs allein ändern den Status nicht.':['Departures and returns are determined from two fully verified profile rosters in consecutive weeks. VS scores and alliance logs alone do not change membership status.','Виходи й повернення визначають за двома повністю підтвердженими списками профілів за послідовні тижні. Самі бали VS та журнали альянсу не змінюють статус.','連続する2週間の完全確認済みプロフィール名簿から脱退と復帰を判定します。VSスコアや同盟ログだけでは所属状態を変更しません。','Les départs et retours sont déterminés à partir de deux listes de profils entièrement vérifiées sur deux semaines consécutives. Les scores VS et journaux d’alliance seuls ne changent pas le statut.','Uscite e rientri sono determinati da due elenchi di profili interamente verificati in settimane consecutive. Punti VS e registri dell’alleanza da soli non modificano lo stato.','Keluar dan kembali ditentukan dari dua daftar profil terverifikasi lengkap pada minggu berurutan. Skor VS dan log aliansi saja tidak mengubah status.','تُحدَّد المغادرة والعودة من قائمتَي ملفات مكتملتين ومؤكدتين لأسبوعين متتاليين. نقاط VS وسجلات التحالف وحدها لا تغيّر الحالة.','연속된 두 주의 완전히 검증된 프로필 명단으로 탈퇴와 복귀를 판단합니다. VS 점수와 연맹 기록만으로는 상태가 바뀌지 않습니다.','Utträden och återkomster fastställs från två fullständigt verifierade profillistor för på varandra följande veckor. VS-poäng och alliansloggar ensamma ändrar inte status.','Saídas e regressos são determinados por duas listas de perfis totalmente verificadas de semanas consecutivas. Pontos VS e registos da aliança, por si só, não alteram o estado.','Vertrek en terugkeer worden bepaald aan de hand van twee volledig gecontroleerde profiellijsten van opeenvolgende weken. Alleen VS-scores en alliantielogs veranderen de status niet.','ตรวจสอบการออกและกลับเข้าจากรายชื่อโปรไฟล์ที่ยืนยันครบถ้วนของสองสัปดาห์ติดต่อกัน คะแนน VS และบันทึกพันธมิตรเพียงอย่างเดียวไม่เปลี่ยนสถานะ','ការចាកចេញនិងការត្រឡប់មកវិញត្រូវកំណត់តាមបញ្ជីប្រវត្តិរូបដែលបានបញ្ជាក់ពេញលេញសម្រាប់ពីរសប្តាហ៍ជាប់គ្នា។ ពិន្ទុ VS និងកំណត់ហេតុសម្ព័ន្ធតែមួយមុខមិនប្តូរស្ថានភាពទេ។','Ang pag-alis at pagbabalik ay tinutukoy mula sa dalawang ganap na beripikadong talaan ng profile sa magkasunod na linggo. Hindi binabago ng mga puntos sa VS at log ng alyansa lamang ang katayuan.'],
- 'Einzelne fehlende Bilder oder Werte belegen keinen Austritt. Die Blacklist wird nur manuell mit Begründung geändert.':['Individual missing images or values do not prove a departure. The blacklist is changed only manually, with a reason.','Окремі відсутні зображення чи значення не доводять вихід. Чорний список змінюють лише вручну з обґрунтуванням.','個別の画像や数値の欠落は脱退の証拠ではありません。ブラックリストは理由を付けて手動でのみ変更します。','Des images ou valeurs manquantes isolées ne prouvent pas un départ. La liste noire est modifiée uniquement manuellement, avec un motif.','Singole immagini o valori mancanti non provano un’uscita. La lista nera viene modificata solo manualmente, con una motivazione.','Gambar atau nilai yang hilang secara terpisah tidak membuktikan keluarnya anggota. Daftar hitam hanya diubah secara manual dengan alasan.','غياب صور أو قيم منفردة لا يثبت المغادرة. لا تُعدَّل القائمة السوداء إلا يدويًا مع ذكر السبب.','개별 이미지나 값의 누락은 탈퇴의 증거가 아닙니다. 블랙리스트는 사유를 명시해 수동으로만 변경합니다.','Enstaka saknade bilder eller värden bevisar inte ett utträde. Svartlistan ändras endast manuellt med en motivering.','Imagens ou valores em falta isolados não provam uma saída. A lista negra só é alterada manualmente, com um motivo.','Afzonderlijke ontbrekende afbeeldingen of waarden bewijzen geen vertrek. De zwarte lijst wordt alleen handmatig met een reden gewijzigd.','รูปภาพหรือค่าบางรายการที่ขาดหายไม่ใช่หลักฐานการออกจากพันธมิตร บัญชีดำเปลี่ยนได้ด้วยตนเองพร้อมเหตุผลเท่านั้น','រូបភាពឬតម្លៃដែលបាត់តែឯងមិនមែនជាភស្តុតាងនៃការចាកចេញទេ។ បញ្ជីខ្មៅត្រូវប្តូរដោយដៃជាមួយហេតុផលប៉ុណ្ណោះ។','Ang mga nawawalang indibidwal na larawan o halaga ay hindi patunay ng pag-alis. Manu-mano lamang binabago ang blacklist, na may dahilan.'],
- 'OCR-Herkunft, keine gesonderte Officer-Abnahme.':['OCR source, no separate officer approval.','Джерело OCR, без окремого підтвердження офіцером.','OCR由来。オフィサーによる個別承認はありません。','Source OCR, sans validation distincte par un officier.','Fonte OCR, senza approvazione separata di un ufficiale.','Sumber OCR, tanpa persetujuan terpisah dari perwira.','مصدر OCR، دون اعتماد منفصل من ضابط.','OCR 출처이며 장교의 별도 승인은 없습니다.','OCR-källa, inget separat officersgodkännande.','Fonte OCR, sem aprovação separada de um oficial.','OCR-bron, zonder afzonderlijke goedkeuring door een officier.','แหล่งข้อมูล OCR ยังไม่มีการอนุมัติแยกต่างหากจากเจ้าหน้าที่','ប្រភព OCR មិនទាន់មានការអនុម័តដោយឡែកពីមន្ត្រីទេ។','Pinagmulan sa OCR, walang hiwalay na pag-apruba ng opisyal.'],
  'Bestätigt':['Confirmed','Підтверджено','確認済み','Confirmé','Confermato','Terkonfirmasi','مؤكّد','확인됨','Bekräftat','Confirmado','Bevestigd','ยืนยันแล้ว','បានបញ្ជាក់','Nakumpirma'],
  'Datum unbekannt':['Date unknown','Дата невідома','日付不明','Date inconnue','Data sconosciuta','Tanggal tidak diketahui','التاريخ غير معروف','날짜 미상','Okänt datum','Data desconhecida','Datum onbekend','ไม่ทราบวันที่','មិនស្គាល់កាលបរិច្ឆេទ','Hindi alam ang petsa'],
  'Ja':['Yes','Так','はい','Oui','Sì','Ya','نعم','예','Ja','Sim','Ja','ใช่','បាទ/ចាស','Oo'],
@@ -188,6 +170,22 @@ for(const [source,row] of Object.entries(ALIAS_TEXT)){
  if(row.length!==ALIAS_LANGUAGES.length)throw new Error('Incomplete alias translation: '+source);
  ALIAS_LANGUAGES.forEach((lang,index)=>{TRANSLATION_ROWS[lang][source]=row[index]});
 }
+// Reviewed English fallback for the manual lifecycle controls; private names are never translated.
+const MANUAL_LIFECYCLE_TERMS={
+ 'Austritt bestätigen':'Confirm departure',
+ 'Manuell bestätigter Austritt / Rückkehr':'Manually verified departure / return',
+ 'Austrittsart':'Departure type',
+ 'Bitte auswählen':'Please select',
+ 'Selbst verlassen':'Left voluntarily',
+ 'Entfernt':'Removed',
+ 'Gekickt':'Kicked',
+ 'Geprüfte Quelle':'Checked source',
+ 'Allianzprotokoll / Datum / genauer Beleg':'Alliance log / date / exact evidence',
+ 'Quelle persönlich geprüft':'I personally checked the source',
+ 'Austritt oder Rückkehr dieser Person ausdrücklich bestätigen':'Explicitly confirm this person’s departure or return',
+ 'Nullwerte und fehlende VS-Werte sind kein Austrittsbeleg. Die bestehende Mitglieder-ID und Historie bleiben erhalten.':'Zero values and missing VS results do not prove departure. The existing member ID and history are retained.'
+};
+for(const rows of Object.values(TRANSLATION_ROWS))for(const [source,text] of Object.entries(MANUAL_LIFECYCLE_TERMS))rows[source]??=text;
 const WEEKLY_FALLBACK_TRANSLATIONS={
  en:{'bestätigt':'confirmed','Aufgenommen nach Reset':'Captured after reset','Keine rechtzeitige Tagesaufnahme vor Duellende. Nur der spätere Wochenrang; keine Tageswerte und kein finales Duell-Ergebnis.':'No timely daily capture before the duel ended. This is only the later weekly ranking, with no daily scores and no final duel result.'},
  uk:{'bestätigt':'підтверджено','Aufgenommen nach Reset':'Записано після скидання','Keine rechtzeitige Tagesaufnahme vor Duellende. Nur der spätere Wochenrang; keine Tageswerte und kein finales Duell-Ergebnis.':'Своєчасного щоденного запису до завершення дуелі немає. Показано лише пізніший тижневий рейтинг, без щоденних результатів і без остаточного результату дуелі.'},
@@ -206,16 +204,49 @@ const WEEKLY_FALLBACK_TRANSLATIONS={
 };
 for(const [lang,rows] of Object.entries(WEEKLY_FALLBACK_TRANSLATIONS))Object.assign(TRANSLATION_ROWS[lang],rows);
 export const OFFICER_TEXT=TRANSLATION_ROWS;
-export const OFFICER_TEXT=TRANSLATION_ROWS;
-/** Display known workflow states only; never rewrite API values or player names. */
-export function officerStatusLabel(value,language='de'){
- const labels={active:'Aktiv',former:'Archiv',archived:'Archiv',inactive:'Archiv',
-  completed:'Abgeschlossen',done:'Abgeschlossen',planned:'Geplant',scheduled:'Geplant',
-  cancelled:'Abgesagt',open:'Offen',pending:'Prüfen',review:'Prüfen',unverified:'Nicht geprüft',
-  unknown:'Unbekannt',null:'Unbekannt',missing:'Fehlt',observed:'Abgelesen',corrected:'Manuell bestätigt',
-  final:'Finalisiert',preliminary:'Vorläufig',no_checkpoint:'Noch keine Aufnahme gestartet'};
- return translateOfficerText(labels[String(value??'unknown').toLowerCase()]||'Unbekannt',language);
-}
+// Authored VIP UI only; keep member names, IDs and backend errors out of translation.
+const TRAIN_VIP_TERMS={
+ 'VIP-Fahrgast':'VIP passenger',
+ 'VIP-Fahrgast wählen':'Choose VIP passenger',
+ 'VIP-Fahrgast speichern':'Save VIP passenger',
+ 'VIP-Fahrgast:':'VIP passenger:',
+ '2. Platz · VIP:':'2nd place · VIP:',
+ '2. Platz · VIP-Fahrgast':'2nd place · VIP passenger',
+ 'Dice Game · 1. Platz:':'Dice Game · 1st place:',
+ '1. Platz · Gewinner aus der Allianz':'1st place · Alliance winner',
+ 'VIP: vor Erfassungsbeginn (11.11.2026)':'VIP: before tracking began (2026-11-11)',
+ 'explizit unbesetzt':'explicitly unassigned',
+ 'unbekannt':'unknown',
+ 'VIP-Datum öffnen (auch ohne Fahrer / Dice)':'Open VIP date (also without driver / Dice)',
+ 'VIP-Fahrten · getrennt von Fahrer & 1. Platz':'VIP rides · separate from driver & 1st place',
+ 'Erfassung ab 11.11.2026':'Tracking since 2026-11-11',
+ 'Keine bestätigte VIP-Fahrt':'No confirmed VIP ride',
+ 'VIP-Verlauf unbekannt / nicht verfügbar.':'VIP history unknown / unavailable.',
+ 'Bitte auswählen · unbekannt':'Please select · unknown',
+ 'Unverändert lassen':'Leave unchanged',
+ 'Explizit unbesetzt (Auswahl löschen)':'Explicitly unassigned (clear selection)',
+ 'VIP-Fahrgäste aus allen aktiven Rängen (auch R1).':'VIP passengers from all active ranks (including R1).',
+ '1. Platz ist der Gewinner; 2. Platz fährt als VIP. Beide müssen verschieden sein. Fahrer und Rotation bleiben unabhängig.':'1st place is the winner; 2nd place rides as VIP. They must differ. Driver and rotation remain independent.',
+ 'VIP-Erfassung erst ab 11.11.2026; historische VIPs werden nicht ergänzt.':'VIP tracking starts on 2026-11-11; earlier VIPs are not backfilled.',
+ 'Dice Game & VIP speichern':'Save Dice Game & VIP',
+ 'Ziehung löschen (VIP bleibt erhalten)':'Delete draw (VIP is retained)',
+ 'Historischer VIP:':'Historical VIP:',
+ '(nicht mehr aktiv). Änderungen benötigen ein aktives Mitglied oder explizit unbesetzt.':'(no longer active). Changes require an active member or explicitly unassigned.',
+ 'Auswahl wird geladen …':'Loading selection …',
+ 'VIP-Antwort nicht verfügbar. Bitte neu laden.':'VIP response unavailable. Please reload.',
+ 'Auswahl erneut laden':'Reload selection',
+ 'Datum geändert. Auswahl für dieses Datum neu laden.':'Date changed. Reload the selection for this date.',
+ 'Bitte aktives Mitglied oder explizit unbesetzt auswählen.':'Choose an active member or explicitly unassigned.',
+ 'VIP muss aktuell aktiv sein.':'VIP must currently be active.',
+ 'Aktiven Gewinner auswählen.':'Choose an active winner.',
+ 'Gewinner und VIP müssen verschieden sein.':'Winner and VIP must differ.',
+ 'Datum oder Würfelwert ungültig.':'Invalid date or dice roll.',
+ 'Gespeichert: Auswahl erneut vom Backend gelesen.':'Saved: selection read back from the backend.',
+ 'Inzwischen geändert (409). Aktuellen Stand geladen; Auswahl prüfen und ausdrücklich erneut speichern.':'Changed meanwhile (409). Current state loaded; review and explicitly save again.',
+ 'Sitzung abgelaufen. Bitte erneut anmelden.':'Session expired. Please sign in again.',
+ 'Dice Game gelöscht. VIP-Auswahl bleibt erhalten.':'Dice Game deleted. VIP selection is retained.'
+};
+for(const rows of Object.values(TRANSLATION_ROWS))for(const [source,text] of Object.entries(TRAIN_VIP_TERMS))rows[source]??=text;
 export const OFFICER_LANGUAGES=Object.freeze(['de','en','uk','ja','fr','it','id','ar','ko','sv','pt','nl','th','km','fil']);
 export function officerLanguage(documentRef=globalThis.document){
  const current=String(documentRef?.documentElement?.lang||'de').toLowerCase();

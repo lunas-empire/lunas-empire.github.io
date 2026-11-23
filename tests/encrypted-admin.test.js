@@ -28,3 +28,63 @@ test('encrypted admin package interoperates with browser crypto and rejects a wr
     await rm(temporary,{recursive:true,force:true});
   }
 });
+
+// Exercise the real shell controller without private data or Worker requests.
+import { JSDOM } from 'jsdom';
+const shellHtml=await readFile(new URL('../admin/index.html',import.meta.url),'utf8');
+const shellApp=(await readFile(new URL('../admin/app.js',import.meta.url),'utf8')).replace(/^import .*;\r?\n/,'');
+function shellAt(url) {
+  const dom=new JSDOM(shellHtml,{url,runScripts:'outside-only'});
+  dom.window.__nativeCalls={init:0,render:0};
+  dom.window.__loadNative=()=>Promise.resolve({
+    async openNativeReviews(){},
+    initNativeAdmin(mount){dom.window.__nativeCalls.init++;mount.dataset.nativeReady='1';},
+    async renderNativeAdmin(mount){dom.window.__nativeCalls.render++;mount.innerHTML='<form id="native-officer-login"><input type="password" name="code"></form>';}
+  });
+  dom.window.__redirects=[];
+  dom.window.eval(shellApp.replaceAll('location.replace(', 'window.__redirects.push(').replace("import('/assets/native-admin.js')","window.__loadNative()"));
+  return dom;
+}
+test('Luna legacy links alias the root native view and wiki stays archival',async()=>{
+ for(const hash of ['overview','review','wissen']){
+  const dom=shellAt('https://lunas-empire.github.io/admin/#'+hash);
+  const doc=dom.window.document;
+  assert.equal(doc.querySelector('iframe'),null);
+  assert.equal(doc.querySelector('[data-view]'),null);
+  assert.equal(dom.window.__nativeCalls.init,0);
+  assert.deepEqual([...dom.window.__redirects],hash==='wissen'?[]:[hash==='review'?'/#admin-review':'/#admin']);
+  assert.match(doc.querySelector('[http-equiv="Content-Security-Policy"]').content,/frame-src 'none'/);
+  const csp=doc.querySelector('[http-equiv="Content-Security-Policy"]').content;
+  assert.match(csp,/script-src 'self';/);
+  assert.match(csp,/connect-src 'self' https:\/\/rzsn-staging-api-bridge\.pages\.dev;/);
+  assert.match(csp,/img-src 'self' blob:/);
+  if(hash==='wissen')assert.equal(doc.querySelector('#wiki-panel').hidden,false);
+  dom.window.close();
+ }
+ for(const host of ['rzsn-home.github.io','example.org','lunas-empire.github.io.example.org']){
+  const dom=shellAt(`https://${host}/admin/#review`);
+  assert.equal(dom.window.document.querySelector('#commander-shell').hidden,true);
+  assert.equal(dom.window.document.querySelector('#wiki-panel').hidden,false);
+  assert.equal(dom.window.document.querySelector('#login-title').textContent,'R4/R5 Admin');
+  assert.equal(dom.window.document.querySelector('iframe'),null);
+  dom.window.close();
+ }
+});
+
+test('wiki runtime preserves decryption and provides same-route return links',()=>{
+  assert.match(shellApp,/deriveAdminKey\(password,manifest\)/);
+  assert.match(shellApp,/decryptAdminBytes\(encryptedWiki,manifest.files.wiki,key\)/);
+  assert.match(shellApp,/href="\/#admin"/);
+  assert.match(shellApp,/href="\/#admin-review"/);
+  assert.match(shellApp,/document\.open\(\);\s*document\.write\(html\);\s*document\.close\(\)/);
+});
+
+test('both hubs use the native route while the encrypted archive remains separate',async()=>{
+ const config=await readFile(new URL('../assets/config.js',import.meta.url),'utf8');
+ const app=await readFile(new URL('../assets/app.js',import.meta.url),'utf8');
+ assert.ok(config.includes("adminUrl: '#admin'"));
+ assert.ok(!app.includes("location.replace('/admin/')"));
+ assert.match(app,/nativeReview\?'#admin':location.hash/);
+ assert.match(app,/if\(nativeReview&&\(!retainedMount\|\|!preserve\)\)\{\s*await mod.openNativeReviews\(mount\)/);
+ assert.match(app,/if\(!retainedMount\) main.innerHTML/);
+});

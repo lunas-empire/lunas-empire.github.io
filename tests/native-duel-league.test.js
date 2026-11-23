@@ -33,26 +33,13 @@ const makeMatchForm=()=>{
  return {dom,form};
 };
 
-test('closing a duel evidence dialog cancels a late image and restores the invoking focus',async t=>{
- const dom=new JSDOM('<main id="root"></main>');t.after(()=>dom.window.close());
- const root=dom.window.document.querySelector('#root');let finish;
- const pending=new Promise(resolve=>{finish=resolve});
- const controller=createDuelLeagueController({root,api:{read:async()=>sample,loadEvidence:()=>pending},language:'en'});
- await controller.load();const button=root.querySelector('[data-native-dl-evidence]');button.focus();button.click();
- assert.ok(root.querySelector('[role=dialog]'));assert.equal(dom.window.document.body.style.overflow,'hidden');
- root.querySelector('[data-native-dl-evidence-close]').dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
- assert.equal(root.querySelector('[role=dialog]'),null);assert.equal(dom.window.document.activeElement,button);
- finish(new Blob([new Uint8Array(80)],{type:'image/png'}));await new Promise(resolve=>setTimeout(resolve,0));
- assert.equal(root.querySelector('.native-dl-evidence img'),null);
- assert.equal(dom.window.document.body.style.overflow,'');controller.destroy();
-});
-
 test('renders exact overview safely in DE and EN without a backend-pending warning',()=>{
  const data=normalizeDuelLeague(sample);
  assert.deepEqual(data.matches[0].days.map(day=>day.vp_weight),DUEL_DAY_WEIGHTS);assert.equal(data.matches[0].days[1].our_score,null);
  const de=renderDuelLeague(sample,'de');
  assert.doesNotMatch(de,/<img src=x/);assert.match(de,/&lt;img src=x onerror=alert\(1\)&gt;/);
  assert.match(de,/1:0 ist nur ein Zwischenstand/);assert.doesNotMatch(de,/Backend-Freigabe/);
+ assert.match(de,/>VP</);assert.match(de,/1 \/ 13/);assert.equal(new JSDOM(de).window.document.querySelector('.native-dl-match-kpis')!==null,true);
  const en=renderDuelLeague(sample,'en');assert.match(en,/Historic 4-week leagues/);assert.match(en,/Duel &amp; League/);assert.doesNotMatch(en,/Duellverlauf|Unbekannt/);
 });
 
@@ -159,61 +146,5 @@ test('Zentrale OCR is editable but never marks a match official without officer 
  assert.equal(form.elements.status.value,'unverified');
  assert.equal(form.elements.official_result.value,'');
  assert.equal(calls.length,0);
- controller.destroy();
-});
-
-test('switching from a proposal to a device capture clears unrelated proof and uses the current match revision',async t=>{
- const dom=new JSDOM('<main id="root"></main>');t.after(()=>dom.window.close());
- const root=dom.window.document.querySelector('#root'),key='d'.repeat(64);
- const incoming={...sample,capture_sessions:[{idempotency_key:key,kind:'duel',scope_key:'2026-W43',
-  parsed:{opponent:{tag:'ABC',name:'Alliance',server_number:123},interim_our_wins:0,interim_opponent_wins:0}}]};
- const controller=createDuelLeagueController({root,api:{read:async()=>incoming},language:'en'});
- await controller.load();root.querySelector('[data-native-dl-review-proposal]').click();
- const form=root.querySelector('.native-dl-match-form');
- form.elements.our_score_6.value='999';form.elements.result_6.value='win';
- root.querySelector('[data-native-dl-review-capture]').click();
- const payload=matchPayload(form,()=> 'duel-test-switch-capture');
- assert.equal(payload.revision,2);
- assert.equal(payload.proposal_id,undefined);
- assert.ok(payload.days.every(day=>day.our_score===null&&day.opponent_score===null&&day.result==='unknown'&&!day.evidence_id));
- assert.equal(payload.league.cycle_label,'S38');
- assert.equal(form.elements.reason.value,'');
- controller.destroy();
-});
-
-test('proposal review maps explicit day numbers and clears values from the preceding review',async t=>{
- const dom=new JSDOM('<main id="root"></main>');t.after(()=>dom.window.close());
- const root=dom.window.document.querySelector('#root');
- const incoming={...sample,proposals:[{...sample.proposals[0],scope_key:'2026-W43',
-  proposal:{...sample.proposals[0].proposal,days:[{day_index:6,our_score:0,opponent_score:7,result:'loss'}]}}]};
- const controller=createDuelLeagueController({root,api:{read:async()=>incoming},language:'en'});
- await controller.load();const form=root.querySelector('.native-dl-match-form');
- form.elements.our_score_1.value='999';form.elements.result_1.value='win';
- root.querySelector('[data-native-dl-review-proposal]').click();
- const payload=matchPayload(form,()=> 'duel-test-explicit-days');
- assert.equal(payload.revision,2);
- assert.equal(payload.days[0].our_score,null);
- assert.equal(payload.days[0].result,'unknown');
- assert.equal(payload.days[5].our_score,0);
- assert.equal(payload.days[5].opponent_score,7);
- assert.equal(payload.days[5].result,'loss');
- controller.destroy();
-});
-
-test('partial league capture keeps expected coverage and clears previous proposal and official decision',async t=>{
- const dom=new JSDOM('<main id="root"></main>');t.after(()=>dom.window.close());
- const root=dom.window.document.querySelector('#root');
- const incoming={...sample,capture_sessions:[{idempotency_key:'e'.repeat(64),kind:'league',scope_key:'S38',
-  captured_at:'2026-10-25T12:00:00Z',parsed:{rows:[{rank_number:1,alliance_tag:'RZSN',alliance_name:'RisingSun'}]}}]};
- const controller=createDuelLeagueController({root,api:{read:async()=>incoming},language:'en'});
- await controller.load();const form=root.querySelector('.native-dl-snapshot-form');
- form.elements.proposal_id.value=uuid;form.elements.evidence_ids.value=JSON.stringify([uuid]);
- form.elements.official_snapshot.checked=true;form.elements.official_outcome.value='promoted';
- root.querySelector('[data-native-dl-review-capture]').click();
- const payload=snapshotPayload(form,()=> 'duel-test-partial-league');
- assert.equal(payload.expected_rank_count,16);
- assert.equal(payload.proposal_id,undefined);assert.deepEqual(payload.evidence_ids,[]);
- assert.equal(payload.official_snapshot,false);assert.equal(form.elements.official_outcome.value,'');
- assert.equal(payload.rows.length,1);
  controller.destroy();
 });

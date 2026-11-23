@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import {webcrypto} from 'node:crypto';
 import {JSDOM} from 'jsdom';
 import {initNativeAdmin,renderNativeAdmin,clearOfficer} from '../assets/native-admin.js';
-import {bindEvidenceDialog} from '../assets/native-evidence-row.js';
 if(!globalThis.crypto)globalThis.crypto=webcrypto;
 test('Weekly donation value and profile history open only the exact private approved screenshot',async t=>{
  const dom=new JSDOM('<html lang="en"><body><main id="app"></main></body></html>',
@@ -59,22 +58,6 @@ test('Weekly donation value and profile history open only the exact private appr
  await until('#native-stat-evidence-viewer img');
  assert.ok(calls.includes('/api/stat-evidence/snap-a/member-a/donations_weekly/image'));
  assert.equal(app.querySelectorAll('[data-native-stat-link]').length,0,'Verified proof skips candidate selection');
- app.querySelector('[data-native-stat-close]').dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+ app.querySelector('[data-native-stat-close]').click();
  assert.equal(app.querySelector('#native-stat-evidence-viewer'),null);
- assert.equal(dom.window.document.activeElement,value,'Escape returns focus to the selected report value');
-});
-
-test('evidence dialogs contain keyboard focus and release it and scroll locking on close',t=>{
- const dom=new JSDOM('<button id="invoke">Source</button><section id="dialog"><button id="close">Close</button><button disabled>Disabled</button><details><summary>Full image</summary><button>Hidden control</button></details><input id="last"></section>');
- t.after(()=>dom.window.close());const doc=dom.window.document,host=doc.querySelector('#dialog'),invoker=doc.querySelector('#invoke');
- invoker.focus();let release;
- release=bindEvidenceDialog(host,()=>{host.remove();release()},invoker);
- assert.equal(doc.activeElement.id,'close');assert.equal(doc.body.style.overflow,'hidden');
- const key=(node,shiftKey=false)=>node.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Tab',shiftKey,bubbles:true,cancelable:true}));
- key(doc.activeElement,true);assert.equal(doc.activeElement.id,'last');
- key(doc.activeElement);assert.equal(doc.activeElement.id,'close');
- invoker.focus();assert.equal(doc.activeElement.id,'close','Background controls cannot take focus');
- doc.activeElement.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
- assert.equal(doc.activeElement,invoker);assert.equal(doc.body.style.overflow,'');
- invoker.focus();assert.equal(doc.activeElement,invoker,'No stale modal focus listener survives');
 });

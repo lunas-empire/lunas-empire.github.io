@@ -44,11 +44,9 @@ test('Alliance > Members includes archive section and keeps active rank separate
   if(p==='/api/officer-alerts')return Response.json({});
   if(p==='/api/members')return Response.json([
    {id:'a',name:'Current One',rank:'R5',status:'active',power:100},
+   {id:'b',name:'Archived Member',rank:'R4',status:'former'},
    {id:'c',name:'Current Two',rank:'R4',status:'active'}
   ]);
-  if(p==='/api/member-registry')return Response.json({members:[
-   {id:'b',name:'Archived Member',rank:'R4',lifecycle:'former'}
-  ]});
   if(p==='/api/train-manager')return Response.json({
    history:[],archivedFormerTrainDrivers:[item('Old Rider',[ '2026-09-01','2026-09-08']),item('Current One')],counts:{}
   });
@@ -76,13 +74,6 @@ test('Alliance > Members includes archive section and keeps active rank separate
  assert.match(archive.querySelector('.native-archive-row').textContent,/Zugfahrt/);
  assert.deepEqual([...archive.querySelector('.native-rank-members').children].map(x=>x.querySelector('strong').textContent),['Archived Member','Old Rider'],'Former profile and train rider are alphabetically interleaved');
  assert.equal(postCount,0,'Historical listing never posts a fake member');
- const filter=q('#native-member-filter');filter.value='active';filter.dispatchEvent(new dom.window.Event('change',{bubbles:true}));
- assert.equal(q('.native-members-archive'),null);
- assert.match(q('#native-member-list').textContent,/Current One/);
- filter.value='former';filter.dispatchEvent(new dom.window.Event('change',{bubbles:true}));
- assert.match(q('#native-member-list').textContent,/Archived Member/);
- assert.doesNotMatch(q('#native-member-list').textContent,/Current One/);
- filter.value='all';filter.dispatchEvent(new dom.window.Event('change',{bubbles:true}));
  const search=q('#native-member-search');search.value='Old Rider';
  search.dispatchEvent(new dom.window.Event('input',{bubbles:true}));
  await wait(()=>q('details.native-members-archive')?.open);

@@ -50,6 +50,7 @@ test('VS priority is NOT OCR review count; VS player opens real dossier, history
    ...Array.from({length:6},(_,weekday)=>({week:'2026-W39',weekday,quality:'observed',points:4000000})),
    {week:'2026-W41',weekday:0,quality:'observed',points:5000000}
   ],
+  events:[{recorded_at:'2026-10-01',event:'joined',previous:'none',current:'R2'}],
   rides:[],dice_wins:[],achievements:[]
  };
  const weeks=[{week:'2026-W41',priority:29,failedDays:50,unknownDays:10,perfect:4,
@@ -71,6 +72,10 @@ test('VS priority is NOT OCR review count; VS player opens real dossier, history
   }
   if(path==='/api/members')return Response.json([member]);
   if(path==='/api/member/'+id)return Response.json(sample);
+  if(path==='/api/activity'){
+   assert.equal(new URL(url).searchParams.get('member_id'),id);
+   return Response.json([{actor:'Synthetic Officer',action:'rank_update',at:'2026-10-02T12:00:00Z'}]);
+  }
   throw Error('Unexpected '+path);
  };
  const mount=dom.window.document.querySelector('#mount'),q=s=>mount.querySelector(s);
@@ -83,11 +88,6 @@ test('VS priority is NOT OCR review count; VS player opens real dossier, history
  assert.match(q('.native-vs-single-insight').textContent,/29/);
  assert.match(q('[data-native-action=review-open]').textContent,/OCR 0/);
  assert.doesNotMatch(q('[data-native-action=review-open]').textContent,/29/);
- const search=q('#native-vs-search');search.value='missing-name';search.dispatchEvent(new dom.window.Event('input',{bubbles:true}));
- assert.equal(q('.native-vs-player'),null,'nonmatching players are excluded before compact pagination');
- assert.equal(q('[data-native-vs-search-empty]').hidden,false);
- search.value='Synthetic';search.dispatchEvent(new dom.window.Event('input',{bubbles:true}));
- assert.equal(q('.native-vs-player').hidden,false);
  q('.native-vs-group summary').click();
  await until(()=>q('[data-native-member="'+id+'"]'));
  assert.ok(q('[data-native-vs-image="2026-W41|'+id+'|0"]'));
@@ -95,13 +95,17 @@ test('VS priority is NOT OCR review count; VS player opens real dossier, history
  await until(()=>q('#native-vs-evidence-image img'));
  assert.ok(routes.includes('/api/vs-days/2026-W41/'+id+'/0/evidence'));
  q('[data-native-vs-image-close]').click();
- const originalReport=q('#native-admin-content');
  q('[data-native-member="'+id+'"]').click();
  await until(()=>q('.native-profile h3'));
  assert.equal(q('.native-profile h3').textContent,member.name);
- assert.match(q('.native-profile-metrics').textContent,/500.000 seit der vorherigen Aufnahme/);
- assert.match(q('.native-profile-metrics').textContent,/Seit 2026-10-07: \+500.000/);
- assert.match(q('.native-profile-metrics').textContent,/Erst eine bestätigte Aufnahme/);
+ assert.match(q('[data-native-member-history]').textContent,/joined.*none.*R2/s);
+ assert.ok(!routes.includes('/api/activity'));
+ q('[data-native-member-history]').open=true;
+ await until(()=>q('#native-person-log').textContent.includes('Synthetic Officer'));
+ assert.ok(routes.includes('/api/activity'));
+ assert.match(q('[data-lw-kpi=power]').textContent,/\+500.000.*2026-10-14/);
+ assert.match(q('.native-lw-total-change').textContent,/Gesamt seit 2026-10-07: \+500.000/);
+ assert.match(q('[data-lw-kpi=kills]').textContent,/Noch kein Vergleich/);
  assert.match(q('.native-profile-weeks').textContent,/6.200.000 zum 2026-W39/);
  assert.match(q('.native-profile-weeks').textContent,/Vorläufig/);
  assert.match(q('.native-profile-weeks').textContent,/Teilstand 5\.000\.000/);
@@ -114,9 +118,8 @@ test('VS priority is NOT OCR review count; VS player opens real dossier, history
  assert.ok(routes.includes('/api/vs-days/2026-W40/'+id+'/0/evidence'));
  q('[data-native-vs-image-close]').click();
  q('[data-native-member-close]').click();
- await until(()=>q('#native-vs-body')&&!q('.native-profile'));
- assert.equal(q('#native-admin-content'),originalReport);
- assert.equal(q('#native-vs-search').value,'Synthetic');
+ await until(()=>q('#native-member-list')&&!q('.native-profile'));
+ assert.ok(q('.native-rank-group').open);
  assert.ok(q('[data-native-member="'+id+'"]'));
 });
 

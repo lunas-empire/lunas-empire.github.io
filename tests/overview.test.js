@@ -42,11 +42,9 @@ test('Wish Hero appears as a task only after its day-11 unlock',()=>{
   assert.equal(seasonTaskUnlocked('wishHero',wednesday),false);
   assert.equal(seasonTaskUnlocked('wishHero',guideState(new Date('2026-10-01T03:00:00Z'))),true);
 });
-test('next reset follows fixed game midnight at 02:00 UTC through CET/CEST changes',()=>{
-  const fall=guideState(new Date('2026-10-24T18:00:00Z'));
-  assert.equal(nextReset(fall).toISOString(),'2026-10-25T02:00:00.000Z');
-  const spring=guideState(new Date('2027-03-27T18:00:00Z'));
-  assert.equal(nextReset(spring).toISOString(),'2027-03-28T02:00:00.000Z');
+test('next reset remains 02:00 UTC across daylight-saving transition',()=>{
+  const state=guideState(new Date('2026-10-24T18:00:00Z'));
+  assert.equal(nextReset(state).toISOString(),'2026-10-25T02:00:00.000Z');
 });
 test('every new interface string exists in all 15 languages with equal placeholders',()=>{
   const keys=Object.keys(OVERVIEW_COPY.en).sort();

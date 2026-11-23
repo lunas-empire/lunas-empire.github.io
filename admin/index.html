@@ -2,14 +2,23 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="robots" content="noindex,nofollow,noarchive">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; connect-src 'self' https://rzsn-staging-api-bridge.pages.dev; img-src 'self' blob:; base-uri 'none'; form-action 'none'; frame-src 'none'">
   <title>R4/R5 Admin · RZSN</title>
+  <link rel="stylesheet" href="/assets/hub.css">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <main class="login-shell">
+  <section id="commander-shell" class="commander-shell" aria-label="Commander Center" hidden>
+    <header class="commander-header">
+      <div class="commander-heading"><h1>Commander Center</h1><a href="/">Member Hub</a></div>
+    </header>
+    <main id="native-panel" class="native-panel" aria-label="Commander Center" hidden>
+      <div id="native-officer-root"><p role="status">Commander Center wird geladen.</p></div>
+    </main>
+  </section>
+  <main id="wiki-panel" class="login-shell">
     <a class="back-link" href="/">← Member Hub</a>
     <section class="login-card" aria-labelledby="login-title">
       <p class="alliance">RZSN · Server 2261</p>
@@ -18,13 +27,14 @@
       <p class="intro en" lang="en">Protected area for alliance leadership and season planning.</p>
       <form id="unlock-form">
         <label for="admin-password">Passwort <span lang="en">/ Password</span></label>
-        <input id="admin-password" name="password" type="password" autocomplete="current-password" required autofocus>
+        <input id="admin-password" name="password" type="password" autocomplete="current-password" required>
         <button id="unlock-button" type="submit">Admin-Bereich öffnen</button>
       </form>
       <p id="unlock-status" class="status" role="status" aria-live="polite"></p>
       <p class="privacy">Das Passwort wird nur lokal zur Entschlüsselung verwendet und nicht übertragen oder gespeichert.</p>
     </section>
   </main>
+  <noscript><p class="noscript-note">JavaScript ist für die sichere Anmeldung und Entschlüsselung erforderlich.</p></noscript>
   <script type="module" src="app.js"></script>
 </body>
 </html>

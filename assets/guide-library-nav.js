@@ -1,7 +1,7 @@
 // Guide library navigation. Keep category identity independent of translated guide names.
 export const GUIDE_TOPIC_ORDER=Object.freeze(['alliance','power','vs','season','economy']);
 const ITEMS=Object.freeze({
-  alliance:Object.freeze(['generals-trial','zombie-siege','marshals-guard','rally-combat-fundamentals','desert-storm','alliance-tech-donations','free-teleport','train']),
+  alliance:Object.freeze(['generals-trial','zombie-siege','marshals-guard','rally-combat-fundamentals','desert-storm','alliance-tech-donations','ghost-ops','free-teleport','train']),
   power:Object.freeze(['hero-squad-formations','drone-chips-components','ur-gear-blueprints','waterfall-troop-training','minister-capitol-buffs','tech','t10']),
   economy:Object.freeze(['store-buy-priorities','gold-farming','hot-deals-events','black-market'])
 });

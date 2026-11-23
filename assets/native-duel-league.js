@@ -1,6 +1,6 @@
 /** Native duel-league UI. Authentication and transport remain owned by native-admin.js. */
 import {duelCopy,duelEnumLabel} from './native-duel-league-i18n.js';
-import {bindEvidenceDialog} from './native-evidence-row.js';
+import {renderDuelInsights} from './officer-duel-insights.js';
 export const DUEL_DAY_WEIGHTS=Object.freeze([1,2,2,2,2,4]);
 const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const list=value=>Array.isArray(value)?value:[];
@@ -14,7 +14,7 @@ const iso=value=>value?new Date(value).toISOString():null;
 const fill=(form,name,value)=>{const field=form.elements[name];if(field)field.value=value??''};
 const idempotency=cryptoRef=>'duel-'+cryptoRef.randomUUID();
 
-function normalizeDay(source={},index=0){return {day_index:integer(source.day_index)??index+1,vp_weight:integer(source.vp_weight)??DUEL_DAY_WEIGHTS[index],our_score:integer(source.our_score),opponent_score:integer(source.opponent_score),result:text(source.result)||'unknown',evidence_id:text(source.evidence_id)}}
+function normalizeDay(source={},index=0){return {day_index:integer(source.day_index)??index+1,vp_weight:integer(source.vp_weight)??DUEL_DAY_WEIGHTS[index],our_score:integer(source.our_score),opponent_score:integer(source.opponent_score),result:text(source.result)||'unknown',verification_status:text(source.verification_status)||'unknown',evidence_id:text(source.evidence_id)}}
 function normalizeMatch(source={}){const supplied=list(source.days);return {...source,iso_week:text(source.iso_week),revision:integer(source.revision)??0,opponent_tag_snapshot:text(source.opponent_tag_snapshot),opponent_name_snapshot:text(source.opponent_name_snapshot),opponent_server_snapshot:integer(source.opponent_server_snapshot),interim_our_wins:integer(source.interim_our_wins),interim_opponent_wins:integer(source.interim_opponent_wins),days:DUEL_DAY_WEIGHTS.map((_,index)=>normalizeDay(supplied.find(day=>day.day_index===index+1),index))}}
 function normalizeSnapshot(source={}){return {...source,rows:list(source.rows).map(row=>({...row,week_results:[row.week1_result??'unknown',row.week2_result??'unknown',row.week3_result??'unknown',row.week4_result??'unknown']}))}}
 function normalizeProposal(source={}){return {...source,evidence_ids:list(source.evidence_ids),proposal:source.proposal&&typeof source.proposal==='object'?source.proposal:{}}}
@@ -24,7 +24,15 @@ export function normalizeDuelLeague(source={}){
 }
 function evidenceButton(id,copy){return id?'<button type="button" class="native-dl-evidence-link" data-native-dl-evidence="'+esc(id)+'">'+esc(copy.viewEvidence)+'</button>':''}
 function dayTable(match,copy){return '<div class="native-dl-days" role="table" aria-label="'+esc(copy.days)+'"><div class="native-dl-day native-dl-day-head" role="row"><span>'+esc(copy.days)+'</span><span>'+esc(copy.weight)+'</span><span>'+esc(copy.ours)+'</span><span>'+esc(copy.theirs)+'</span><span>'+esc(copy.dayResult)+'</span></div>'+match.days.map((day,index)=>'<div class="native-dl-day" role="row"><strong>'+esc(copy.dayNames[index])+'</strong><span>×'+day.vp_weight+'</span><span>'+valueText(day.our_score,copy)+'</span><span>'+valueText(day.opponent_score,copy)+'</span><span>'+esc(enumText(day.result||'unknown',copy))+evidenceButton(day.evidence_id,copy)+'</span></div>').join('')+'</div>'}
-function matchCard(match,copy,open=false){return '<details class="native-fold native-dl-match" '+(open?'open':'')+'><summary><span><strong>'+esc(match.iso_week||copy.unknown)+'</strong> · ['+esc(match.opponent_tag_snapshot||copy.unknown)+'] '+esc(match.opponent_name_snapshot||copy.unknown)+' · #'+esc(match.opponent_server_snapshot??copy.unknown)+'</span><span>'+valueText(match.interim_our_wins,copy)+':'+valueText(match.interim_opponent_wins,copy)+' · '+esc(enumText(match.status||'unknown',copy))+'</span></summary><div class="native-fold-body">'+(match.interim_our_wins===1&&match.interim_opponent_wins===0&&match.status!=='final'?'<p class="native-evidence-note">'+esc(copy.interimScore)+'</p>':'')+dayTable(match,copy)+'</div></details>'}
+function matchKpis(match,copy){
+ const days=match.days.filter(day=>['win','loss','tie'].includes(day.result));
+ const vp=match.days.filter(day=>day.result==='win').reduce((sum,day)=>sum+day.vp_weight,0);
+ return '<div class="native-dl-match-kpis"><span><small>VP</small><strong>'+vp+' / 13</strong></span>'+
+  '<span><small>'+esc(copy.days)+'</small><strong>'+days.length+' / 6</strong></span>'+
+  '<span><small>'+esc(copy.ourScore)+'</small><strong>'+valueText(match.interim_our_wins,copy)+'</strong></span>'+
+  '<span><small>'+esc(copy.status)+'</small><strong>'+esc(enumText(match.status||'unknown',copy))+'</strong></span></div>';
+}
+function matchCard(match,copy,open=false){return '<details class="native-fold native-dl-match" '+(open?'open':'')+'><summary><span><strong>'+esc(match.iso_week||copy.unknown)+'</strong> · ['+esc(match.opponent_tag_snapshot||copy.unknown)+'] '+esc(match.opponent_name_snapshot||copy.unknown)+' · #'+esc(match.opponent_server_snapshot??copy.unknown)+'</span><span>'+valueText(match.interim_our_wins,copy)+':'+valueText(match.interim_opponent_wins,copy)+' · '+esc(enumText(match.status||'unknown',copy))+'</span></summary><div class="native-fold-body">'+matchKpis(match,copy)+(match.interim_our_wins===1&&match.interim_opponent_wins===0&&match.status!=='final'?'<p class="native-evidence-note">'+esc(copy.interimScore)+'</p>':'')+dayTable(match,copy)+'</div></details>'}
 function snapshotCard(snapshot,copy){return '<details class="native-fold native-dl-league"><summary><strong>'+esc(enumText(snapshot.coverage_status||'unknown',copy))+'</strong><span>'+esc(snapshot.captured_at||copy.unknown)+' · '+esc(copy.round)+' '+esc(snapshot.league_round??copy.unknown)+'</span></summary><div class="native-fold-body">'+(snapshot.rows.length?snapshot.rows.map(row=>'<div class="native-row"><strong>'+esc(row.rank_number)+'. ['+esc(row.alliance_tag)+'] '+esc(row.alliance_name||copy.unknown)+'</strong><span>#'+esc(row.server_number??copy.unknown)+' · '+row.week_results.map(value=>esc(enumText(value,copy))).join(' / ')+'</span>'+evidenceButton(row.evidence_id,copy)+'</div>').join(''):'<p class="native-muted">'+esc(copy.noSnapshots)+'</p>')+'</div></details>'}
 const input=(name,label,type='text',extra='')=>'<label>'+esc(label)+'<input type="'+type+'" name="'+name+'" '+extra+'></label>';
 function dayInputs(copy){return DUEL_DAY_WEIGHTS.map((weight,index)=>'<div class="native-dl-day-edit"><strong>'+esc(copy.dayNames[index])+' ×'+weight+'</strong>'+input('our_score_'+(index+1),copy.ourScore,'number','min="0" step="1"')+input('opponent_score_'+(index+1),copy.opponentScore,'number','min="0" step="1"')+'<label>'+esc(copy.dayResult)+'<select name="result_'+(index+1)+'">'+resultOptions(copy)+'</select></label></div>').join('')}
@@ -61,7 +69,7 @@ function proposalCards(data,copy){
 }
 export function renderDuelLeague(source={},language='de'){
  const copy=duelCopy(language),data=normalizeDuelLeague(source),current=data.matches[0],lang=language in {de:1,en:1,uk:1,ja:1,fr:1,it:1,id:1,ar:1,ko:1,sv:1,pt:1,nl:1,th:1,km:1,fil:1}?language:'de';
- return '<div class="native-dl" lang="'+lang+'" dir="'+(lang==='ar'?'rtl':'ltr')+'"><div class="native-row native-data-heading"><div><h2>'+esc(copy.title)+'</h2><p class="native-muted">'+esc(copy.intro)+'</p></div><button type="button" data-native-dl-reload>'+esc(copy.reload)+'</button></div><p class="native-muted">'+esc(copy.noPrediction)+'</p><section><h3>'+esc(copy.current)+'</h3>'+(current?matchCard(current,copy,true):'<p class="native-muted">'+esc(copy.noDuel)+'</p>')+'</section><section><h3>'+esc(copy.history)+'</h3>'+(data.matches.slice(1).length?data.matches.slice(1).map(item=>matchCard(item,copy)).join(''):'<p class="native-muted">'+esc(copy.noDuel)+'</p>')+'</section><section><h3>'+esc(copy.league)+'</h3>'+(data.leagues.length?data.leagues.map(league=>'<details class="native-fold"><summary><strong>'+esc(league.cycle_label)+'</strong><span>'+esc(enumText(league.tier,copy))+' · '+esc(league.starts_week)+'–'+esc(league.ends_week)+'</span></summary><div class="native-fold-body"><h4>'+esc(copy.snapshots)+'</h4>'+(data.snapshots.filter(snapshot=>snapshot.league_id===league.id).map(snapshot=>snapshotCard(snapshot,copy)).join('')||'<p class="native-muted">'+esc(copy.noSnapshots)+'</p>')+'</div></details>').join(''):'<p class="native-muted">'+esc(copy.noLeagues)+'</p>')+'</section>'+captureCards(data,language)+'<div class="native-dl-inputs">'+matchForm(copy)+snapshotForm(copy)+'</div>'+proposalCards(data,copy)+'<section class="native-dl-evidence" aria-live="polite"></section></div>';
+ return '<div class="native-dl" lang="'+lang+'" dir="'+(lang==='ar'?'rtl':'ltr')+'"><div class="native-row native-data-heading"><div><h2>'+esc(copy.title)+'</h2><p class="native-muted">'+esc(copy.intro)+'</p></div><button type="button" data-native-dl-reload>'+esc(copy.reload)+'</button></div><p class="native-muted">'+esc(copy.noPrediction)+'</p>'+renderDuelInsights(data,{language,esc,numberText:String})+'<section><h3>'+esc(copy.current)+'</h3>'+(current?matchCard(current,copy,true):'<p class="native-muted">'+esc(copy.noDuel)+'</p>')+'</section><section><h3>'+esc(copy.history)+'</h3>'+(data.matches.slice(1).length?data.matches.slice(1).map(item=>matchCard(item,copy)).join(''):'<p class="native-muted">'+esc(copy.noDuel)+'</p>')+'</section><section><h3>'+esc(copy.league)+'</h3>'+(data.leagues.length?data.leagues.map(league=>'<details class="native-fold"><summary><strong>'+esc(league.cycle_label)+'</strong><span>'+esc(enumText(league.tier,copy))+' · '+esc(league.starts_week)+'–'+esc(league.ends_week)+'</span></summary><div class="native-fold-body"><h4>'+esc(copy.snapshots)+'</h4>'+(data.snapshots.filter(snapshot=>snapshot.league_id===league.id).map(snapshot=>snapshotCard(snapshot,copy)).join('')||'<p class="native-muted">'+esc(copy.noSnapshots)+'</p>')+'</div></details>').join(''):'<p class="native-muted">'+esc(copy.noLeagues)+'</p>')+'</section>'+captureCards(data,language)+'<div class="native-dl-inputs">'+matchForm(copy)+snapshotForm(copy)+'</div>'+proposalCards(data,copy)+'<section class="native-dl-evidence" aria-live="polite"></section></div>';
 }
 export function matchPayload(form,keyFactory=()=>idempotency(globalThis.crypto)){
  const status=form.elements.status.value,official=text(form.elements.official_result.value),evidenceIds=JSON.parse(form.elements.evidence_ids.value||'[]');
@@ -73,36 +81,17 @@ export function snapshotPayload(form,keyFactory=()=>idempotency(globalThis.crypt
  const official=form.elements.official_snapshot.checked,payload={idempotency_key:keyFactory(),cycle_label:text(form.elements.cycle_label.value),league_round:integer(form.elements.league_round.value),captured_at:iso(form.elements.captured_at.value),reason:text(form.elements.reason.value),expected_rank_count:integer(form.elements.expected_rank_count.value),official_snapshot:official,official_outcome:official?(text(form.elements.official_outcome.value)||'unknown'):null,evidence_ids:JSON.parse(form.elements.evidence_ids.value||'[]'),rows};
  const proposal=text(form.elements.proposal_id.value);if(proposal)payload.proposal_id=proposal;return payload;
 }
-function resetReview(form){
- form.reset();
- // Hidden inputs retain programmatic values across form.reset().
- fill(form,'proposal_id','');fill(form,'evidence_ids','[]');
- const output=form.querySelector('[role=status]');
- if(output){output.textContent='';output.classList.remove('native-error')}
-}
-function prepareMatchReview(form,week,data){
- resetReview(form);fill(form,'iso_week',week);
- const match=data.matches.find(row=>row.iso_week===week);
- fill(form,'revision',match?.revision??0);
- const league=data.leagues.find(row=>row.id===match?.league_id||row.cycle_label===match?.cycle_label);
- fill(form,'cycle_label',league?.cycle_label??match?.cycle_label);
- fill(form,'starts_week',league?.starts_week);fill(form,'ends_week',league?.ends_week);
- fill(form,'tier',league?.tier??match?.tier??'unknown');
- fill(form,'raw_tier_label',league?.raw_tier_label??match?.raw_tier_label);
- fill(form,'league_round',match?.league_round);
-}
-function applyMatchProposal(form,item){const proposal=item.proposal||{};fill(form,'proposal_id',item.id);fill(form,'evidence_ids',JSON.stringify(item.evidence_ids));fill(form,'iso_week',item.scope_key);fill(form,'opponent_tag',proposal.opponent?.tag);fill(form,'opponent_name',proposal.opponent?.name);fill(form,'server_number',proposal.opponent?.server_number);fill(form,'status',proposal.status||'live');fill(form,'official_result',proposal.official_result);fill(form,'interim_our_wins',proposal.interim_our_wins);fill(form,'interim_opponent_wins',proposal.interim_opponent_wins);for(const [index,day] of list(proposal.days).entries()){const dayIndex=day.day_index??index+1;if(!Number.isInteger(dayIndex)||dayIndex<1||dayIndex>6)continue;fill(form,'our_score_'+dayIndex,day.our_score);fill(form,'opponent_score_'+dayIndex,day.opponent_score);fill(form,'result_'+dayIndex,day.result||'unknown')}}
+function applyMatchProposal(form,item){const proposal=item.proposal||{};fill(form,'proposal_id',item.id);fill(form,'evidence_ids',JSON.stringify(item.evidence_ids));fill(form,'iso_week',item.scope_key);fill(form,'opponent_tag',proposal.opponent?.tag);fill(form,'opponent_name',proposal.opponent?.name);fill(form,'server_number',proposal.opponent?.server_number);fill(form,'status',proposal.status||'live');fill(form,'official_result',proposal.official_result);fill(form,'interim_our_wins',proposal.interim_our_wins);fill(form,'interim_opponent_wins',proposal.interim_opponent_wins);for(const [index,day] of list(proposal.days).entries()){fill(form,'our_score_'+(index+1),day.our_score);fill(form,'opponent_score_'+(index+1),day.opponent_score);fill(form,'result_'+(index+1),day.result||'unknown')}}
 function applySnapshotProposal(form,item,copy){const proposal=item.proposal||{};fill(form,'proposal_id',item.id);fill(form,'evidence_ids',JSON.stringify(item.evidence_ids));fill(form,'cycle_label',proposal.cycle_label||item.scope_key);const container=form.querySelector('[data-native-dl-rank-rows]');container.innerHTML=list(proposal.rows).map(row=>rankRow(copy,row)).join('')||rankRow(copy)}
 export function createDuelLeagueController({root,api,language='de',cryptoRef=globalThis.crypto}={}){
  if(!root||!api)throw new TypeError('Duel & League root and API are required');const copy=duelCopy(language);let objectUrl='',data=normalizeDuelLeague({});
- let releaseDialog=null,evidenceRequest=0;
- const closeEvidence=()=>{evidenceRequest++;root.querySelector('.native-dl-evidence')?.replaceChildren();releaseDialog?.();releaseDialog=null;if(objectUrl)URL.revokeObjectURL(objectUrl);objectUrl=''};
  const status=(node,message,error=false)=>{if(node){node.textContent=message;node.classList.toggle('native-error',error)}};
  const errorMessage=(error,fallback)=>error?.localized?error.message:fallback;
- const load=async()=>{closeEvidence();root.innerHTML='<p role="status">'+esc(copy.loading)+'</p>';try{data=normalizeDuelLeague(await api.read());root.innerHTML=renderDuelLeague(data,language)}catch(error){root.innerHTML='<p class="native-error" role="alert">'+esc(errorMessage(error,copy.readError))+'</p><button type="button" data-native-dl-reload>'+esc(copy.reload)+'</button>'}};
+ const load=async()=>{root.innerHTML='<p role="status">'+esc(copy.loading)+'</p>';try{data=normalizeDuelLeague(await api.read());root.innerHTML=renderDuelLeague(data,language)}catch(error){root.innerHTML='<p class="native-error" role="alert">'+esc(errorMessage(error,copy.readError))+'</p><button type="button" data-native-dl-reload>'+esc(copy.reload)+'</button>'}};
  const save=async(form,call,payload)=>{const output=form.querySelector('[role=status]'),button=form.querySelector('[type=submit]');button.disabled=true;status(output,copy.saving);try{await call(payload);await load()}catch(error){status(output,errorMessage(error,copy.writeError),true);button.disabled=false}};
  root.addEventListener('click',async event=>{
   if(event.target.closest?.('[data-native-dl-reload]')){await load();return}
+  if(event.target.closest?.('[data-native-dl-scroll-entry]')){const form=root.querySelector('.native-dl-match-form');if(form){form.closest('details').open=true;form.scrollIntoView?.({block:'start'})}return}
   if(event.target.closest?.('[data-native-dl-add-rank]')){const form=event.target.closest('form');form.querySelector('[data-native-dl-rank-rows]').insertAdjacentHTML('beforeend',rankRow(copy));return}
   const capture=event.target.closest?.('[data-native-dl-review-capture]');
   if(capture){
@@ -112,7 +101,6 @@ export function createDuelLeagueController({root,api,language='de',cryptoRef=glo
    const form=root.querySelector(duel?'.native-dl-match-form':'.native-dl-snapshot-form');
    if(!form)return;
    if(duel){
-    prepareMatchReview(form,item.scope_key,data);
     fill(form,'iso_week',item.scope_key);fill(form,'opponent_tag',proposal.opponent?.tag);
     fill(form,'opponent_name',proposal.opponent?.name);
     fill(form,'server_number',proposal.opponent?.server_number);
@@ -120,28 +108,22 @@ export function createDuelLeagueController({root,api,language='de',cryptoRef=glo
     fill(form,'interim_opponent_wins',proposal.interim_opponent_wins);
     fill(form,'status','unverified');fill(form,'official_result','');
    }else{
-    resetReview(form);
     fill(form,'cycle_label',item.scope_key);
     const instant=new Date(item.captured_at);
     if(!Number.isNaN(instant.valueOf()))fill(form,'captured_at',new Date(instant.getTime()-instant.getTimezoneOffset()*60000).toISOString().slice(0,16));
     const rows=list(proposal.rows);
-    form.querySelector('[data-native-dl-rank-rows]').innerHTML=rows.map(row=>rankRow(copy,row)).join('')||rankRow(copy);
+    if(rows.length){
+     fill(form,'expected_rank_count',Math.max(...rows.map(row=>row.rank_number)));
+     form.querySelector('[data-native-dl-rank-rows]').innerHTML=rows.map(row=>rankRow(copy,row)).join('');
+    }
     form.elements.official_snapshot.checked=false;
    }
    form.closest('details').open=true;form.scrollIntoView?.({block:'start'});
    return;
   }
-  const review=event.target.closest?.('[data-native-dl-review-proposal]');if(review){const item=data.proposals.find(proposal=>proposal.id===review.dataset.nativeDlReviewProposal);if(!item)return;const selector=item.proposal_kind==='match_week'?'.native-dl-match-form':'.native-dl-snapshot-form',form=root.querySelector(selector);if(item.proposal_kind==='match_week'){prepareMatchReview(form,item.scope_key,data);applyMatchProposal(form,item)}else{resetReview(form);applySnapshotProposal(form,item,copy)}form.closest('details').open=true;form.scrollIntoView?.({block:'start'});return}
-  const evidence=event.target.closest?.('[data-native-dl-evidence]');
-  if(evidence){
-   closeEvidence();const area=root.querySelector('.native-dl-evidence'),requestId=++evidenceRequest;
-   area.innerHTML='<section class="native-vs-evidence-backdrop" role="dialog" aria-modal="true" aria-label="'+esc(copy.evidence)+'"><div class="native-vs-evidence-panel"><button type="button" data-native-dl-evidence-close>'+esc(copy.closeEvidence)+'</button><p role="status">'+esc(copy.loading)+'</p></div></section>';
-   releaseDialog=bindEvidenceDialog(area.firstElementChild,closeEvidence,evidence);
-   try{const blob=await api.loadEvidence(evidence.dataset.nativeDlEvidence);if(requestId!==evidenceRequest||!area.isConnected)return;
-    objectUrl=URL.createObjectURL(blob);area.querySelector('[role=status]').outerHTML='<img src="'+esc(objectUrl)+'" alt="'+esc(copy.evidence)+'">';
-   }catch(error){if(requestId===evidenceRequest)status(area.querySelector('[role=status]'),errorMessage(error,copy.readError),true)}return;
-  }
-  if(event.target.closest?.('[data-native-dl-evidence-close]'))closeEvidence();
+  const review=event.target.closest?.('[data-native-dl-review-proposal]');if(review){const item=data.proposals.find(proposal=>proposal.id===review.dataset.nativeDlReviewProposal);if(!item)return;const selector=item.proposal_kind==='match_week'?'.native-dl-match-form':'.native-dl-snapshot-form',form=root.querySelector(selector);if(item.proposal_kind==='match_week')applyMatchProposal(form,item);else applySnapshotProposal(form,item,copy);form.closest('details').open=true;form.scrollIntoView?.({block:'start'});return}
+   const evidence=event.target.closest?.('[data-native-dl-evidence]');if(evidence){const area=root.querySelector('.native-dl-evidence');status(area,copy.loading);try{const blob=await api.loadEvidence(evidence.dataset.nativeDlEvidence);if(objectUrl)URL.revokeObjectURL(objectUrl);objectUrl=URL.createObjectURL(blob);area.innerHTML='<div class="native-fold"><button type="button" data-native-dl-evidence-close>'+esc(copy.closeEvidence)+'</button><img src="'+esc(objectUrl)+'" alt="'+esc(copy.evidence)+'"></div>'}catch(error){status(area,errorMessage(error,copy.readError),true)}return}
+  if(event.target.closest?.('[data-native-dl-evidence-close]')){if(objectUrl)URL.revokeObjectURL(objectUrl);objectUrl='';root.querySelector('.native-dl-evidence').innerHTML=''}
  });
  root.addEventListener('submit',async event=>{
   const form=event.target;if(!form.matches('.native-dl-match-form,.native-dl-snapshot-form'))return;event.preventDefault();if(!form.reportValidity()){status(form.querySelector('[role=status]'),copy.required,true);return}
@@ -149,5 +131,5 @@ export function createDuelLeagueController({root,api,language='de',cryptoRef=glo
   if(form.matches('.native-dl-snapshot-form')){await save(form,api.saveLeagueSnapshot,snapshotPayload(form,()=>idempotency(cryptoRef)));return}
 
  });
- return {load,destroy:closeEvidence};
+ return {load,destroy(){if(objectUrl)URL.revokeObjectURL(objectUrl);objectUrl=''}};
 }

@@ -51,7 +51,6 @@ function mockFetch({notEnabled=false,conflict=false}={}){
    {id,name:'Synthetic Member',rank:'R3',lifecycle:'active',blacklisted:false,reason:'',revision:'b'.repeat(64)}
   ],counts:{active:1,former:0,blacklisted:0}});
   if(path==='/api/membership-watch')return notEnabled?Response.json({error:'Not found'},{status:404}):Response.json(mockWatch);
-  if(path==='/api/archive-eligibility')return Response.json({ready:true,candidates:[]});
   if(path==='/api/diplomacy'){
    if(notEnabled)return Response.json({error:'Not found'},{status:404});
    if(options.method==='POST'){
@@ -82,9 +81,7 @@ test('Passively missing screenshots never blacklist or archive members',async t=
  ctx.mount.querySelector('[data-officer-tab=watch]').click();
  await until(()=>ctx.mount.querySelector('[data-native-watch-person]'));
  const text=ctx.mount.querySelector('#native-watch-list').textContent;
- assert.match(text,/Einzelne fehlende Bilder oder Werte belegen keinen Austritt/);
- assert.match(text,/zwei vollständig bestätigten Profilbeständen aufeinanderfolgender Wochen/);
- assert.doesNotMatch(text,/W39\/W40\/W41|fehlenden VS-Wochen|R4\/R5 werden niemals/);
+ assert.match(text,/Kein automatischer Austritt/);
  assert.match(text,/Neue Stärke-Aufnahme: nicht enthalten/);
  assert.match(text,/Neue VS-Aufnahme: nicht enthalten/);
  assert.equal(writes.length,0);
