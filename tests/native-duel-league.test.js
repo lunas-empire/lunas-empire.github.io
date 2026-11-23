@@ -148,3 +148,30 @@ test('Zentrale OCR is editable but never marks a match official without officer 
  assert.equal(calls.length,0);
  controller.destroy();
 });
+
+
+test('current duel stays on top while collapsed history can be sorted without changing match data',async t=>{
+ const base=sample.matches[0];
+ const matches=[
+  {...base,id:'middle',iso_week:'2026-W43',opponent_name_snapshot:'Middle'},
+  {...base,id:'older',iso_week:'2026-W42',opponent_name_snapshot:'Alpha'},
+  {...base,id:'current',iso_week:'2026-W44',opponent_name_snapshot:'Zulu'}
+ ];
+ const dom=new JSDOM(renderDuelLeague({...sample,matches},'de'));
+ const current=dom.window.document.querySelector('.native-dl-current .native-dl-match');
+ assert.match(current.querySelector('summary').textContent,/2026-W44/);assert.equal(current.open,true);
+ const history=dom.window.document.querySelector('.native-dl-history');
+ assert.equal(history.open,false);assert.doesNotMatch(history.textContent,/2026-W44/);
+ assert.deepEqual([...history.querySelectorAll('.native-dl-match')].map(node=>node.open),[false,false]);
+ dom.window.close();
+ const live=new JSDOM('<main id="root"></main>',{url:'https://example.test'});t.after(()=>live.window.close());
+ const root=live.window.document.querySelector('#root'),controller=createDuelLeagueController({root,api:{read:async()=>({...sample,matches})},language:'de'});
+ await controller.load();const select=root.querySelector('[data-native-dl-history-sort]');
+ root.querySelector('.native-dl-history').open=true;
+ select.value='week_asc';select.dispatchEvent(new live.window.Event('change',{bubbles:true}));
+ assert.equal(root.querySelector('.native-dl-history').open,true);
+ const summaries=[...root.querySelectorAll('.native-dl-history .native-dl-match summary')].map(node=>node.textContent);
+ assert.match(summaries[0],/2026-W42/);assert.match(summaries[1],/2026-W43/);
+ assert.match(root.querySelector('.native-dl-current summary').textContent,/2026-W44/);
+ controller.destroy();
+});

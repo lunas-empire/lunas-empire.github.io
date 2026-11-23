@@ -63,3 +63,28 @@ test('Native admin opens VS opponent panel with authenticated read-only API',asy
  mount.querySelector('[data-officer-tab=opponentIntel]').click();await wait(()=>mount.querySelector('.native-opponent-intel'));
  assert.equal(opponentReads,1);assert.match(mount.textContent,/VS-Gegner/);assert.equal(mount.querySelector('iframe'),null);
 });
+
+
+test('Top-N lists expose own and opponent LW details and direct player comparison',async t=>{
+ const rows=side=>Array.from({length:60},(_,index)=>({source_row:index+1,source_name:side+' '+(index+1),source_rank:index%2?'R4':'R1',values:{power:index+1,drone:100+index,hq:30,vip:7,'T1 type':index%2?'Aircraft':'Tank','T1 heroes':'Hero '+(index+1),Shield:index%2?'1h':null}}));
+ const rich={...data,ownRows:rows('Own'),opponentRows:rows('Opponent')};
+ const html=renderOpponentIntelligence(rich,{language:'en',metric:'power',limit:'15'});
+ const dom=new JSDOM(html);t.after(()=>dom.window.close());
+ assert.deepEqual([...dom.window.document.querySelectorAll('[data-native-opponent-limit] option')].map(node=>node.value),['10','15','20','30','50','all']);
+ assert.equal(dom.window.document.querySelectorAll('.native-opponent-player-columns>section')[0].querySelectorAll('.native-opponent-player').length,15);
+ assert.equal(dom.window.document.querySelectorAll('.native-opponent-player-columns>section')[1].querySelectorAll('.native-opponent-player').length,15);
+ assert.match(html,/Hero 60/);assert.match(html,/Total Troops/);assert.match(html,/T1 Power/);assert.match(html,/VIP/);
+ const live=new JSDOM('<main id="root"></main>',{url:'https://lunas-empire.github.io/#admin'});t.after(()=>live.window.close());
+ live.window.HTMLElement.prototype.scrollIntoView=()=>{};
+ const root=live.window.document.querySelector('#root'),controller=createOpponentIntelligenceController({root,language:'en',api:{read:async()=>rich}});
+ await controller.load();const first=root.querySelector('.native-opponent-player-columns>section:last-child .native-opponent-player');
+ first.querySelector('summary').click();assert.equal(first.open,true);
+ first.querySelector('[data-native-opponent-compare]').click();
+ const comparison=root.querySelector('#native-opponent-person-comparison');assert.ok(comparison);
+ assert.match(comparison.textContent,/Own 60/);assert.match(comparison.textContent,/Opponent 60/);
+ const ownSelect=comparison.querySelector('[data-native-opponent-compare-own]');ownSelect.value='1';ownSelect.dispatchEvent(new live.window.Event('change',{bubbles:true}));
+ assert.match(root.querySelector('#native-opponent-person-comparison').textContent,/Own 1/);
+ const limit=root.querySelector('[data-native-opponent-limit]');limit.value='all';limit.dispatchEvent(new live.window.Event('change',{bubbles:true}));
+ assert.equal(root.querySelectorAll('.native-opponent-player-columns>section')[0].querySelectorAll('.native-opponent-player').length,60);
+ assert.equal(live.window.localStorage.length,0);assert.equal(live.window.sessionStorage.length,0);
+});

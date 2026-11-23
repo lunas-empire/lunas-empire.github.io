@@ -3,7 +3,7 @@
  * enrichment: original member-safe guide graphics · nav: N9 edge header + mobile bottom tabs · footer: Ft2
  * contrast: pass · mobile: pass 320/375/414/768 · slop: pass
  */
-@import url('./tokens.css?v=2026.11.21-opponent-intelligence');
+@import url('./tokens.css?v=2026.11.23-duel-opponent-workbench');
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
 html{scroll-padding-block:1rem 6rem}
@@ -2316,3 +2316,35 @@ button.native-trend-week{text-align:start;white-space:normal;color:inherit}butto
 .native-weekly-fallback-row.is-unknown>span:last-child{color:var(--color-muted)}
 .native-weekly-fallback-value{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:.35rem}
 .native-weekly-fallback-value button{min-height:36px;padding:.25rem .5rem;font-size:.78rem;white-space:normal}
+
+.native-dl-history>summary{display:flex;justify-content:space-between;align-items:center;gap:var(--space-sm)}
+.native-dl-history-sort{display:grid;gap:.3rem;width:min(100%,20rem);margin-block:var(--space-sm)}
+.native-dl-history .native-dl-match{margin-block:var(--space-sm)}
+.native-opponent-analysis-controls{display:grid;gap:var(--space-sm);margin-block:var(--space-md)}
+.native-opponent-analysis-controls label,.native-opponent-person-selects label{display:grid;gap:.3rem;min-width:0}
+.native-opponent-player-rankings,.native-opponent-person-comparison{margin-top:var(--space-lg)}
+.native-opponent-player-columns{display:grid;gap:var(--space-lg)}
+.native-opponent-player-columns>section{min-width:0}
+.native-opponent-player-list li{display:block;padding:0;border-bottom:1px solid var(--color-rule);counter-increment:none}
+.native-opponent-player-list li::before{content:none}
+.native-opponent-player-list .native-opponent-player{margin:0;padding:0;border:0;border-radius:0;background:transparent}
+.native-opponent-player>summary{display:grid;grid-template-columns:2rem minmax(0,1fr) auto;align-items:center;gap:var(--space-sm);padding:.55rem 0;min-height:56px}
+.native-opponent-player-rank{color:var(--color-muted);font-variant-numeric:tabular-nums}
+.native-opponent-player-list li .native-opponent-player-rank,.native-opponent-player-list li .native-opponent-player-name{grid-column:auto;grid-row:auto;padding-inline-start:0}
+.native-opponent-player-name{display:flex;min-width:0;flex-wrap:wrap;align-items:baseline;gap:.4rem}
+.native-opponent-player-name strong{min-width:0;overflow-wrap:anywhere}
+.native-opponent-player-name small{color:var(--color-muted)}
+.native-opponent-player-body{padding:0 0 var(--space-md) 2rem}
+.native-opponent-player-body h4{margin:0 0 var(--space-sm)}
+.native-opponent-player-details{display:grid;gap:0;margin:0 0 var(--space-md)}
+.native-opponent-player-details>div{display:flex;justify-content:space-between;align-items:start;gap:var(--space-sm);padding:.35rem 0;border-bottom:1px solid var(--color-rule)}
+.native-opponent-player-details dt{color:var(--color-muted)}
+.native-opponent-player-details dd{margin:0;text-align:end;overflow-wrap:anywhere}
+.native-opponent-person-selects{display:grid;gap:var(--space-sm);margin-bottom:var(--space-sm)}
+@media(min-width:40rem){.native-opponent-analysis-controls,.native-opponent-person-selects{grid-template-columns:repeat(2,minmax(0,1fr))}.native-opponent-player-details{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--space-lg)}}
+@media(min-width:60rem){.native-opponent-player-columns{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:39.99rem){.native-opponent-player-body{padding-inline-start:0}.native-opponent-player>summary{grid-template-columns:1.5rem minmax(0,1fr) auto;gap:.4rem}}
+.native-opponent-person-table{min-width:0;table-layout:fixed;font-variant-numeric:tabular-nums}
+.native-opponent-person-table th:first-child{width:23%}
+.native-opponent-person-table th,.native-opponent-person-table td{padding:.5rem .4rem;overflow-wrap:anywhere}
+@media(max-width:30rem){.native-opponent-person-table{font-size:.75rem}.native-opponent-person-table th,.native-opponent-person-table td{padding:.45rem .25rem}}
